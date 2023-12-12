@@ -14,7 +14,6 @@ message_id = None
 
 def run():
 
-    
     intents = discord.Intents.default()
     intents.message_content = True
     client = discord.Client(intents=intents)
@@ -81,18 +80,5 @@ def run():
             await message.channel.send(f"Users who reacted: {users_list}")
             # mentions = [f"<@{message.guild.get_member_named(name).id}>" for name in reaction_users]
             # await message.channel.send(" ".join(mentions))
-
-    # @client.event
-    # async def on_reaction_add(reaction, user):
-    #     """Adds Discord username to list of users who need a ride"""
-
-    #     if user.bot:
-    #         return
-
-    #     if str(reaction.emoji) == reacts[current_reaction] and reaction.message.author == client.user:
-    #         await reaction.message.channel.send(f"Yay emoji reaction by {user.name}!")
-    #         needs_ride.append(user.name)
-    #         print(needs_ride)
-
 
     client.run(TOKEN)
