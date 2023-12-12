@@ -7,7 +7,7 @@ load_dotenv()
 TOKEN = os.getenv('TOKEN')
 needs_ride = []
 drivers = []
-reacts = ['🥐', '🧁', '🍩']
+reacts = ['🥐', '🧁', '🍩', '🌋', '🦕', '🐸', '🐟', '🐻', '🦔']
 RIDES_MESSAGE: str = "React for rides."
 current_reaction: int = 0
 message_id = None
