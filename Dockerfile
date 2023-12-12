@@ -1,5 +1,6 @@
-# Use Python 3.9.6 as base image
+# Use Python 
 FROM python:latest
+
 # Set the working directory inside the container
 WORKDIR /app
 
