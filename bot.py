@@ -38,6 +38,9 @@ def run():
 
         print(f"{username} said: '{user_message}' ({channel})")
 
+        if user_message == "!help":
+            await message.channel.send("```!send - sends ride message \n!get_reactions - lists users who have reacted```")
+
         if user_message == "!send":
             sent_message = await message.channel.send(RIDES_MESSAGE)
             message_id = sent_message.id
