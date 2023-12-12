@@ -1,3 +1,4 @@
 .env
 .git
 .DS_Store
+.venv
