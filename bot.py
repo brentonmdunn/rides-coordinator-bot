@@ -2,10 +2,11 @@ import discord
 import os
 from dotenv import load_dotenv
 import random
-
+import copy
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 needs_ride = []
+prev_needs_ride = []
 drivers = []
 reacts = ['🥐', '🧁', '🍩', '🌋', '🦕', '🐸', '🐟', '🐻', '🦔']
 RIDES_MESSAGE: str = "React for rides."
@@ -27,6 +28,7 @@ def run():
     async def on_message(message):
         """Sends message and puts first reaction"""
         global message_id
+        global current_reaction
         # Makes sure that is not triggered by its own message
         if message.author == client.user:
             return 
@@ -41,6 +43,9 @@ def run():
             await message.channel.send("```!send - sends ride message \n!get_reactions - lists users who have reacted```")
 
         if user_message == "!send":
+            # Clears list before each reaction 
+            prev_needs_ride = copy.deepcopy(needs_ride)
+            needs_ride = []
             sent_message = await message.channel.send(RIDES_MESSAGE)
             message_id = sent_message.id
             # Adds random reaction for ride
