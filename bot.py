@@ -1,8 +1,11 @@
-import discord
+"""Main functionality of bot"""
+
 import os
-from dotenv import load_dotenv
 import random
 import copy
+import discord
+from dotenv import load_dotenv
+
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 needs_ride = []
@@ -31,7 +34,7 @@ def run():
         global current_reaction
         # Makes sure that is not triggered by its own message
         if message.author == client.user:
-            return 
+            return
         
         username: str = str(message.author)
         user_message: str = str(message.content)
