@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
+BOT_NAME = os.getenv('BOT_NAME')
 needs_ride = []
 prev_needs_ride = []
 drivers = []
@@ -32,6 +33,7 @@ def run():
         """Sends message and puts first reaction"""
         global message_id
         global current_reaction
+        global needs_ride
         # Makes sure that is not triggered by its own message
         if message.author == client.user:
             return
@@ -47,6 +49,7 @@ def run():
 
         if user_message == "!send":
             # Clears list before each reaction 
+
             prev_needs_ride = copy.deepcopy(needs_ride)
             needs_ride = []
             sent_message = await message.channel.send(RIDES_MESSAGE)
@@ -71,7 +74,7 @@ def run():
         
         if message.content == "!get_reactions":
             # Fetch the message for which you want to get reactions
-            if message_id == 0:
+            if message_id is None:
                 await message.channel.send("Message has not sent yet.")
                 return
             
@@ -81,6 +84,8 @@ def run():
             reaction_users = set()
             for reaction in target_message.reactions:
                 async for user in reaction.users():
+                    if str(user) == BOT_NAME:
+                        continue
                     reaction_users.add(user)
 
             # Output the list of users who reacted

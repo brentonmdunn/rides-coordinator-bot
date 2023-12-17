@@ -30,4 +30,5 @@ Add environment variables:
 ```
 Create .env file
 Add TOKEN=<Discord token>
+Add BOT_NAME=<bot name>
 ```
