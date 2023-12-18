@@ -44,7 +44,7 @@ def run():
         # Makes sure that is not triggered by its own message
         if message.author == client.user:
             return
-        
+
         username: str = str(message.author)
         user_message: str = str(message.content)
         channel: str = str(message.channel)
@@ -52,7 +52,10 @@ def run():
         print(f"{username} said: '{user_message}' ({channel})")
 
         if user_message == "!help":
-            await message.channel.send("```!send - sends ride message \n!get_reactions - lists users who have reacted```")
+            await message.channel.send("""```
+                                       !send - sends ride message \n
+                                       !get_reactions - lists users who have reacted
+                                       ```""")
 
         if user_message == "!send":
             # Clears list before each reaction
@@ -71,7 +74,7 @@ def run():
             if message_id is None:
                 await message.channel.send("Message has not sent yet.")
                 return
-            
+
             target_message = await message.channel.fetch_message(message_id)
 
             # Iterate through reactions and collect users who reacted

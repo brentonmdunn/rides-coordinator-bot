@@ -8,6 +8,8 @@ Commands:
 !get_reactions - lists users who have reacted
 ```
 
+**Branch protection is turned on. Any change must be made though a PR.**
+
 ## Installing
 Clone the repository and `cd` into the folder:
 ```
