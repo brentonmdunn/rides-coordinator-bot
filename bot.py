@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 BOT_NAME = os.getenv('BOT_NAME')
-GUILD_ID = os.getenv('GUILD_ID')
 
 # Constants
 RIDES_MESSAGE: str = "React for rides."
