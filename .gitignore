@@ -1,3 +1,6 @@
 .env
 .DS_Store
 .venv
+keys.txt
+*.pem
+*.json
