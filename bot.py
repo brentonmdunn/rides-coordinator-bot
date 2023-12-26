@@ -1,8 +1,9 @@
 """Main functionality of bot"""
 
+import json
 import os
 import random
-from typing import List
+from typing import Dict, List, Set
 
 import discord
 from dotenv import load_dotenv
@@ -18,6 +19,7 @@ BOT_NAME = os.getenv('BOT_NAME')
 RIDES_MESSAGE: str = "React for rides."
 REACTS: List[str] = ['🥐', '🧁', '🍩', '🌋', '🦕', '🐸', '🐟', '🐻', '🦔']
 ROLE_ID: int = 1188019586470256713
+LOCATIONS_PATH = "locations.json"
 
 # Global variables
 needs_ride: List[str] = []
@@ -56,10 +58,50 @@ def run():
 
         if user_message == "!test":
 
-            role = ping.get_role(message.guild, 1188019586470256713)
-            await message.channel.send(f"{role.mention}")
+            test_list = ['brentond', 'joelle704', 'hungry1024']
+
+            with open(LOCATIONS_PATH, 'r') as f:
+                user_info = json.load(f)
+
+            # location_groups: Dict[str, Set[discord.member.Member]] = dict()
+            location_groups: Dict[str, str] = dict()
+
+
+            # Fetch the message for which you want to get reactions
+            # if message_id is None:
+            #     await message.channel.send("Message has not sent yet.")
+            #     return
+
+            # target_message = await message.channel.fetch_message(message_id)
+
+            # Iterate through reactions and collect users who reacted
+            # reaction_users: Set[discord.member.Member] = set()
+            # for reaction in target_message.reactions:
+            for user in test_list:
+                # async for user in reaction.users():
+                if str(user) == BOT_NAME:
+                    continue
+                user_identifier: str = str(user)
+                user_location: str = user_info[user_identifier]["location"]
+                if user_location not in location_groups:
+                    location_groups[user_location] = {user_identifier}
+                else:
+                    location_groups[user_location].add(user_identifier)
+
+                    # reaction_users.add(user)
+
+            # users_list = ", ".join(str(user) for user in reaction_users)
+            for location in location_groups:
+                users_at_location = ", ".join(str(user) for user in location_groups[location])
+                await message.channel.send(f"{location}: {users_at_location}")
+            
 
             return
+
+            # role = ping.get_role(message.guild, 1188019586470256713)
+            # await message.channel.send(f"{role.mention}")
+
+            # return
             # for member in message.guild.members:
             #     print(member)
             # print("Test run")
@@ -104,7 +146,7 @@ def run():
             target_message = await message.channel.fetch_message(message_id)
 
             # Iterate through reactions and collect users who reacted
-            reaction_users = set()
+            reaction_users: Set[discord.member.Member] = set()
             for reaction in target_message.reactions:
                 async for user in reaction.users():
                     if str(user) == BOT_NAME:
