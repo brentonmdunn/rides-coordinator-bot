@@ -6,6 +6,7 @@ Commands:
 ```
 !send - sends ride message
 !get_reactions - lists users who have reacted
+!group - groups users by location
 ```
 
 **Branch protection is turned on. Any change must be made though a PR.**
