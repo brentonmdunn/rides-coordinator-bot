@@ -3,14 +3,12 @@
 import copy
 import json
 import os
-import random
-from typing import Dict, List, Set
+from typing import Dict, List
 
 import discord
 from dotenv import load_dotenv
 
-import utils.ping as ping
-from commands import group, help, send, ping, get_reactions
+from commands import group, help, send, get_reactions   # pylint: disable=W0622
 
 # Environment variables from .env file
 load_dotenv()
@@ -34,24 +32,11 @@ with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
 user_info_perm_changes = copy.deepcopy(user_info)
 
 def run():
+    """Starts the bot"""
 
     intents: discord.Intents = discord.Intents.all()
     intents.message_content = True
-    client: discord.Client = discord.Client(intents=intents)
-
-    async def get_users_who_reacted(message) -> Set[discord.member.Member]:
-        """Returns set of member objects of users who reacted."""
-        target_message = await message.channel.fetch_message(message_id)
-
-        # Iterate through reactions and collect users who reacted
-        reaction_users: Set[discord.member.Member] = set()
-        for reaction in target_message.reactions:
-            async for user in reaction.users():
-                if str(user) == BOT_NAME:
-                    continue
-                reaction_users.add(user)
-        
-        return reaction_users
+    client: discord.Client = discord.Client(intents=intents)    
 
     @client.event
     async def on_ready() -> None:
@@ -62,9 +47,9 @@ def run():
     async def on_message(message: discord.message.Message) -> None:
         """Sends message and puts first reaction"""
 
-        global message_id
-        global current_reaction
-        global needs_ride
+        global message_id           # pylint: disable=W0603
+        global current_reaction     # pylint: disable=W0602
+        global needs_ride           # pylint: disable=W0602
 
         # Makes sure that is not triggered by its own message
         if message.author == client.user:
