@@ -10,6 +10,7 @@ import discord
 from dotenv import load_dotenv
 
 import utils.ping as ping
+from commands import group, help, send
 
 # Environment variables from .env file
 load_dotenv()
@@ -53,12 +54,12 @@ def run():
         return reaction_users
 
     @client.event
-    async def on_ready():
+    async def on_ready() -> None:
         """Prints on start"""
         print(f"{client.user} is running.")
 
     @client.event
-    async def on_message(message):
+    async def on_message(message: discord.message.Message) -> None:
         """Sends message and puts first reaction"""
 
         global message_id
@@ -76,52 +77,56 @@ def run():
         print(f"{username} said: '{user_message}' ({channel})")
 
         if user_message == "!group":
-
-            # Fetch the message for which you want to get reactions
-            if message_id is None:
-                await message.channel.send("Message has not sent yet.")
-                return
+            await group.execute(message, message_id, BOT_NAME, user_info)
+            # # Fetch the message for which you want to get reactions
+            # if message_id is None:
+            #     await message.channel.send("Message has not sent yet.")
+            #     return
             
-            location_groups: Dict[str, Set[discord.member.Member]] = dict()
-            target_message = await message.channel.fetch_message(message_id)
+            # location_groups: Dict[str, Set[discord.member.Member]] = dict()
+            # target_message = await message.channel.fetch_message(message_id)
 
-            reaction_users: Set[discord.member.Member] = await get_users_who_reacted(message)
+            # reaction_users: Set[discord.member.Member] = await get_users_who_reacted(message)
 
-            for user in reaction_users:
-                if str(user) == BOT_NAME:
-                    continue
-                user_identifier: str = str(user)
-                user_location: str = user_info[user_identifier]["location"]
-                if user_location in location_groups:
-                    location_groups[user_location].add(user_identifier)
-                else:
-                    location_groups[user_location] = {user_identifier}
+            # for user in reaction_users:
+            #     if str(user) == BOT_NAME:
+            #         continue
+            #     user_identifier: str = str(user)
+            #     user_location: str = user_info[user_identifier]["location"]
+            #     if user_location in location_groups:
+            #         location_groups[user_location].add(user_identifier)
+            #     else:
+            #         location_groups[user_location] = {user_identifier}
 
-            for location, users in location_groups.items():
-                users_at_location = ", ".join(user_info[user]['fname'] for user in users)
-                await message.channel.send(f"{location}: {users_at_location}")
+            # for location, users in location_groups.items():
+            #     users_at_location = ", ".join(user_info[user]['fname'] for user in users)
+            #     await message.channel.send(f"{location}: {users_at_location}")
 
 
         if user_message == "!help":
-            await message.channel.send("""```
-                                       !send - sends ride message \n
-                                       !get_reactions - lists users who have reacted \n
-                                       !group - groups users by location
-                                       ```""")
+            await help.execute(message)
+            # await message.channel.send("""```
+            #                            !send - sends ride message \n
+            #                            !get_reactions - lists users who have reacted \n
+            #                            !group - groups users by location
+            #                            ```""")
 
 
         if user_message == "!send":
-            # Clears list before each reaction
-            needs_ride = []
 
-            to_send: str = ping.create_message(ping.get_role(message.guild, ROLE_ID), RIDES_MESSAGE)
-            sent_message: discord.message.Message = await message.channel.send(to_send)
-            message_id = sent_message.id
+            message_id = await send.execute(message, needs_ride, RIDES_MESSAGE, REACTS, ROLE_ID)
 
-            # Adds random reaction for ride
-            current_reaction = random.randint(0, len(REACTS) - 1)
-            await sent_message.add_reaction(REACTS[current_reaction])
-            print(current_reaction)
+            # # Clears list before each reaction
+            # needs_ride = []
+
+            # to_send: str = ping.create_message(ping.get_role(message.guild, ROLE_ID), RIDES_MESSAGE)
+            # sent_message: discord.message.Message = await message.channel.send(to_send)
+            # message_id = sent_message.id
+
+            # # Adds random reaction for ride
+            # current_reaction = random.randint(0, len(REACTS) - 1)
+            # await sent_message.add_reaction(REACTS[current_reaction])
+            # print(current_reaction)
 
         if message.content == "!get_reactions":
             # Fetch the message for which you want to get reactions
