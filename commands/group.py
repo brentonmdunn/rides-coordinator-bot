@@ -4,16 +4,18 @@ from typing import Dict, Set
 import discord
 import utils.reactions as reactions
 
-async def execute(message: discord.message.Message, message_id: int, bot_name: str, user_info) -> None:
-    """Instructions for !group command"""
+async def execute(message: discord.message.Message,
+                  message_id: int,
+                  bot_name: str,
+                  user_info: Dict[str, Dict[str, str]]) -> None:
+    """Groups users by location."""
 
     # Fetch the message for which you want to get reactions
     if message_id is None:
         await message.channel.send("Message has not sent yet.")
         return
-    
+
     location_groups: Dict[str, Set[discord.member.Member]] = dict()
-    target_message = await message.channel.fetch_message(message_id)
 
     reaction_users: Set[discord.member.Member] = await reactions.get_users(message, message_id, bot_name)
 

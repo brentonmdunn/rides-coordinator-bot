@@ -68,7 +68,7 @@ def run():
             await help.execute(message)
            
         if user_message == "!send":
-            message_id = await send.execute(message, needs_ride, RIDES_MESSAGE, REACTS, ROLE_ID)
+            message_id = await send.execute(message, RIDES_MESSAGE, REACTS, ROLE_ID)
 
         if message.content == "!get_reactions":
             await get_reactions.execute(message, message_id, BOT_NAME)
