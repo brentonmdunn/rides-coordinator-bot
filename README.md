@@ -4,9 +4,9 @@ This is a Discord bot that puts out an announcement for users who need a ride fo
 
 Commands:
 ```
-!send - sends ride message
-!get_reactions - lists users who have reacted
-!group - groups users by location
+/send - sends ride message
+/get_reactions - lists users who have reacted
+/group - groups users by location
 ```
 
 **Branch protection is turned on. Any change must be made though a PR.**
