@@ -4,74 +4,135 @@
 import copy
 import json
 import os
-from typing import Dict, List
+import random
+from typing import Dict, Set
 
 # External modules
 import discord
+from discord import app_commands
+from discord.ext import commands
 from dotenv import load_dotenv
 
 # Local modules
-from commands import group, help, send, get_reactions   # pylint: disable=W0622
+import utils.ping as ping
+import utils.constants as constants
 
 # Environment variables from .env file
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
-BOT_NAME = os.getenv('BOT_NAME')
-
-# Constants
-RIDES_MESSAGE: str = "React for rides."
-REACTS: List[str] = ['🥐', '🧁', '🍩', '🌋', '🦕', '🐸', '🐟', '🐻', '🦔']
-ROLE_ID: int = 1188019586470256713
-LOCATIONS_PATH = "locations.json"
+TOKEN: str = os.getenv('TOKEN')
+BOT_NAME: str = os.getenv('BOT_NAME')
 
 # Global variables
-message_id: int = None
+message_id: int = 0
+channel_id: int = 0
 
-with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
+with open(constants.LOCATIONS_PATH, 'r', encoding='utf8') as f:
     user_info: Dict[str, Dict[str, str]] = json.load(f)
 user_info_perm_changes = copy.deepcopy(user_info)
 
-def run():
-    """Starts the bot"""
+def run() -> None:
+    """Main method for bot."""
 
-    intents: discord.Intents = discord.Intents.all()
-    intents.message_content = True
-    client: discord.Client = discord.Client(intents=intents)
+    intents = discord.Intents.default()
+    intents.messages = True
+    intents.guilds = True
+    bot = commands.Bot(command_prefix='!', intents=intents)
 
-    @client.event
-    async def on_ready() -> None:
-        """Prints on start"""
-        print(f"{client.user} is running.")
+    @bot.event
+    async def on_ready():
+        """Runs when bot first starts up. Syncs slash commands with server."""
+        try:
+            synced = await bot.tree.sync()
+            print(f"{len(synced)} command(s).")
+        except Exception as e:
+            print(e)
 
-    @client.event
-    async def on_message(message: discord.message.Message) -> None:
-        """Sends message and puts first reaction"""
+        print(f'Logged in as {bot.user.name}')
 
-        global message_id           # pylint: disable=W0603
+    async def get_reaction_users() -> Set[discord.member.Member]:
+        """Gets member objects of people who reacted to message."""
 
-        # Makes sure that is not triggered by its own message
-        if message.author == client.user:
+        channel = bot.get_channel(channel_id) 
+        message = await channel.fetch_message(message_id)
+
+        # Iterate through reactions and collect users who reacted
+        reaction_users: Set[discord.member.Member] = set()
+        for reaction in message.reactions:
+            async for user in reaction.users():
+                if str(user) == BOT_NAME:
+                    continue
+                reaction_users.add(user)
+
+        return reaction_users
+
+    @bot.tree.command(name='help', description=constants.HELP_DECRIPTION)
+    async def help(interaction: discord.Interaction) -> None:
+        """List of slash commands available."""
+
+        command_list = (
+            "/send - {constants.SEND_DESCRIPTION}"
+            "\n/group - {constants.GROUP_DESCRIPTION}"
+            "\n/help - {constants.HELP_DESCRIPTION}"
+        )
+        await interaction.response.send_message(f"```{command_list}```")
+
+    @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
+    async def group(interaction: discord.Interaction) -> None:
+        """Groups people by pickup location."""
+
+        if message_id == 0:
+            await interaction.response.send_message("Message has not sent yet.")
             return
 
-        username: str = str(message.author)
-        user_message: str = str(message.content)
-        channel: str = str(message.channel)
+        location_groups: Dict[str, Set[discord.member.Member]] = dict()
 
-        print(f"{username} said: '{user_message}' ({channel})")
+        reaction_users: Set[discord.member.Member] = await get_reaction_users()
+        for user in reaction_users:
+            if str(user) == BOT_NAME:
+                continue
+            user_identifier: str = str(user)
+            user_location: str = user_info[user_identifier]["location"]
 
-        if user_message == "!group":
-            await group.execute(message, message_id, BOT_NAME, user_info)
+            # Adds user to set if location exists, else creates set
+            if user_location in location_groups:
+                location_groups[user_location].add(user_identifier)
+            else:
+                location_groups[user_location] = {user_identifier}
 
-        if user_message == "!help":
-            await help.execute(message)
-           
-        if user_message == "!send":
-            message_id = await send.execute(message, RIDES_MESSAGE, REACTS, ROLE_ID)
+        for location, users in location_groups.items():
+            users_at_location = ", ".join(user_info[user]['fname'] for user in users)
+            await interaction.response.send_message(f"{location}: {users_at_location}")
 
-        if message.content == "!get_reactions":
-            await get_reactions.execute(message, message_id, BOT_NAME)
+    @bot.tree.command(name='send', description=constants.SEND_DESCRIPTION)
+    async def send(interaction: discord.Interaction) -> None:
+        """Sends the message for people to react to for rides."""
 
-    client.run(TOKEN)
+        global message_id   # pylint: disable=W0603
+        global channel_id   # pylint: disable=W0603
+
+        message_to_send: str = ping.create_message(ping.get_role(interaction.guild, constants.ROLE_ID), constants.RIDES_MESSAGE)
+        await interaction.response.send_message(message_to_send)
+
+        message_obj: discord.InteractionMessage = await interaction.original_response()
+
+        message_id = message_obj.id
+        channel_id = message_obj.channel.id
+
+        channel = bot.get_channel(channel_id)
+        target_message = await channel.fetch_message(message_id)
+
+        # Adds random reaction for ride
+        current_reaction = random.randint(0, len(constants.REACTS) - 1)
+        await target_message.add_reaction(constants.REACTS[current_reaction])
+
+
+    # Sample slash command with params
+    # @bot.tree.command(name='say', description='says hello')
+    # @app_commands.describe(thing_to_say = "What should I say?", second_param = "second")
+    # async def say(interaction: discord.Interaction, thing_to_say: str, second_param: str = 'default'):
+    #     await interaction.response.send_message(f"{interaction.user.name} said: `{thing_to_say}`, second param: {second_param}")
+
+    bot.run(TOKEN)
 
 
 if __name__ == "__main__":
