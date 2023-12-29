@@ -1,13 +1,16 @@
 """Main functionality of bot"""
 
+# Built in modules
 import copy
 import json
 import os
 from typing import Dict, List
 
+# External modules
 import discord
 from dotenv import load_dotenv
 
+# Local modules
 from commands import group, help, send, get_reactions   # pylint: disable=W0622
 
 # Environment variables from .env file
@@ -22,9 +25,6 @@ ROLE_ID: int = 1188019586470256713
 LOCATIONS_PATH = "locations.json"
 
 # Global variables
-needs_ride: List[str] = []
-drivers: List[str] = []
-current_reaction: int = 0
 message_id: int = None
 
 with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
@@ -36,7 +36,7 @@ def run():
 
     intents: discord.Intents = discord.Intents.all()
     intents.message_content = True
-    client: discord.Client = discord.Client(intents=intents)    
+    client: discord.Client = discord.Client(intents=intents)
 
     @client.event
     async def on_ready() -> None:
@@ -48,8 +48,6 @@ def run():
         """Sends message and puts first reaction"""
 
         global message_id           # pylint: disable=W0603
-        global current_reaction     # pylint: disable=W0602
-        global needs_ride           # pylint: disable=W0602
 
         # Makes sure that is not triggered by its own message
         if message.author == client.user:
@@ -72,24 +70,6 @@ def run():
 
         if message.content == "!get_reactions":
             await get_reactions.execute(message, message_id, BOT_NAME)
-
-        # if message.content == "!ping":
-        #     await ping.execute(message, message_id, BOT_NAME)
-            # if message_id is None:
-            #     await message.channel.send("Message has not sent yet.")
-            #     return
-            # target_message = await message.channel.fetch_message(message_id)
-
-            # reaction_users = set()
-            # for reaction in target_message.reactions:
-            #     async for user in reaction.users():
-            #         if str(user) == BOT_NAME:
-            #             continue
-            #         reaction_users.add(user)
-
-            # users_list = ", ".join(ping.get_member(message.guild.members, str(user)).mention for user in reaction_users)
-            # await message.channel.send(f"Users who reacted: {users_list}")
-
 
     client.run(TOKEN)
 
