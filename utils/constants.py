@@ -4,7 +4,7 @@ from typing import List
 
 SEND_DESCRIPTION: str = "Sends the message for people to react to for rides."
 GROUP_DESCRIPTION: str = "Groups people by pickup location."
-HELP_DECRIPTION: str = "List of slash commands available."
+HELP_DESCRIPTION: str = "List of slash commands available."
 
 RIDES_MESSAGE: str = "React for rides."
 REACTS: List[str] = ['🥐', '🧁', '🍩', '🌋', '🦕', '🐸', '🐟', '🐻', '🦔']

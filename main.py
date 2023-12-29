@@ -65,16 +65,17 @@ def run() -> None:
 
         return reaction_users
 
-    @bot.tree.command(name='help', description=constants.HELP_DECRIPTION)
+    @bot.tree.command(name='help', description=constants.HELP_DESCRIPTION)
     async def help(interaction: discord.Interaction) -> None:
         """List of slash commands available."""
 
-        command_list = (
-            "/send - {constants.SEND_DESCRIPTION}"
-            "\n/group - {constants.GROUP_DESCRIPTION}"
-            "\n/help - {constants.HELP_DESCRIPTION}"
-        )
-        await interaction.response.send_message(f"```{command_list}```")
+        embed = discord.Embed(color=discord.Color.purple())
+
+        embed.add_field(name='/send', value=f'{constants.SEND_DESCRIPTION}')
+        embed.add_field(name='/group', value=f'{constants.GROUP_DESCRIPTION}')
+        embed.add_field(name='/help', value=f'{constants.HELP_DESCRIPTION}')
+
+        await interaction.response.send_message(embed=embed)
 
     @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
     async def group(interaction: discord.Interaction) -> None:
@@ -124,13 +125,6 @@ def run() -> None:
         # Adds random reaction for ride
         current_reaction = random.randint(0, len(constants.REACTS) - 1)
         await target_message.add_reaction(constants.REACTS[current_reaction])
-
-
-    # Sample slash command with params
-    # @bot.tree.command(name='say', description='says hello')
-    # @app_commands.describe(thing_to_say = "What should I say?", second_param = "second")
-    # async def say(interaction: discord.Interaction, thing_to_say: str, second_param: str = 'default'):
-    #     await interaction.response.send_message(f"{interaction.user.name} said: `{thing_to_say}`, second param: {second_param}")
 
     bot.run(TOKEN)
 
