@@ -1,3 +1,5 @@
+"""Methods that ping or assist in pinging users or roles."""
+
 import discord
 
 def get_member(guild_members: discord.utils.SequenceProxy, username: str) -> discord.member.Member:
