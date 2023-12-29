@@ -49,6 +49,9 @@ def run() -> None:
 
         print(f'Logged in as {bot.user.name}')
 
+    async def send_message(interaction: discord.Interaction, message: str, ephemeral=False) -> None:
+        await interaction.response.send_message(message, ephemeral=ephemeral)
+
     async def get_reaction_users() -> Set[discord.member.Member]:
         """Gets member objects of people who reacted to message."""
 
@@ -125,12 +128,30 @@ def run() -> None:
         current_reaction = random.randint(0, len(constants.REACTS) - 1)
         await target_message.add_reaction(constants.REACTS[current_reaction])
 
+    @bot.tree.command(name='admin_list_user_info', description='Lists user info dictionary.')
+    @app_commands.describe(user='Specific user')
+    async def admin_list_user_info(interaction: discord.Interaction, user:str=None) -> None:
+        if str(interaction.user) in constants.AUTHORIZED_ADMIN:
+            if user is not None:
+                if user not in user_info:
+                    await send_message(interaction, "User not found.", True)
+                    return
+                await interaction.response.send_message(json.dumps(user_info[user], indent=4), ephemeral=True)
+            else:
+                await interaction.response.send_message(json.dumps(user_info, indent=4), ephemeral=True)
+        else:
+            await interaction.response.send_message("Not authorized to use command.")
+    
+   
+
 
     # Sample slash command with params
     # @bot.tree.command(name='say', description='says hello')
     # @app_commands.describe(thing_to_say = "What should I say?", second_param = "second")
     # async def say(interaction: discord.Interaction, thing_to_say: str, second_param: str = 'default'):
     #     await interaction.response.send_message(f"{interaction.user.name} said: `{thing_to_say}`, second param: {second_param}")
+
+    # <InteractionMessage id=1190398298801066165 channel=<TextChannel id=801996449373356094 name='general' position=0 nsfw=False news=False category_id=801996449373356092> type=<MessageType.chat_input_command: 20> author=<Member id=1183481363127607306 name='Bot Testing' global_name=None bot=True nick=None guild=<Guild id=801996448828620803 name='server' shard_id=0 chunked=False member_count=2>> flags=<MessageFlags value=0>>
 
     bot.run(TOKEN)
 

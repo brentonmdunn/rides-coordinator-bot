@@ -10,3 +10,5 @@ RIDES_MESSAGE: str = "React for rides."
 REACTS: List[str] = ['🥐', '🧁', '🍩', '🌋', '🦕', '🐸', '🐟', '🐻', '🦔']
 ROLE_ID: int = 1188019586470256713
 LOCATIONS_PATH = "locations.json"
+
+AUTHORIZED_ADMIN: List[str] = ['brentond']
