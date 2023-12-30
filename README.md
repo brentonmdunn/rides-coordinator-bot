@@ -8,6 +8,13 @@ Commands:
 /group - groups users by location
 ```
 
+Admin commands: (can only be run by certain users)
+```
+/admin_get_rxn_users - Gets all user info or a named user (optional param).
+/admin_list_user_info - Gets list of users who reacted to message.
+/admin_help - Slash commands available for admins.
+```
+
 **Branch protection is turned on. Any change must be made though a PR.**
 
 ## Installing
