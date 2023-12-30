@@ -77,7 +77,7 @@ def run() -> None:
 
         return reaction_users
 
-=    @bot.tree.command(name='help', description=constants.HELP_DECRIPTION)
+    @bot.tree.command(name='help', description=constants.HELP_DESCRIPTION)
     async def help(interaction: discord.Interaction) -> None:   # pylint: disable=W0622
         """List of slash commands available."""
 
