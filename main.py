@@ -77,16 +77,17 @@ def run() -> None:
 
         return reaction_users
 
-    @bot.tree.command(name='help', description=constants.HELP_DECRIPTION)
+=    @bot.tree.command(name='help', description=constants.HELP_DECRIPTION)
     async def help(interaction: discord.Interaction) -> None:   # pylint: disable=W0622
         """List of slash commands available."""
 
-        command_list = (
-            "/send - {constants.SEND_DESCRIPTION}"
-            "\n/group - {constants.GROUP_DESCRIPTION}"
-            "\n/help - {constants.HELP_DESCRIPTION}"
-        )
-        await interaction.response.send_message(f"```{command_list}```")
+        embed = discord.Embed(color=discord.Color.purple())
+
+        embed.add_field(name='/send', value=f'{constants.SEND_DESCRIPTION}')
+        embed.add_field(name='/group', value=f'{constants.GROUP_DESCRIPTION}')
+        embed.add_field(name='/help', value=f'{constants.HELP_DESCRIPTION}')
+
+        await interaction.response.send_message(embed=embed)
 
 
     @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
