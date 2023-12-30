@@ -38,7 +38,7 @@
 
 from typing import Dict, Set
 import discord
-import utils.reactions as reactions
+import utils.reactions_depracated as reactions_depracated
 
 async def execute(interaction: discord.Interaction,
                   message_id: int,
@@ -53,7 +53,7 @@ async def execute(interaction: discord.Interaction,
 
     location_groups: Dict[str, Set[discord.member.Member]] = dict()
 
-    reaction_users: Set[discord.member.Member] = await reactions.get_users(message, message_id, bot_name)
+    reaction_users: Set[discord.member.Member] = await reactions_depracated.get_users(message, message_id, bot_name)
 
     for user in reaction_users:
         if str(user) == bot_name:
