@@ -7,7 +7,7 @@ GROUP_DESCRIPTION: str = "Groups people by pickup location."
 HELP_DESCRIPTION: str = "List of slash commands available."
 
 ADMIN_LIST_USER_INFO_DESCRIPTION: str = "Gets all user info or a named user (optional param)."
-ADMIN_GET_REACTION_USERS_DESCRIPTION: str = "Get list of users who reacted to message."
+ADMIN_GET_REACTION_USERS_DESCRIPTION: str = "Gets list of users who reacted to message."
 ADMIN_HELP_DESCRIPTION: str = "Slash commands available for admins."
 
 RIDES_MESSAGE: str = "React for rides."
