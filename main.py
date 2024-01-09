@@ -34,7 +34,7 @@ user_info_perm_changes = copy.deepcopy(user_info)
 def run() -> None:
     """Main method for bot."""
 
-    intents = discord.Intents.default()
+    intents = discord.Intents.all()
     intents.messages = True
     intents.guilds = True
     bot = commands.Bot(command_prefix='!', intents=intents)
@@ -42,6 +42,7 @@ def run() -> None:
     @bot.event
     async def on_ready():
         """Runs when bot first starts up. Syncs slash commands with server."""
+
         try:
             synced = await bot.tree.sync()
             print(f"{len(synced)} command(s).")
@@ -77,17 +78,21 @@ def run() -> None:
 
         return reaction_users
 
-    @bot.tree.command(name='help', description=constants.HELP_DESCRIPTION)
-    async def help(interaction: discord.Interaction) -> None:   # pylint: disable=W0622
+    @bot.tree.command(name='help_rides', description=constants.HELP_DESCRIPTION)
+    async def help_rides(interaction: discord.Interaction) -> None:   # pylint: disable=W0622
         """List of slash commands available."""
 
         embed = discord.Embed(color=discord.Color.purple())
 
         embed.add_field(name='/send', value=f'{constants.SEND_DESCRIPTION}')
         embed.add_field(name='/group', value=f'{constants.GROUP_DESCRIPTION}')
-        embed.add_field(name='/help', value=f'{constants.HELP_DESCRIPTION}')
+        embed.add_field(name='/_rideshelp', value=f'{constants.HELP_DESCRIPTION}')
 
         await interaction.response.send_message(embed=embed)
+
+        # channel = await interaction.user.create_dm()
+        channel = bot.get_user(489147889117954059)
+        await channel.send("hello")
 
 
     @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
