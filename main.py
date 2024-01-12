@@ -22,6 +22,7 @@ load_dotenv()
 TOKEN: str = os.getenv('TOKEN')
 BOT_NAME: str = os.getenv('BOT_NAME')
 LOCATIONS_PATH: str = os.getenv('LOCATIONS_PATH')
+EMERGENCY_CONTACT: int = int(os.getenv('EMERGENCY_CONTACT'))
 
 # Global variables
 message_id: int = 0
@@ -78,6 +79,11 @@ def run() -> None:
                 reaction_users.add(user)
 
         return reaction_users
+    
+    async def send_dm(interaction: discord.Interaction, user_id: int, message: str) -> None:
+        channel = await interaction.user.create_dm()
+        channel = bot.get_user(user_id)
+        await channel.send(message)
 
     @bot.tree.command(name='help_rides', description=constants.HELP_DESCRIPTION)
     async def help_rides(interaction: discord.Interaction) -> None:   # pylint: disable=W0622
@@ -91,9 +97,7 @@ def run() -> None:
 
         await interaction.response.send_message(embed=embed)
 
-        # channel = await interaction.user.create_dm()
-        # channel = bot.get_user(489147889117954059)
-        # await channel.send("hello")
+        
 
 
     @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
@@ -115,6 +119,9 @@ def run() -> None:
         for user in reaction_users:
             if str(user) == BOT_NAME:
                 continue
+            if user not in user_info:
+                message = f"{user} is not in locations.json file."
+                await send_dm(interaction, EMERGENCY_CONTACT, message)
             user_identifier: str = str(user)
             user_location: str = user_info[user_identifier]["location"]
 
