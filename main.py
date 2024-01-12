@@ -21,12 +21,13 @@ import utils.constants as constants
 load_dotenv()
 TOKEN: str = os.getenv('TOKEN')
 BOT_NAME: str = os.getenv('BOT_NAME')
+LOCATIONS_PATH: str = os.getenv('LOCATIONS_PATH')
 
 # Global variables
 message_id: int = 0
 channel_id: int = 0
 
-with open(constants.LOCATIONS_PATH, 'r', encoding='utf8') as f:
+with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
     user_info: Dict[str, Dict[str, str]] = json.load(f)
 user_info_perm_changes = copy.deepcopy(user_info)
 
