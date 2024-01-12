@@ -44,11 +44,11 @@ def run() -> None:
     async def on_ready():
         """Runs when bot first starts up. Syncs slash commands with server."""
 
-        try:
-            synced = await bot.tree.sync()
-            print(f"{len(synced)} command(s).")
-        except Exception as e:      # pylint: disable=W0718
-            print(e)
+        # try:
+        #     synced = await bot.tree.sync()
+        #     print(f"{len(synced)} command(s).")
+        # except Exception as e:      # pylint: disable=W0718
+        #     print(e)
 
         print(f'Logged in as {bot.user.name}')
 
@@ -92,8 +92,8 @@ def run() -> None:
         await interaction.response.send_message(embed=embed)
 
         # channel = await interaction.user.create_dm()
-        channel = bot.get_user(489147889117954059)
-        await channel.send("hello")
+        # channel = bot.get_user(489147889117954059)
+        # await channel.send("hello")
 
 
     @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
@@ -216,6 +216,24 @@ def run() -> None:
                         value=f'{constants.ADMIN_HELP_DESCRIPTION}')
 
         await interaction.response.send_message(embed=embed)
+
+    
+    @bot.tree.command(name='sync_commands', description="Syncs slash commands with server")
+    async def sync_commands(interaction: discord.Interaction) -> None:
+        is_authorized: bool = await handle_is_authorized(interaction, str(interaction.user))
+        if not is_authorized:
+            return
+        
+        try:
+            print("Executed")
+            synced = await bot.tree.sync()
+            print(f"{len(synced)} command(s).")
+            await send_message(interaction, f"{len(synced)} command(s) successfully synced.")
+        except Exception as e:      # pylint: disable=W0718
+            print(e)
+        
+
+
 
 
     bot.run(TOKEN)
