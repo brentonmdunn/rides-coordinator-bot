@@ -15,3 +15,5 @@ REACTS: List[str] = ['🥐', '🧁', '🍩', '🌋', '🦕', '🐸', '🐟', '�
 ROLE_ID: int = 1188019586470256713
 
 AUTHORIZED_ADMIN: List[str] = ['brentond', 'kendruh.']
+
+CAMPUS: List[str] = ['Eighth', 'Revelle', 'Muir', 'Sixth', 'Marshall', 'ERC', 'Seventh', 'Warren']
