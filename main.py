@@ -5,7 +5,7 @@ import copy
 import json
 import os
 import random
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Union
 
 # External modules
 import discord
@@ -29,7 +29,9 @@ message_id: int = 0
 channel_id: int = 0
 
 with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
-    user_info: Dict[str, Dict[str, str]] = json.load(f)
+    all_info: Dict[str, Union[int, Dict[str, str]]] = json.load(f)
+    drivers: List[List[str]] = all_info['drivers']
+    user_info: Dict[str, Dict[str, str]] = all_info['locations']
 user_info_perm_changes = copy.deepcopy(user_info)
 
 
@@ -44,7 +46,6 @@ def run() -> None:
     @bot.event
     async def on_ready():
         """Runs when bot first starts up. Syncs slash commands with server."""
-
         # try:
         #     synced = await bot.tree.sync()
         #     print(f"{len(synced)} command(s).")
@@ -81,6 +82,14 @@ def run() -> None:
         return reaction_users
     
     async def send_dm(interaction: discord.Interaction, user_id: int, message: str) -> None:
+        """
+        Sends DM to user.
+
+        Args:
+            interaction: Discord interaction object
+            user_id: ID of Discord user
+            message: Message to send in DM
+        """
         channel = await interaction.user.create_dm()
         channel = bot.get_user(user_id)
         await channel.send(message)
@@ -93,21 +102,12 @@ def run() -> None:
 
         embed.add_field(name='/send', value=f'{constants.SEND_DESCRIPTION}')
         embed.add_field(name='/group', value=f'{constants.GROUP_DESCRIPTION}')
-        embed.add_field(name='/_rideshelp', value=f'{constants.HELP_DESCRIPTION}')
+        embed.add_field(name='/rides_help', value=f'{constants.HELP_DESCRIPTION}')
 
         await interaction.response.send_message(embed=embed)
 
         
-
-
-    @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
-    async def group(interaction: discord.Interaction) -> None:
-        """Groups people by pickup location."""
-
-        if message_id == 0:
-            await interaction.response.send_message("Message has not sent yet.")
-            return
-
+    async def group_helper(interaction: discord.Interaction) -> Dict[str, Set[discord.member.Member]]:
         location_groups: Dict[str, Set[discord.member.Member]] = dict()
         # Example:
         # {
@@ -130,6 +130,40 @@ def run() -> None:
                 location_groups[user_location].add(user_identifier)
             else:
                 location_groups[user_location] = {user_identifier}
+        return location_groups
+
+
+    @bot.tree.command(name='group', description=constants.GROUP_DESCRIPTION)
+    async def group(interaction: discord.Interaction) -> None:
+        """Groups people by pickup location."""
+
+        if message_id == 0:
+            await interaction.response.send_message("Message has not sent yet.")
+            return
+
+        location_groups = await group_helper(interaction)
+        # location_groups: Dict[str, Set[discord.member.Member]] = dict()
+        # # Example:
+        # # {
+        # #     Sixth: { Person A, Person B }
+        # #     Seventh: { Person C }
+        # # }
+
+        # reaction_users: Set[discord.member.Member] = await get_reaction_users()
+        # for user in reaction_users:
+        #     if str(user) == BOT_NAME:
+        #         continue
+        #     if user not in user_info:
+        #         message = f"{user} is not in locations.json file."
+        #         await send_dm(interaction, EMERGENCY_CONTACT, message)
+        #     user_identifier: str = str(user)
+        #     user_location: str = user_info[user_identifier]["location"]
+
+        #     # Adds user to set if location exists, else creates set
+        #     if user_location in location_groups:
+        #         location_groups[user_location].add(user_identifier)
+        #     else:
+        #         location_groups[user_location] = {user_identifier}
 
         for location, users in location_groups.items():
             users_at_location = ", ".join(user_info[user]['fname'] for user in users)
@@ -224,13 +258,13 @@ def run() -> None:
 
         await interaction.response.send_message(embed=embed)
 
-    
+
     @bot.tree.command(name='sync_commands', description="Syncs slash commands with server")
     async def sync_commands(interaction: discord.Interaction) -> None:
         is_authorized: bool = await handle_is_authorized(interaction, str(interaction.user))
         if not is_authorized:
             return
-        
+
         try:
             print("Executed")
             synced = await bot.tree.sync()
@@ -238,8 +272,25 @@ def run() -> None:
             await send_message(interaction, f"{len(synced)} command(s) successfully synced.")
         except Exception as e:      # pylint: disable=W0718
             print(e)
-        
 
+
+    @bot.tree.command(name='assign', description='Assigns drivers to riders')
+    async def assign(interaction: discord.Interaction) -> None:
+
+        location_groups: Dict[str, Set[discord.member.Member]] = await group_helper(interaction)
+        # Example:
+        # {
+        #     Sixth: [ Person A, Person B ]
+        #     Seventh: [ Person C ]
+        # }
+
+        num_on_campus = 0
+        for location in location_groups:
+            if location in constants.CAMPUS:
+                num_on_campus += len(location_groups[location])
+
+        for i, drivers in enumerate(drivers):
+            if i >= 
 
 
 
