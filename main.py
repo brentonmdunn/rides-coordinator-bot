@@ -1,5 +1,10 @@
 """Main functionality of bot"""
 
+import asyncio
+import schedule
+import pytz
+from discord.ext import commands, tasks
+
 # Built in modules
 import copy
 import json
@@ -10,7 +15,7 @@ from typing import Dict, List, Set, Union
 # External modules
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 # Local modules
@@ -24,6 +29,7 @@ TOKEN: str = os.getenv('TOKEN')
 BOT_NAME: str = os.getenv('BOT_NAME')
 LOCATIONS_PATH: str = os.getenv('LOCATIONS_PATH')
 EMERGENCY_CONTACT: int = int(os.getenv('EMERGENCY_CONTACT'))
+GUILD_ID: int = int(os.getenv('GUILD_ID'))
 
 # Global variables
 message_id: int = 0
@@ -45,17 +51,59 @@ def run() -> None:
     intents.guilds = True
     bot = commands.Bot(command_prefix='!', intents=intents)
 
+
+    # @bot.tree.command(name='_send', description=constants.SEND_DESCRIPTION)
+    # async def send(interaction: discord.Interaction) -> None:
+    async def _send() -> None:
+        """Sends the message for people to react to for rides."""
+
+        # logger.info("_send command was executed")
+
+        # bots channel
+        # channel = bot.get_channel(916823070017204274)
+
+        # ACTUAL RIDES CHANNEL
+        channel = bot.get_channel(939950319721406464)
+
+        _guild = bot.get_guild(GUILD_ID)
+        message_to_send: str = ping.create_message(ping.get_role(_guild, constants.ROLE_ID),
+                                                                 constants.RIDES_MESSAGE1)
+        # message_to_send = "hello!!"
+        await channel.send(message_to_send)
+        logger.info("_send concluded")
+        # await interaction.response.send_message("Message sent!")
+
+        message_to_send: str = ping.create_message(ping.get_role(_guild, constants.ROLE_ID),
+                                                                 constants.RIDES_MESSAGE2)
+        # message_to_send = "hello!!"
+        await channel.send(message_to_send)
+
+    @tasks.loop(minutes=1)
+    async def scheduler():
+        schedule.run_pending()
+
     @bot.event
     async def on_ready():
-        """Runs when bot first starts up. Syncs slash commands with server."""
-        # try:
-        #     synced = await bot.tree.sync()
-        #     print(f"{len(synced)} command(s).")
-        # except Exception as e:      # pylint: disable=W0718
-        #     print(e)
+        scheduler.start()
+        logger.debug("Scheduler started")
 
-        logger.info(f'Logged in as {bot.user.name}')
-        # print(f'Logged in as {bot.user.name}')
+    schedule.every().friday.at("23:21").do(asyncio.create_task, _send())
+    logger.debug("Line after scheduler line")
+
+    # @bot.event
+    # async def on_ready():
+    #     """Runs when bot first starts up. Syncs slash commands with server."""
+    #     # try:
+    #     #     synced = await bot.tree.sync()
+    #     #     print(f"{len(synced)} command(s).")
+    #     # except Exception as e:      # pylint: disable=W0718
+    #     #     print(e)
+
+    #     logger.debug("on_ready began")
+    #     threading.Thread(target=run_scheduler).start()
+
+    #     logger.info(f'Logged in as {bot.user.name}')
+    #     # print(f'Logged in as {bot.user.name}')
 
 
     async def send_message(interaction: discord.Interaction, message: str, ephemeral=False) -> None:
@@ -314,6 +362,7 @@ def run() -> None:
 
 
     bot.run(TOKEN)
+
 
 
 if __name__ == "__main__":

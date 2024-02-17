@@ -3,6 +3,7 @@
 .venv
 keys.txt
 *.pem
-*.json
+info.json
+distances.json
 colleges.txt
 logs/*.log
