@@ -1,0 +1,18 @@
+{
+    "sunday_notif_time_default": "22:30",
+    "friday_notif_time_default": "8:00",
+    "sunday_notif_time_modified": "",
+    "friday_notif_time_modified": "",
+
+    "sunday_message_default": "React if you want a ride to Sunday Service",
+    "friday_message_default": "React if you want a ride to Friday Night Fellowship",
+    "sunday_message_modified": [],
+    "friday_message_modified": [],
+
+    "sunday_leave_time_default": "10:10",
+    "friday_leave_time_default": "7:05",
+    "sunday_leave_time_modified": [],
+    "friday_leave_time_modified": []
+
+
+}

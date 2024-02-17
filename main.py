@@ -2,14 +2,12 @@
 
 import asyncio
 import schedule
-import pytz
 from discord.ext import commands, tasks
 
 # Built in modules
 import copy
 import json
 import os
-import random
 from typing import Dict, List, Set, Union
 
 # External modules
@@ -31,16 +29,22 @@ LOCATIONS_PATH: str = os.getenv('LOCATIONS_PATH')
 EMERGENCY_CONTACT: int = int(os.getenv('EMERGENCY_CONTACT'))
 GUILD_ID: int = int(os.getenv('GUILD_ID'))
 
+# Constants
+SETTINGS_PATH = 'settings/settings.json'
+
 # Global variables
 message_id: int = 0
 channel_id: int = 0
 new_message = ""
 
-with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
-    all_info: Dict[str, Union[int, Dict[str, str]]] = json.load(f)
-    drivers: List[List[str]] = all_info['drivers']
-    user_info: Dict[str, Dict[str, str]] = all_info['locations']
-user_info_perm_changes = copy.deepcopy(user_info)
+# with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
+#     all_info: Dict[str, Union[int, Dict[str, str]]] = json.load(f)
+#     drivers: List[List[str]] = all_info['drivers']
+#     user_info: Dict[str, Dict[str, str]] = all_info['locations']
+# user_info_perm_changes = copy.deepcopy(user_info)
+
+with open(SETTINGS_PATH, 'r', encoding='utf8') as f:
+    settings = json.load(f)
 
 
 def run() -> None:
@@ -52,31 +56,34 @@ def run() -> None:
     bot = commands.Bot(command_prefix='!', intents=intents)
 
 
-    # @bot.tree.command(name='_send', description=constants.SEND_DESCRIPTION)
-    # async def send(interaction: discord.Interaction) -> None:
-    async def _send() -> None:
-        """Sends the message for people to react to for rides."""
+    # async def _send() -> None:
+    #     """Sends the message for people to react to for rides."""
 
-        # logger.info("_send command was executed")
+    #     # logger.info("_send command was executed")
 
-        # bots channel
-        # channel = bot.get_channel(916823070017204274)
+    #     # bots channel
+    #     # channel = bot.get_channel(916823070017204274)
 
-        # ACTUAL RIDES CHANNEL
-        channel = bot.get_channel(939950319721406464)
+    #     # ACTUAL RIDES CHANNEL
+    #     channel = bot.get_channel(939950319721406464)
 
+    #     _guild = bot.get_guild(GUILD_ID)
+    #     message_to_send: str = ping.create_message(ping.get_role(_guild, constants.ROLE_ID),
+    #                                                              constants.RIDES_MESSAGE1)
+    #     # message_to_send = "hello!!"
+    #     await channel.send(message_to_send)
+    #     logger.info("_send concluded")
+    #     # await interaction.response.send_message("Message sent!")
+    
+    async def backup_settings() -> None:
+        logger.info("Backup initiated")
+        channel = bot.get_channel(constants.BOTS_SETTINGS_BACKUP_CHANNEL_ID)
         _guild = bot.get_guild(GUILD_ID)
-        message_to_send: str = ping.create_message(ping.get_role(_guild, constants.ROLE_ID),
-                                                                 constants.RIDES_MESSAGE1)
-        # message_to_send = "hello!!"
-        await channel.send(message_to_send)
-        logger.info("_send concluded")
-        # await interaction.response.send_message("Message sent!")
+        await channel.send(f"```\n{json.dumps(settings, indent=4)}\n```")
+        logger.info("Backup successful")
 
-        message_to_send: str = ping.create_message(ping.get_role(_guild, constants.ROLE_ID),
-                                                                 constants.RIDES_MESSAGE2)
-        # message_to_send = "hello!!"
-        await channel.send(message_to_send)
+
+      
 
     @tasks.loop(minutes=1)
     async def scheduler():
@@ -87,8 +94,22 @@ def run() -> None:
         scheduler.start()
         logger.debug("Scheduler started")
 
-    schedule.every().friday.at("23:21").do(asyncio.create_task, _send())
-    logger.debug("Line after scheduler line")
+    # schedule.every().thursday.at(
+    #     settings['friday_notif_time_modified'] 
+    #     if settings['friday_notif_time_modified'] != "" 
+    #     else settings['friday_notif_time_default']
+    # ).do(asyncio.create_task, _send())
+
+    # schedule.every().friday.at(
+    #     settings['sunday_notif_time_modified'] 
+    #     if settings['sunday_notif_time_modified'] != "" 
+    #     else settings['sunday_notif_time_default']
+    # ).do(asyncio.create_task, _send())
+
+    schedule.every().day.at("10:30").do(asyncio.create_task, backup_settings())
+    logger.info("Backup scheduled")
+    
+    # logger.debug("Line after scheduler line")
 
     # @bot.event
     # async def on_ready():
