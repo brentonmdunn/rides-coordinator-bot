@@ -14,6 +14,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 # Local modules
+from logger import logger
 import utils.ping as ping
 import utils.constants as constants
 
@@ -27,6 +28,7 @@ EMERGENCY_CONTACT: int = int(os.getenv('EMERGENCY_CONTACT'))
 # Global variables
 message_id: int = 0
 channel_id: int = 0
+new_message = ""
 
 with open(LOCATIONS_PATH, 'r', encoding='utf8') as f:
     all_info: Dict[str, Union[int, Dict[str, str]]] = json.load(f)
@@ -52,7 +54,8 @@ def run() -> None:
         # except Exception as e:      # pylint: disable=W0718
         #     print(e)
 
-        print(f'Logged in as {bot.user.name}')
+        logger.info(f'Logged in as {bot.user.name}')
+        # print(f'Logged in as {bot.user.name}')
 
 
     async def send_message(interaction: discord.Interaction, message: str, ephemeral=False) -> None:
@@ -171,27 +174,44 @@ def run() -> None:
 
 
     @bot.tree.command(name='send', description=constants.SEND_DESCRIPTION)
+    # async def send(interaction: discord.Interaction) -> None:
     async def send(interaction: discord.Interaction) -> None:
+
         """Sends the message for people to react to for rides."""
 
-        global message_id   # pylint: disable=W0603
-        global channel_id   # pylint: disable=W0603
+        logger.info("Send command was executed")
 
+        channel = bot.get_channel(916823070017204274)
         message_to_send: str = ping.create_message(ping.get_role(interaction.guild, constants.ROLE_ID),
                                                                  constants.RIDES_MESSAGE)
-        await interaction.response.send_message(message_to_send)
+        await channel.send(message_to_send)
+        await interaction.response.send_message("Message sent!")
 
-        message_obj: discord.InteractionMessage = await interaction.original_response()
+        # global message_id   # pylint: disable=W0603
+        # global channel_id   # pylint: disable=W0603
 
-        message_id = message_obj.id
-        channel_id = message_obj.channel.id
+        # channel_id = 916823070017204274
 
-        channel = bot.get_channel(channel_id)
-        target_message = await channel.fetch_message(message_id)
+
+        # message_to_send: str = ping.create_message(ping.get_role(interaction.guild, constants.ROLE_ID),
+        #                                                          constants.RIDES_MESSAGE)
+        # await interaction.response.send_message(message_to_send)
+
+        # message_obj: discord.InteractionMessage = await interaction.original_response()
+
+        # message_id = message_obj.id
+        # channel_id = message_obj.channel.id
+
+        # logger.debug(channel_id)
+
+        # channel = bot.get_channel(channel_id)
+
+        # --
+        # target_message = await channel.fetch_message(message_id)
 
         # Adds random reaction for ride
-        current_reaction = random.randint(0, len(constants.REACTS) - 1)
-        await target_message.add_reaction(constants.REACTS[current_reaction])
+        # current_reaction = random.randint(0, len(constants.REACTS) - 1)
+        # await target_message.add_reaction(constants.REACTS[current_reaction])
 
 
     async def handle_is_authorized(interaction: discord.Interaction, user: str) -> bool:
@@ -289,8 +309,8 @@ def run() -> None:
             if location in constants.CAMPUS:
                 num_on_campus += len(location_groups[location])
 
-        for i, drivers in enumerate(drivers):
-            if i >= 
+        # for i, drivers in enumerate(drivers):
+        #     if i >= 
 
 
     bot.run(TOKEN)
