@@ -84,7 +84,7 @@ def run() -> None:
         logger.info("Backup initiated")
         channel = bot.get_channel(constants.BOTS_SETTINGS_BACKUP_CHANNEL_ID)
         _guild = bot.get_guild(GUILD_ID)
-        await channel.send(f"```\n{json.dumps(settings, indent=4)}\n```")
+        await channel.send(f"```\n{yaml.dump(settings)}\n```")
         logger.info("Backup successful")
 
     async def send_logs(log) -> None:
@@ -145,7 +145,7 @@ def run() -> None:
         await send_message(interaction, """Successful""", True)
 
 
-    @bot.tree.command(name='change_leave_time', description=constants.HELP_DESCRIPTION)
+    @bot.tree.command(name='change_notif_time', description=constants.HELP_DESCRIPTION)
     @app_commands.describe(day='Which day to edit', time='Time to change to in military time')
     async def help_rides(interaction: discord.Interaction, day: str, time: str) -> None:   # pylint: disable=W0622
 
@@ -193,6 +193,8 @@ def run() -> None:
             settings['modified']['notif_times']['friday_notif_time_modified'] = time
         else:
             settings['modified']['notif_times']['sunday_notif_time_modified'] = time
+
+        await backup_settings()
         await send_message(interaction, """Successful""", True)
 
 
