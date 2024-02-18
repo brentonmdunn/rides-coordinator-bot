@@ -15,6 +15,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+import yaml
 
 # Local modules
 from logger import logger
@@ -30,7 +31,7 @@ EMERGENCY_CONTACT: int = int(os.getenv('EMERGENCY_CONTACT'))
 GUILD_ID: int = int(os.getenv('GUILD_ID'))
 
 # Constants
-SETTINGS_PATH = 'settings/settings.json'
+SETTINGS_PATH = 'settings/settings.yaml'
 
 # Global variables
 message_id: int = 0
@@ -44,7 +45,11 @@ new_message = ""
 # user_info_perm_changes = copy.deepcopy(user_info)
 
 with open(SETTINGS_PATH, 'r', encoding='utf8') as f:
-    settings = json.load(f)
+    settings = yaml.safe_load(f)
+
+
+# def reset_settings():
+    
 
 
 def run() -> None:
@@ -81,6 +86,11 @@ def run() -> None:
         _guild = bot.get_guild(GUILD_ID)
         await channel.send(f"```\n{json.dumps(settings, indent=4)}\n```")
         logger.info("Backup successful")
+
+    async def send_logs(log) -> None:
+        channel = bot.get_channel(constants.BOT_LOGS_CHANNEL_ID)
+        await channel.send(log)
+        
 
 
       
@@ -125,6 +135,74 @@ def run() -> None:
 
     #     logger.info(f'Logged in as {bot.user.name}')
     #     # print(f'Logged in as {bot.user.name}')
+    @bot.tree.command(name='display_settings', description=constants.HELP_DESCRIPTION)
+    async def display_settings(interaction: discord.Interaction) -> None:
+        logger.info("Backup initiated")
+        channel = bot.get_channel(constants.BOTS_SETTINGS_BACKUP_CHANNEL_ID)
+        _guild = bot.get_guild(GUILD_ID)
+        await channel.send(f"```\n{yaml.dump(settings)}\n```")
+        logger.info("Backup successful")
+        await send_message(interaction, """Successful""", True)
+
+
+    @bot.tree.command(name='change_leave_time', description=constants.HELP_DESCRIPTION)
+    @app_commands.describe(day='Which day to edit', time='Time to change to in military time')
+    async def help_rides(interaction: discord.Interaction, day: str, time: str) -> None:   # pylint: disable=W0622
+
+        if day.lower().strip() != "sunday" and day.lower().strip() != "friday":
+            await send_message(interaction, """Please write either "Friday" or "Sunday" into parameter field""", True)
+            return
+
+        if len(time) != 4 and len(time) != 5:
+            await send_message(interaction, """Please write a valid time""", True)
+            return
+        
+        if len(time) == 4:
+            h1, colon, m1, m2 = time
+            try:
+                if not (
+                    int(h1) in [i for i in range(10)] and 
+                    colon in [":"] and 
+                    int(m1) in [i for i in range(6)] and
+                    int(m2) in [i for i in range(10)]
+                ):
+                    await send_message(interaction, """Please write a valid time1""", True)
+                    return
+            except ValueError:
+                await send_message(interaction, """Please write a valid time2""", True)
+                return
+        else:
+            h1, h2, colon, m1, m2 = time
+            try:
+                if not (
+                    int(h1) in [i for i in range(10)] and 
+                    int(h2) in [i for i in range(3)] and
+                    colon in [":"] and 
+                    int(m1) in [i for i in range(6)] and
+                    int(m2) in [i for i in range(10)]
+                ):
+                    await send_message(interaction, """Please write a valid time""", True)
+                    return
+            except ValueError:
+                await send_message(interaction, """Please write a valid time""", True)
+                return
+
+
+
+        if day.lower() == "friday":
+            settings['modified']['notif_times']['friday_notif_time_modified'] = time
+        else:
+            settings['modified']['notif_times']['sunday_notif_time_modified'] = time
+        await send_message(interaction, """Successful""", True)
+
+
+        # embed = discord.Embed(color=discord.Color.purple())
+
+        # embed.add_field(name='/send', value=f'{constants.SEND_DESCRIPTION}')
+        # embed.add_field(name='/group', value=f'{constants.GROUP_DESCRIPTION}')
+        # embed.add_field(name='/rides_help', value=f'{constants.HELP_DESCRIPTION}')
+
+        # await interaction.response.send_message(embed=embed)
 
 
     async def send_message(interaction: discord.Interaction, message: str, ephemeral=False) -> None:
