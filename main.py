@@ -144,10 +144,23 @@ def run() -> None:
         logger.info("Backup successful")
         await send_message(interaction, """Successful""", True)
 
+    @bot.tree.command(name='load_settings', description=constants.HELP_DESCRIPTION)
+    @app_commands.describe(json_str='JSON text of settings')
+    async def load_settings(interaction: discord.Interaction, json_str: str) -> None:
+        logger.info("Settings load initiated")
+
+        global settings
+        settings = json.loads(json_str)
+
+        channel = bot.get_channel(constants.BOTS_SETTINGS_BACKUP_CHANNEL_ID)
+        await channel.send(f"```\n{yaml.dump(settings)}\n```")
+        logger.info("Settings load successful")
+        await send_message(interaction, """Successful""", True)
+
 
     @bot.tree.command(name='change_notif_time', description=constants.HELP_DESCRIPTION)
     @app_commands.describe(day='Which day to edit', time='Time to change to in military time')
-    async def help_rides(interaction: discord.Interaction, day: str, time: str) -> None:   # pylint: disable=W0622
+    async def change_notif_time(interaction: discord.Interaction, day: str, time: str) -> None:   # pylint: disable=W0622
 
         if day.lower().strip() != "sunday" and day.lower().strip() != "friday":
             await send_message(interaction, """Please write either "Friday" or "Sunday" into parameter field""", True)
@@ -187,8 +200,6 @@ def run() -> None:
                 await send_message(interaction, """Please write a valid time""", True)
                 return
 
-
-
         if day.lower() == "friday":
             settings['modified']['notif_times']['friday_notif_time_modified'] = time
         else:
@@ -198,13 +209,6 @@ def run() -> None:
         await send_message(interaction, """Successful""", True)
 
 
-        # embed = discord.Embed(color=discord.Color.purple())
-
-        # embed.add_field(name='/send', value=f'{constants.SEND_DESCRIPTION}')
-        # embed.add_field(name='/group', value=f'{constants.GROUP_DESCRIPTION}')
-        # embed.add_field(name='/rides_help', value=f'{constants.HELP_DESCRIPTION}')
-
-        # await interaction.response.send_message(embed=embed)
 
 
     async def send_message(interaction: discord.Interaction, message: str, ephemeral=False) -> None:
