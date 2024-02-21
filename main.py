@@ -140,7 +140,7 @@ def run() -> None:
         logger.info("Backup initiated")
         channel = bot.get_channel(constants.BOTS_SETTINGS_BACKUP_CHANNEL_ID)
         _guild = bot.get_guild(GUILD_ID)
-        await channel.send(f"```\n{yaml.dump(settings)}\n```")
+        await channel.send(f"```\n{json.dumps(settings, indent=2)}\n```")
         logger.info("Backup successful")
         await send_message(interaction, """Successful""", True)
 
@@ -157,33 +157,33 @@ def run() -> None:
         logger.info("Settings load successful")
         await send_message(interaction, """Successful""", True)
 
-
-    @bot.tree.command(name='change_notif_time', description=constants.HELP_DESCRIPTION)
-    @app_commands.describe(day='Which day to edit', time='Time to change to in military time')
-    async def change_notif_time(interaction: discord.Interaction, day: str, time: str) -> None:   # pylint: disable=W0622
-
-        if day.lower().strip() != "sunday" and day.lower().strip() != "friday":
-            await send_message(interaction, """Please write either "Friday" or "Sunday" into parameter field""", True)
-            return
-
+    def is_valid_time(time: str) -> bool:
         if len(time) != 4 and len(time) != 5:
-            await send_message(interaction, """Please write a valid time""", True)
-            return
+            return False
+            
         
         if len(time) == 4:
             h1, colon, m1, m2 = time
+            logger.debug(h1)
+            logger.debug(int(h1) in list(range(10)))
+            logger.debug(colon)
+            logger.debug(colon in [":"])
+            logger.debug(m1)
+            logger.debug(int(m1) in list(range(6)))
+            logger.debug(m2)
+            logger.debug(int(m2) in list(range(10)))
             try:
                 if not (
-                    int(h1) in [i for i in range(10)] and 
+                    int(h1) in list(range(10)) and 
                     colon in [":"] and 
-                    int(m1) in [i for i in range(6)] and
-                    int(m2) in [i for i in range(10)]
+                    int(m1) in list(range(6)) and
+                    int(m2) in list(range(10))
                 ):
-                    await send_message(interaction, """Please write a valid time1""", True)
-                    return
+                    logger.debug("false1")
+                    return False
             except ValueError:
-                await send_message(interaction, """Please write a valid time2""", True)
-                return
+                logger.debug("false2")
+                return False
         else:
             h1, h2, colon, m1, m2 = time
             try:
@@ -194,11 +194,100 @@ def run() -> None:
                     int(m1) in [i for i in range(6)] and
                     int(m2) in [i for i in range(10)]
                 ):
-                    await send_message(interaction, """Please write a valid time""", True)
-                    return
+                    return False
             except ValueError:
-                await send_message(interaction, """Please write a valid time""", True)
-                return
+                return False
+        return True
+    
+    @bot.tree.command(name='list_messages', description=constants.HELP_DESCRIPTION)
+    @app_commands.describe(day='Which day to list')
+    async def list_messages(interaction: discord.Interaction, day: str) -> None:
+
+        full_message = ""
+        if day.lower().strip() != "sunday" and day.lower().strip() != "friday":
+            await send_message(interaction, """Please write either "Friday" or "Sunday" into parameter field""", True)
+            return
+        if day.lower() == "friday":
+            for idx, message in enumerate(settings['modified']['messages']['friday_message_modified']):
+                time = settings['modified']['leave_times']['friday_leave_time_modified'][idx]
+                full_message = f"{time:<6} | {message:<20}\n"
+
+            full_message = f"```{full_message}```"
+            await send_message(interaction, full_message)
+
+
+
+
+
+    @bot.tree.command(name='change_message', description=constants.HELP_DESCRIPTION)
+    @app_commands.describe(day='Which day to edit', message='New message', time_to_leave='Departure time (in military time)')
+    async def add_message(interaction: discord.Interaction, day: str, message: str, time_to_leave: str) -> None:   # pylint: disable=W0622
+        # await send_message(interaction, """Please note that if you do not already have a modified message, this overrides the default message.""", True)
+        if day.lower().strip() != "sunday" and day.lower().strip() != "friday":
+            await send_message(interaction, """Please write either "Friday" or "Sunday" into parameter field""", True)
+            return
+        
+        if not is_valid_time(time_to_leave):
+            await send_message(interaction, """Please write a valid time""", True)
+            return
+        
+        if day.lower() == "friday":
+            settings['modified']['messages']['friday_message_modified'].append(message)
+            settings['modified']['leave_times']['friday_leave_time_modified'].append(time_to_leave)
+        else:
+            settings['modified']['messages']['sunday_message_modified'].append(message)
+            settings['modified']['leave_times']['sunday_leave_time_modified'].append(time_to_leave)
+
+        await backup_settings()
+        await send_message(interaction, """Successful""", True)
+        
+
+    @bot.tree.command(name='change_notif_time', description=constants.HELP_DESCRIPTION)
+    @app_commands.describe(day='Which day to edit', time='Time to change to in military time')
+    async def change_notif_time(interaction: discord.Interaction, day: str, time: str) -> None:   # pylint: disable=W0622
+
+        if day.lower().strip() != "sunday" and day.lower().strip() != "friday":
+            await send_message(interaction, """Please write either "Friday" or "Sunday" into parameter field""", True)
+            return
+
+        # if len(time) != 4 and len(time) != 5:
+        #     await send_message(interaction, """Please write a valid time""", True)
+        #     return
+        
+        # if len(time) == 4:
+        #     h1, colon, m1, m2 = time
+        #     try:
+        #         if not (
+        #             int(h1) in [list(range(10))] and 
+        #             colon in [":"] and 
+        #             int(m1) in [list(range(6))] and
+        #             int(m2) in [list(range(10))]
+        #         ):
+        #             await send_message(interaction, """Please write a valid time1""", True)
+        #             return
+        #     except ValueError:
+        #         await send_message(interaction, """Please write a valid time2""", True)
+        #         return
+        # else:
+        #     h1, h2, colon, m1, m2 = time
+        #     try:
+        #         if not (
+        #             int(h1) in [i for i in range(10)] and 
+        #             int(h2) in [i for i in range(3)] and
+        #             colon in [":"] and 
+        #             int(m1) in [i for i in range(6)] and
+        #             int(m2) in [i for i in range(10)]
+        #         ):
+        #             await send_message(interaction, """Please write a valid time""", True)
+        #             return
+        #     except ValueError:
+        #         await send_message(interaction, """Please write a valid time""", True)
+        #         return
+
+        if not is_valid_time(time):
+            await send_message(interaction, """Please write a valid time""", True)
+            return
+
 
         if day.lower() == "friday":
             settings['modified']['notif_times']['friday_notif_time_modified'] = time
