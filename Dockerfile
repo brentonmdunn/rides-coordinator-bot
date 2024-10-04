@@ -1,18 +1,20 @@
-# Use Python 
-FROM python:latest
+# Use an official Python runtime as a parent image
+FROM python:3.9.6-slim
 
-# Set the working directory inside the container
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt /app/
+# Copy the current directory contents into the container at /app,
+# except the files/folders mentioned in the .dockerignore
+COPY . /app
 
-# Install Python dependencies
+# Install any required Python packages
+# If you have a requirements.txt, include it here
+COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all Python files into the container
-COPY *.py /app/
+# RUN pip install --no-cache-dir --index-url https://pypi.org/simple -r requirements.txt
 
-# Run the main.py script when the container starts
-CMD ["python3", "main.py"]
-
+# Specify the command to run your app
+CMD ["python", "main.py"]
