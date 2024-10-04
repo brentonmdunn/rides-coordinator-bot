@@ -1,5 +1,5 @@
 # Use Python 
-FROM python:latest
+FROM --platform=linux/amd64 python:latest
 
 # Set the working directory inside the container
 WORKDIR /app

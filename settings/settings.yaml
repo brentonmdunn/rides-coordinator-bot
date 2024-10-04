@@ -1,5 +1,5 @@
 ---
-defaults:
+default:
   notif_times:
     sunday_notif_time_default: '22:30'
     friday_notif_time_default: '8:00'
