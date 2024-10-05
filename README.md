@@ -1,21 +1,9 @@
 # Rides Coordinator Bot
 
-This is a Discord bot that puts out an announcement for users who need a ride for some event. Users who react to the message will automatically be paired with a driver. The pairings use flow network graph algorithms and takes into number of cars, deviation from standard route without pickups, and where groups of people need to be picked up.
+This is a Discord bot that puts out an announcement for users who need a ride for some event.
 
-Commands:
-```
-/send - sends ride message
-/group - groups users by location
-```
-
-Admin commands: (can only be run by certain users)
-```
-/admin_get_rxn_users - Gets all user info or a named user (optional param).
-/admin_list_user_info - Gets list of users who reacted to message.
-/admin_help - Slash commands available for admins.
-```
-
-**Branch protection is turned on. Any change must be made though a PR.**
+## Commands
+- `/ask-drivers [message]` - Pings `@Drivers` for who is available. `[message]` field is for custom message after the `@Driver` ping.
 
 ## Installing
 Clone the repository and `cd` into the folder:
@@ -40,4 +28,11 @@ Add environment variables:
 Create .env file
 Add TOKEN=<Discord token>
 Add BOT_NAME=<bot name>
+Add GUILD_ID=<guild ID>
+DRIVERS_CHANNEL=<channel ID to send drivers message>
+```
+
+### Building Docker Image 
+```
+$ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot --push .
 ```
