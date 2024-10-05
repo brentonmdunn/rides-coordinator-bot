@@ -2,6 +2,9 @@
 
 This is a Discord bot that puts out an announcement for users who need a ride for some event.
 
+## Commands
+- `/ask-drivers [message]` - Pings `@Drivers` for who is available. `[message]` field is for custom message after the `@Driver` ping.
+
 ## Installing
 Clone the repository and `cd` into the folder:
 ```
