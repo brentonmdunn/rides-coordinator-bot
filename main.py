@@ -58,9 +58,9 @@ else:
 
 
 # Global variables
-message_id: int = 0
-channel_id: int = 0
-new_message = ""
+# message_id: int = 0
+# channel_id: int = 0
+# new_message = ""
 
 LEADERSHIP_CHANNEL_ID = 1155357301050449931
 DRIVER_CHANNEL_ID = 1286925673004269601
@@ -200,6 +200,45 @@ def run() -> None:
 
         await interaction.response.send_message(output)
 
+
+    @bot.tree.command(name="my-car", description="Pings all people placed in car")
+    async def ping_my_car(interaction: discord.Interaction, message_to_car: str) -> None:
+    
+
+
+        # Get the current date and time
+        now = datetime.now()
+
+        # Check if today is Sunday
+        if now.weekday() == 6:  # Sunday is represented by 6
+            # If today is Sunday, get the previous Sunday
+            last_sunday = now - timedelta(days=7)
+        else:
+            # If today is not Sunday, get the most recent Sunday
+            last_sunday = now - timedelta(days=(now.weekday() + 1))
+
+        # Get the channel by its ID
+        channel = bot.get_channel(BOTS_CHANNEL_ID)
+
+        mentioned_usernames_real_message = None
+
+        if channel is not None:
+            # Fetch messages since last Sunday
+            async for message in channel.history(after=last_sunday):
+                mentioned_usernames = [user.name for user in message.mentions]
+                if interaction.user.name in mentioned_usernames and "drive" in message.content.lower() and ":" in message.content.lower():
+                    mentioned_usernames_real_message = [user.name for user in message.mentions]
+
+        to_send = ""
+        for username in mentioned_usernames_real_message:
+            if interaction.user.name == username:
+                continue 
+            to_send += discord.utils.find(lambda u: u.name == username, channel.guild.members).mention
+        
+        to_send += f""" {message_to_car} - {interaction.user.display_name} """
+        await interaction.response.send_message(to_send)
+        
+
     @bot.tree.command(name="list-pickups-sunday", description="Locations of pickups for sunday service")
     async def list_locations_sunday(interaction: discord.Interaction) -> None:
         await list_locations(interaction, "sunday")
@@ -315,10 +354,10 @@ def run() -> None:
                 if location.lower() in SCHOLARS_LOCATIONS or len([l for l in SCHOLARS_LOCATIONS if l in location.lower()]) > 0:
                     scholars_count += len(locations_people[location])
                     scholars_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
-                elif "warren" in location.lower() or location.lower() in "pcyn":
+                elif "warren" in location.lower() or "pcyn" in location.lower():
                     warren_pcyn_count += len(locations_people[location])
                     warren_pcyn_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
-                elif location.lower() == "rita" or "eighth" in location.lower():
+                elif "rita" in location.lower() or "eighth" in location.lower():
                     rita_count += len(locations_people[location])
                     rita_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
                 else:
