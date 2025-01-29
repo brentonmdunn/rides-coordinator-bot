@@ -97,32 +97,29 @@ def run() -> None:
 
     @bot.tree.command(name="help-rides", description="Available commands for ride bot")
     async def help_rides(interaction: discord.Interaction) -> None:
-        embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
+        embed = discord.Embed(title="Ride Bot Commands", color=discord.Color.blue())
 
         embed.add_field(
-            name="🏫 [6] Scholars (no eighth)", 
-            value="**(2) Marshall (Pangea):** Nathan, Kristi\n"
-                "**(2) ERC:** Clement, Gianna\n"
-                "**(1) Muir:** Charis\n"
-                "**(1) Sixth:** Emily",
+            name="`\\ask-drivers`", 
+            value="Pings drivers to see who is available to drive",
             inline=False
         )
 
         embed.add_field(
-            name="🏠 [1] Warren + Pepper Canyon", 
-            value="**(1) PCYN:** Christina",
+            name="`\\pickup-location <name or username>`", 
+            value="Outputs the pickup location for specified name or username",
             inline=False
         )
 
         embed.add_field(
-            name="🏡 [1] Rita + Eighth", 
-            value="**(1) Rita:** Hannah Ng",
+            name="`\\list-pickups-friday`", 
+            value="Outputs a breakdown of who reacted for a ride for Friday fellowship and where to pick them up",
             inline=False
         )
 
         embed.add_field(
-            name="🌍 [1] Off Campus", 
-            value="**(1) Villas of Renaissance:** Caleb",
+            name="`\\list-pickups-sunday`", 
+            value="Outputs a breakdown of who reacted for a ride for Sunday service and where to pick them up",
             inline=False
         )
 
@@ -331,47 +328,88 @@ def run() -> None:
             scholars_count, warren_pcyn_count, rita_count, off_campus_count = (0,0,0,0)
 
 
+            embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
+
+
+
+
             for location in locations_people:
 
                 if location.lower() in SCHOLARS_LOCATIONS or len([l for l in SCHOLARS_LOCATIONS if l in location.lower()]) > 0:
                     scholars_count += len(locations_people[location])
-                    scholars_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
+                    scholars_people += f"**({len(locations_people[location])}) {location}:** {', '.join(locations_people[location])}\n"
                 elif "warren" in location.lower() or "pcyn" in location.lower():
                     warren_pcyn_count += len(locations_people[location])
-                    warren_pcyn_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
+                    warren_pcyn_people += f"**({len(locations_people[location])}) {location}:** {', '.join(locations_people[location])}\n"
                 elif "rita" in location.lower() or "eighth" in location.lower():
                     rita_count += len(locations_people[location])
-                    rita_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
+                    rita_people += f"**({len(locations_people[location])}) {location}:** {', '.join(locations_people[location])}\n"
                 else:
                     off_campus_count += len(locations_people[location])
-                    off_campus_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
+                    off_campus_people += f"**({len(locations_people[location])}) {location}:** {', '.join(locations_people[location])}\n"
 
 
+            if scholars_count > 0:
+                embed.add_field(
+                    name=f"🏫 [{scholars_count}] Scholars (no eighth)", 
+                    value=scholars_people,
+                    inline=False
+                )
             
+            if warren_pcyn_count > 0:
+                embed.add_field(
+                    name=f"🏠 [{warren_pcyn_count}] Warren + Pepper Canyon", 
+                    value=warren_pcyn_people,
+                    inline=False
+                )
 
+            if rita_count > 0:
+                embed.add_field(
+                    name=f"🏡 [{rita_count}] Rita + Eighth", 
+                    value=rita_people,
+                    inline=False
+                )
+    
 
+            if off_campus_count > 0:
+                embed.add_field(
+                    name=f"🌍 [{off_campus_count}] Off Campus", 
+                    value=off_campus_people,
+                    inline=False
+                )
 
-            output = ""
-            output += f"__[{scholars_count}] Scholars (no eighth)__\n" + scholars_people if scholars_count > 0 else ""
-            output += "--\n" + f"__[{warren_pcyn_count}] Warren + Peppercanyon__\n" + warren_pcyn_people if warren_pcyn_count > 0 else ""
-            output += "--\n" + f"__[{rita_count}] Rita + Eighth__\n" + rita_people if rita_count > 0 else ""
-            output += "--\n" + f"__[{off_campus_count}] Off campus__\n" + off_campus_people if off_campus_count > 0 else ""
-            # print(f"({scholars_count})\n" + scholars_people + "--\n" + f"({warren_pcyn_count})\n" + warren_pcyn_people + "--\n" + f"({rita_count})\n" + rita_people + "--\n" + f"({off_campus_count})\n" + off_campus_people)
-                    
             unknown_location = set(usernames_reacted) - location_found
             unknown_location = [str(user) for user in unknown_location]
-            print("==============")
-            print(type(unknown_location))
             if len(unknown_location) > 0:
-                output += f"\nUnknown location: {', '.join(unknown_location)} (make sure their full discord username is in the google sheet)"
+                embed.add_field(
+                    name=f"❓ [{off_campus_count}] Unknown Location", 
+                    value=f"{', '.join(unknown_location)} (make sure their full discord username is in the google sheet)",
+                    inline=False
+                )    
 
+
+            # output = ""
+            # output += f"__[{scholars_count}] Scholars (no eighth)__\n" + scholars_people if scholars_count > 0 else ""
+            # output += "--\n" + f"__[{warren_pcyn_count}] Warren + Peppercanyon__\n" + warren_pcyn_people if warren_pcyn_count > 0 else ""
+            # output += "--\n" + f"__[{rita_count}] Rita + Eighth__\n" + rita_people if rita_count > 0 else ""
+            # output += "--\n" + f"__[{off_campus_count}] Off campus__\n" + off_campus_people if off_campus_count > 0 else ""
+            # # print(f"({scholars_count})\n" + scholars_people + "--\n" + f"({warren_pcyn_count})\n" + warren_pcyn_people + "--\n" + f"({rita_count})\n" + rita_people + "--\n" + f"({off_campus_count})\n" + off_campus_people)
+                    
+            # unknown_location = set(usernames_reacted) - location_found
+            # unknown_location = [str(user) for user in unknown_location]
+            # print("==============")
+            # print(type(unknown_location))
+            # if len(unknown_location) > 0:
+            #     output += f"\nUnknown location: {', '.join(unknown_location)} (make sure their full discord username is in the google sheet)"
+
+            await interaction.response.send_message(embed=embed)
 
         else:
             print("Failed to retrieve the CSV file")
             output = "Error occurred"
 
 
-        await interaction.response.send_message(output)
+            await interaction.response.send_message(output)
 
     bot.run(TOKEN)
 
