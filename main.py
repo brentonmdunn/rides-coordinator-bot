@@ -95,61 +95,63 @@ def run() -> None:
         except Exception as e:      # pylint: disable=W0718
             print(e)
 
+    @bot.tree.command(name="help-rides", description="Available commands for ride bot")
+    async def help_rides(interaction: discord.Interaction) -> None:
+        embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
+
+        embed.add_field(
+            name="🏫 [6] Scholars (no eighth)", 
+            value="**(2) Marshall (Pangea):** Nathan, Kristi\n"
+                "**(2) ERC:** Clement, Gianna\n"
+                "**(1) Muir:** Charis\n"
+                "**(1) Sixth:** Emily",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🏠 [1] Warren + Pepper Canyon", 
+            value="**(1) PCYN:** Christina",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🏡 [1] Rita + Eighth", 
+            value="**(1) Rita:** Hannah Ng",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🌍 [1] Off Campus", 
+            value="**(1) Villas of Renaissance:** Caleb",
+            inline=False
+        )
+
+        await interaction.response.send_message(embed=embed)
+
+
 
     @bot.tree.command(name="ask-drivers", description="Pings drivers to see who is available")
     async def ask_drivers(interaction: discord.Interaction, message: str) -> None:
         
-  
-        logger.info("ask-drivers command was executed")
+        if interaction.channel_id != DRIVER_CHANNEL_ID:
+            await interaction.response.send_message(f"`/ask-drivers` can only be used in <#{DRIVER_CHANNEL_ID}>")
+            return
 
-        channel = bot.get_channel(DRIVERS_CHANNEL) # Currently on dev channel
-        message_to_send: str = ping.create_message(ping.get_role(interaction.guild, constants.DRIVERS_ROLE_ID),
-                                                                 message)
-        sent_message = await channel.send(message_to_send)
-        await sent_message.add_reaction("👍")  
-        await sent_message.add_reaction("❌")  
-        await sent_message.add_reaction("➡️")  
-        await sent_message.add_reaction("⬅️")  
-        await sent_message.add_reaction("💩")  
+        message_to_send = f"<@&{constants.DRIVERS_ROLE_ID}> {message}"
 
-        # There needs to be something sent 
-        await interaction.response.send_message("Message successful", delete_after=0, ephemeral=True)
-
-    @bot.tree.command(name="test", description="test")
-    async def test(interaction: discord.Interaction) -> None:
-        # Get the current date and time
-        now = datetime.now()
-
+        # Allow role mentions
+        await interaction.response.send_message(
+            message_to_send, 
+            allowed_mentions=discord.AllowedMentions(roles=True)
+        )
         
-
-        # Check if today is Sunday
-        if now.weekday() == 6:  # Sunday is represented by 6
-            # If today is Sunday, get the previous Sunday
-            last_sunday = now - timedelta(days=7)
-        else:
-            # If today is not Sunday, get the most recent Sunday
-            last_sunday = now - timedelta(days=(now.weekday() + 1))
-
-        # Get the channel by its ID
-        channel = bot.get_channel(RIDES_CHANNEL_ID)
-        most_recent_message = None 
-        if channel is not None:
-            # Fetch messages since last Sunday
-            async for message in channel.history(after=last_sunday):
-                # Check if message contains both "Sunday" and "@Rides"
-                AT_RIDES = "<@&940467850261450752>"
-                if AT_RIDES in message.content and "sunday" in message.content.lower() and "react" in message.content.lower():
-                    print(f'Message found: {message.content}')
-                    print(f'Message ID: {message.id}')
-                    most_recent_message = message
-                    
-        if most_recent_message is None:
-            # If no matching message was found, return None
-            print('No matching message found')
-            await interaction.response.send_message("None found")
-
-        await interaction.response.send_message(most_recent_message.id)
-        return most_recent_message.id  # Return the message ID
+        # Fetch the sent message
+        sent_message = await interaction.original_response()
+        
+        # Add reactions
+        reactions = ["👍", "❌", "➡️", "⬅️", "💩"]
+        for reaction in reactions:
+            await sent_message.add_reaction(reaction)
     
     @bot.tree.command(name="pickup-location", description="Pickup location for a person, include the name or Discord username")
     async def pickup_location(interaction: discord.Interaction, name: str) -> None:
@@ -170,12 +172,7 @@ def run() -> None:
 
             # Use csv.reader to parse the content
             csv_reader = csv.reader(csv_data.splitlines(), delimiter=',')
-
-            print(csv_reader)
-
-
             possible_people = []
-
 
             # Loop through rows in the CSV
             for row in csv_reader:
@@ -197,77 +194,43 @@ def run() -> None:
                 if idx != 0:
                     output += "\n"
                 output += f"{name}: {location}"
-
-
         await interaction.response.send_message(output)
-
-    @bot.tree.command(name="i-dont-need-ride-anyomore", description="Notifies Jenny and your driver that you cannot make it")
-    async def dont_need_ride_anymore(interaction: discord.Interaction, day: str, message: Optional[str] = None) -> None:
-
-        embed = discord.Embed(
-            title=f"Thanks for letting us know that you cannot make it to {day}",
-            description="Jenny and your driver have been notified",
-            color=discord.Color.blue()  # You can set the color of the embed
-        )
-
-        channel = bot.get_channel(DRIVERS_CHANNEL) # Currently on dev channel
-        message_to_send: str = ping.create_message(ping.get_role(interaction.guild, constants.DRIVERS_ROLE_ID),
-                                                                 message)
-        
-        message_to_send: str = 
-        await channel.send(message_to_send)
-
-        # # Adding fields
-        # embed.add_field(name="Field 1", value="This is the value of Field 1", inline=False)
-        # embed.add_field(name="Field 2", value="This is the value of Field 2", inline=True)
-        # embed.add_field(name="Field 3", value="This is the value of Field 3", inline=True)
-
-        # # Adding a footer, author, and thumbnail
-        # embed.set_footer(text="This is a footer")
-        # # embed.set_author(name="Author Name", icon_url="https://example.com/icon.png")
-        # embed.set_thumbnail(url="https://example.com/thumbnail.png")
-        # embed.set_image(url="https://example.com/image.png")
-
-        # to_send = f"""{interaction.user} cannot make it to {day} anymore. Reason: {message if message is not None else "None given"}"""
-        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 
-    @bot.tree.command(name="my-car", description="Pings all people placed in car")
-    async def ping_my_car(interaction: discord.Interaction, message_to_car: str) -> None:
+    # @bot.tree.command(name="my-car", description="Pings all people placed in car")
+    # async def ping_my_car(interaction: discord.Interaction, message_to_car: str) -> None:
     
+    #     # Get the current date and time
+    #     now = datetime.now()
 
+    #     # Check if today is Sunday
+    #     if now.weekday() == 6:  # Sunday is represented by 6
+    #         # If today is Sunday, get the previous Sunday
+    #         last_sunday = now - timedelta(days=7)
+    #     else:
+    #         # If today is not Sunday, get the most recent Sunday
+    #         last_sunday = now - timedelta(days=(now.weekday() + 1))
 
-        # Get the current date and time
-        now = datetime.now()
+    #     # Get the channel by its ID
+    #     channel = bot.get_channel(BOTS_CHANNEL_ID)
 
-        # Check if today is Sunday
-        if now.weekday() == 6:  # Sunday is represented by 6
-            # If today is Sunday, get the previous Sunday
-            last_sunday = now - timedelta(days=7)
-        else:
-            # If today is not Sunday, get the most recent Sunday
-            last_sunday = now - timedelta(days=(now.weekday() + 1))
+    #     mentioned_usernames_real_message = None
 
-        # Get the channel by its ID
-        channel = bot.get_channel(BOTS_CHANNEL_ID)
+    #     if channel is not None:
+    #         # Fetch messages since last Sunday
+    #         async for message in channel.history(after=last_sunday):
+    #             mentioned_usernames = [user.name for user in message.mentions]
+    #             if interaction.user.name in mentioned_usernames and "drive" in message.content.lower() and ":" in message.content.lower():
+    #                 mentioned_usernames_real_message = [user.name for user in message.mentions]
 
-        mentioned_usernames_real_message = None
-
-        if channel is not None:
-            # Fetch messages since last Sunday
-            async for message in channel.history(after=last_sunday):
-                mentioned_usernames = [user.name for user in message.mentions]
-                if interaction.user.name in mentioned_usernames and "drive" in message.content.lower() and ":" in message.content.lower():
-                    mentioned_usernames_real_message = [user.name for user in message.mentions]
-
-        to_send = ""
-        for username in mentioned_usernames_real_message:
-            if interaction.user.name == username:
-                continue 
-            to_send += discord.utils.find(lambda u: u.name == username, channel.guild.members).mention
+    #     to_send = ""
+    #     for username in mentioned_usernames_real_message:
+    #         if interaction.user.name == username:
+    #             continue 
+    #         to_send += discord.utils.find(lambda u: u.name == username, channel.guild.members).mention
         
-        to_send += f""" {message_to_car} - {interaction.user.display_name} """
-        await interaction.response.send_message(to_send)
+    #     to_send += f""" {message_to_car} - {interaction.user.display_name} """
+    #     await interaction.response.send_message(to_send)
         
 
     @bot.tree.command(name="list-pickups-sunday", description="Locations of pickups for sunday service")
@@ -286,13 +249,8 @@ def run() -> None:
             logger.info(f"list-drivers not allowed in #{interaction.channel} by {interaction.user}") 
             return
 
-
-
-
         # Get the current date and time
         now = datetime.now()
-
-        
 
         # Check if today is Sunday
         if now.weekday() == 6:  # Sunday is represented by 6
@@ -314,15 +272,12 @@ def run() -> None:
                     print(f'Message found: {message.content}')
                     print(f'Message ID: {message.id}')
                     most_recent_message = message
-                    
+
         if most_recent_message is None:
             # If no matching message was found, return None
             print('No matching message found')
             await interaction.response.send_message("No message found")
             return
-
-        # await interaction.response.send_message(most_recent_message.id)
-        # return most_recent_message.id  # Return the message ID
 
         message_id = most_recent_message.id
 
@@ -336,12 +291,9 @@ def run() -> None:
                 async for user in reaction.users():
                     usernames_reacted.add(user)
 
-
                
         except Exception as e:
             print(f"Error: {e}")
-
-        
 
         response = requests.get(CSV_URL)
 
@@ -371,7 +323,6 @@ def run() -> None:
                             location_found.add(username)
 
 
-
             scholars_people = ""
             warren_pcyn_people = ""
             rita_people = ""
@@ -395,7 +346,11 @@ def run() -> None:
                     off_campus_count += len(locations_people[location])
                     off_campus_people += f"({len(locations_people[location])}) {location}: {', '.join(locations_people[location])}\n"
 
-                # print(f"{location}: {', '.join(locations_people[location])}")
+
+            
+
+
+
             output = ""
             output += f"__[{scholars_count}] Scholars (no eighth)__\n" + scholars_people if scholars_count > 0 else ""
             output += "--\n" + f"__[{warren_pcyn_count}] Warren + Peppercanyon__\n" + warren_pcyn_people if warren_pcyn_count > 0 else ""
