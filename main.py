@@ -238,7 +238,11 @@ def run() -> None:
     async def list_locations_friday(interaction: discord.Interaction) -> None:
         await list_locations(interaction, "friday")
 
-    async def list_locations(interaction, day):
+    @bot.tree.command(name="list-pickups-by-message-id", description="Locations of pickups for a specific message")
+    async def list_locations_unknown(interaction: discord.Interaction, message_id: str) -> None:
+        await list_locations(interaction, message_id=message_id)
+
+    async def list_locations(interaction, day=None, message_id=None):
         logger.info(f"list-drivers command was executed by {interaction.user} in #{interaction.channel}") 
         
         if not interaction.channel_id in LOCATIONS_CHANNELS_WHITELIST:
@@ -257,26 +261,27 @@ def run() -> None:
             # If today is not Sunday, get the most recent Sunday
             last_sunday = now - timedelta(days=(now.weekday() + 1))
 
-        # Get the channel by its ID
-        channel = bot.get_channel(RIDES_CHANNEL_ID)
-        most_recent_message = None 
-        if channel is not None:
-            # Fetch messages since last Sunday
-            async for message in channel.history(after=last_sunday):
-                # Check if message contains both "Sunday" and "@Rides"
-                AT_RIDES = "<@&940467850261450752>"
-                if day in message.content.lower() and "react" in message.content.lower():
-                    print(f'Message found: {message.content}')
-                    print(f'Message ID: {message.id}')
-                    most_recent_message = message
+        if day is not None:
+            # Get the channel by its ID
+            channel = bot.get_channel(RIDES_CHANNEL_ID)
+            most_recent_message = None 
+            if channel is not None:
+                # Fetch messages since last Sunday
+                async for message in channel.history(after=last_sunday):
+                    # Check if message contains both "Sunday" and "@Rides"
+                    AT_RIDES = "<@&940467850261450752>"
+                    if day in message.content.lower() and "react" in message.content.lower():
+                        print(f'Message found: {message.content}')
+                        print(f'Message ID: {message.id}')
+                        most_recent_message = message
 
-        if most_recent_message is None:
-            # If no matching message was found, return None
-            print('No matching message found')
-            await interaction.response.send_message("No message found")
-            return
+            if most_recent_message is None:
+                # If no matching message was found, return None
+                print('No matching message found')
+                await interaction.response.send_message("No message found")
+                return
 
-        message_id = most_recent_message.id
+            message_id = most_recent_message.id
 
        
         usernames_reacted = set()
