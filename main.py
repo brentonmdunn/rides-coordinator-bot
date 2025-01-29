@@ -100,7 +100,7 @@ def run() -> None:
         embed = discord.Embed(title="Ride Bot Commands", color=discord.Color.blue())
 
         embed.add_field(
-            name="`\\ask-drivers`", 
+            name="`\\ask-drivers` <message>", 
             value="Pings drivers to see who is available to drive",
             inline=False
         )
