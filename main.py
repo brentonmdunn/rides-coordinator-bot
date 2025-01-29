@@ -13,6 +13,7 @@ import csv
 from collections import defaultdict
 from pprint import pprint
 from datetime import datetime, timedelta
+from typing import Optional
 # External modules
 import discord
 # from discord import app_commands
@@ -112,7 +113,7 @@ def run() -> None:
         await sent_message.add_reaction("💩")  
 
         # There needs to be something sent 
-        await interaction.response.send_message("Message sent!", delete_after=0)
+        await interaction.response.send_message("Message successful", delete_after=0, ephemeral=True)
 
     @bot.tree.command(name="test", description="test")
     async def test(interaction: discord.Interaction) -> None:
@@ -200,6 +201,36 @@ def run() -> None:
 
         await interaction.response.send_message(output)
 
+    @bot.tree.command(name="i-dont-need-ride-anyomore", description="Notifies Jenny and your driver that you cannot make it")
+    async def dont_need_ride_anymore(interaction: discord.Interaction, day: str, message: Optional[str] = None) -> None:
+
+        embed = discord.Embed(
+            title=f"Thanks for letting us know that you cannot make it to {day}",
+            description="Jenny and your driver have been notified",
+            color=discord.Color.blue()  # You can set the color of the embed
+        )
+
+        channel = bot.get_channel(DRIVERS_CHANNEL) # Currently on dev channel
+        message_to_send: str = ping.create_message(ping.get_role(interaction.guild, constants.DRIVERS_ROLE_ID),
+                                                                 message)
+        
+        message_to_send: str = 
+        await channel.send(message_to_send)
+
+        # # Adding fields
+        # embed.add_field(name="Field 1", value="This is the value of Field 1", inline=False)
+        # embed.add_field(name="Field 2", value="This is the value of Field 2", inline=True)
+        # embed.add_field(name="Field 3", value="This is the value of Field 3", inline=True)
+
+        # # Adding a footer, author, and thumbnail
+        # embed.set_footer(text="This is a footer")
+        # # embed.set_author(name="Author Name", icon_url="https://example.com/icon.png")
+        # embed.set_thumbnail(url="https://example.com/thumbnail.png")
+        # embed.set_image(url="https://example.com/image.png")
+
+        # to_send = f"""{interaction.user} cannot make it to {day} anymore. Reason: {message if message is not None else "None given"}"""
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        
 
     @bot.tree.command(name="my-car", description="Pings all people placed in car")
     async def ping_my_car(interaction: discord.Interaction, message_to_car: str) -> None:
