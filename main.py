@@ -100,25 +100,25 @@ def run() -> None:
         embed = discord.Embed(title="Ride Bot Commands", color=discord.Color.blue())
 
         embed.add_field(
-            name="`\\ask-drivers` <message>", 
+            name="`/ask-drivers <message>`", 
             value="Pings drivers to see who is available to drive",
             inline=False
         )
 
         embed.add_field(
-            name="`\\pickup-location <name or username>`", 
+            name="`/pickup-location <name or username>`", 
             value="Outputs the pickup location for specified name or username",
             inline=False
         )
 
         embed.add_field(
-            name="`\\list-pickups-friday`", 
+            name="`/list-pickups-friday`", 
             value="Outputs a breakdown of who reacted for a ride for Friday fellowship and where to pick them up",
             inline=False
         )
 
         embed.add_field(
-            name="`\\list-pickups-sunday`", 
+            name="`/list-pickups-sunday`", 
             value="Outputs a breakdown of who reacted for a ride for Sunday service and where to pick them up",
             inline=False
         )
