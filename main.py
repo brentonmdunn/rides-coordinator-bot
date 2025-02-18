@@ -387,7 +387,7 @@ def run() -> None:
             unknown_location = [str(user) for user in unknown_location]
             if len(unknown_location) > 0:
                 embed.add_field(
-                    name=f"❓ [{off_campus_count}] Unknown Location", 
+                    name=f"❓ [{len(unknown_location)}] Unknown Location", 
                     value=f"{', '.join(unknown_location)} (make sure their full discord username is in the google sheet)",
                     inline=False
                 )    
