@@ -8,6 +8,7 @@ import copy
 import json
 import os
 from typing import Dict, List, Set, Union, Callable, Any
+import re
 import requests
 import csv
 from collections import defaultdict
@@ -94,6 +95,97 @@ def run() -> None:
             logger.info(f"Synced {len(synced)} command(s).")
         except Exception as e:      # pylint: disable=W0718
             print(e)
+
+    @bot.event
+    async def on_message(message):
+        if message.author.bot:  # Ignore bot messages
+            return
+
+        if "what the sigma" in message.content.lower():
+            # await message.reply("yellow")  # Properly replies to the message
+            await message.add_reaction("❌")
+
+        await bot.process_commands(message)  # Ensures other commands still work
+
+
+    # @bot.tree.command(name="broadcast", description="Send message to multiple channels")
+    # async def boradcast(interaction: discord.Interaction, message: str) -> None:
+    #     clist = [1338047132115931177, 1338047266237452310, 1338047339729780767, 1338047388258140234, 1338047409627988000]
+    #     for c in clist:
+    #         channel = bot.get_channel(c)
+    #         await channel.send(message)
+        
+    #     await interaction.response.send_message("success")
+
+    def parse_name(text):
+        """
+        Parse the input string to extract the name and username.
+        
+        Args:
+            input_string (str): The input string to parse.
+        
+        Returns:
+            tuple: A tuple containing the name and username.
+        """
+        # pattern = r"(.*)\s*($[^)]+$)?"
+        # match = re.match(pattern, input_string)
+        
+        # if match:
+        #     name = match.group(1).strip()
+        #     username = match.group(2)
+            
+        #     if username:
+        #         username = username[1:-1]  # Remove parentheses
+        #     else:
+        #         username = None
+            
+        #     return name, username
+        # else:
+        #     return None, None
+
+        match = re.match(r"^(.*?)\s*\((.*?)\)$", text)
+        if match:
+            return match.group(1), match.group(2)
+        return text, None
+
+
+    @bot.tree.command(name="whois", description="List name and Discord username of potential matches")
+    async def whois(interaction: discord.Interaction, name: str) -> None:
+        
+        response = requests.get(CSV_URL)
+
+        saved_name = None
+        discord_username = None
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Decode the content as text
+            csv_data = response.content.decode('utf-8')
+
+            # Use csv.reader to parse the content
+            csv_reader = csv.reader(csv_data.splitlines(), delimiter=',')
+
+            print(csv_reader)
+
+            message = ""
+            
+
+            # Loop through rows in the CSV
+            for row in csv_reader:
+                for _, cell in enumerate(row):
+                    if name in cell:
+                        saved_name, discord_username = parse_name(cell)
+                        if saved_name is not None:
+                            message += f"\nname: {saved_name}"
+                        if discord_username is not None:
+                            message += f"\ndiscord: {discord_username}"
+
+
+        
+
+
+        await interaction.response.send_message(message)
+
 
     @bot.tree.command(name="help-rides", description="Available commands for ride bot")
     async def help_rides(interaction: discord.Interaction) -> None:
