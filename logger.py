@@ -21,7 +21,9 @@ console_handler.setLevel(logging.DEBUG)
 # file_handler.setLevel(logging.DEBUG)
 
 
-formatter = logging.Formatter('%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
+formatter = logging.Formatter(
+    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s"
+)
 
 console_handler.setFormatter(formatter)
 # file_handler.setFormatter(formatter)
