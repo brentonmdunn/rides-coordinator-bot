@@ -37,3 +37,5 @@ DRIVERS_CHANNEL=<channel ID to send drivers message>
 $ docker buildx create --use --name multi-platform-builder --driver docker-container
 $ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot --push .
 ```
+
+https://hub.docker.com/r/brentonmdunn/ride-bot
