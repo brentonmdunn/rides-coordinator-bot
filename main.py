@@ -21,42 +21,23 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import yaml
+import pytz
 
 # Local modules
 from logger import logger
 import utils.ping as ping
 import utils.constants as constants
 
-# if "dev" in os.getenv('BOT_ENV').lower():
-#     print("DEV")
 
-#     # Environment variables from .env file
-#     load_dotenv('.env.dev')
-#     # TOKEN: str = os.getenv('TOKEN')
-#     # BOT_NAME: str = os.getenv('BOT_NAME')
-#     # # LOCATIONS_PATH: str = os.getenv('LOCATIONS_PATH')
-#     # # EMERGENCY_CONTACT: int = int(os.getenv('EMERGENCY_CONTACT'))
-    
-#     # GUILD_ID: int = int(os.getenv('GUILD_ID'))
-
-
-#     TOKEN: str = os.environ['TOKEN']
-#     BOT_NAME: str = os.environ['BOT_NAME']
-#     GUILD_ID: int = int(os.environ['GUILD_ID'])
-#     DRIVERS_CHANNEL: int = int(os.environ['DRIVERS_CHANNEL'])
 if os.getenv('BOT_ENV') and "prod" in os.getenv('BOT_ENV').lower():
     TOKEN: str = os.environ['TOKEN']
-    BOT_NAME: str = os.environ['BOT_NAME']
     CSV_URL: str = os.environ['CSV_URL']
-    GUILD_ID: int = int(os.environ['GUILD_ID'])
-    DRIVERS_CHANNEL: int = int(os.environ['DRIVERS_CHANNEL'])
+    LOG_ALL_REACTONS = os.environ['LOG_ALL_REACTONS'].lower() == 'true'
 else:
     load_dotenv()
     TOKEN: str = os.environ['TOKEN']
-    BOT_NAME: str = os.environ['BOT_NAME']
-    GUILD_ID: int = int(os.environ['GUILD_ID'])
-    DRIVERS_CHANNEL: int = int(os.environ['DRIVERS_CHANNEL'])
     CSV_URL: str = os.environ['CSV_URL']
+    LOG_ALL_REACTONS: bool = os.environ['LOG_ALL_REACTONS'].lower() == 'true'
 
 
 # Global variables
@@ -106,6 +87,130 @@ def run() -> None:
             await message.add_reaction("❌")
 
         await bot.process_commands(message)  # Ensures other commands still work
+
+    @bot.event
+    async def on_raw_reaction_add(payload):
+        guild = bot.get_guild(payload.guild_id)
+        if guild is None:
+            return  # DM or unknown guild
+
+        channel = bot.get_channel(payload.channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return  # Ensure it's a text channel
+
+        message = await channel.fetch_message(payload.message_id)  # Fetch the message
+
+        user = guild.get_member(payload.user_id)
+
+        # Check if the reaction is from a bot
+        if user and user.bot:
+            print(f"Ignoring bot reaction from {user.name}")
+            return
+        
+
+        if user and not user.bot:
+
+
+            # 7PM thursday to 7PM friday or 10AM saturday to 10AM sunday notification
+            if payload.channel_id == RIDES_CHANNEL_ID and (("friday" in message.content.lower() and is_within_time_range("friday")) or ("sunday" in message.content.lower() and is_within_time_range("sunday"))):
+                log_channel = bot.get_channel(SERVING_BOT_SPAM_CHANNEL_ID)
+                if log_channel:
+                    await log_channel.send(f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}")
+                return
+
+
+
+            if LOG_ALL_REACTONS:
+                log_channel = bot.get_channel(1208482668820570162)
+                if log_channel:
+                    await log_channel.send(f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}")
+
+
+
+    @bot.event
+    async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
+        """Logs when a reaction is removed."""
+        guild = bot.get_guild(payload.guild_id)
+        if guild is None:
+            return  # DM or unknown guild
+
+        channel = bot.get_channel(payload.channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return  # Ensure it's a text channel
+
+        message = await channel.fetch_message(payload.message_id)  # Fetch the message
+        user = guild.get_member(payload.user_id)
+
+        if user and user.bot:
+            print(f"Ignoring bot reaction removal from {user.name}")
+            return
+
+        if user:
+
+            # 7PM thursday to 7PM friday or 10AM saturday to 10AM sunday notification
+            if payload.channel_id == RIDES_CHANNEL_ID and (("friday" in message.content.lower() and is_within_time_range("friday")) or ("sunday" in message.content.lower() and is_within_time_range("sunday"))):
+                log_channel = bot.get_channel(SERVING_BOT_SPAM_CHANNEL_ID)
+                if log_channel:
+                    await log_channel.send(f"{user.name} unreacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}")
+                return
+
+            if LOG_ALL_REACTONS:
+                log_channel = bot.get_channel(1208482668820570162)
+                if log_channel:
+                    await log_channel.send(f"{user.name} removed their reaction {payload.emoji} from message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}")
+            # print(f"{user.name} removed their reaction {payload.emoji} from message '{message.content}' in #{channel.name}")
+
+
+    def is_within_time_range(day):
+        """Checks if the current time in LA is within:
+        - Thursday 7 PM to Friday 7 PM
+        - Saturday 10 AM to Sunday 10 AM
+        """
+        LA_TZ = pytz.timezone("America/Los_Angeles")  # Los Angeles Time Zone
+        now = datetime.now().astimezone(LA_TZ)  # Get current LA time
+        weekday = now.weekday()  # Monday = 0, Sunday = 6
+        hour = now.hour
+
+        # Check Thursday 7 PM (3, 19) → Friday 7 PM (4, 19)
+        if day == "friday" and ((weekday == 3 and hour >= 19) or (weekday == 4 and hour < 19)):
+            return True
+
+        # Check Saturday 10 AM (5, 10) → Sunday 10 AM (6, 10)
+        if day == "sunday" and ((weekday == 5 and hour >= 10) or (weekday == 6 and hour < 10)):
+            return True
+
+        return False
+
+    # def is_within_time_range_tester():
+    #     """Checks if the current time in PST is between Thursday 7 PM and Friday 7 PM."""
+    #     LA_TZ = pytz.timezone("America/Los_Angeles")  # Los Angeles Time Zone
+    #     now = datetime.now().astimezone(LA_TZ)
+    #     weekday = now.weekday()  # Monday = 0, Sunday = 6
+    #     hour = now.hour
+
+    #     # Thursday 7 PM (weekday 3) to Friday 7 PM (weekday 4)
+    #     if (weekday == 0 and hour >= 12):
+    #         return True
+    #     return False
+
+
+    # @bot.event
+    # async def on_reaction_add_raw(reaction, user):
+    #     """Logs reactions when someone reacts to a tracked message"""
+    #     if user.bot:
+    #         return  # Ignore bot reactions
+
+    #     message_id = reaction.message.id
+
+        # log_channel = bot.get_channel(1208482668820570162)
+        # print("jdsflajfljsal")
+        # if log_channel:
+        #     await log_channel.send(f"{user.name} reacted {reaction.emoji} to the tracked message.")
+    #     # if message_id in tracked_messages:
+    #     #     log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    #     #     if log_channel:
+    #     #         await log_channel.send(f"{user.name} reacted {reaction.emoji} to the tracked message.")
+
 
 
     # @bot.tree.command(name="broadcast", description="Send message to multiple channels")
