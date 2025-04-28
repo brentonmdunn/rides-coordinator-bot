@@ -15,6 +15,7 @@ from collections import defaultdict
 from pprint import pprint
 from datetime import datetime, timedelta
 from typing import Optional
+from enum import Enum
 
 # External modules
 import discord
@@ -29,6 +30,7 @@ import pytz
 from logger import logger
 import utils.ping as ping
 import utils.constants as constants
+from utils.csv_fetcher import CSVFetcher
 
 
 if os.getenv("BOT_ENV") and "prod" in os.getenv("BOT_ENV").lower():
@@ -647,6 +649,17 @@ def run() -> None:
             output = "Error occurred"
 
             await interaction.response.send_message(output)
+
+    @bot.tree.command(
+        name="list-pickups-retreat",
+        description="Locations of pickups for retreat",
+    )
+    async def list_locations_retreat(
+        interaction: discord.Interaction, message_id: str
+    ) -> None:
+        
+        fetcher = CSVFetcher(os.getenv("RETREAT_RIDES_CSV_URL"), True)
+        
 
     bot.run(TOKEN)
 
