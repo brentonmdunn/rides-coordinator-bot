@@ -8,3 +8,4 @@ distances.json
 colleges.txt
 logs/*.log
 .ruff_cache
+*.old
