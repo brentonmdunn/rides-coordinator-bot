@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum, IntEnum
 
 
-class ChannelIds(Enum):
+class ChannelIds(IntEnum):
     """
     Enum that contains channel IDs.
     In the format <CATEGORY>__<CHANNEL NAME>.
@@ -17,7 +17,7 @@ class ChannelIds(Enum):
     BOT_STUFF__BOT_LOGS = 1208482668820570162
 
 
-class DayOfWeek(Enum):
+class DayOfWeek(StrEnum):
     """Enum for consistent case for days of the week."""
 
     MONDAY = "Monday"

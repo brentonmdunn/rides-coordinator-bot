@@ -8,3 +8,5 @@ keys.txt
 colleges.txt
 .ruff_cache
 *.old
+*.pyc
+*__pycache__*

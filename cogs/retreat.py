@@ -19,11 +19,11 @@ RETREAT_CSV_URL = os.getenv("RETREAT_CSV_URL")
 SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh"]
 
 LOCATIONS_CHANNELS_WHITELIST = [
-    ChannelIds.SERVING__DRIVER_BOT_SPAM.value,
-    ChannelIds.SERVING__LEADERSHIP.value,
-    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO.value,
-    ChannelIds.BOT_STUFF__BOTS.value,
-    ChannelIds.BOT_STUFF__BOT_SPAM_2.value,
+    ChannelIds.SERVING__DRIVER_BOT_SPAM,
+    ChannelIds.SERVING__LEADERSHIP,
+    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+    ChannelIds.BOT_STUFF__BOTS,
+    ChannelIds.BOT_STUFF__BOT_SPAM_2,
 ]
 
 class Col(IntEnum):
@@ -34,6 +34,7 @@ class Col(IntEnum):
     NEED_RIDE = 5
     PICKUP_LOCATION = 6
     DRIVER_SPOTS = 8
+    LEAVE_TIME = 9
 
 
 class Retreat(commands.Cog):

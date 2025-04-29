@@ -35,20 +35,20 @@ class Reactions(commands.Cog):
 
         if user:
             if (
-                payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS.value
+                payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
                 and (
                     (
                         "friday" in message.content.lower()
-                        and is_during_target_window(DayOfWeek.FRIDAY.value)
+                        and is_during_target_window(DayOfWeek.FRIDAY)
                     )
                     or (
                         "sunday" in message.content.lower()
-                        and is_during_target_window(DayOfWeek.SUNDAY.value)
+                        and is_during_target_window(DayOfWeek.SUNDAY)
                     )
                 )
             ):
                 log_channel = self.bot.get_channel(
-                    ChannelIds.SERVING__DRIVER_BOT_SPAM.value
+                    ChannelIds.SERVING__DRIVER_BOT_SPAM
                 )
                 if log_channel:
                     await log_channel.send(
@@ -57,7 +57,7 @@ class Reactions(commands.Cog):
                 return
 
             if LOG_ALL_REACTIONS:
-                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS.value)
+                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
                 if log_channel:
                     await log_channel.send(
                         f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
@@ -83,20 +83,20 @@ class Reactions(commands.Cog):
 
         if user:
             if (
-                payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS.value
+                payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
                 and (
                     (
                         "friday" in message.content.lower()
-                        and is_during_target_window(DayOfWeek.FRIDAY.value)
+                        and is_during_target_window(DayOfWeek.FRIDAY)
                     )
                     or (
                         "sunday" in message.content.lower()
-                        and is_during_target_window(DayOfWeek.SUNDAY.value)
+                        and is_during_target_window(DayOfWeek.SUNDAY)
                     )
                 )
             ):
                 log_channel = self.bot.get_channel(
-                    ChannelIds.SERVING__DRIVER_BOT_SPAM.value
+                    ChannelIds.SERVING__DRIVER_BOT_SPAM
                 )
                 if log_channel:
                     await log_channel.send(
@@ -105,7 +105,7 @@ class Reactions(commands.Cog):
                 return
 
             if LOG_ALL_REACTIONS:
-                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS.value)
+                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
                 if log_channel:
                     await log_channel.send(
                         f"{user.name} removed their reaction {payload.emoji} from message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"

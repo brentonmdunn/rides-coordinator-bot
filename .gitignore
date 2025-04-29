@@ -9,3 +9,5 @@ colleges.txt
 logs/*.log
 .ruff_cache
 *.old
+*.pyc
+*__pycache__*

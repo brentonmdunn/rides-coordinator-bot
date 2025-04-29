@@ -19,11 +19,11 @@ CSV_URL = os.getenv("CSV_URL")
 SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh"]
 
 LOCATIONS_CHANNELS_WHITELIST = [
-    ChannelIds.SERVING__DRIVER_BOT_SPAM.value,
-    ChannelIds.SERVING__LEADERSHIP.value,
-    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO.value,
-    ChannelIds.BOT_STUFF__BOTS.value,
-    ChannelIds.BOT_STUFF__BOT_SPAM_2.value,
+    ChannelIds.SERVING__DRIVER_BOT_SPAM,
+    ChannelIds.SERVING__LEADERSHIP,
+    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+    ChannelIds.BOT_STUFF__BOTS,
+    ChannelIds.BOT_STUFF__BOT_SPAM_2,
 ]
 
 
@@ -121,7 +121,7 @@ class Locations(commands.Cog):
 
         # Find the relevant message
         if day:
-            channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS.value)
+            channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             most_recent_message = None
             if channel:
                 async for message in channel.history(after=last_sunday):
@@ -136,7 +136,7 @@ class Locations(commands.Cog):
             message_id = most_recent_message.id
 
         usernames_reacted = set()
-        channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS.value)
+        channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
         try:
             message = await channel.fetch_message(int(message_id))
             for reaction in message.reactions:
