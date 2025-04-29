@@ -15,6 +15,7 @@ from collections import defaultdict
 from pprint import pprint
 from datetime import datetime, timedelta
 from typing import Optional
+from enum import Enum
 
 # External modules
 import discord
@@ -27,7 +28,6 @@ import pytz
 
 # Local modules
 from logger import logger
-import utils.ping as ping
 import utils.constants as constants
 
 
@@ -47,20 +47,21 @@ else:
 # channel_id: int = 0
 # new_message = ""
 
-LEADERSHIP_CHANNEL_ID = 1155357301050449931
-DRIVER_CHANNEL_ID = 1286925673004269601
-SUNDAY_SERVICE_CHANNEL_ID = 1286942023894433833
-BOTS_CHANNEL_ID = 916823070017204274
-BOT_SPAM_2_CHANNEL_ID = 1208264072638898217
-RIDES_CHANNEL_ID = 939950319721406464
-SERVING_BOT_SPAM_CHANNEL_ID = 1297323073594458132
+class ChannelIds(Enum):
+    SERVING__LEADERSHIP = 1155357301050449931
+    SERVING__DRIVER_CHAT_WOOOOO = 1286925673004269601
+    SERVING__SUNDAY_SERVICE = 1286942023894433833
+    BOT_STUFF__BOTS = 916823070017204274
+    BOT_STUFF__BOT_SPAM_2 = 1208264072638898217
+    REFEREMCES__RIDES_ANNOUNCEMENTS = 939950319721406464
+    SERVING__DRIVER_BOT_SPAM = 1297323073594458132
 
 LOCATIONS_CHANNELS_WHITELIST = [
-    SERVING_BOT_SPAM_CHANNEL_ID,
-    LEADERSHIP_CHANNEL_ID,
-    DRIVER_CHANNEL_ID,
-    BOTS_CHANNEL_ID,
-    BOT_SPAM_2_CHANNEL_ID,
+    ChannelIds.SERVING__DRIVER_BOT_SPAM.value,
+    ChannelIds.SERVING__LEADERSHIP.value,
+    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO.value,
+    ChannelIds.BOT_STUFF__BOTS.value,
+    ChannelIds.BOT_STUFF__BOT_SPAM_2.value,
 ]
 
 
@@ -116,14 +117,14 @@ def run() -> None:
 
         if user and not user.bot:
             # 7PM thursday to 7PM friday or 10AM saturday to 10AM sunday notification
-            if payload.channel_id == RIDES_CHANNEL_ID and (
+            if payload.channel_id == ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value and (
                 ("friday" in message.content.lower() and is_within_time_range("friday"))
                 or (
                     "sunday" in message.content.lower()
                     and is_within_time_range("sunday")
                 )
             ):
-                log_channel = bot.get_channel(SERVING_BOT_SPAM_CHANNEL_ID)
+                log_channel = bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM.value)
                 if log_channel:
                     await log_channel.send(
                         f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
@@ -157,14 +158,14 @@ def run() -> None:
 
         if user:
             # 7PM thursday to 7PM friday or 10AM saturday to 10AM sunday notification
-            if payload.channel_id == RIDES_CHANNEL_ID and (
+            if payload.channel_id == ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value and (
                 ("friday" in message.content.lower() and is_within_time_range("friday"))
                 or (
                     "sunday" in message.content.lower()
                     and is_within_time_range("sunday")
                 )
             ):
-                log_channel = bot.get_channel(SERVING_BOT_SPAM_CHANNEL_ID)
+                log_channel = bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM.value)
                 if log_channel:
                     await log_channel.send(
                         f"{user.name} unreacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
@@ -339,9 +340,9 @@ def run() -> None:
         name="ask-drivers", description="Pings drivers to see who is available"
     )
     async def ask_drivers(interaction: discord.Interaction, message: str) -> None:
-        if interaction.channel_id != DRIVER_CHANNEL_ID:
+        if interaction.channel_id != ChannelIds.SERVING__DRIVER_CHAT_WOOOOO.value:
             await interaction.response.send_message(
-                f"`/ask-drivers` can only be used in <#{DRIVER_CHANNEL_ID}>"
+                f"`/ask-drivers` can only be used in <#{ChannelIds.SERVING__DRIVER_CHAT_WOOOOO.value}>"
             )
             return
 
@@ -495,7 +496,7 @@ def run() -> None:
 
         if day is not None:
             # Get the channel by its ID
-            channel = bot.get_channel(RIDES_CHANNEL_ID)
+            channel = bot.get_channel(ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value)
             most_recent_message = None
             if channel is not None:
                 # Fetch messages since last Sunday
@@ -519,7 +520,7 @@ def run() -> None:
             message_id = most_recent_message.id
 
         usernames_reacted = set()
-        channel = bot.get_channel(RIDES_CHANNEL_ID)  # Channel ID
+        channel = bot.get_channel(ChannelIds.RIDES_CHANNEL_ID.value)  # Channel ID
         try:
             message = await channel.fetch_message(message_id)
             reactions = message.reactions
