@@ -1,35 +1,23 @@
 """Main functionality of bot"""
 
-from discord.ext import commands, tasks
-from discord import app_commands
-
 # Built in modules
-import copy
-import json
+from collections import defaultdict
+import csv
+from datetime import datetime, timedelta
 import os
-from typing import Dict, List, Set, Union, Callable, Any
 import re
 import requests
-import csv
-from collections import defaultdict
-from pprint import pprint
-from datetime import datetime, timedelta
-from typing import Optional
-from enum import Enum
 
 # External modules
 import discord
-
-# from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
-import yaml
 import pytz
 
 # Local modules
 from logger import logger
 import utils.constants as constants
-
+from enums import ChannelIds, DayOfWeek
 
 if os.getenv("BOT_ENV") and "prod" in os.getenv("BOT_ENV").lower():
     TOKEN: str = os.environ["TOKEN"]
@@ -41,20 +29,6 @@ else:
     CSV_URL: str = os.environ["CSV_URL"]
     LOG_ALL_REACTONS: bool = os.environ["LOG_ALL_REACTONS"].lower() == "true"
 
-
-# Global variables
-# message_id: int = 0
-# channel_id: int = 0
-# new_message = ""
-
-class ChannelIds(Enum):
-    SERVING__LEADERSHIP = 1155357301050449931
-    SERVING__DRIVER_CHAT_WOOOOO = 1286925673004269601
-    SERVING__SUNDAY_SERVICE = 1286942023894433833
-    BOT_STUFF__BOTS = 916823070017204274
-    BOT_STUFF__BOT_SPAM_2 = 1208264072638898217
-    REFEREMCES__RIDES_ANNOUNCEMENTS = 939950319721406464
-    SERVING__DRIVER_BOT_SPAM = 1297323073594458132
 
 LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_BOT_SPAM.value,
@@ -117,11 +91,17 @@ def run() -> None:
 
         if user and not user.bot:
             # 7PM thursday to 7PM friday or 10AM saturday to 10AM sunday notification
-            if payload.channel_id == ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value and (
-                ("friday" in message.content.lower() and is_within_time_range("friday"))
-                or (
-                    "sunday" in message.content.lower()
-                    and is_within_time_range("sunday")
+            if (
+                payload.channel_id == ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value
+                and (
+                    (
+                        "friday" in message.content.lower()
+                        and is_during_target_window(DayOfWeek.FRIDAY.value)
+                    )
+                    or (
+                        "sunday" in message.content.lower()
+                        and is_during_target_window(DayOfWeek.SUNDAY.value)
+                    )
                 )
             ):
                 log_channel = bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM.value)
@@ -132,7 +112,7 @@ def run() -> None:
                 return
 
             if LOG_ALL_REACTONS:
-                log_channel = bot.get_channel(1208482668820570162)
+                log_channel = bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS.value)
                 if log_channel:
                     await log_channel.send(
                         f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
@@ -158,11 +138,17 @@ def run() -> None:
 
         if user:
             # 7PM thursday to 7PM friday or 10AM saturday to 10AM sunday notification
-            if payload.channel_id == ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value and (
-                ("friday" in message.content.lower() and is_within_time_range("friday"))
-                or (
-                    "sunday" in message.content.lower()
-                    and is_within_time_range("sunday")
+            if (
+                payload.channel_id == ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value
+                and (
+                    (
+                        "friday" in message.content.lower()
+                        and is_during_target_window(DayOfWeek.FRIDAY.value)
+                    )
+                    or (
+                        "sunday" in message.content.lower()
+                        and is_during_target_window(DayOfWeek.SUNDAY.value)
+                    )
                 )
             ):
                 log_channel = bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM.value)
@@ -173,74 +159,42 @@ def run() -> None:
                 return
 
             if LOG_ALL_REACTONS:
-                log_channel = bot.get_channel(1208482668820570162)
+                log_channel = bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS.value)
                 if log_channel:
                     await log_channel.send(
                         f"{user.name} removed their reaction {payload.emoji} from message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
                     )
             # print(f"{user.name} removed their reaction {payload.emoji} from message '{message.content}' in #{channel.name}")
 
-    def is_within_time_range(day):
+    def is_during_target_window(day: str) -> bool:
         """Checks if the current time in LA is within:
         - Thursday 7 PM to Friday 7 PM
         - Saturday 10 AM to Sunday 10 AM
         """
-        LA_TZ = pytz.timezone("America/Los_Angeles")  # Los Angeles Time Zone
-        now = datetime.now().astimezone(LA_TZ)  # Get current LA time
-        weekday = now.weekday()  # Monday = 0, Sunday = 6
+        LA_TZ = pytz.timezone("America/Los_Angeles")
+        now = datetime.now().astimezone(LA_TZ)
+        weekday_index = now.weekday()  # Monday = 0, Sunday = 6
         hour = now.hour
 
-        # Check Thursday 7 PM (3, 19) → Friday 7 PM (4, 19)
-        if day == "friday" and (
-            (weekday == 3 and hour >= 19) or (weekday == 4 and hour < 19)
-        ):
-            return True
+        # Map weekday index (int) to DayOfWeek enum
+        weekday_enum = list(DayOfWeek)[weekday_index]
 
-        # Check Saturday 10 AM (5, 10) → Sunday 10 AM (6, 10)
-        if day == "sunday" and (
-            (weekday == 5 and hour >= 10) or (weekday == 6 and hour < 10)
-        ):
-            return True
+        try:
+            day_enum = DayOfWeek(day.capitalize())
+        except ValueError:
+            return False  # Invalid day passed in
+
+        if day_enum == DayOfWeek.FRIDAY:
+            return (weekday_enum == DayOfWeek.THURSDAY and hour >= 19) or (
+                weekday_enum == DayOfWeek.FRIDAY and hour < 19
+            )
+
+        if day_enum == DayOfWeek.SUNDAY:
+            return (weekday_enum == DayOfWeek.SATURDAY and hour >= 10) or (
+                weekday_enum == DayOfWeek.SUNDAY and hour < 10
+            )
 
         return False
-
-    # def is_within_time_range_tester():
-    #     """Checks if the current time in PST is between Thursday 7 PM and Friday 7 PM."""
-    #     LA_TZ = pytz.timezone("America/Los_Angeles")  # Los Angeles Time Zone
-    #     now = datetime.now().astimezone(LA_TZ)
-    #     weekday = now.weekday()  # Monday = 0, Sunday = 6
-    #     hour = now.hour
-
-    #     # Thursday 7 PM (weekday 3) to Friday 7 PM (weekday 4)
-    #     if (weekday == 0 and hour >= 12):
-    #         return True
-    #     return False
-
-    # @bot.event
-    # async def on_reaction_add_raw(reaction, user):
-    #     """Logs reactions when someone reacts to a tracked message"""
-    #     if user.bot:
-    #         return  # Ignore bot reactions
-
-    #     message_id = reaction.message.id
-
-    # log_channel = bot.get_channel(1208482668820570162)
-    # print("jdsflajfljsal")
-    # if log_channel:
-    #     await log_channel.send(f"{user.name} reacted {reaction.emoji} to the tracked message.")
-    #     # if message_id in tracked_messages:
-    #     #     log_channel = bot.get_channel(LOG_CHANNEL_ID)
-    #     #     if log_channel:
-    #     #         await log_channel.send(f"{user.name} reacted {reaction.emoji} to the tracked message.")
-
-    # @bot.tree.command(name="broadcast", description="Send message to multiple channels")
-    # async def boradcast(interaction: discord.Interaction, message: str) -> None:
-    #     clist = [1338047132115931177, 1338047266237452310, 1338047339729780767, 1338047388258140234, 1338047409627988000]
-    #     for c in clist:
-    #         channel = bot.get_channel(c)
-    #         await channel.send(message)
-
-    #     await interaction.response.send_message("success")
 
     def parse_name(text):
         """
@@ -252,22 +206,6 @@ def run() -> None:
         Returns:
             tuple: A tuple containing the name and username.
         """
-        # pattern = r"(.*)\s*($[^)]+$)?"
-        # match = re.match(pattern, input_string)
-
-        # if match:
-        #     name = match.group(1).strip()
-        #     username = match.group(2)
-
-        #     if username:
-        #         username = username[1:-1]  # Remove parentheses
-        #     else:
-        #         username = None
-
-        #     return name, username
-        # else:
-        #     return None, None
-
         match = re.match(r"^(.*?)\s*\((.*?)\)$", text)
         if match:
             return match.group(1), match.group(2)
@@ -289,8 +227,6 @@ def run() -> None:
 
             # Use csv.reader to parse the content
             csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
-
-            print(csv_reader)
 
             message = ""
 
@@ -370,7 +306,7 @@ def run() -> None:
             f"pickup-location command was executed by {interaction.user} in #{interaction.channel}"
         )
 
-        if not interaction.channel_id in LOCATIONS_CHANNELS_WHITELIST:
+        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
                 "Command cannot be used in this channel."
             )
@@ -397,7 +333,7 @@ def run() -> None:
                         try:
                             location = row[idx + 1].strip()
                             possible_people.append((cell, location))
-                        except:
+                        except:  # noqa: E722
                             pass
 
             if len(possible_people) == 0:
@@ -474,7 +410,7 @@ def run() -> None:
             f"list-drivers command was executed by {interaction.user} in #{interaction.channel}"
         )
 
-        if not interaction.channel_id in LOCATIONS_CHANNELS_WHITELIST:
+        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
                 "Command cannot be used in this channel."
             )
@@ -502,7 +438,6 @@ def run() -> None:
                 # Fetch messages since last Sunday
                 async for message in channel.history(after=last_sunday):
                     # Check if message contains both "Sunday" and "@Rides"
-                    AT_RIDES = "<@&940467850261450752>"
                     if (
                         day in message.content.lower()
                         and "react" in message.content.lower()
@@ -520,7 +455,9 @@ def run() -> None:
             message_id = most_recent_message.id
 
         usernames_reacted = set()
-        channel = bot.get_channel(ChannelIds.RIDES_CHANNEL_ID.value)  # Channel ID
+        channel = bot.get_channel(
+            ChannelIds.REFEREMCES__RIDES_ANNOUNCEMENTS.value
+        )  # Channel ID
         try:
             message = await channel.fetch_message(message_id)
             reactions = message.reactions
@@ -576,7 +513,14 @@ def run() -> None:
             for location in locations_people:
                 if (
                     location.lower() in SCHOLARS_LOCATIONS
-                    or len([l for l in SCHOLARS_LOCATIONS if l in location.lower()]) > 0
+                    or len(
+                        [
+                            college
+                            for college in SCHOLARS_LOCATIONS
+                            if college in location.lower()
+                        ]
+                    )
+                    > 0
                 ):
                     scholars_count += len(locations_people[location])
                     scholars_people += f"**({len(locations_people[location])}) {location}:** {', '.join(locations_people[location])}\n"
@@ -626,20 +570,6 @@ def run() -> None:
                     value=f"{', '.join(unknown_location)} (make sure their full discord username is in the google sheet)",
                     inline=False,
                 )
-
-            # output = ""
-            # output += f"__[{scholars_count}] Scholars (no eighth)__\n" + scholars_people if scholars_count > 0 else ""
-            # output += "--\n" + f"__[{warren_pcyn_count}] Warren + Peppercanyon__\n" + warren_pcyn_people if warren_pcyn_count > 0 else ""
-            # output += "--\n" + f"__[{rita_count}] Rita + Eighth__\n" + rita_people if rita_count > 0 else ""
-            # output += "--\n" + f"__[{off_campus_count}] Off campus__\n" + off_campus_people if off_campus_count > 0 else ""
-            # # print(f"({scholars_count})\n" + scholars_people + "--\n" + f"({warren_pcyn_count})\n" + warren_pcyn_people + "--\n" + f"({rita_count})\n" + rita_people + "--\n" + f"({off_campus_count})\n" + off_campus_people)
-
-            # unknown_location = set(usernames_reacted) - location_found
-            # unknown_location = [str(user) for user in unknown_location]
-            # print("==============")
-            # print(type(unknown_location))
-            # if len(unknown_location) > 0:
-            #     output += f"\nUnknown location: {', '.join(unknown_location)} (make sure their full discord username is in the google sheet)"
 
             await interaction.response.send_message(embed=embed)
 
