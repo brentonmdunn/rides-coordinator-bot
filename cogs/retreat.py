@@ -3,7 +3,6 @@ from discord.ext import commands
 import requests
 import csv
 from collections import defaultdict
-from datetime import datetime, timedelta
 
 from enums import ChannelIds
 from logger import logger
@@ -26,6 +25,7 @@ LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
 ]
 
+
 class Col(IntEnum):
     EMAIL_ADDRESS = 1
     NAME = 2
@@ -45,7 +45,6 @@ class Retreat(commands.Cog):
         name="list-drivers-retreat", description="List drivers for retreat."
     )
     async def list_drivers_retreat(self, interaction: discord.Interaction):
-
         logger.info(
             f"list-pickups command used by {interaction.user} in #{interaction.channel}"
         )
@@ -58,7 +57,6 @@ class Retreat(commands.Cog):
                 f"This command is not allowed in #{interaction.channel} by {interaction.user}"
             )
             return
-        
 
         # Load CSV
         response = requests.get(RETREAT_CSV_URL)
@@ -72,13 +70,12 @@ class Retreat(commands.Cog):
         drivers = {}
 
         for i, row in enumerate(csv_reader):
-            if "yes" in row[Col.NEED_RIDE].lower() or i==0:
+            if "yes" in row[Col.NEED_RIDE].lower() or i == 0:
                 continue
             name = row[Col.NAME]
             spots = row[Col.DRIVER_SPOTS]
 
             drivers[name] = spots
-
 
         # Build Embed
         embed = discord.Embed(
@@ -98,7 +95,6 @@ class Retreat(commands.Cog):
         name="list-pickups-retreat", description="List pickups for retreat."
     )
     async def list_pickups_retreat(self, interaction: discord.Interaction):
-
         logger.info(
             f"list-pickups command used by {interaction.user} in #{interaction.channel}"
         )
@@ -124,12 +120,11 @@ class Retreat(commands.Cog):
         locations_people = defaultdict(list)
 
         for i, row in enumerate(csv_reader):
-            if "no" in row[Col.NEED_RIDE].lower() or i==0:
+            if "no" in row[Col.NEED_RIDE].lower() or i == 0:
                 continue
             name = row[Col.NAME]
             location = row[Col.PICKUP_LOCATION]
             locations_people[location].append(name)
-
 
         # Build Embed
         embed = discord.Embed(title="🏠 Housing Breakdown", color=discord.Color.blue())
@@ -172,8 +167,6 @@ class Retreat(commands.Cog):
                     value=group_data["people"],
                     inline=False,
                 )
-
-
 
         await interaction.response.send_message(embed=embed)
 

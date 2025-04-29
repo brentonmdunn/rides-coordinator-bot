@@ -66,7 +66,7 @@ class Locations(commands.Cog):
                     try:
                         location = row[idx + 1].strip()
                         possible_people.append((cell, location))
-                    except:  # if index error or other issue
+                    except:  # noqa: E722
                         pass
 
         if not possible_people:
