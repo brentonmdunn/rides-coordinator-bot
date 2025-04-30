@@ -1,7 +1,6 @@
 import logging
 from dotenv import load_dotenv
 import os
-import asyncio
 # from main import run
 
 load_dotenv()
@@ -10,11 +9,11 @@ load_dotenv()
 LOG_PATH = os.getenv("LOG_PATH")
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # Print stream handler
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
+console_handler.setLevel(logging.INFO)
 
 # File handler
 # file_handler = logging.FileHandler(LOG_PATH)
