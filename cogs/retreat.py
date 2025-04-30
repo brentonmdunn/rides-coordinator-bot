@@ -135,21 +135,28 @@ class Retreat(commands.Cog):
             locations_people[location].append(name)
 
         # Build Embed
-        embed = discord.Embed(title="🏠 Housing Breakdown", color=discord.Color.blue())
+        embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
 
         groups = {
             "Scholars (no Eighth)": {
                 "count": 0,
                 "people": "",
                 "filter": SCHOLARS_LOCATIONS,
+                "emoji": "🏫",
             },
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "people": "",
                 "filter": ["warren", "pepper canyon"],
+                "emoji": "🏠",
             },
-            "Rita + Eighth": {"count": 0, "people": "", "filter": ["rita", "eighth"]},
-            "Off Campus": {"count": 0, "people": "", "filter": []},
+            "Rita + Eighth": {
+                "count": 0,
+                "people": "",
+                "filter": ["rita", "eighth"],
+                "emoji": "🏡",
+            },
+            "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
         }
 
         for location, people in locations_people.items():
@@ -171,7 +178,7 @@ class Retreat(commands.Cog):
         for group_name, group_data in groups.items():
             if group_data["count"] > 0:
                 embed.add_field(
-                    name=f"{group_name} [{group_data['count']}]",
+                    name=f"{group_data['emoji']} [{group_data['count']}] {group_name}",
                     value=group_data["people"],
                     inline=False,
                 )
