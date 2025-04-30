@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 
 from enums import ChannelIds
-import utils.constants as constants
 
 
 class AskDrivers(commands.Cog):
@@ -23,7 +22,7 @@ class AskDrivers(commands.Cog):
             return
 
         # Format the message
-        message_to_send = f"<@&{constants.DRIVERS_ROLE_ID}> {message}"
+        message_to_send = f"<@&{ChannelIds.SERVING__DRIVER_CHAT_WOOOOO}> {message}"
 
         # Send the message and allow role mentions
         await interaction.response.send_message(
