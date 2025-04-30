@@ -28,3 +28,7 @@ class DayOfWeek(StrEnum):
     FRIDAY = "Friday"
     SATURDAY = "Saturday"
     SUNDAY = "Sunday"
+
+
+class RoleIds(IntEnum):
+    DRIVER = 1286924999730663454
