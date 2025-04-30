@@ -3,14 +3,13 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - main  # Triggers on push to main — including merges
 
 jobs:
   build-and-push:
+    if: github.event.head_commit.message != 'Merge pull request'  # Optional: filters bad merges
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
