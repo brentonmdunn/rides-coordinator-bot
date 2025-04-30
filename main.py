@@ -25,11 +25,10 @@ async def on_ready():
         try:
             members = []
             async for member in guild.fetch_members(limit=None):
-                members.append(member)            
+                members.append(member)
             print(f"📥 Cached {len(members)} members in '{guild.name}'")
         except Exception as e:
             print(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
-
 
 
 async def load_extensions():

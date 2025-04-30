@@ -22,8 +22,9 @@ async def logic(reader, bot):
 
             # Try matching by both .name and .display_name, case-insensitive
             member = discord.utils.find(
-                lambda m: m.name.lower() == username.lower() or m.display_name.lower() == username.lower(),
-                guild.members
+                lambda m: m.name.lower() == username.lower()
+                or m.display_name.lower() == username.lower(),
+                guild.members,
             )
 
             channel = bot.get_channel(ChannelIds.SERVING__RETREAT_BOT_SPAM)
@@ -31,7 +32,9 @@ async def logic(reader, bot):
             if member is None:
                 # print(f"⚠️ Could not find member with username: {username}")
                 if channel:
-                    await channel.send(f"⚠️ Could not find member with username: {username}")
+                    await channel.send(
+                        f"⚠️ Could not find member with username: {username}"
+                    )
                 continue
             elif role is None:
                 # print(f"⚠️ Role '{role_name}' not found.")
@@ -42,10 +45,11 @@ async def logic(reader, bot):
             else:
                 await member.add_roles(role)
                 # print(f"✅ Added role '{role_name}' to {member.display_name}")
-                
-                if channel:
-                    await channel.send(f"✅ Added role '{role_name}' to {member.display_name}")
 
+                if channel:
+                    await channel.send(
+                        f"✅ Added role '{role_name}' to {member.display_name}"
+                    )
 
 
 async def fetch_csv(bot):
@@ -64,7 +68,8 @@ async def fetch_csv(bot):
             channel.send(f"⚠️ Error fetching CSV: {e}")
     return None
 
+
 async def run_csv_job(bot):
     reader = await fetch_csv(bot)
     if reader:
-        await logic(reader ,bot)
+        await logic(reader, bot)

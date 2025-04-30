@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 
 from enums import ChannelIds
-import utils.constants as constants
 
 
 class AskDrivers(commands.Cog):

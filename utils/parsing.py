@@ -16,6 +16,7 @@ def parse_name(text):
         return match.group(1), match.group(2)
     return text, None
 
+
 def parse_discord_username(username: str) -> str:
     """
     Returns username without @ symbol.

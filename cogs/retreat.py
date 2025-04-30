@@ -13,9 +13,7 @@ from utils.parsing import parse_discord_username
 
 
 import aiohttp
-import csv
 import io
-import os
 from utils.constants import GUILD_ID
 
 
@@ -32,7 +30,7 @@ LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
     ChannelIds.BOT_STUFF__BOTS,
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
-    ChannelIds.SERVING__RETREAT_BOT_SPAM
+    ChannelIds.SERVING__RETREAT_BOT_SPAM,
 ]
 
 
@@ -180,20 +178,8 @@ class Retreat(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-
-
-
-
-
-
-    @discord.app_commands.command(
-        name="test", description="List pickups for retreat."
-    )
+    @discord.app_commands.command(name="test", description="List pickups for retreat.")
     async def test(self, interaction: discord.Interaction):
-
-
-        
-
         async def logic(reader):
             guild = self.bot.get_guild(GUILD_ID)
             for row in reader:
@@ -205,8 +191,9 @@ class Retreat(commands.Cog):
 
                     # Try matching by both .name and .display_name, case-insensitive
                     member = discord.utils.find(
-                        lambda m: m.name.lower() == username.lower() or m.display_name.lower() == username.lower(),
-                        guild.members
+                        lambda m: m.name.lower() == username.lower()
+                        or m.display_name.lower() == username.lower(),
+                        guild.members,
                     )
 
                     if member is None:
@@ -221,8 +208,6 @@ class Retreat(commands.Cog):
                     else:
                         await member.add_roles(role)
                         print(f"✅ Added role '{role_name}' to {member.display_name}")
-
-
 
         async def fetch_csv():
             url = os.getenv("RETREAT_CSV_URL")
@@ -243,11 +228,10 @@ class Retreat(commands.Cog):
             if reader:
                 await logic(reader)
 
-
         await run_csv_job()
 
-
         await interaction.response.send_message("Success")
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Retreat(bot))

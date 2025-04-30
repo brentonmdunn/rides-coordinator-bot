@@ -22,7 +22,6 @@ REACTS: List[str] = ["🥐", "🧁", "🍩", "🌋", "🦕", "🐸", "🐟", "�
 ROLE_ID = 940467850261450752
 
 
-
 AUTHORIZED_ADMIN: List[str] = ["brentond", "kendruh."]
 
 CAMPUS: List[str] = [
