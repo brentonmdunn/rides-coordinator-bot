@@ -14,6 +14,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
+ENV TZ="America/Los_Angeles"
 # RUN pip install --no-cache-dir --index-url https://pypi.org/simple -r requirements.txt
 
 # Specify the command to run your app
