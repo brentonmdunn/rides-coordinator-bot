@@ -11,6 +11,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.reactions = True
+intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -19,6 +20,16 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f"✅ Logged in as {bot.user}!")
     print(f"🛠️  Synced {len(await bot.tree.sync())} slash commands.")
+
+    for guild in bot.guilds:
+        try:
+            members = []
+            async for member in guild.fetch_members(limit=None):
+                members.append(member)            
+            print(f"📥 Cached {len(members)} members in '{guild.name}'")
+        except Exception as e:
+            print(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
+
 
 
 async def load_extensions():
