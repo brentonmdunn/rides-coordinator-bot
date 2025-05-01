@@ -139,6 +139,9 @@ def mst_cost(locations: Set[Location], graph: Graph) -> int:
     return total_cost if len(visited) == len(locations) else float('inf')
 
 def rebalance_groups(grouping: List[Tuple[int, Group]]) -> List[Tuple[int, Group]]:
+    """Grouping is pass by reference"""
+    
+    # print(f"1 grouping: {grouping}")
     colleges_mentioned = set()
     split_colleges = set()
     split_colleges_details = defaultdict(list)
@@ -158,7 +161,9 @@ def rebalance_groups(grouping: List[Tuple[int, Group]]) -> List[Tuple[int, Group
                 split_colleges_details[college].append({'open spots': num_spots - sum(riders.values()),'num people': num_people, 'group idx': idx})
 
 
-    # print(split_colleges_details)
+    # print(f"split_colleges_details: {split_colleges_details}")
+    # print(f"2 grouping: {grouping}")
+    
 
     
     for college, details in split_colleges_details.items():
@@ -180,34 +185,40 @@ def rebalance_groups(grouping: List[Tuple[int, Group]]) -> List[Tuple[int, Group
                     del riders[college]
                 elif college in riders and idx == max_idx:
                     riders[college] = total_from_college
+    # print(f"3 grouping: {grouping}")
+
 
     # return grouping
 
 
 
-group_sizes = [4, 2, 4]
+group_sizes = [3, 4, 4, 4]
+# group_sizes = [4, 2, 4]
 graph = {
     "Muir": [("Sixth", 2)],
     "Sixth": [("Muir", 2), ("ERC", 3)],
     "ERC": [("Sixth", 3)],
     "Seventh": [("ERC", 2), ("Seventh", 5)],
-    "Warren": [("Seventh", 5), ("Rita", 10)],
-    "Rita": [("Warren", 10)]
+    "Warren": [("Seventh", 5), ("Rita", 100)],
+    "Rita": [("Warren", 100)]
 }
 # population = {"Muir": 4, "Sixth": 2, "ERC": 3, "Seventh": 1}
 # population = {"Muir": 1, "Sixth": 1, "ERC": 1}
-population = {"Muir": 3, "Sixth": 2, "ERC": 4}
+# population = {"Muir": 3, "Sixth": 2, "ERC": 4}
 # population = {"Muir": 4, "Sixth": 4, "ERC": 2}
 # population = {"Muir": 2,"ERC": 2}
 # population = {"Seventh": 2,"Muir": 2, "Rita": 1, "Warren": 2}
+# population = {"Seventh": 1,"Muir": 1, "Rita": 2, "Warren": 3}
+population = {"Warren": 5, "Seventh": 1, "ERC": 2, "Muir": 1, "Sixth": 2, "Rita": 2}
+
 
 
 groups = assign_groups(group_sizes, graph, population)
-# print("Rebalnced: ")
-print(rebalance_groups(groups))
-# print(groups)
-# groups = rebalance_groups(groups)
-
-
+print("Originally created group:")
+for i, g in enumerate(groups):
+    print(f"Group {i+1}: {g}")
+print("==============================")
+print("Rebalance:")
+rebalance_groups(groups)
 for i, g in enumerate(groups):
     print(f"Group {i+1}: {g}")
