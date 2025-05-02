@@ -10,7 +10,9 @@ GroupSizeList = List[int]
 Group = Dict[Location, int]
 
 TIME_THRESH = 11
+from datetime import datetime, timedelta
 
+LATEST_ARRIVAL = datetime.strptime("19:10", "%H:%M")  # 7:10 PM
 def mst_cost(locations: Set[Location], graph: Graph) -> int:
     if len(locations) <= 1:
         return 0
@@ -321,12 +323,28 @@ def maybe_reverse_route(route: List[str], preference_order: List[str]) -> List[s
 
 preference_order = ["Seventh", "Warren", "Innovation", "ERC", "Sixth", "Muir", "Rita"]
 
+def compute_pickup_times(route: List[str], travel_times: Dict[Tuple[str, str], int], latest_arrival: datetime) -> List[Tuple[str, str]]:
+    OVERHEAD_MINUTES = 1
+    times = [(route[-1], latest_arrival.strftime("%I:%M %p"))]
+    curr_time = latest_arrival
+
+    for i in range(len(route) - 2, -1, -1):
+        u, v = route[i], route[i + 1]
+        travel = travel_times.get((u, v)) or travel_times.get((v, u))
+        if travel is None:
+            raise ValueError(f"No travel time between {u} and {v}")
+        curr_time -= timedelta(minutes=(travel + OVERHEAD_MINUTES))
+        times.append((u, curr_time.strftime("%I:%M %p")))
+
+    return list(reversed(times))
+
+
 # --- Example test harness ---
 if __name__ == "__main__":
     graph = {
         "Muir": [("Sixth", 2)],
-        "Sixth": [("Muir", 2), ("ERC", 3)],
-        "ERC": [("Sixth", 3)],
+        "Sixth": [("Muir", 2), ("ERC", 2)],
+        "ERC": [("Sixth", 2)],
         "Seventh": [("ERC", 2), ("Warren", 15), ("Innovation", 16)],
         "Warren": [("Seventh", 15), ("Rita", 110), ("Innovation", 3)],
         "Rita": [("Warren", 110), ("Innovation", 110)],
@@ -334,13 +352,13 @@ if __name__ == "__main__":
     }
 
     actual_time = {
-        "Muir": [("Sixth", 2)],
-        "Sixth": [("Muir", 2), ("ERC", 3)],
-        "ERC": [("Sixth", 3)],
-        "Seventh": [("ERC", 2), ("Warren", 5), ("Innovation", 5)],
-        "Warren": [("Seventh", 5), ("Rita", 10), ("Innovation", 3)],
-        "Rita": [("Warren", 10), ("Innovation", 7)],
-        "Innovation": [("Warren", 3), ("Rita", 7), ("Seventh", 5)]
+        "Muir": [("Sixth", 1)],
+        "Sixth": [("Muir", 1), ("ERC", 2)],
+        "ERC": [("Sixth", 2), ("Seventh", 1)],
+        "Seventh": [("ERC", 1), ("Warren", 5), ("Innovation", 5)],
+        "Warren": [("Seventh", 5), ("Rita", 9), ("Innovation", 2)],
+        "Rita": [("Warren", 9), ("Innovation", 7)],
+        "Innovation": [("Warren", 2), ("Rita", 7), ("Seventh", 5)]
     }
 
     travel_times = compute_all_pairwise_shortest_paths(graph)
@@ -351,36 +369,39 @@ if __name__ == "__main__":
         ([4, 2, 4], {"Muir": 3, "Sixth": 2, "ERC": 4},None),
         ([4, 4, 4], {"Muir": 1, "ERC": 1, "Seventh": 1, "Warren": 1},None),
         ([4, 4, 4], {"Muir": 4, "Sixth": 4, "ERC": 2},None),
-        ([4, 4, 4], {"Seventh": 1, "Muir": 1, "Rita": 2, "Warren": 3},None),
         ([4, 4, 4], {"Seventh": 3, "Muir": 1, "Warren": 3},None),
         ([4, 4], {"Seventh": 3, "Muir": 2, "Warren": 3},None),
         ([4, 4], {"Warren": 1, "Innovation": 1, "Rita": 1, "Muir": 2, "Seventh": 2},None),
         ([4, 4], {"Muir": 2, "Seventh": 2, "Rita": 1, "Innovation": 1, "Warren": 1},None),
-        ([4, 4, 4, 4], {"Muir": 1, "Sixth": 2, "Rita": 2, "Innovation": 1, "Seventh": 1, "ERC": 2, "Warren": 4},None),
-        ([3, 4], {"Innovation": 1, "Rita": 2, "Warren": 2, "Seventh": 1, "Muir": 1}, {
-            0: {"Warren", "Innovation"}
-        }),
-        ([4, 4, 4, 3, 3], {"ERC": 3, "Muir": 3, "Sixth": 2, "Innovation": 1, "Warren": 3, "Seventh": 3, "Rita": 1}, {3: {"Seventh"}, 4: {"Warren", "Innovation"}}),
-        ([4, 3, 4, 3], {"Muir": 4, "Innovation": 1, "Warren": 1, "Rita": 1, "ERC": 2, "Sixth": 2, "Seventh": 1}, {1: {"Innovation"}, 3: {"Seventh"}}),
+        # ([4, 4, 4, 4], {"Muir": 1, "Sixth": 2, "Rita": 2, "Innovation": 1, "Seventh": 1, "ERC": 2, "Warren": 4},None),
+        # ([3, 4], {"Innovation": 1, "Rita": 2, "Warren": 2, "Seventh": 1, "Muir": 1}, {
+        #     0: {"Warren", "Innovation"}
+        # }),
+        # ([4, 4, 4, 3, 3], {"ERC": 3, "Muir": 3, "Sixth": 2, "Innovation": 1, "Warren": 3, "Seventh": 3, "Rita": 1}, {3: {"Seventh"}, 4: {"Warren", "Innovation"}}),
+        # ([4, 3, 4, 3], {"Muir": 4, "Innovation": 1, "Warren": 1, "Rita": 1, "ERC": 2, "Sixth": 2, "Seventh": 1}, {1: {"Innovation"}, 3: {"Seventh"}}),
         ([4, 4], {"Innovation": 1, "Seventh": 1, "ERC": 1, "Muir": 1}, {}),
+        ([4, 4, 4], {"Seventh": 1, "Muir": 1, "Rita": 2, "Warren": 3},None),
     ]
 
     for idx, (capacities, demands, pref) in enumerate(test_cases, 1):
         print(f"\n--- Test Case {idx} ---")
         try:
             routes = create_driver_routes(capacities, demands, travel_times, graph, pref)
-            print(routes)
+            # print(routes)
             for vid in sorted(routes):
                 route = maybe_reverse_route(routes[vid], preference_order)
                 load = sum(demands[c] for c in route)
                 drive = 0 if len(route) == 1 else sum(
                     actual_travel_times.get((route[i], route[i + 1])) or actual_travel_times.get((route[i + 1], route[i])) for i in range(len(route) - 1)
                 )
-                print(f" Driver {vid}: cap={capacities[vid]}, load={load}, "
-                      f"drive_time={drive} → {route}")
+                print(f" Driver {vid}: capacity={capacities[vid]}, load={load}, drive_time={drive} → {route}")
+
+                pickup_times = compute_pickup_times(route, actual_travel_times, LATEST_ARRIVAL)
+                for loc, time_str in pickup_times:
+                    print(f"  - Pickup {loc} at {time_str}")
         except ValueError as e:
             ret = rebalance_groups_export(assign_groups(capacities, graph, demands))
-            print(ret)
+            # print(ret)
             counter = 0
             for car in ret.values():
                 num = 0
@@ -393,7 +414,11 @@ if __name__ == "__main__":
                 travel_time = 0
                 for i in range(len(route)-1):
                     travel_time += actual_travel_times[(route[i], route[i+1])]
-                print(f"Driver {counter}: cap={capacities[i]}, load={num}, drive_time={travel_time} → {maybe_reverse_route(route, preference_order)}")
+                route = maybe_reverse_route(route, preference_order)
+                print(f"Driver {counter}: capacity={capacities[i]}, load={num}, drive_time={travel_time} → {route}")
+                pickup_times = compute_pickup_times(route, actual_travel_times, LATEST_ARRIVAL)
+                for loc, time_str in pickup_times:
+                    print(f"  - Pickup {loc} at {time_str}")
                 counter += 1
             # print(f" No feasible assignment: {e}")
 
