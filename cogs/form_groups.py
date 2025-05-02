@@ -9,6 +9,7 @@ Population = Dict[Location, int]
 GroupSizeList = List[int]
 Group = Dict[Location, int]
 
+TIME_THRESH = 11
 
 def mst_cost(locations: Set[Location], graph: Graph) -> int:
     if len(locations) <= 1:
@@ -261,7 +262,7 @@ def create_driver_routes(
                 used_vids.add(vidx)
 
                 # If over time limit and we have spare vehicles, try splitting
-                if t > 100 and len(used_vids) < len(capacities):
+                if t > TIME_THRESH and len(used_vids) < len(capacities):
                     # Try breaking this subset into 2 disjoint feasible subgroups
                     for r in range(1, len(subset)):
                         for part1 in combinations(subset, r):
@@ -309,6 +310,17 @@ def create_driver_routes(
     return result
 
 
+def maybe_reverse_route(route: List[str], preference_order: List[str]) -> List[str]:
+    if len(route) <= 1:
+        return route
+    preference_map = {name: idx for idx, name in enumerate(preference_order)}
+    start_rank = preference_map.get(route[0], float('inf'))
+    end_rank = preference_map.get(route[-1], float('inf'))
+    return list(reversed(route)) if start_rank < end_rank else route
+    # return route
+
+preference_order = ["Seventh", "Warren", "Innovation", "ERC", "Sixth", "Muir", "Rita"]
+
 # --- Example test harness ---
 if __name__ == "__main__":
     graph = {
@@ -350,6 +362,7 @@ if __name__ == "__main__":
         }),
         ([4, 4, 4, 3, 3], {"ERC": 3, "Muir": 3, "Sixth": 2, "Innovation": 1, "Warren": 3, "Seventh": 3, "Rita": 1}, {3: {"Seventh"}, 4: {"Warren", "Innovation"}}),
         ([4, 3, 4, 3], {"Muir": 4, "Innovation": 1, "Warren": 1, "Rita": 1, "ERC": 2, "Sixth": 2, "Seventh": 1}, {1: {"Innovation"}, 3: {"Seventh"}}),
+        ([4, 4], {"Innovation": 1, "Seventh": 1, "ERC": 1, "Muir": 1}, {}),
     ]
 
     for idx, (capacities, demands, pref) in enumerate(test_cases, 1):
@@ -358,10 +371,10 @@ if __name__ == "__main__":
             routes = create_driver_routes(capacities, demands, travel_times, graph, pref)
             print(routes)
             for vid in sorted(routes):
-                route = routes[vid]
+                route = maybe_reverse_route(routes[vid], preference_order)
                 load = sum(demands[c] for c in route)
                 drive = 0 if len(route) == 1 else sum(
-                    actual_travel_times[(route[i], route[i + 1])] for i in range(len(route) - 1)
+                    actual_travel_times.get((route[i], route[i + 1])) or actual_travel_times.get((route[i + 1], route[i])) for i in range(len(route) - 1)
                 )
                 print(f" Driver {vid}: cap={capacities[vid]}, load={load}, "
                       f"drive_time={drive} → {route}")
@@ -380,7 +393,7 @@ if __name__ == "__main__":
                 travel_time = 0
                 for i in range(len(route)-1):
                     travel_time += actual_travel_times[(route[i], route[i+1])]
-                print(f"Driver {counter}: cap={capacities[i]}, load={num}, drive_time={travel_time} → {route}")
+                print(f"Driver {counter}: cap={capacities[i]}, load={num}, drive_time={travel_time} → {maybe_reverse_route(route, preference_order)}")
                 counter += 1
             # print(f" No feasible assignment: {e}")
 
