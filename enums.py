@@ -32,3 +32,18 @@ class DayOfWeek(StrEnum):
 
 class RoleIds(IntEnum):
     DRIVER = 1286924999730663454
+
+
+class Housing(StrEnum):
+    SIXTH       = "Sixth"
+    SEVENTH     = "Seventh"
+    EIGHTH      = "Eighth"
+    MUIR        = "Muir"
+    REVELLE     = "Revelle"
+    MARSHALL    = "Marshall"
+    ERC         = "ERC"
+    WARREN      = "Warren"
+    PCYN_W      = "Peppercanyon West"
+    PCYN_E      = "Peppercanyon East"
+    RITA        = "Rita"
+    
