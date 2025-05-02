@@ -2,7 +2,8 @@ from typing import List, Dict, Tuple
 from itertools import combinations, permutations
 import heapq
 from collections import defaultdict, deque
-from typing import Dict, List, Tuple,Set
+from typing import Dict, List, Tuple, Set
+
 Location = str
 Graph = Dict[Location, List[Tuple[Location, int]]]
 Population = Dict[Location, int]
@@ -14,6 +15,8 @@ TIME_THRESH = 11
 from datetime import datetime, timedelta
 
 LATEST_ARRIVAL = datetime.strptime("19:10", "%H:%M")  # 7:10 PM
+
+
 def mst_cost(locations: Set[Location], graph: Graph) -> int:
     if len(locations) <= 1:
         return 0
@@ -38,7 +41,7 @@ def mst_cost(locations: Set[Location], graph: Graph) -> int:
             if neighbor in locations and neighbor not in visited:
                 heapq.heappush(heap, (w, v, neighbor))
 
-    return total_cost if len(visited) == len(locations) else float('inf')
+    return total_cost if len(visited) == len(locations) else float("inf")
 
 
 def find_group(start: Location, needed: int, pop: Population, graph: Graph) -> Group:
@@ -63,13 +66,14 @@ def find_group(start: Location, needed: int, pop: Population, graph: Graph) -> G
 
     return group
 
-def assign_groups(group_sizes: GroupSizeList, graph: Graph, population: Population) -> List[Tuple[int, Group]]:
-    
+
+def assign_groups(
+    group_sizes: GroupSizeList, graph: Graph, population: Population
+) -> List[Tuple[int, Group]]:
     # print(group_sizes)
     # print(graph)
     # print(population)
-    
-    
+
     if sum(population.values()) > sum(group_sizes):
         raise ValueError("Too many people for available spots.")
 
@@ -80,7 +84,7 @@ def assign_groups(group_sizes: GroupSizeList, graph: Graph, population: Populati
     for size in group_sizes:
         best_group = None
         best_group_size = 0
-        best_cost = float('inf')
+        best_cost = float("inf")
 
         for start in [loc for loc in pop if pop[loc] > 0]:
             group = find_group(start, size, pop, graph)
@@ -90,7 +94,9 @@ def assign_groups(group_sizes: GroupSizeList, graph: Graph, population: Populati
                 cost = mst_cost(group_locations, graph)
 
                 # Prefer larger group size, then lower cost
-                if (group_size > best_group_size) or (group_size == best_group_size and cost < best_cost):
+                if (group_size > best_group_size) or (
+                    group_size == best_group_size and cost < best_cost
+                ):
                     best_group = group
                     best_group_size = group_size
                     best_cost = cost
@@ -105,15 +111,17 @@ def assign_groups(group_sizes: GroupSizeList, graph: Graph, population: Populati
     return result
 
 
-def rebalance_groups_export(grouping: List[Tuple[int, Group]]) -> List[Tuple[int, Group]]:
+def rebalance_groups_export(
+    grouping: List[Tuple[int, Group]],
+) -> List[Tuple[int, Group]]:
     """Grouping is pass by reference"""
     # print(f"====\n{grouping}\n====")
-    
+
     colleges_mentioned = set()
     split_colleges = set()
     split_colleges_details = defaultdict(list)
 
-    for (_, riders) in grouping:
+    for _, riders in grouping:
         for college, _ in riders.items():
             if college in colleges_mentioned:
                 split_colleges.add(college)
@@ -123,24 +131,28 @@ def rebalance_groups_export(grouping: List[Tuple[int, Group]]) -> List[Tuple[int
     for idx, (num_spots, riders) in enumerate(grouping):
         for college, num_people in riders.items():
             if college in split_colleges:
-                split_colleges_details[college].append({'open spots': num_spots - sum(riders.values()),'num people': num_people, 'group idx': idx})
+                split_colleges_details[college].append(
+                    {
+                        "open spots": num_spots - sum(riders.values()),
+                        "num people": num_people,
+                        "group idx": idx,
+                    }
+                )
 
-
-    
     for college, details in split_colleges_details.items():
         max_open_spots = 0
         total_from_college = 0
         # can_move = False
         max_idx = 0
         for car in details:
-            if (max_open_spots < car['open spots'] + car['num people']):
-                max_open_spots = car['open spots'] + car['num people']
-                max_idx = car['group idx']
-            total_from_college += car['num people']
-                    
+            if max_open_spots < car["open spots"] + car["num people"]:
+                max_open_spots = car["open spots"] + car["num people"]
+                max_idx = car["group idx"]
+            total_from_college += car["num people"]
+
         if total_from_college <= max_open_spots:
             # can_move = True
-            
+
             for idx, (_, riders) in enumerate(grouping):
                 if college in riders and idx != max_idx:
                     del riders[college]
@@ -148,7 +160,6 @@ def rebalance_groups_export(grouping: List[Tuple[int, Group]]) -> List[Tuple[int
                     riders[college] = total_from_college
 
     # print(f"====\n{grouping}\n====")
-
 
     ret = {}
     for i, (_, val) in enumerate(grouping):
@@ -158,12 +169,12 @@ def rebalance_groups_export(grouping: List[Tuple[int, Group]]) -> List[Tuple[int
     return ret
     print(f"3 grouping: {grouping}")
 
-
     return grouping
 
 
-
-def compute_all_pairwise_shortest_paths(graph: Dict[str, List[Tuple[str, int]]]) -> Dict[Tuple[str, str], int]:
+def compute_all_pairwise_shortest_paths(
+    graph: Dict[str, List[Tuple[str, int]]],
+) -> Dict[Tuple[str, str], int]:
     # Dijkstra for each node
     def dijkstra(source: str) -> Dict[str, int]:
         dist = {source: 0}
@@ -192,7 +203,7 @@ def create_driver_routes(
     college_demands: Dict[str, int],
     travel_times: Dict[Tuple[str, str], int],
     graph,
-    driver_preferences: Dict[int, set] = None  # driver_id -> set of preferred colleges
+    driver_preferences: Dict[int, set] = None,  # driver_id -> set of preferred colleges
 ) -> Dict[int, List[str]]:
     colleges = list(college_demands.keys())
     N = len(colleges)
@@ -212,12 +223,14 @@ def create_driver_routes(
                         best_time = 0
                         best_order = [subset[0]]
                     else:
-                        best_time = float('inf')
+                        best_time = float("inf")
                         best_order = None
                         for perm in permutations(subset):
                             try:
-                                t = sum(travel_times[(perm[i], perm[i + 1])]
-                                        for i in range(r - 1))
+                                t = sum(
+                                    travel_times[(perm[i], perm[i + 1])]
+                                    for i in range(r - 1)
+                                )
                             except KeyError:
                                 continue  # skip incomplete paths
                             if t < best_time:
@@ -227,10 +240,14 @@ def create_driver_routes(
                         feasible.append((set(subset), vidx, best_time, best_order))
 
     # 2) Backtrack to cover ALL without reusing vehicles
-    best = {"routes": None, "num": float('inf'), "time": float('inf')}
+    best = {"routes": None, "num": float("inf"), "time": float("inf")}
 
-    def backtrack(covered: set, used_vids: set,
-                chosen: List[Tuple[set, int, int, List[str]]], time_sum: int):
+    def backtrack(
+        covered: set,
+        used_vids: set,
+        chosen: List[Tuple[set, int, int, List[str]]],
+        time_sum: int,
+    ):
         if len(chosen) > best["num"]:
             return
         if len(chosen) == best["num"] and time_sum >= best["time"]:
@@ -240,22 +257,31 @@ def create_driver_routes(
             if driver_preferences:
                 for vidx, required_stops in driver_preferences.items():
                     # Find what this driver covered
-                    assigned_subset = next((subset for subset, v, _, _ in chosen if v == vidx), None)
-                    if assigned_subset is None or not (assigned_subset & required_stops):
+                    assigned_subset = next(
+                        (subset for subset, v, _, _ in chosen if v == vidx), None
+                    )
+                    if assigned_subset is None or not (
+                        assigned_subset & required_stops
+                    ):
                         return  # skip this complete assignment — it doesn't meet requirement
 
-            if len(chosen) < best["num"] or (len(chosen) == best["num"] and time_sum < best["time"]):
+            if len(chosen) < best["num"] or (
+                len(chosen) == best["num"] and time_sum < best["time"]
+            ):
                 best.update(routes=list(chosen), num=len(chosen), time=time_sum)
             return
-
 
         uc = next(c for c in colleges if c not in covered)
         sorted_feasible = sorted(
             feasible,
             key=lambda f: (
-                0 if driver_preferences and f[1] in driver_preferences and f[0] & driver_preferences[f[1]] else 1,
-                f[2]  # secondary: prefer lower travel time
-            )
+                0
+                if driver_preferences
+                and f[1] in driver_preferences
+                and f[0] & driver_preferences[f[1]]
+                else 1,
+                f[2],  # secondary: prefer lower travel time
+            ),
         )
 
         for subset, vidx, t, order in sorted_feasible:
@@ -274,29 +300,50 @@ def create_driver_routes(
                             if not part1 or not part2:
                                 continue
                             for v1 in set(range(len(capacities))) - used_vids:
-                                for v2 in set(range(len(capacities))) - used_vids - {v1}:
-                                    opt1 = [f for f in feasible if f[0] == part1 and f[1] == v1]
-                                    opt2 = [f for f in feasible if f[0] == part2 and f[1] == v2]
+                                for v2 in (
+                                    set(range(len(capacities))) - used_vids - {v1}
+                                ):
+                                    opt1 = [
+                                        f
+                                        for f in feasible
+                                        if f[0] == part1 and f[1] == v1
+                                    ]
+                                    opt2 = [
+                                        f
+                                        for f in feasible
+                                        if f[0] == part2 and f[1] == v2
+                                    ]
                                     if opt1 and opt2:
                                         f1 = opt1[0]
                                         f2 = opt2[0]
-                                        if f1[2] + f2[2] < t:  # Only split if combined cost is better
+                                        if (
+                                            f1[2] + f2[2] < t
+                                        ):  # Only split if combined cost is better
                                             chosen[-1] = f1
                                             chosen.append(f2)
                                             used_vids.add(v1)
                                             used_vids.add(v2)
-                                            backtrack(covered | subset, used_vids, chosen, time_sum - t + f1[2] + f2[2])
+                                            backtrack(
+                                                covered | subset,
+                                                used_vids,
+                                                chosen,
+                                                time_sum - t + f1[2] + f2[2],
+                                            )
                                             used_vids.remove(v1)
                                             used_vids.remove(v2)
                                             chosen.pop()
-                                            chosen[-1] = (subset, vidx, t, order)  # restore original
+                                            chosen[-1] = (
+                                                subset,
+                                                vidx,
+                                                t,
+                                                order,
+                                            )  # restore original
 
                 else:
                     backtrack(covered | subset, used_vids, chosen, time_sum + t)
 
                 used_vids.remove(vidx)
                 chosen.pop()
-
 
     backtrack(set(), set(), [], 0)
 
@@ -307,7 +354,7 @@ def create_driver_routes(
         raise ValueError("No feasible assignment found")
 
     result: Dict[int, List[str]] = {}
-    for subset, vidx, _, order in best["routes"]: # pylint-ignore: E1133
+    for subset, vidx, _, order in best["routes"]:  # pylint: disable=not-an-iterable
         result[vidx] = order
 
     return result
@@ -317,14 +364,18 @@ def maybe_reverse_route(route: List[str], preference_order: List[str]) -> List[s
     if len(route) <= 1:
         return route
     preference_map = {name: idx for idx, name in enumerate(preference_order)}
-    start_rank = preference_map.get(route[0], float('inf'))
-    end_rank = preference_map.get(route[-1], float('inf'))
+    start_rank = preference_map.get(route[0], float("inf"))
+    end_rank = preference_map.get(route[-1], float("inf"))
     return list(reversed(route)) if start_rank < end_rank else route
     # return route
 
+
 preference_order = ["Seventh", "Warren", "Innovation", "ERC", "Sixth", "Muir", "Rita"]
 
-def compute_pickup_times(route: List[str], travel_times: Dict[Tuple[str, str], int], latest_arrival: datetime) -> List[Tuple[str, str]]:
+
+def compute_pickup_times(
+    route: List[str], travel_times: Dict[Tuple[str, str], int], latest_arrival: datetime
+) -> List[Tuple[str, str]]:
     OVERHEAD_MINUTES = 1
     times = [(route[-1], latest_arrival.strftime("%I:%M %p"))]
     curr_time = latest_arrival
@@ -342,7 +393,6 @@ def compute_pickup_times(route: List[str], travel_times: Dict[Tuple[str, str], i
 
 # --- Example test harness ---
 if __name__ == "__main__":
-
     # pickup_location = {
     #     Housing.MUIR: "Scholars ln",
     #     Housing.SIXTH: "Sixth loop",
@@ -361,7 +411,7 @@ if __name__ == "__main__":
         "Seventh": [("ERC", 2), ("Warren", 15), ("Innovation", 16)],
         "Warren": [("Seventh", 15), ("Rita", 110), ("Innovation", 3)],
         "Rita": [("Warren", 110), ("Innovation", 110)],
-        "Innovation": [("Warren", 3), ("Rita", 110), ("Seventh", 16)]
+        "Innovation": [("Warren", 3), ("Rita", 110), ("Seventh", 16)],
     }
 
     actual_time = {
@@ -371,21 +421,29 @@ if __name__ == "__main__":
         "Seventh": [("ERC", 1), ("Warren", 5), ("Innovation", 5)],
         "Warren": [("Seventh", 5), ("Rita", 9), ("Innovation", 2)],
         "Rita": [("Warren", 9), ("Innovation", 7)],
-        "Innovation": [("Warren", 2), ("Rita", 7), ("Seventh", 5)]
+        "Innovation": [("Warren", 2), ("Rita", 7), ("Seventh", 5)],
     }
 
     travel_times = compute_all_pairwise_shortest_paths(graph)
     actual_travel_times = compute_all_pairwise_shortest_paths(actual_time)
 
     test_cases = [
-        ([4, 2, 4], {"Muir": 1, "Sixth": 1, "ERC": 1},None),
-        ([4, 2, 4], {"Muir": 3, "Sixth": 2, "ERC": 4},None),
-        ([4, 4, 4], {"Muir": 1, "ERC": 1, "Seventh": 1, "Warren": 1},None),
-        ([4, 4, 4], {"Muir": 4, "Sixth": 4, "ERC": 2},None),
-        ([4, 4, 4], {"Seventh": 3, "Muir": 1, "Warren": 3},None),
-        ([4, 4], {"Seventh": 3, "Muir": 2, "Warren": 3},None),
-        ([4, 4], {"Warren": 1, "Innovation": 1, "Rita": 1, "Muir": 2, "Seventh": 2},None),
-        ([4, 4], {"Muir": 2, "Seventh": 2, "Rita": 1, "Innovation": 1, "Warren": 1},None),
+        ([4, 2, 4], {"Muir": 1, "Sixth": 1, "ERC": 1}, None),
+        ([4, 2, 4], {"Muir": 3, "Sixth": 2, "ERC": 4}, None),
+        ([4, 4, 4], {"Muir": 1, "ERC": 1, "Seventh": 1, "Warren": 1}, None),
+        ([4, 4, 4], {"Muir": 4, "Sixth": 4, "ERC": 2}, None),
+        ([4, 4, 4], {"Seventh": 3, "Muir": 1, "Warren": 3}, None),
+        ([4, 4], {"Seventh": 3, "Muir": 2, "Warren": 3}, None),
+        (
+            [4, 4],
+            {"Warren": 1, "Innovation": 1, "Rita": 1, "Muir": 2, "Seventh": 2},
+            None,
+        ),
+        (
+            [4, 4],
+            {"Muir": 2, "Seventh": 2, "Rita": 1, "Innovation": 1, "Warren": 1},
+            None,
+        ),
         # ([4, 4, 4, 4], {"Muir": 1, "Sixth": 2, "Rita": 2, "Innovation": 1, "Seventh": 1, "ERC": 2, "Warren": 4},None),
         # ([3, 4], {"Innovation": 1, "Rita": 2, "Warren": 2, "Seventh": 1, "Muir": 1}, {
         #     0: {"Warren", "Innovation"}
@@ -393,23 +451,35 @@ if __name__ == "__main__":
         # ([4, 4, 4, 3, 3], {"ERC": 3, "Muir": 3, "Sixth": 2, "Innovation": 1, "Warren": 3, "Seventh": 3, "Rita": 1}, {3: {"Seventh"}, 4: {"Warren", "Innovation"}}),
         # ([4, 3, 4, 3], {"Muir": 4, "Innovation": 1, "Warren": 1, "Rita": 1, "ERC": 2, "Sixth": 2, "Seventh": 1}, {1: {"Innovation"}, 3: {"Seventh"}}),
         ([4, 4], {"Innovation": 1, "Seventh": 1, "ERC": 1, "Muir": 1}, {}),
-        ([4, 4, 4], {"Seventh": 1, "Muir": 1, "Rita": 2, "Warren": 3},None),
+        ([4, 4, 4], {"Seventh": 1, "Muir": 1, "Rita": 2, "Warren": 3}, None),
     ]
 
     for idx, (capacities, demands, pref) in enumerate(test_cases, 1):
         print(f"\n--- Test Case {idx} ---")
         try:
-            routes = create_driver_routes(capacities, demands, travel_times, graph, pref)
+            routes = create_driver_routes(
+                capacities, demands, travel_times, graph, pref
+            )
             # print(routes)
             for vid in sorted(routes):
                 route = maybe_reverse_route(routes[vid], preference_order)
                 load = sum(demands[c] for c in route)
-                drive = 0 if len(route) == 1 else sum(
-                    actual_travel_times.get((route[i], route[i + 1])) or actual_travel_times.get((route[i + 1], route[i])) for i in range(len(route) - 1)
+                drive = (
+                    0
+                    if len(route) == 1
+                    else sum(
+                        actual_travel_times.get((route[i], route[i + 1]))
+                        or actual_travel_times.get((route[i + 1], route[i]))
+                        for i in range(len(route) - 1)
+                    )
                 )
-                print(f" Driver {vid}: capacity={capacities[vid]}, load={load}, drive_time={drive} → {route}")
+                print(
+                    f" Driver {vid}: capacity={capacities[vid]}, load={load}, drive_time={drive} → {route}"
+                )
 
-                pickup_times = compute_pickup_times(route, actual_travel_times, LATEST_ARRIVAL)
+                pickup_times = compute_pickup_times(
+                    route, actual_travel_times, LATEST_ARRIVAL
+                )
                 for loc, time_str in pickup_times:
                     print(f"  - Pickup {loc} at {time_str}")
         except ValueError as e:
@@ -419,19 +489,22 @@ if __name__ == "__main__":
             for car in ret.values():
                 num = 0
                 route = []
-                
+
                 for colleges, num_ppl in car.items():
                     num += num_ppl
                     route.append(colleges)
 
                 travel_time = 0
-                for i in range(len(route)-1):
-                    travel_time += actual_travel_times[(route[i], route[i+1])]
+                for i in range(len(route) - 1):
+                    travel_time += actual_travel_times[(route[i], route[i + 1])]
                 route = maybe_reverse_route(route, preference_order)
-                print(f"Driver {counter}: capacity={capacities[i]}, load={num}, drive_time={travel_time} → {route}")
-                pickup_times = compute_pickup_times(route, actual_travel_times, LATEST_ARRIVAL)
+                print(
+                    f"Driver {counter}: capacity={capacities[i]}, load={num}, drive_time={travel_time} → {route}"
+                )
+                pickup_times = compute_pickup_times(
+                    route, actual_travel_times, LATEST_ARRIVAL
+                )
                 for loc, time_str in pickup_times:
                     print(f"  - Pickup {loc} at {time_str}")
                 counter += 1
             # print(f" No feasible assignment: {e}")
-
