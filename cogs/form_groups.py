@@ -8,6 +8,7 @@ Graph = Dict[Location, List[Tuple[Location, int]]]
 Population = Dict[Location, int]
 GroupSizeList = List[int]
 Group = Dict[Location, int]
+# from enums import Housing
 
 TIME_THRESH = 11
 from datetime import datetime, timedelta
@@ -306,7 +307,7 @@ def create_driver_routes(
         raise ValueError("No feasible assignment found")
 
     result: Dict[int, List[str]] = {}
-    for subset, vidx, _, order in best["routes"]:
+    for subset, vidx, _, order in best["routes"]: # pylint-ignore: E1133
         result[vidx] = order
 
     return result
@@ -341,6 +342,18 @@ def compute_pickup_times(route: List[str], travel_times: Dict[Tuple[str, str], i
 
 # --- Example test harness ---
 if __name__ == "__main__":
+
+    # pickup_location = {
+    #     Housing.MUIR: "Scholars ln",
+    #     Housing.SIXTH: "Sixth loop",
+    #     Housing.ERC: "Pangea",
+    #     Housing.SEVENTH: "Seventh",
+    #     Housing.WARREN: "Equality",
+    #     Housing.RITA: "Rita",
+    #     Housing.MARSHALL: "Pangea",
+    #     Housing.PCYN_E: "Innovation"
+    # }
+
     graph = {
         "Muir": [("Sixth", 2)],
         "Sixth": [("Muir", 2), ("ERC", 2)],
