@@ -201,7 +201,7 @@ def compute_all_pairwise_shortest_paths(
 def create_driver_routes(
     capacities: List[int],
     college_demands: Dict[str, int],
-    travel_times: Dict[Tuple[str, str], int],
+    pairwise_edge_weights: Dict[Tuple[str, str], int],
     driver_preferences: Dict[int, set] = None,  # driver_id -> set of preferred colleges
 ) -> Dict[int, List[str]]:
     colleges = list(college_demands.keys())
@@ -227,7 +227,7 @@ def create_driver_routes(
                         for perm in permutations(subset):
                             try:
                                 t = sum(
-                                    travel_times[(perm[i], perm[i + 1])]
+                                    pairwise_edge_weights[(perm[i], perm[i + 1])]
                                     for i in range(r - 1)
                                 )
                             except KeyError:
@@ -373,7 +373,7 @@ preference_order = ["Seventh", "Warren", "Innovation", "ERC", "Sixth", "Muir", "
 
 
 def compute_pickup_times(
-    route: List[str], travel_times: Dict[Tuple[str, str], int], latest_arrival: datetime
+    route: List[str], pairwise_edge_weights: Dict[Tuple[str, str], int], latest_arrival: datetime
 ) -> List[Tuple[str, str]]:
     OVERHEAD_MINUTES = 1
     times = [(route[-1], latest_arrival.strftime("%I:%M %p"))]
@@ -381,7 +381,7 @@ def compute_pickup_times(
 
     for i in range(len(route) - 2, -1, -1):
         u, v = route[i], route[i + 1]
-        travel = travel_times.get((u, v)) or travel_times.get((v, u))
+        travel = pairwise_edge_weights.get((u, v)) or pairwise_edge_weights.get((v, u))
         if travel is None:
             raise ValueError(f"No travel time between {u} and {v}")
         curr_time -= timedelta(minutes=(travel + OVERHEAD_MINUTES))
@@ -403,7 +403,7 @@ if __name__ == "__main__":
     #     Housing.PCYN_E: "Innovation"
     # }
 
-    graph = {
+    edge_weights = {
         "Muir": [("Sixth", 2)],
         "Sixth": [("Muir", 2), ("ERC", 2)],
         "ERC": [("Sixth", 2)],
@@ -425,8 +425,8 @@ if __name__ == "__main__":
         "Villas of Renaissance": [("Rita", 15)]
     }
 
-    travel_times = compute_all_pairwise_shortest_paths(graph)
-    actual_travel_times = compute_all_pairwise_shortest_paths(actual_time)
+    pairwise_edge_weights = compute_all_pairwise_shortest_paths(edge_weights)
+    time_to_drive = compute_all_pairwise_shortest_paths(actual_time)
 
     test_cases = [
         # ([4, 2, 4], {"Muir": 1, "Sixth": 1, "ERC": 1}, None),
@@ -460,7 +460,7 @@ if __name__ == "__main__":
         print(f"\n--- Test Case {idx} ---")
         try:
             routes = create_driver_routes(
-                capacities, demands, travel_times, pref
+                capacities, demands, pairwise_edge_weights, pref
             )
             # print(routes)
             for vid in sorted(routes):
@@ -470,8 +470,8 @@ if __name__ == "__main__":
                     0
                     if len(route) == 1
                     else sum(
-                        actual_travel_times.get((route[i], route[i + 1]))
-                        or actual_travel_times.get((route[i + 1], route[i]))
+                        time_to_drive.get((route[i], route[i + 1]))
+                        or time_to_drive.get((route[i + 1], route[i]))
                         for i in range(len(route) - 1)
                     )
                 )
@@ -480,12 +480,12 @@ if __name__ == "__main__":
                 )
 
                 pickup_times = compute_pickup_times(
-                    route, actual_travel_times, LATEST_ARRIVAL
+                    route, time_to_drive, LATEST_ARRIVAL
                 )
                 for loc, time_str in pickup_times:
                     print(f"  - Pickup {loc} at {time_str}")
         except ValueError as e:
-            ret = rebalance_groups_export(assign_groups(capacities, graph, demands))
+            ret = rebalance_groups_export(assign_groups(capacities, edge_weights, demands))
             # print(ret)
             counter = 0
             for car in ret.values():
@@ -498,13 +498,13 @@ if __name__ == "__main__":
 
                 travel_time = 0
                 for i in range(len(route) - 1):
-                    travel_time += actual_travel_times[(route[i], route[i + 1])]
+                    travel_time += time_to_drive[(route[i], route[i + 1])]
                 route = maybe_reverse_route(route, preference_order)
                 print(
                     f"Driver {counter}: capacity={capacities[i]}, load={num}, drive_time={travel_time} → {route}"
                 )
                 pickup_times = compute_pickup_times(
-                    route, actual_travel_times, LATEST_ARRIVAL
+                    route, time_to_drive, LATEST_ARRIVAL
                 )
                 for loc, time_str in pickup_times:
                     print(f"  - Pickup {loc} at {time_str}")
