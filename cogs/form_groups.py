@@ -202,7 +202,6 @@ def create_driver_routes(
     capacities: List[int],
     college_demands: Dict[str, int],
     travel_times: Dict[Tuple[str, str], int],
-    graph,
     driver_preferences: Dict[int, set] = None,  # driver_id -> set of preferred colleges
 ) -> Dict[int, List[str]]:
     colleges = list(college_demands.keys())
@@ -410,55 +409,58 @@ if __name__ == "__main__":
         "ERC": [("Sixth", 2)],
         "Seventh": [("ERC", 2), ("Warren", 15), ("Innovation", 16)],
         "Warren": [("Seventh", 15), ("Rita", 110), ("Innovation", 3)],
-        "Rita": [("Warren", 110), ("Innovation", 110)],
+        "Rita": [("Warren", 110), ("Innovation", 110), ("Villas of Renaissance", 15)],
         "Innovation": [("Warren", 3), ("Rita", 110), ("Seventh", 16)],
+        "Villas of Renaissance": [("Rita", 15)]
     }
 
     actual_time = {
         "Muir": [("Sixth", 1)],
-        "Sixth": [("Muir", 1), ("ERC", 2)],
-        "ERC": [("Sixth", 2), ("Seventh", 1)],
+        "Sixth": [("Muir", 1), ("ERC", 1)],
+        "ERC": [("Sixth", 1), ("Seventh", 1)],
         "Seventh": [("ERC", 1), ("Warren", 5), ("Innovation", 5)],
-        "Warren": [("Seventh", 5), ("Rita", 9), ("Innovation", 2)],
-        "Rita": [("Warren", 9), ("Innovation", 7)],
-        "Innovation": [("Warren", 2), ("Rita", 7), ("Seventh", 5)],
+        "Warren": [("Seventh", 5), ("Rita", 9), ("Innovation", 1)],
+        "Rita": [("Warren", 9), ("Innovation", 7), ("Villas of Renaissance", 15)],
+        "Innovation": [("Warren", 1), ("Rita", 7), ("Seventh", 5)],
+        "Villas of Renaissance": [("Rita", 15)]
     }
 
     travel_times = compute_all_pairwise_shortest_paths(graph)
     actual_travel_times = compute_all_pairwise_shortest_paths(actual_time)
 
     test_cases = [
-        ([4, 2, 4], {"Muir": 1, "Sixth": 1, "ERC": 1}, None),
-        ([4, 2, 4], {"Muir": 3, "Sixth": 2, "ERC": 4}, None),
-        ([4, 4, 4], {"Muir": 1, "ERC": 1, "Seventh": 1, "Warren": 1}, None),
-        ([4, 4, 4], {"Muir": 4, "Sixth": 4, "ERC": 2}, None),
-        ([4, 4, 4], {"Seventh": 3, "Muir": 1, "Warren": 3}, None),
-        ([4, 4], {"Seventh": 3, "Muir": 2, "Warren": 3}, None),
-        (
-            [4, 4],
-            {"Warren": 1, "Innovation": 1, "Rita": 1, "Muir": 2, "Seventh": 2},
-            None,
-        ),
-        (
-            [4, 4],
-            {"Muir": 2, "Seventh": 2, "Rita": 1, "Innovation": 1, "Warren": 1},
-            None,
-        ),
+        # ([4, 2, 4], {"Muir": 1, "Sixth": 1, "ERC": 1}, None),
+        # ([4, 2, 4], {"Muir": 3, "Sixth": 2, "ERC": 4}, None),
+        # ([4, 4, 4], {"Muir": 1, "ERC": 1, "Seventh": 1, "Warren": 1}, None),
+        # ([4, 4, 4], {"Muir": 4, "Sixth": 4, "ERC": 2}, None),
+        # ([4, 4, 4], {"Seventh": 3, "Muir": 1, "Warren": 3}, None),
+        # ([4, 4], {"Seventh": 3, "Muir": 2, "Warren": 3}, None),
+        # (
+        #     [4, 4],
+        #     {"Warren": 1, "Innovation": 1, "Rita": 1, "Muir": 2, "Seventh": 2},
+        #     None,
+        # ),
+        # (
+        #     [4, 4],
+        #     {"Muir": 2, "Seventh": 2, "Rita": 1, "Innovation": 1, "Warren": 1},
+        #     None,
+        # ),
         # ([4, 4, 4, 4], {"Muir": 1, "Sixth": 2, "Rita": 2, "Innovation": 1, "Seventh": 1, "ERC": 2, "Warren": 4},None),
         # ([3, 4], {"Innovation": 1, "Rita": 2, "Warren": 2, "Seventh": 1, "Muir": 1}, {
         #     0: {"Warren", "Innovation"}
         # }),
         # ([4, 4, 4, 3, 3], {"ERC": 3, "Muir": 3, "Sixth": 2, "Innovation": 1, "Warren": 3, "Seventh": 3, "Rita": 1}, {3: {"Seventh"}, 4: {"Warren", "Innovation"}}),
         # ([4, 3, 4, 3], {"Muir": 4, "Innovation": 1, "Warren": 1, "Rita": 1, "ERC": 2, "Sixth": 2, "Seventh": 1}, {1: {"Innovation"}, 3: {"Seventh"}}),
-        ([4, 4], {"Innovation": 1, "Seventh": 1, "ERC": 1, "Muir": 1}, {}),
-        ([4, 4, 4], {"Seventh": 1, "Muir": 1, "Rita": 2, "Warren": 3}, None),
+        # ([4, 4], {"Innovation": 1, "Seventh": 1, "ERC": 1, "Muir": 1}, {}),
+        # ([4, 4, 4], {"Seventh": 1, "Muir": 1, "Rita": 2, "Warren": 3}, None),
+        ([4, 4, 4, 4, 4],{"Seventh": 1, "ERC": 2, "Muir": 1, "Sixth": 2, "Warren": 3, "Innovation": 1, "Rita": 2, "Villas of Renaissance": 1},{})
     ]
 
     for idx, (capacities, demands, pref) in enumerate(test_cases, 1):
         print(f"\n--- Test Case {idx} ---")
         try:
             routes = create_driver_routes(
-                capacities, demands, travel_times, graph, pref
+                capacities, demands, travel_times, pref
             )
             # print(routes)
             for vid in sorted(routes):
