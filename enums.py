@@ -35,15 +35,14 @@ class RoleIds(IntEnum):
 
 
 class Housing(StrEnum):
-    SIXTH       = "Sixth"
-    SEVENTH     = "Seventh"
-    EIGHTH      = "Eighth"
-    MUIR        = "Muir"
-    REVELLE     = "Revelle"
-    MARSHALL    = "Marshall"
-    ERC         = "ERC"
-    WARREN      = "Warren"
-    PCYN_W      = "Peppercanyon West"
-    PCYN_E      = "Peppercanyon East"
-    RITA        = "Rita"
-    
+    SIXTH = "Sixth"
+    SEVENTH = "Seventh"
+    EIGHTH = "Eighth"
+    MUIR = "Muir"
+    REVELLE = "Revelle"
+    MARSHALL = "Marshall"
+    ERC = "ERC"
+    WARREN = "Warren"
+    PCYN_W = "Peppercanyon West"
+    PCYN_E = "Peppercanyon East"
+    RITA = "Rita"
