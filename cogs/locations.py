@@ -128,6 +128,7 @@ class Locations(commands.Cog):
                     if (
                         day in message.content.lower()
                         and "react" in message.content.lower()
+                        and "class" not in message.content.lower()
                     ):
                         most_recent_message = message
             if not most_recent_message:
