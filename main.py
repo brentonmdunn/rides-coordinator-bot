@@ -3,6 +3,7 @@ import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from database import init_db
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -43,8 +44,19 @@ async def load_extensions():
                 print(f"❌ Failed to load extension {extension}: {e}")
 
 
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+    if isinstance(error, discord.app_commands.CheckFailure):
+        await interaction.response.send_message(
+            "❌ You must be a server admin to use this command.", ephemeral=True
+        )
+    else:
+        raise error
+
+
 async def main():
     async with bot:
+        await init_db()
         await load_extensions()
         await bot.start(TOKEN)
 
