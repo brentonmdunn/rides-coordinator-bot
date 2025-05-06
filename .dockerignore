@@ -10,3 +10,8 @@ colleges.txt
 *.old
 *.pyc
 *__pycache__*
+
+# SQLite database
+*.db
+*.db-journal
+*.sqlite3
