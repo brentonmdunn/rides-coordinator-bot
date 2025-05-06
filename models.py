@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String
 from database import Base
 
+
 class DiscordUsers(Base):
     __tablename__ = "discord_usernames"
 

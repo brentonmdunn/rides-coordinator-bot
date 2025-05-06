@@ -45,7 +45,9 @@ async def load_extensions():
 
 
 @bot.tree.error
-async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+async def on_app_command_error(
+    interaction: discord.Interaction, error: discord.app_commands.AppCommandError
+):
     if isinstance(error, discord.app_commands.CheckFailure):
         await interaction.response.send_message(
             "❌ You must be a server admin to use this command.", ephemeral=True

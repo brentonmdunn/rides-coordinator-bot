@@ -2,6 +2,7 @@
 import discord
 from discord import app_commands
 
+
 def is_admin():
     async def predicate(interaction: discord.Interaction) -> bool:
         # Ensure this is used in a guild (not a DM)

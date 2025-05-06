@@ -10,6 +10,7 @@ AsyncSessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSes
 
 Base = declarative_base()
 
+
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
