@@ -21,5 +21,4 @@ def parse_discord_username(username: str) -> str:
     """
     Returns username without @ symbol.
     """
-    username = username.lower()
     return username if "@" not in username else username[1:]
