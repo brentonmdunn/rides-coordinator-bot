@@ -1,3 +1,4 @@
+from datetime import datetime
 import discord
 from discord.ext import commands
 import requests
@@ -35,8 +36,8 @@ LOCATIONS_CHANNELS_WHITELIST = [
 
 
 class Col(IntEnum):
-    EMAIL_ADDRESS = 1
-    NAME = 2
+    EMAIL_ADDRESS = 2
+    NAME = 0
     DISCORD_USERNAME = 3
     PREFERRED_CONTACT = 4
     NEED_RIDE = 5
@@ -185,60 +186,77 @@ class Retreat(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-    @discord.app_commands.command(name="test", description="List pickups for retreat.")
-    async def test(self, interaction: discord.Interaction):
-        async def logic(reader):
-            guild = self.bot.get_guild(GUILD_ID)
-            for row in reader:
-                if "no" in row[Col.NEED_RIDE].lower():
-                    username = parse_discord_username(row[Col.DISCORD_USERNAME])
-                    role_name = "retreat driver"
+    @staticmethod
+    async def group_by_time(interaction):
 
-                    role = discord.utils.get(guild.roles, name=role_name)
+        # Load CSV
+        response = requests.get(RETREAT_CSV_URL)
+        if response.status_code != 200:
+            await interaction.response.send_message("Failed to retrieve the CSV file.")
+            return
 
-                    # Try matching by both .name and .display_name, case-insensitive
-                    member = discord.utils.find(
-                        lambda m: m.name.lower() == username.lower()
-                        or m.display_name.lower() == username.lower(),
-                        guild.members,
-                    )
+        csv_data = response.content.decode("utf-8")
+        csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
+        time_groups = defaultdict(list)
 
-                    if member is None:
-                        print(f"⚠️ Could not find member with username: {username}")
-                        continue
-                    elif role is None:
-                        print(f"⚠️ Role '{role_name}' not found.")
-                        continue
-                    elif role in member.roles:
-                        print(f"⚠️ {username} already has '{role_name}' role.")
-                        continue
-                    else:
-                        await member.add_roles(role)
-                        print(f"✅ Added role '{role_name}' to {member.display_name}")
+        first = True
+        for row in csv_reader:
+            if first:
+                first = False
+                continue
+            name = row[Col.NAME]
+            time = row[Col.LEAVE_TIME]
+            address = row[Col.PICKUP_LOCATION]
+            time_groups[time].append(f"{name} - {address}")
 
-        async def fetch_csv():
-            url = os.getenv("RETREAT_CSV_URL")
+        return time_groups
+
+    @staticmethod
+    def create_group_embed(time_groups: dict):
+        embed = discord.Embed(
+            title="📅 Grouped by Time",
+            description="Participants grouped by time slots.",
+            color=discord.Color.blue()
+        )
+
+        # Convert and sort times using datetime
+        def parse_time(t):
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as resp:
-                        if resp.status == 200:
-                            content = await resp.text()
-                            return csv.reader(io.StringIO(content))
-                        else:
-                            print(f"❌ Failed to fetch CSV: HTTP {resp.status}")
-            except Exception as e:
-                print(f"⚠️ Error fetching CSV: {e}")
-            return None
+                return datetime.strptime(t.strip(), "%I:%M:%S %p")
+            except ValueError:
+                return datetime.min  # fallback for malformed times
 
-        async def run_csv_job():
-            reader = await fetch_csv()
-            if reader:
-                await logic(reader)
+        for time in sorted(time_groups, key=parse_time):
+            names = time_groups[time]
+            name_list = '\n'.join(f"- {name}" for name in names)
+            embed.add_field(name=f"🕒 {time}", value=name_list, inline=False)
 
-        await run_csv_job()
+        return embed
 
-        await interaction.response.send_message("Success")
+    @discord.app_commands.command(
+        name="list-pickups-retreat-time", description="List pickups for retreat separated by time."
+    )
+    async def list_pickups_retreat_time(self, interaction: discord.Interaction):
+  
 
+        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
+            await interaction.response.send_message(
+                "Command cannot be used in this channel.", ephemeral=True
+            )
+            logger.info(
+                f"This command is not allowed in #{interaction.channel} by {interaction.user}"
+            )
+            return
+        
+        group_data = await Retreat.group_by_time(interaction)
+        embed = Retreat.create_group_embed(group_data)
+
+        await interaction.response.send_message(embed=embed)
+
+
+
+
+        
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Retreat(bot))
