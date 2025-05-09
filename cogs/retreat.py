@@ -10,12 +10,8 @@ from logger import logger
 from enum import IntEnum
 from dotenv import load_dotenv
 import os
-from utils.parsing import parse_discord_username
 
 
-import aiohttp
-import io
-from utils.constants import GUILD_ID
 
 
 load_dotenv()
@@ -188,7 +184,6 @@ class Retreat(commands.Cog):
 
     @staticmethod
     async def group_by_time(interaction):
-
         # Load CSV
         response = requests.get(RETREAT_CSV_URL)
         if response.status_code != 200:
@@ -216,7 +211,7 @@ class Retreat(commands.Cog):
         embed = discord.Embed(
             title="📅 Grouped by Time",
             description="Participants grouped by time slots.",
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
         )
 
         # Convert and sort times using datetime
@@ -228,17 +223,16 @@ class Retreat(commands.Cog):
 
         for time in sorted(time_groups, key=parse_time):
             names = time_groups[time]
-            name_list = '\n'.join(f"- {name}" for name in names)
+            name_list = "\n".join(f"- {name}" for name in names)
             embed.add_field(name=f"🕒 {time}", value=name_list, inline=False)
 
         return embed
 
     @discord.app_commands.command(
-        name="list-pickups-retreat-time", description="List pickups for retreat separated by time."
+        name="list-pickups-retreat-time",
+        description="List pickups for retreat separated by time.",
     )
     async def list_pickups_retreat_time(self, interaction: discord.Interaction):
-  
-
         if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
                 "Command cannot be used in this channel.", ephemeral=True
@@ -247,16 +241,12 @@ class Retreat(commands.Cog):
                 f"This command is not allowed in #{interaction.channel} by {interaction.user}"
             )
             return
-        
+
         group_data = await Retreat.group_by_time(interaction)
         embed = Retreat.create_group_embed(group_data)
 
         await interaction.response.send_message(embed=embed)
 
-
-
-
-        
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Retreat(bot))
