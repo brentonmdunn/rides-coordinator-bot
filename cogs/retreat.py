@@ -12,8 +12,6 @@ from dotenv import load_dotenv
 import os
 
 
-
-
 load_dotenv()
 
 RETREAT_CSV_URL = os.getenv("RETREAT_CSV_URL")
