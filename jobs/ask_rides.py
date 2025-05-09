@@ -36,7 +36,7 @@ def make_sunday_msg_class() -> str | None:
     formatted_date = get_next_date(DaysOfWeekNumber.SUNDAY)
     if formatted_date in WILDCARD_DATES or formatted_date not in CLASS_DATES:
         return None
-    return f"React if you need a ride to Bible Theology Class on Sunday {formatted_date} at 9 am!"
+    return f"React if you need a ride to Bible Theology Class on Sunday {formatted_date} (leave between 8:30 and 8:40 am)"
 
 
 def format_message(message: str) -> str:
