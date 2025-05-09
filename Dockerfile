@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.13-slim
 
+RUN apt update && apt install -y sqlite3 vim && rm -rf /var/lib/apt/lists/*
+
+
 # Set the working directory in the container
 WORKDIR /app
 
