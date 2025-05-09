@@ -18,7 +18,7 @@ class ChannelIds(IntEnum):
     SERVING__RETREAT_BOT_SPAM = 1366960392483377202
 
 
-class DayOfWeek(StrEnum):
+class DaysOfWeek(StrEnum):
     """Enum for consistent case for days of the week."""
 
     MONDAY = "Monday"
@@ -30,5 +30,18 @@ class DayOfWeek(StrEnum):
     SUNDAY = "Sunday"
 
 
+class DaysOfWeekNumber(IntEnum):
+    """Enum for consistent case for days of the week."""
+
+    MONDAY = 0
+    TUESDAY = 1
+    WEDNESDAY = 2
+    THURSDAY = 3
+    FRIDAY = 4
+    SATURDAY = 5
+    SUNDAY = 6
+
+
 class RoleIds(IntEnum):
     DRIVER = 1286924999730663454
+    RIDES = 940467850261450752
