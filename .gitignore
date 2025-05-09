@@ -11,3 +11,6 @@ logs/*.log
 *.old
 *.pyc
 *__pycache__*
+
+
+*.db
