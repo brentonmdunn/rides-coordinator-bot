@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from enums import ChannelIds, DayOfWeek
+from enums import ChannelIds, DaysOfWeek
 from utils.time_helpers import is_during_target_window
 from dotenv import load_dotenv
 import os
@@ -37,11 +37,11 @@ class Reactions(commands.Cog):
             if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
                 (
                     "friday" in message.content.lower()
-                    and is_during_target_window(DayOfWeek.FRIDAY)
+                    and is_during_target_window(DaysOfWeek.FRIDAY)
                 )
                 or (
                     "sunday" in message.content.lower()
-                    and is_during_target_window(DayOfWeek.SUNDAY)
+                    and is_during_target_window(DaysOfWeek.SUNDAY)
                 )
             ):
                 log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
@@ -80,11 +80,11 @@ class Reactions(commands.Cog):
             if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
                 (
                     "friday" in message.content.lower()
-                    and is_during_target_window(DayOfWeek.FRIDAY)
+                    and is_during_target_window(DaysOfWeek.FRIDAY)
                 )
                 or (
                     "sunday" in message.content.lower()
-                    and is_during_target_window(DayOfWeek.SUNDAY)
+                    and is_during_target_window(DaysOfWeek.SUNDAY)
                 )
             ):
                 log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
