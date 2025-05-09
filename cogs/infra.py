@@ -14,7 +14,7 @@ class Infra(commands.Cog):
         name="add-user",
         description="Adds user and Discord username to database",
     )
-    @is_admin
+    @is_admin()
     async def add_user(
         self,
         interaction: discord.Interaction,
