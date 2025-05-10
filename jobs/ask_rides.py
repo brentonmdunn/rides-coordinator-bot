@@ -10,6 +10,7 @@ from discord.ext import commands
 from enums import ChannelIds, RoleIds, DaysOfWeekNumber
 
 from utils.time_helpers import get_next_date
+from utils.format_message import ping_role_with_message
 
 WILDCARD_DATES: list[str] = ["5/16", "5/18", "5/23", "6/13"]
 CLASS_DATES: list[str] = ["5/4", "5/11", "5/25", "6/1", "6/8", "6/15"]
@@ -41,7 +42,7 @@ def make_sunday_msg_class() -> str | None:
 
 def format_message(message: str) -> str:
     """Adds @Rides to message."""
-    return f"<@&{RoleIds.RIDES}> {message}"
+    return ping_role_with_message(RoleIds.RIDES, message)
 
 
 async def run_ask_rides_fri(bot):
@@ -61,8 +62,7 @@ async def run_ask_rides_fri(bot):
 
 async def run_ask_rides_sun(bot):
     """Runner for Sunday service rides message."""
-    channel = bot.get_channel(ChannelIds.BOT_STUFF__BOTS)
-    # channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+    channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
     if not channel:
         print("Error channel not found")
         return
