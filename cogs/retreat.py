@@ -200,7 +200,12 @@ class Retreat(commands.Cog):
             name = row[Col.NAME]
             time = row[Col.LEAVE_TIME]
             address = row[Col.PICKUP_LOCATION]
-            time_groups[time].append(f"{name} - {address}")
+            is_driver = "no" in row[Col.NEED_RIDE].lower()
+            if is_driver:
+                num_spots = row[Col.DRIVER_SPOTS]
+                time_groups[time].append(f"__{name} - {num_spots}__")
+            else:
+                time_groups[time].append(f"{name} - {address}")
 
         return time_groups
 
