@@ -67,11 +67,10 @@ async def run_ask_rides_sun(bot):
         print("Error channel not found")
         return
     message: str = make_sunday_msg()
-    print(message)
     if message is None:
         return
     await channel.send(
-        format_message(message),
+        message,
         allowed_mentions=discord.AllowedMentions(roles=True),
     )
 
@@ -86,6 +85,6 @@ async def run_ask_rides_sun_class(bot: commands.Bot) -> None:
     if message is None:
         return
     await channel.send(
-        format_message(message),
+        message,
         allowed_mentions=discord.AllowedMentions(roles=True),
     )
