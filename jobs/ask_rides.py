@@ -5,7 +5,8 @@ Scheduled jobs for asking for rides.
 """
 
 import discord
-from discord.ext import commands
+from discord.ext.commands import Bot
+from discord.abc import Messageable
 
 from enums import ChannelIds, RoleIds, DaysOfWeekNumber
 
@@ -18,7 +19,7 @@ CLASS_DATES: list[str] = ["5/4", "5/11", "5/25", "6/1", "6/8", "6/15"]
 
 def make_friday_msg() -> str | None:
     """Create message for Friday rides."""
-    formatted_date = get_next_date(DaysOfWeekNumber.FRIDAY)
+    formatted_date: str = get_next_date(DaysOfWeekNumber.FRIDAY)
     if formatted_date in WILDCARD_DATES:
         return None
     return f"React if you need a ride for Friday night fellowship {formatted_date} (leave between 7 and 7:10pm)!"
@@ -26,7 +27,7 @@ def make_friday_msg() -> str | None:
 
 def make_sunday_msg() -> str | None:
     """Create message for Sunday service rides."""
-    formatted_date = get_next_date(DaysOfWeekNumber.SUNDAY)
+    formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
     if formatted_date in WILDCARD_DATES:
         return None
     return f"React if you need a ride for Sunday {formatted_date} (leave between 10 and 10:10 am)!"
@@ -34,7 +35,7 @@ def make_sunday_msg() -> str | None:
 
 def make_sunday_msg_class() -> str | None:
     """Create message for Sunday class rides."""
-    formatted_date = get_next_date(DaysOfWeekNumber.SUNDAY)
+    formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
     if formatted_date in WILDCARD_DATES or formatted_date not in CLASS_DATES:
         return None
     return f"React if you need a ride to Bible Theology Class on Sunday {formatted_date} (leave between 8:30 and 8:40 am)"
@@ -45,13 +46,15 @@ def format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
-async def run_ask_rides_fri(bot):
+async def run_ask_rides_fri(bot: Bot) -> None:
     """Runner for Friday rides message."""
-    channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+    channel: Messageable | None = bot.get_channel(
+        ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    )
     if not channel:
         print("Error channel not found")
         return
-    message: str = make_friday_msg()
+    message: str | None = make_friday_msg()
     if message is None:
         return
     await channel.send(
@@ -60,13 +63,15 @@ async def run_ask_rides_fri(bot):
     )
 
 
-async def run_ask_rides_sun(bot):
+async def run_ask_rides_sun(bot: Bot) -> None:
     """Runner for Sunday service rides message."""
-    channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+    channel: Messageable | None = bot.get_channel(
+        ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    )
     if not channel:
         print("Error channel not found")
         return
-    message: str = make_sunday_msg()
+    message: str | None = make_sunday_msg()
     if message is None:
         return
     await channel.send(
@@ -75,13 +80,13 @@ async def run_ask_rides_sun(bot):
     )
 
 
-async def run_ask_rides_sun_class(bot: commands.Bot) -> None:
+async def run_ask_rides_sun_class(bot: Bot) -> None:
     """Runner for Sunday class rides message."""
     channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-    if not isinstance(channel, discord.abc.Messageable):
+    if not isinstance(channel, Messageable):
         print("Error channel not found")
         return
-    message: str = make_sunday_msg_class()
+    message: str | None = make_sunday_msg_class()
     if message is None:
         return
     await channel.send(
