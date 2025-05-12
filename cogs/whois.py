@@ -3,7 +3,7 @@ from discord.ext import commands
 import requests
 import csv
 
-from utils.parsing import parse_name  # your helper function
+from utils.parsing import parse_name
 from dotenv import load_dotenv
 import os
 

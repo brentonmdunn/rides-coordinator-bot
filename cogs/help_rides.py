@@ -12,7 +12,7 @@ class HelpRides(commands.Cog):
     )
     async def help_rides(self, interaction: discord.Interaction) -> None:
         """Sends an embed listing ride-related commands."""
-        embed = discord.Embed(
+        embed: discord.Embed = discord.Embed(
             title="🚗 Ride Bot Commands",
             description="Here's what I can do:",
             color=discord.Color.blue(),
