@@ -1,3 +1,4 @@
+import asyncio
 import os
 import discord
 from discord.ext import commands
@@ -63,3 +64,6 @@ async def main() -> None:
         await init_db()
         await load_extensions()
         await bot.start(TOKEN)
+
+if __name__ == "__main__":
+    asyncio.run(main())
