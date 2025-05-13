@@ -4,7 +4,7 @@ from discord.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from jobs.retreat_sync_roles import run_csv_job
+# from jobs_disabled.retreat_sync_roles import run_csv_job
 from jobs.ask_rides import run_ask_rides_fri, run_ask_rides_sun, run_ask_rides_sun_class
 
 
@@ -13,13 +13,13 @@ class JobScheduler(commands.Cog):
         self.bot = bot
         self.scheduler = AsyncIOScheduler()
 
-        # Register all jobs
-        self.scheduler.add_job(
-            run_csv_job,
-            CronTrigger(hour=21, minute=00),
-            id="csv_job",
-            args=[bot],
-        )
+        # # Register all jobs
+        # self.scheduler.add_job(
+        #     run_csv_job,
+        #     CronTrigger(hour=21, minute=00),
+        #     id="csv_job",
+        #     args=[bot],
+        # )
 
         self.scheduler.add_job(
             run_ask_rides_fri,

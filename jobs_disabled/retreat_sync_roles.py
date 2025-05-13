@@ -6,7 +6,7 @@ import io
 import os
 from utils.constants import GUILD_ID
 from utils.parsing import parse_discord_username
-from cogs.retreat import Col
+from cogs_disabled.retreat import Col
 import discord
 from enums import ChannelIds
 
