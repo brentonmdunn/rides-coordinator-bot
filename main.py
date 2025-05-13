@@ -65,5 +65,6 @@ async def main() -> None:
         await load_extensions()
         await bot.start(TOKEN)
 
+
 if __name__ == "__main__":
     asyncio.run(main())
