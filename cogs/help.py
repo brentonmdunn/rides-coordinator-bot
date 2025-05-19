@@ -14,7 +14,7 @@ class HelpCog(commands.Cog):
         embed = discord.Embed(
             title="Available Slash Commands",
             description="Here are the commands and their parameters:",
-            color=discord.Color.blue,
+            color=discord.Color.blue(),
         )
 
         cmds = self.bot.tree.get_commands()
