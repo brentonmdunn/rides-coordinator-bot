@@ -1,14 +1,16 @@
 # jobs/csv_runner.py
 
-import aiohttp
 import csv
 import io
 import os
+
+import aiohttp
+import discord
+
+from enums import ChannelIds
 from utils.constants import GUILD_ID
 from utils.parsing import parse_discord_username
 from cogs_disabled.retreat import Col
-import discord
-from enums import ChannelIds
 
 
 async def logic(reader, bot):

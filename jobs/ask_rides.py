@@ -75,7 +75,7 @@ async def run_ask_rides_sun(bot: Bot) -> None:
     if message is None:
         return
     await channel.send(
-        message,
+        format_message(message),
         allowed_mentions=discord.AllowedMentions(roles=True),
     )
 
@@ -90,6 +90,6 @@ async def run_ask_rides_sun_class(bot: Bot) -> None:
     if message is None:
         return
     await channel.send(
-        message,
+        format_message(message),
         allowed_mentions=discord.AllowedMentions(roles=True),
     )

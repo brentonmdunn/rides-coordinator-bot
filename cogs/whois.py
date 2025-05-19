@@ -1,11 +1,12 @@
+import csv
+import os
+
 import discord
 from discord.ext import commands
+from dotenv import load_dotenv
 import requests
-import csv
 
 from utils.parsing import parse_name
-from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
