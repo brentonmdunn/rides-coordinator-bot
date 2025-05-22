@@ -1,9 +1,7 @@
 # Rides Coordinator Bot
 
-This is a Discord bot that puts out an announcement for users who need a ride for some event.
+This is a Discord bot that helps coordinate ride pickups.
 
-## Commands
-- `/ask-drivers [message]` - Pings `@Drivers` for who is available. `[message]` field is for custom message after the `@Driver` ping.
 
 ## Installing
 Clone the repository and `cd` into the folder:
@@ -14,7 +12,7 @@ $ cd rides-coordinator-bot
 
 (optional) Create virtual environment:
 ```
-$ python3 -m venv .venv
+$ python -m venv .venv
 $ source .venv/bin/activate
 ```
 
@@ -24,13 +22,8 @@ $ pip install -r requirements.txt
 ```
 
 Add environment variables:
-```
-Create .env file
-Add TOKEN=<Discord token>
-Add BOT_NAME=<bot name>
-Add GUILD_ID=<guild ID>
-DRIVERS_CHANNEL=<channel ID to send drivers message>
-```
+
+Make a copy of `.env.example`, remove the `.example` from the end, and populate the environment variables.
 
 ### Building Docker Image 
 ```
@@ -38,4 +31,9 @@ $ docker buildx create --use --name multi-platform-builder --driver docker-conta
 $ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot --push .
 ```
 
-https://hub.docker.com/r/brentonmdunn/ride-bot
+## Deploying to Synology NAS via Container Manager
+
+- Pull the Docker image from [here](https://hub.docker.com/r/brentonmdunn/ride-bot)
+- Enable auto restart
+- Map the volumn `/volume1/docker/lscc-discord-bot` to `/app/data:rw`
+- Load environment variables
