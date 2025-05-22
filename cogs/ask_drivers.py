@@ -1,7 +1,12 @@
+"""
+cogs/ask_drivers.py
+"""
+
 import discord
 from discord.ext import commands
 
 from enums import ChannelIds, RoleIds
+from utils.format_message import ping_role_with_message
 
 
 class AskDrivers(commands.Cog):
@@ -21,8 +26,7 @@ class AskDrivers(commands.Cog):
             )
             return
 
-        # Format the message
-        message_to_send = f"<@&{RoleIds.DRIVER}> {message}"
+        message_to_send = ping_role_with_message(RoleIds.DRIVER, message)
 
         # Send the message and allow role mentions
         await interaction.response.send_message(
@@ -32,7 +36,6 @@ class AskDrivers(commands.Cog):
         # Fetch the original response
         sent_message = await interaction.original_response()
 
-        # Add reaction options
         reactions = ["👍", "❌", "➡️", "⬅️", "💩"]
         for emoji in reactions:
             await sent_message.add_reaction(emoji)
