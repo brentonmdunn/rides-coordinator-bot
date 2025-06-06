@@ -10,6 +10,7 @@ from logger import logger
 
 from dotenv import load_dotenv
 import os
+from typing import Optional
 
 load_dotenv()
 
@@ -92,12 +93,22 @@ class Locations(commands.Cog):
         name="list-pickups-by-message-id",
         description="List pickups using a specific message ID.",
     )
+    @discord.app_commands.describe(
+        message_id="The message ID to fetch pickups from",
+        channel_id="Optional channel ID where the message is located"
+    )
     async def list_locations_unknown(
-        self, interaction: discord.Interaction, message_id: str
+        self,
+        interaction: discord.Interaction,
+        message_id: str,
+        channel_id: Optional[str] = None,
     ):
-        await self.list_locations(interaction, message_id=message_id)
+        if channel_id:
+            await self.list_locations(interaction, message_id=message_id, channel_id=channel_id)
+        else:
+            await self.list_locations(interaction, message_id=message_id)
 
-    async def list_locations(self, interaction, day=None, message_id=None):
+    async def list_locations(self, interaction, day=None, message_id=None, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS):
         logger.info(
             f"list-pickups command used by {interaction.user} in #{interaction.channel}"
         )
@@ -137,7 +148,7 @@ class Locations(commands.Cog):
             message_id = most_recent_message.id
 
         usernames_reacted = set()
-        channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        channel = self.bot.get_channel(int(channel_id))
         try:
             message = await channel.fetch_message(int(message_id))
             for reaction in message.reactions:

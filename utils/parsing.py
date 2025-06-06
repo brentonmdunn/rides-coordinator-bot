@@ -1,7 +1,11 @@
+"""
+utils/parsing.py
+"""
+
 import re
 
 
-def parse_name(text):
+def parse_name(text: str) -> tuple[str, str | None]:
     """
     Parse the input string to extract the name and username.
 
@@ -21,5 +25,5 @@ def parse_discord_username(username: str) -> str:
     """
     Returns username without @ symbol.
     """
-    username = username.lower()
+    username = username.lower().strip()
     return username if "@" not in username else username[1:]
