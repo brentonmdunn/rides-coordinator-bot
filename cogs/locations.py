@@ -95,7 +95,7 @@ class Locations(commands.Cog):
     )
     @discord.app_commands.describe(
         message_id="The message ID to fetch pickups from",
-        channel_id="Optional channel ID where the message is located"
+        channel_id="Optional channel ID where the message is located",
     )
     async def list_locations_unknown(
         self,
@@ -104,11 +104,19 @@ class Locations(commands.Cog):
         channel_id: Optional[str] = None,
     ):
         if channel_id:
-            await self.list_locations(interaction, message_id=message_id, channel_id=channel_id)
+            await self.list_locations(
+                interaction, message_id=message_id, channel_id=channel_id
+            )
         else:
             await self.list_locations(interaction, message_id=message_id)
 
-    async def list_locations(self, interaction, day=None, message_id=None, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS):
+    async def list_locations(
+        self,
+        interaction,
+        day=None,
+        message_id=None,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    ):
         logger.info(
             f"list-pickups command used by {interaction.user} in #{interaction.channel}"
         )
