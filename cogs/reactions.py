@@ -5,10 +5,16 @@ from enums import ChannelIds, DaysOfWeek
 from utils.time_helpers import is_during_target_window
 from dotenv import load_dotenv
 import os
+import requests
+import csv
 
 load_dotenv()
 
 LOG_ALL_REACTIONS = os.getenv("LOG_ALL_REACTONS", "false").lower() == "true"
+TARGET_MESSAGE_ID = 940467929676406807
+TARGET_CHANNEL_ID = 916821529663250463
+TARGET_CATEGORY_ID = 1380694503391887410
+CSV_URL = os.getenv("CSV_URL")
 
 
 class Reactions(commands.Cog):
@@ -57,6 +63,71 @@ class Reactions(commands.Cog):
                     await log_channel.send(
                         f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
                     )
+
+            def we_have_location(username):
+                response = requests.get(CSV_URL, timeout=60)
+
+                csv_data = response.content.decode("utf-8")
+                csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
+
+                for row in csv_reader:
+                    for _, cell in enumerate(row):
+                        if str(username) in cell.lower():
+                            return True
+
+                return False
+
+            if (
+                payload.message_id == TARGET_MESSAGE_ID
+                and payload.channel_id == TARGET_CHANNEL_ID
+                and user is not None
+                and not we_have_location(user.name.lower())
+            ):
+                channel_name = f"{user.name.lower()}"
+                category = discord.utils.get(guild.categories, id=TARGET_CATEGORY_ID)
+
+                if not category:
+                    print(f"Category with ID {TARGET_CATEGORY_ID} not found.")
+                    return
+
+                existing_channel = discord.utils.get(
+                    category.channels, name=channel_name
+                )
+                if existing_channel:
+                    print(f"Channel {channel_name} already exists.")
+                    return
+
+                # Permissions: only user + admins can access
+                overwrites = {
+                    guild.default_role: discord.PermissionOverwrite(
+                        read_messages=False
+                    ),
+                    user: discord.PermissionOverwrite(
+                        read_messages=True, send_messages=True
+                    ),
+                }
+
+                for role in guild.roles:
+                    if role.permissions.administrator:
+                        overwrites[role] = discord.PermissionOverwrite(
+                            read_messages=True, send_messages=True
+                        )
+
+                new_channel = await guild.create_text_channel(
+                    name=channel_name,
+                    category=category,
+                    overwrites=overwrites,
+                    reason=f"{user.name} reacted for rides.",
+                )
+
+                await new_channel.send(
+                    f"Hi {user.mention}! Thanks for reacting in <#{TARGET_CHANNEL_ID}>. "
+                    "We don’t yet know where to pick you up. "
+                    "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "
+                    "If you live **off campus**, please share your apartment complex or address. "
+                    "One of our ride coordinators will check in with you shortly!"
+                )
+                return
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
