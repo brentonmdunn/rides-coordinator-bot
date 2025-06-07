@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from enums import ChannelIds, DaysOfWeek
+from enums import ChannelIds, DaysOfWeek, RoleIds
 from utils.time_helpers import is_during_target_window
 from dotenv import load_dotenv
 import os
@@ -97,7 +97,10 @@ class Reactions(commands.Cog):
                     print(f"Channel {channel_name} already exists.")
                     return
 
-                # Permissions: only user + admins can access
+                # Permissions
+
+                role = guild.get_role(RoleIds.RIDE_COORDINATOR)
+                
                 overwrites = {
                     guild.default_role: discord.PermissionOverwrite(
                         read_messages=False
@@ -105,6 +108,7 @@ class Reactions(commands.Cog):
                     user: discord.PermissionOverwrite(
                         read_messages=True, send_messages=True
                     ),
+                    role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
                 }
 
                 for role in guild.roles:
@@ -121,7 +125,7 @@ class Reactions(commands.Cog):
                 )
 
                 await new_channel.send(
-                    f"Hi {user.mention}! Thanks for reacting in <#{TARGET_CHANNEL_ID}>. "
+                    f"Hi {user.mention}! Thanks for reacting in for rides in <#{TARGET_CHANNEL_ID}>. "
                     "We don’t yet know where to pick you up. "
                     "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "
                     "If you live **off campus**, please share your apartment complex or address. "
