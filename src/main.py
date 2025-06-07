@@ -8,6 +8,7 @@ from discord.app_commands import AppCommandError, CheckFailure
 from dotenv import load_dotenv
 
 from database import init_db
+from pathlib import Path
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
@@ -20,6 +21,7 @@ intents.members = True
 
 bot: Bot = commands.Bot(command_prefix="!", intents=intents)
 
+COGS_PATH = Path(__file__).resolve().parent / "cogs"
 
 @bot.event
 async def on_ready() -> None:
@@ -37,14 +39,17 @@ async def on_ready() -> None:
 
 
 async def load_extensions() -> None:
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py") and not filename.startswith("_"):
-            extension: str = f"cogs.{filename[:-3]}"
-            try:
-                await bot.load_extension(extension)
-                print(f"Loaded extension: {extension}")
-            except Exception as e:
-                print(f"❌ Failed to load extension {extension}: {e}")
+    cogs_path = COGS_PATH
+    for file in cogs_path.glob("*.py"):
+        if file.name.startswith("_"):
+            continue
+        extension = f"cogs.{file.stem}"
+        try:
+            await bot.load_extension(extension)
+            print(f"✅ Loaded extension: {extension}")
+        except Exception as e:
+            print(f"❌ Failed to load extension {extension}: {e}")
+
 
 
 @bot.tree.error

@@ -21,4 +21,4 @@ ENV TZ="America/Los_Angeles"
 # RUN pip install --no-cache-dir --index-url https://pypi.org/simple -r requirements.txt
 
 # Specify the command to run your app
-CMD ["python", "main.py"]
+CMD ["python", "src/main.py"]

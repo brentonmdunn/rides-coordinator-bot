@@ -25,7 +25,11 @@ Add environment variables:
 
 Make a copy of `.env.example`, remove the `.example` from the end, and populate the environment variables.
 
-### Building Docker Image 
+## CI Pipeline
+- On each pull request, GitHub actions runs `ruff format --check .` and `ruff check .` and blocks the PR if the code is not properly formatted or linted. Note: it does not autoformat, this must be done on a separate commit.
+- On each push or merge to main, GitHub actions builds the Docker image and pushes it to DockerHub. 
+
+Manually build Docker image:
 ```
 $ docker buildx create --use --name multi-platform-builder --driver docker-container
 $ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot --push .

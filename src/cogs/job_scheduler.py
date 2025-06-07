@@ -5,7 +5,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 # from jobs_disabled.retreat_sync_roles import run_csv_job
-from jobs.ask_rides import run_ask_rides_fri, run_ask_rides_sun, run_ask_rides_sun_class
+from src.jobs.ask_rides import (
+    run_ask_rides_fri,
+    run_ask_rides_sun,
+    run_ask_rides_sun_class,
+)
 
 
 class JobScheduler(commands.Cog):

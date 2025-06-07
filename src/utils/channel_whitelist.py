@@ -3,8 +3,8 @@ utils/channel_whitelist.py
 """
 
 import discord
-from enums import ChannelIds
-from logger import logger
+from src.enums import ChannelIds
+from src.logger import logger
 
 LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_BOT_SPAM,

@@ -8,10 +8,10 @@ import discord
 from discord.ext.commands import Bot
 from discord.abc import Messageable
 
-from enums import ChannelIds, RoleIds, DaysOfWeekNumber
+from src.enums import ChannelIds, RoleIds, DaysOfWeekNumber
 
-from utils.time_helpers import get_next_date
-from utils.format_message import ping_role_with_message
+from src.utils.time_helpers import get_next_date
+from src.utils.format_message import ping_role_with_message
 
 WILDCARD_DATES: list[str] = ["5/16", "5/18", "5/23", "6/13"]
 CLASS_DATES: list[str] = ["5/4", "5/11", "5/25", "6/1", "6/8", "6/15"]

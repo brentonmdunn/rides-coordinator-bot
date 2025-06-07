@@ -7,10 +7,10 @@ import os
 import aiohttp
 import discord
 
-from enums import ChannelIds
-from utils.constants import GUILD_ID
-from utils.parsing import parse_discord_username
-from cogs_disabled.retreat import Col
+from src.enums import ChannelIds
+from src.utils.constants import GUILD_ID
+from src.utils.parsing import parse_discord_username
+from src.disabled.cogs_disabled.retreat import Col
 
 
 async def logic(reader, bot):
