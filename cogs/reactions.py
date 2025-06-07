@@ -100,7 +100,7 @@ class Reactions(commands.Cog):
                 # Permissions
 
                 role = guild.get_role(RoleIds.RIDE_COORDINATOR)
-                
+
                 overwrites = {
                     guild.default_role: discord.PermissionOverwrite(
                         read_messages=False
@@ -108,7 +108,9 @@ class Reactions(commands.Cog):
                     user: discord.PermissionOverwrite(
                         read_messages=True, send_messages=True
                     ),
-                    role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                    role: discord.PermissionOverwrite(
+                        read_messages=True, send_messages=True
+                    ),
                 }
 
                 for role in guild.roles:
