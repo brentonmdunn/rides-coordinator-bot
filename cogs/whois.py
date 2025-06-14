@@ -2,9 +2,9 @@ import csv
 import os
 
 import discord
+import requests
 from discord.ext import commands
 from dotenv import load_dotenv
-import requests
 
 from utils.parsing import parse_name
 

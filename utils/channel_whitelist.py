@@ -3,6 +3,7 @@ utils/channel_whitelist.py
 """
 
 import discord
+
 from enums import ChannelIds
 from logger import logger
 

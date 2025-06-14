@@ -1,1 +1,5 @@
 exclude = ["alembic/"]
+
+lint.extend-select = [
+  "I",   # isort
+]

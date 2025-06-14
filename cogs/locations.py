@@ -1,16 +1,16 @@
-import discord
-from discord.ext import commands
-import requests
 import csv
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Optional
+
+import discord
+import requests
+from discord.ext import commands
+from dotenv import load_dotenv
 
 from enums import ChannelIds
 from logger import logger
-
-from dotenv import load_dotenv
-import os
-from typing import Optional
 
 load_dotenv()
 

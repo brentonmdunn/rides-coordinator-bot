@@ -1,10 +1,11 @@
 import asyncio
 import os
+
 import discord
-from discord.ext import commands
-from discord.ext.commands import Bot
 from discord import Interaction
 from discord.app_commands import AppCommandError, CheckFailure
+from discord.ext import commands
+from discord.ext.commands import Bot
 from dotenv import load_dotenv
 
 from database import init_db
