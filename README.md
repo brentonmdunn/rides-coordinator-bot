@@ -35,5 +35,5 @@ $ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bo
 
 - Pull the Docker image from [here](https://hub.docker.com/r/brentonmdunn/ride-bot)
 - Enable auto restart
-- Map the volumn `/volume1/docker/lscc-discord-bot` to `/app/data:rw`
+- Map the volumn `/volume1/docker/lscc-discord-bot` to `/app/db:rw`
 - Load environment variables
