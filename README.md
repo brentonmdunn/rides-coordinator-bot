@@ -94,6 +94,5 @@ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot 
   - After merging to `main`, a workflow builds and pushes the Docker image to Docker Hub
 
 - **Branch Protection**
-  - Direct commits to `main` are prohibited  
-    All changes must go through a PR and pass required checks
+  - Direct commits to `main` are prohibited. All changes must go through a PR and pass required checks
 
