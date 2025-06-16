@@ -39,7 +39,7 @@ async def on_ready() -> None:
 
 
 async def load_extensions() -> None:
-    for filename in (Path.cwd() / "app" / "cogs").iterdir():        
+    for filename in (Path.cwd() / "app" / "cogs").iterdir():
         if filename.is_file() and filename.suffix == ".py" and not filename.name.startswith("_"):
             extension: str = f"app.cogs.{filename.stem}"
             try:
