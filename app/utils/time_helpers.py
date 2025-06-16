@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytz
 
-from enums import DaysOfWeek, DaysOfWeekNumber
+from app.core.enums import DaysOfWeek, DaysOfWeekNumber
 
 
 def is_during_target_window(day: str) -> bool:

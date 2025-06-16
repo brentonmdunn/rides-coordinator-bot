@@ -6,7 +6,7 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from utils.parsing import parse_name
+from app.utils.parsing import parse_name
 
 load_dotenv()
 

@@ -9,8 +9,8 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from enums import ChannelIds
-from logger import logger
+from app.core.enums import ChannelIds
+from app.core.logger import logger
 
 load_dotenv()
 
