@@ -3,8 +3,8 @@
 import discord
 from discord.ext import commands
 
-from enums import ChannelIds, RoleIds
-from utils.format_message import ping_role_with_message
+from app.core.enums import ChannelIds, RoleIds
+from app.utils.format_message import ping_role_with_message
 
 
 class AskDrivers(commands.Cog):

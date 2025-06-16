@@ -2,8 +2,8 @@
 
 import discord
 
-from enums import ChannelIds
-from logger import logger
+from app.core.enums import ChannelIds
+from app.core.logger import logger
 
 LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_BOT_SPAM,

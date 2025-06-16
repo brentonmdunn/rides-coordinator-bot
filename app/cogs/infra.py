@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
 
-from database import AsyncSessionLocal
-from models import DiscordUsers
-from utils.checks import is_admin
+from app.core.database import AsyncSessionLocal
+from app.core.models import DiscordUsers
+from app.utils.checks import is_admin
 
 
 class Infra(commands.Cog):

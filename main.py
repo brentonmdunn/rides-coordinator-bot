@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pathlib import Path
 
 import discord
 from discord import Interaction
@@ -8,7 +9,7 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from dotenv import load_dotenv
 
-from database import init_db
+from app.core.database import init_db
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
@@ -38,9 +39,9 @@ async def on_ready() -> None:
 
 
 async def load_extensions() -> None:
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py") and not filename.startswith("_"):
-            extension: str = f"cogs.{filename[:-3]}"
+    for filename in (Path.cwd() / "app" / "cogs").iterdir():        
+        if filename.is_file() and filename.suffix == ".py" and not filename.name.startswith("_"):
+            extension: str = f"app.cogs.{filename.stem}"
             try:
                 await bot.load_extension(extension)
                 print(f"Loaded extension: {extension}")

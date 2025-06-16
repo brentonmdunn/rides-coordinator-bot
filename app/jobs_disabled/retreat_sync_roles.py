@@ -8,9 +8,9 @@ import aiohttp
 import discord
 
 from cogs_disabled.retreat import Col
-from enums import ChannelIds
-from utils.constants import GUILD_ID
-from utils.parsing import parse_discord_username
+from app.core.enums import ChannelIds
+from app.utils.constants import GUILD_ID
+from app.utils.parsing import parse_discord_username
 
 
 async def logic(reader, bot):

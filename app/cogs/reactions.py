@@ -6,8 +6,8 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from enums import ChannelIds, DaysOfWeek, RoleIds
-from utils.time_helpers import is_during_target_window
+from app.core.enums import ChannelIds, DaysOfWeek, RoleIds
+from app.utils.time_helpers import is_during_target_window
 
 load_dotenv()
 

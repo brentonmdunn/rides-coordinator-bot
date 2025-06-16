@@ -3,7 +3,7 @@
 Helper functions to format messages.
 """
 
-from enums import RoleIds
+from app.core.enums import RoleIds
 
 
 def ping_role(role_id: RoleIds) -> str:
