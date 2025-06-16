@@ -1,3 +1,5 @@
+"""Command that can be run via `invoke <x>`."""
+
 from invoke import task
 
 
