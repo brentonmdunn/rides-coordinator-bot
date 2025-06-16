@@ -21,7 +21,7 @@ console_handler.setLevel(logging.INFO)
 
 
 formatter = logging.Formatter(
-    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s"
+    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
 )
 
 console_handler.setFormatter(formatter)

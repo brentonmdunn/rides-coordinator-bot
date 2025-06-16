@@ -32,7 +32,7 @@ class Infra(commands.Cog):
             await session.commit()
 
         await interaction.response.send_message(
-            f"✅ User `@{discord_username}` added to database"
+            f"✅ User `@{discord_username}` added to database",
         )
 
 

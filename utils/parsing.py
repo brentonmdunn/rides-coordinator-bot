@@ -1,19 +1,17 @@
-"""
-utils/parsing.py
-"""
+"""utils/parsing.py"""
 
 import re
 
 
 def parse_name(text: str) -> tuple[str, str | None]:
-    """
-    Parse the input string to extract the name and username.
+    """Parse the input string to extract the name and username.
 
     Args:
         input_string (str): The input string to parse.
 
     Returns:
         tuple: A tuple containing the name and username.
+
     """
     match = re.match(r"^(.*?)\s*\((.*?)\)$", text)
     if match:
@@ -22,8 +20,6 @@ def parse_name(text: str) -> tuple[str, str | None]:
 
 
 def parse_discord_username(username: str) -> str:
-    """
-    Returns username without @ symbol.
-    """
+    """Returns username without @ symbol."""
     username = username.lower().strip()
     return username if "@" not in username else username[1:]

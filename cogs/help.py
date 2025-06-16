@@ -8,7 +8,8 @@ class HelpCog(commands.Cog):
         self.bot = bot
 
     @app_commands.command(
-        name="help", description="List all slash commands with their parameters"
+        name="help",
+        description="List all slash commands with their parameters",
     )
     async def help(self, interaction: discord.Interaction):
         embed = discord.Embed(
@@ -24,11 +25,7 @@ class HelpCog(commands.Cog):
                 param_list = []
                 for param in cmd.parameters:
                     name = param.name
-                    typ = (
-                        param.type.name
-                        if hasattr(param.type, "name")
-                        else str(param.type)
-                    )
+                    typ = param.type.name if hasattr(param.type, "name") else str(param.type)
                     required = "required" if param.required else "optional"
                     param_list.append(f"`{name}: {typ}` ({required})")
 

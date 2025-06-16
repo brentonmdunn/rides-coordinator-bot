@@ -25,7 +25,8 @@ class Events(commands.Cog):
         guild = interaction.guild
         if not guild:
             await interaction.response.send_message(
-                "This command must be used in a server.", ephemeral=True
+                "This command must be used in a server.",
+                ephemeral=True,
             )
             return
 
@@ -38,7 +39,8 @@ class Events(commands.Cog):
             channel_id = int(channel_id)
         except ValueError:
             await interaction.followup.send(
-                "Invalid message or channel ID.", ephemeral=True
+                "Invalid message or channel ID.",
+                ephemeral=True,
             )
             return
 
@@ -46,7 +48,8 @@ class Events(commands.Cog):
         channel = guild.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
             await interaction.followup.send(
-                "Could not find the specified text channel.", ephemeral=True
+                "Could not find the specified text channel.",
+                ephemeral=True,
             )
             return
 
@@ -82,7 +85,7 @@ class Events(commands.Cog):
                         continue
 
         await interaction.followup.send(
-            f"Gave **{role_name}** role to **{len(added_members)}** user(s)."
+            f"Gave **{role_name}** role to **{len(added_members)}** user(s).",
         )
 
 

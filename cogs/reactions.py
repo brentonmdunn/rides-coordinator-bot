@@ -42,10 +42,7 @@ class Reactions(commands.Cog):
 
         if user:
             if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
-                (
-                    "friday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.FRIDAY)
-                )
+                ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
                 or (
                     "sunday" in message.content.lower()
                     and is_during_target_window(DaysOfWeek.SUNDAY)
@@ -54,7 +51,9 @@ class Reactions(commands.Cog):
                 log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
                 if log_channel:
                     await log_channel.send(
-                        f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
+                        f"{user.name} reacted {payload.emoji} to message "
+                        f"'{discord.utils.escape_mentions(message.content)}' "
+                        f"in #{channel.name}",
                     )
                 return
 
@@ -62,7 +61,9 @@ class Reactions(commands.Cog):
                 log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
                 if log_channel:
                     await log_channel.send(
-                        f"{user.name} reacted {payload.emoji} to message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
+                        f"{user.name} reacted {payload.emoji} to message "
+                        f"'{discord.utils.escape_mentions(message.content)}' "
+                        f"in #{channel.name}",
                     )
 
             def we_have_location(username):
@@ -92,7 +93,8 @@ class Reactions(commands.Cog):
                     return
 
                 existing_channel = discord.utils.get(
-                    category.channels, name=channel_name
+                    category.channels,
+                    name=channel_name,
                 )
                 if existing_channel:
                     print(f"Channel {channel_name} already exists.")
@@ -104,20 +106,23 @@ class Reactions(commands.Cog):
 
                 overwrites = {
                     guild.default_role: discord.PermissionOverwrite(
-                        read_messages=False
+                        read_messages=False,
                     ),
                     user: discord.PermissionOverwrite(
-                        read_messages=True, send_messages=True
+                        read_messages=True,
+                        send_messages=True,
                     ),
                     role: discord.PermissionOverwrite(
-                        read_messages=True, send_messages=True
+                        read_messages=True,
+                        send_messages=True,
                     ),
                 }
 
                 for role in guild.roles:
                     if role.permissions.administrator:
                         overwrites[role] = discord.PermissionOverwrite(
-                            read_messages=True, send_messages=True
+                            read_messages=True,
+                            send_messages=True,
                         )
 
                 new_channel = await guild.create_text_channel(
@@ -128,11 +133,11 @@ class Reactions(commands.Cog):
                 )
 
                 await new_channel.send(
-                    f"Hi {user.mention}! Thanks for reacting in for rides in <#{TARGET_CHANNEL_ID}>. "
-                    "We don’t yet know where to pick you up. "
-                    "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "
+                    f"Hi {user.mention}! Thanks for reacting in for rides in <#{TARGET_CHANNEL_ID}>. "  # noqa
+                    "We don't yet know where to pick you up. "
+                    "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "  # noqa
                     "If you live **off campus**, please share your apartment complex or address. "
-                    "One of our ride coordinators will check in with you shortly!"
+                    "One of our ride coordinators will check in with you shortly!",
                 )
                 return
 
@@ -154,30 +159,34 @@ class Reactions(commands.Cog):
             print(f"Ignoring bot reaction removal from {user.name}")
             return
 
-        if user:
-            if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
-                (
-                    "friday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.FRIDAY)
-                )
+        if (
+            user
+            and payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+            and (
+                ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
                 or (
                     "sunday" in message.content.lower()
                     and is_during_target_window(DaysOfWeek.SUNDAY)
                 )
-            ):
-                log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
-                if log_channel:
-                    await log_channel.send(
-                        f"{user.name} removed their reaction {payload.emoji} from message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
-                    )
-                return
+            )
+        ):
+            log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+            if log_channel:
+                await log_channel.send(format_reaction_log(user, payload, message, channel))
+            return
 
             if LOG_ALL_REACTIONS:
                 log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
                 if log_channel:
-                    await log_channel.send(
-                        f"{user.name} removed their reaction {payload.emoji} from message '{discord.utils.escape_mentions(message.content)}' in #{channel.name}"
-                    )
+                    await log_channel.send(format_reaction_log(user, payload, message, channel))
+
+
+def format_reaction_log(user, payload, message, channel) -> str:
+    return (
+        f"{user.name} removed their reaction {payload.emoji} from message "
+        f"'{discord.utils.escape_mentions(message.content)}' "
+        f"in #{channel.name}"
+    )
 
 
 async def setup(bot: commands.Bot):

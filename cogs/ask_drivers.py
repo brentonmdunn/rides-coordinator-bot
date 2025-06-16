@@ -1,6 +1,4 @@
-"""
-cogs/ask_drivers.py
-"""
+"""cogs/ask_drivers.py"""
 
 import discord
 from discord.ext import commands
@@ -14,7 +12,8 @@ class AskDrivers(commands.Cog):
         self.bot = bot
 
     @discord.app_commands.command(
-        name="ask-drivers", description="Pings drivers to see who is available."
+        name="ask-drivers",
+        description="Pings drivers to see who is available.",
     )
     async def ask_drivers(self, interaction: discord.Interaction, message: str) -> None:
         """Pings the driver role with a custom message."""
@@ -30,7 +29,8 @@ class AskDrivers(commands.Cog):
 
         # Send the message and allow role mentions
         await interaction.response.send_message(
-            message_to_send, allowed_mentions=discord.AllowedMentions(roles=True)
+            message_to_send,
+            allowed_mentions=discord.AllowedMentions(roles=True),
         )
 
         # Fetch the original response

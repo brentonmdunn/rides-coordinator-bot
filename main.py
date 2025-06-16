@@ -50,11 +50,13 @@ async def load_extensions() -> None:
 
 @bot.tree.error
 async def on_app_command_error(
-    interaction: Interaction, error: AppCommandError
+    interaction: Interaction,
+    error: AppCommandError,
 ) -> None:
     if isinstance(error, CheckFailure):
         await interaction.response.send_message(
-            "❌ You must be a server admin to use this command.", ephemeral=True
+            "❌ You must be a server admin to use this command.",
+            ephemeral=True,
         )
     else:
         raise error

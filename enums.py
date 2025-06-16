@@ -2,8 +2,7 @@ from enum import IntEnum, StrEnum
 
 
 class ChannelIds(IntEnum):
-    """
-    Enum that contains channel IDs.
+    """Enum that contains channel IDs.
     In the format <CATEGORY>__<CHANNEL NAME>.
     """
 

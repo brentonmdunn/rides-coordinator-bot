@@ -24,8 +24,9 @@ async def logic(reader, bot):
 
             # Try matching by both .name and .display_name, case-insensitive
             member = discord.utils.find(
-                lambda m: m.name.lower() == username.lower()
-                or m.display_name.lower() == username.lower(),
+                lambda m, username=username: (
+                    m.name.lower() == username.lower() or m.display_name.lower() == username.lower()
+                ),
                 guild.members,
             )
 
@@ -35,7 +36,7 @@ async def logic(reader, bot):
                 # print(f"⚠️ Could not find member with username: {username}")
                 if channel:
                     await channel.send(
-                        f"⚠️ Could not find member with username: {username}"
+                        f"⚠️ Could not find member with username: {username}",
                     )
                 continue
             elif role is None:
@@ -50,24 +51,23 @@ async def logic(reader, bot):
 
                 if channel:
                     await channel.send(
-                        f"✅ Added role '{role_name}' to {member.display_name}"
+                        f"✅ Added role '{role_name}' to {member.display_name}",
                     )
 
 
 async def fetch_csv(bot):
     url = os.getenv("RETREAT_CSV_URL")
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 200:
-                    content = await resp.text()
-                    return csv.reader(io.StringIO(content))
-                else:
-                    print(f"❌ Failed to fetch CSV: HTTP {resp.status}")
+        async with aiohttp.ClientSession() as session, session.get(url) as resp:
+            if resp.status == 200:
+                content = await resp.text()
+                return csv.reader(io.StringIO(content))
+            else:
+                print(f"❌ Failed to fetch CSV: HTTP {resp.status}")
     except Exception as e:
         channel = bot.get_channel(ChannelIds.SERVING__RETREAT_BOT_SPAM)
         if channel:
-            channel.send(f"⚠️ Error fetching CSV: {e}")
+            await channel.send(f"⚠️ Error fetching CSV: {e}")
     return None
 
 
