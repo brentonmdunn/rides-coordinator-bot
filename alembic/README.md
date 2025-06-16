@@ -1,3 +1,3 @@
 # Alembic
 
-Handles database migrations when tables are added or modified. Use `migrations.sh`.
+Handles database migrations when tables are added or modified. Use `scripts/migrations.sh`.
