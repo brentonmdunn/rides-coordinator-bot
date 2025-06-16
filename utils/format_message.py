@@ -1,5 +1,4 @@
-"""
-utils/format_message.py
+"""utils/format_message.py
 
 Helper functions to format messages.
 """

@@ -1,16 +1,16 @@
-import discord
-from discord.ext import commands
-import requests
 import csv
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Optional
+
+import discord
+import requests
+from discord.ext import commands
+from dotenv import load_dotenv
 
 from enums import ChannelIds
 from logger import logger
-
-from dotenv import load_dotenv
-import os
-from typing import Optional
 
 load_dotenv()
 
@@ -39,15 +39,16 @@ class Locations(commands.Cog):
     async def pickup_location(self, interaction: discord.Interaction, name: str):
         """Finds and sends a pickup location for a given person."""
         logger.info(
-            f"pickup-location command used by {interaction.user} in #{interaction.channel}"
+            f"pickup-location command used by {interaction.user} in #{interaction.channel}",
         )
 
         if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
-                "Command cannot be used in this channel.", ephemeral=True
+                "Command cannot be used in this channel.",
+                ephemeral=True,
             )
             logger.info(
-                f"pickup-location not allowed in #{interaction.channel} by {interaction.user}"
+                f"pickup-location not allowed in #{interaction.channel} by {interaction.user}",
             )
             return
 
@@ -78,13 +79,15 @@ class Locations(commands.Cog):
         await interaction.response.send_message(output)
 
     @discord.app_commands.command(
-        name="list-pickups-sunday", description="List pickups for Sunday service."
+        name="list-pickups-sunday",
+        description="List pickups for Sunday service.",
     )
     async def list_locations_sunday(self, interaction: discord.Interaction):
         await self.list_locations(interaction, day="sunday")
 
     @discord.app_commands.command(
-        name="list-pickups-friday", description="List pickups for Friday fellowship."
+        name="list-pickups-friday",
+        description="List pickups for Friday fellowship.",
     )
     async def list_locations_friday(self, interaction: discord.Interaction):
         await self.list_locations(interaction, day="friday")
@@ -105,7 +108,9 @@ class Locations(commands.Cog):
     ):
         if channel_id:
             await self.list_locations(
-                interaction, message_id=message_id, channel_id=channel_id
+                interaction,
+                message_id=message_id,
+                channel_id=channel_id,
             )
         else:
             await self.list_locations(interaction, message_id=message_id)
@@ -118,15 +123,16 @@ class Locations(commands.Cog):
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ):
         logger.info(
-            f"list-pickups command used by {interaction.user} in #{interaction.channel}"
+            f"list-pickups command used by {interaction.user} in #{interaction.channel}",
         )
 
         if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
-                "Command cannot be used in this channel.", ephemeral=True
+                "Command cannot be used in this channel.",
+                ephemeral=True,
             )
             logger.info(
-                f"list-pickups not allowed in #{interaction.channel} by {interaction.user}"
+                f"list-pickups not allowed in #{interaction.channel} by {interaction.user}",
             )
             return
 
@@ -215,12 +221,10 @@ class Locations(commands.Cog):
 
         for location, people in locations_people.items():
             matched = False
-            for group_name, group_data in groups.items():
+            for _, group_data in groups.items():
                 if any(keyword in location.lower() for keyword in group_data["filter"]):
                     group_data["count"] += len(people)
-                    group_data["people"] += (
-                        f"**({len(people)}) {location}:** {', '.join(people)}\n"
-                    )
+                    group_data["people"] += f"**({len(people)}) {location}:** {', '.join(people)}\n"
                     matched = True
                     break
             if not matched:

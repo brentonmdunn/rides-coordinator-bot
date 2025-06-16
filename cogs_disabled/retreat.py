@@ -1,17 +1,16 @@
-from collections import defaultdict
 import csv
+import os
+from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
-import os
 
 import discord
+import requests
 from discord.ext import commands
 from dotenv import load_dotenv
-import requests
 
 from enums import ChannelIds
 from logger import logger
-
 
 load_dotenv()
 
@@ -46,19 +45,21 @@ class Retreat(commands.Cog):
         self.bot = bot
 
     @discord.app_commands.command(
-        name="list-drivers-retreat", description="List drivers for retreat."
+        name="list-drivers-retreat",
+        description="List drivers for retreat.",
     )
     async def list_drivers_retreat(self, interaction: discord.Interaction):
         logger.info(
-            f"list-pickups command used by {interaction.user} in #{interaction.channel}"
+            f"list-pickups command used by {interaction.user} in #{interaction.channel}",
         )
 
         if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
-                "Command cannot be used in this channel.", ephemeral=True
+                "Command cannot be used in this channel.",
+                ephemeral=True,
             )
             logger.info(
-                f"This command is not allowed in #{interaction.channel} by {interaction.user}"
+                f"This command is not allowed in #{interaction.channel} by {interaction.user}",
             )
             return
 
@@ -96,19 +97,21 @@ class Retreat(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @discord.app_commands.command(
-        name="list-pickups-retreat", description="List pickups for retreat."
+        name="list-pickups-retreat",
+        description="List pickups for retreat.",
     )
     async def list_pickups_retreat(self, interaction: discord.Interaction):
         logger.info(
-            f"list-pickups command used by {interaction.user} in #{interaction.channel}"
+            f"list-pickups command used by {interaction.user} in #{interaction.channel}",
         )
 
         if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
-                "Command cannot be used in this channel.", ephemeral=True
+                "Command cannot be used in this channel.",
+                ephemeral=True,
             )
             logger.info(
-                f"This command is not allowed in #{interaction.channel} by {interaction.user}"
+                f"This command is not allowed in #{interaction.channel} by {interaction.user}",
             )
             return
 
@@ -157,12 +160,10 @@ class Retreat(commands.Cog):
 
         for location, people in locations_people.items():
             matched = False
-            for group_name, group_data in groups.items():
+            for _, group_data in groups.items():
                 if any(keyword in location.lower() for keyword in group_data["filter"]):
                     group_data["count"] += len(people)
-                    group_data["people"] += (
-                        f"**({len(people)}) {location}:** {', '.join(people)}\n"
-                    )
+                    group_data["people"] += f"**({len(people)}) {location}:** {', '.join(people)}\n"
                     matched = True
                     break
             if not matched:
@@ -239,10 +240,11 @@ class Retreat(commands.Cog):
     async def list_pickups_retreat_time(self, interaction: discord.Interaction):
         if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
-                "Command cannot be used in this channel.", ephemeral=True
+                "Command cannot be used in this channel.",
+                ephemeral=True,
             )
             logger.info(
-                f"This command is not allowed in #{interaction.channel} by {interaction.user}"
+                f"This command is not allowed in #{interaction.channel} by {interaction.user}",
             )
             return
 

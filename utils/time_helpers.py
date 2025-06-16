@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+
 import pytz
 
 from enums import DaysOfWeek, DaysOfWeekNumber
@@ -9,8 +10,8 @@ def is_during_target_window(day: str) -> bool:
     - Thursday 7 PM to Friday 7 PM
     - Saturday 10 AM to Sunday 10 AM
     """
-    LA_TZ = pytz.timezone("America/Los_Angeles")
-    now = datetime.now().astimezone(LA_TZ)
+    la_tz = pytz.timezone("America/Los_Angeles")
+    now = datetime.now().astimezone(la_tz)
     weekday_index = now.weekday()  # Monday = 0, Sunday = 6
     hour = now.hour
 

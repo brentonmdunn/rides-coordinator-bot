@@ -1,8 +1,7 @@
-"""
-utils/channel_whitelist.py
-"""
+"""utils/channel_whitelist.py"""
 
 import discord
+
 from enums import ChannelIds
 from logger import logger
 
@@ -20,16 +19,20 @@ BOT_TESTING_CHANNELS = [
 
 
 async def is_allowed_locations(
-    interaction: discord.Interaction, channel_id: int
+    interaction: discord.Interaction,
+    channel_id: int,
 ) -> bool:
     if channel_id in BOT_TESTING_CHANNELS:
         return True
     if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
         await interaction.response.send_message(
-            "Command cannot be used in this channel.", ephemeral=True
+            "Command cannot be used in this channel.",
+            ephemeral=True,
         )
         logger.info(
-            "Command not allowed in #%s by %s", interaction.channel, interaction.user
+            "Command not allowed in #%s by %s",
+            interaction.channel,
+            interaction.user,
         )
         return False
     return True
