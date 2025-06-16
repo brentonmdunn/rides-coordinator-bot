@@ -25,7 +25,7 @@ Add environment variables:
 
 Make a copy of `.env.example`, remove the `.example` from the end, and populate the environment variables.
 
-### Building Docker Image 
+### Building Docker Image and Pushing to Docker Hub
 ```
 $ docker buildx create --use --name multi-platform-builder --driver docker-container
 $ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot --push .
