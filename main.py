@@ -65,8 +65,6 @@ async def on_app_command_error(
 
 
 async def main() -> None:
-    logger.info("hello")
-    logger.info("bye")
     async with bot:
         await init_db()
         await load_extensions()
