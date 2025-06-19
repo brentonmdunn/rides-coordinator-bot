@@ -11,8 +11,8 @@ from app.core.enums import ChannelIds, DaysOfWeekNumber, RoleIds
 from app.utils.format_message import ping_role_with_message
 from app.utils.time_helpers import get_next_date
 
-WILDCARD_DATES: list[str] = ["5/16", "5/18", "5/23", "6/13"]
-CLASS_DATES: list[str] = ["5/4", "5/11", "5/25", "6/1", "6/8", "6/15"]
+WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
+CLASS_DATES: list[str] = []
 
 
 def make_friday_msg() -> str | None:
