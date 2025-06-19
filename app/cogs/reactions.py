@@ -12,9 +12,9 @@ from app.utils.time_helpers import is_during_target_window
 load_dotenv()
 
 LOG_ALL_REACTIONS = os.getenv("LOG_ALL_REACTONS", "false").lower() == "true"
-TARGET_MESSAGE_ID = 940467929676406807
-TARGET_CHANNEL_ID = 916821529663250463
-TARGET_CATEGORY_ID = 1380694503391887410
+TARGET_MESSAGE_ID = 940467929676406807      # rides react message
+TARGET_CHANNEL_ID = 916821529663250463      # roles channel
+TARGET_CATEGORY_ID = 1380694503391887410    # references category
 LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 
