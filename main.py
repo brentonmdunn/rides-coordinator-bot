@@ -10,6 +10,7 @@ from discord.ext.commands import Bot
 from dotenv import load_dotenv
 
 from app.core.database import init_db
+from app.core.logger import logger
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
@@ -25,17 +26,17 @@ bot: Bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready() -> None:
-    print(f"✅ Logged in as {bot.user}!")
-    print(f"🛠️  Synced {len(await bot.tree.sync())} slash commands.")
+    logger.info(f"✅ Logged in as {bot.user}!")
+    logger.info(f"🛠️  Synced {len(await bot.tree.sync())} slash commands.")
 
     for guild in bot.guilds:
         try:
             members: list[discord.Member] = []
             async for member in guild.fetch_members(limit=None):
                 members.append(member)
-            print(f"📥 Cached {len(members)} members in '{guild.name}'")
+            logger.info(f"📥 Cached {len(members)} members in '{guild.name}'")
         except Exception as e:
-            print(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
+            logger.warning(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
 
 
 async def load_extensions() -> None:
@@ -44,9 +45,9 @@ async def load_extensions() -> None:
             extension: str = f"app.cogs.{filename.stem}"
             try:
                 await bot.load_extension(extension)
-                print(f"Loaded extension: {extension}")
+                logger.info(f"✅ Loaded extension: {extension}")
             except Exception as e:
-                print(f"❌ Failed to load extension {extension}: {e}")
+                logger.warning(f"❌ Failed to load extension {extension}: {e}")
 
 
 @bot.tree.error

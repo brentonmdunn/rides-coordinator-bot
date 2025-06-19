@@ -7,15 +7,16 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from app.core.enums import ChannelIds, DaysOfWeek, RoleIds
+from app.core.logger import logger
 from app.utils.time_helpers import is_during_target_window
 
 load_dotenv()
 
 LOG_ALL_REACTIONS = os.getenv("LOG_ALL_REACTONS", "false").lower() == "true"
-TARGET_MESSAGE_ID = 940467929676406807
-TARGET_CHANNEL_ID = 916821529663250463
-TARGET_CATEGORY_ID = 1380694503391887410
-CSV_URL = os.getenv("CSV_URL")
+TARGET_MESSAGE_ID = 940467929676406807  # rides react message
+TARGET_CHANNEL_ID = 916821529663250463  # roles channel
+TARGET_CATEGORY_ID = 1380694503391887410  # references category
+LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 
 class Reactions(commands.Cog):
@@ -37,7 +38,7 @@ class Reactions(commands.Cog):
         user = guild.get_member(payload.user_id)
 
         if user and user.bot:
-            print(f"Ignoring bot reaction from {user.name}")
+            logger.info(f"Ignoring bot reaction from {user.name}")
             return
 
         if user:
@@ -67,7 +68,7 @@ class Reactions(commands.Cog):
                     )
 
             def we_have_location(username):
-                response = requests.get(CSV_URL, timeout=60)
+                response = requests.get(LSCC_PPL_CSV_URL, timeout=60)
 
                 csv_data = response.content.decode("utf-8")
                 csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
@@ -89,7 +90,7 @@ class Reactions(commands.Cog):
                 category = discord.utils.get(guild.categories, id=TARGET_CATEGORY_ID)
 
                 if not category:
-                    print(f"Category with ID {TARGET_CATEGORY_ID} not found.")
+                    logger.info(f"Category with ID {TARGET_CATEGORY_ID} not found.")
                     return
 
                 existing_channel = discord.utils.get(
@@ -97,7 +98,7 @@ class Reactions(commands.Cog):
                     name=channel_name,
                 )
                 if existing_channel:
-                    print(f"Channel {channel_name} already exists.")
+                    logger.info(f"Channel {channel_name} already exists.")
                     return
 
                 # Permissions
@@ -156,7 +157,7 @@ class Reactions(commands.Cog):
         user = guild.get_member(payload.user_id)
 
         if user and user.bot:
-            print(f"Ignoring bot reaction removal from {user.name}")
+            logger.info(f"Ignoring bot reaction removal from {user.name}")
             return
 
         if (

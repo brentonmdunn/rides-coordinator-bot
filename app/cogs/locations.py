@@ -14,7 +14,7 @@ from app.core.logger import logger
 
 load_dotenv()
 
-CSV_URL = os.getenv("CSV_URL")
+LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 # List of scholars housing locations
 SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh"]
@@ -52,7 +52,7 @@ class Locations(commands.Cog):
             )
             return
 
-        response = requests.get(CSV_URL)
+        response = requests.get(LSCC_PPL_CSV_URL)
 
         if response.status_code != 200:
             await interaction.response.send_message("Failed to retrieve data.")
@@ -169,12 +169,12 @@ class Locations(commands.Cog):
                 async for user in reaction.users():
                     usernames_reacted.add(user)
         except Exception as e:
-            print(f"Error fetching message: {e}")
+            logger.info(f"Error fetching message: {e}")
             await interaction.response.send_message("Failed to fetch message.")
             return
 
         # Load CSV
-        response = requests.get(CSV_URL)
+        response = requests.get(LSCC_PPL_CSV_URL)
         if response.status_code != 200:
             await interaction.response.send_message("Failed to retrieve the CSV file.")
             return

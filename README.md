@@ -5,6 +5,8 @@
 
 This is a Discord bot that helps coordinate ride pickups.
 
+
+> ⚠️ **Warning:** `print()` is not working. Please see issue [#73](https://github.com/brentonmdunn/rides-coordinator-bot/issues/73) for more details.
 ---
 
 ## 🚀 Installation

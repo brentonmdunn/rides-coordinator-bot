@@ -9,6 +9,7 @@ import discord
 from cogs_disabled.retreat import Col
 
 from app.core.enums import ChannelIds
+from app.core.logger import logger
 from app.utils.constants import GUILD_ID
 from app.utils.parsing import parse_discord_username
 
@@ -33,21 +34,21 @@ async def logic(reader, bot):
             channel = bot.get_channel(ChannelIds.SERVING__RETREAT_BOT_SPAM)
 
             if member is None:
-                # print(f"⚠️ Could not find member with username: {username}")
+                # logger.info(f"⚠️ Could not find member with username: {username}")
                 if channel:
                     await channel.send(
                         f"⚠️ Could not find member with username: {username}",
                     )
                 continue
             elif role is None:
-                # print(f"⚠️ Role '{role_name}' not found.")
+                # logger.info(f"⚠️ Role '{role_name}' not found.")
                 continue
             elif role in member.roles:
-                # print(f"⚠️ {username} already has '{role_name}' role.")
+                # logger.info(f"⚠️ {username} already has '{role_name}' role.")
                 continue
             else:
                 await member.add_roles(role)
-                # print(f"✅ Added role '{role_name}' to {member.display_name}")
+                # logger.info(f"✅ Added role '{role_name}' to {member.display_name}")
 
                 if channel:
                     await channel.send(
@@ -63,7 +64,7 @@ async def fetch_csv(bot):
                 content = await resp.text()
                 return csv.reader(io.StringIO(content))
             else:
-                print(f"❌ Failed to fetch CSV: HTTP {resp.status}")
+                logger.info(f"❌ Failed to fetch CSV: HTTP {resp.status}")
     except Exception as e:
         channel = bot.get_channel(ChannelIds.SERVING__RETREAT_BOT_SPAM)
         if channel:
