@@ -45,7 +45,7 @@ async def load_extensions() -> None:
             extension: str = f"app.cogs.{filename.stem}"
             try:
                 await bot.load_extension(extension)
-                logger.info(f"Loaded extension: {extension}")
+                logger.info(f"✅ Loaded extension: {extension}")
             except Exception as e:
                 logger.info(f"❌ Failed to load extension {extension}: {e}")
 
