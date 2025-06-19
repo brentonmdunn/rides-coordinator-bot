@@ -3,7 +3,8 @@ name: Ruff Lint
 on:
   pull_request:
     branches:
-      - main  # or change this to your default branch
+      - main 
+      - staging
 
 jobs:
   lint:
