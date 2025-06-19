@@ -8,6 +8,7 @@ from discord.abc import Messageable
 from discord.ext.commands import Bot
 
 from app.core.enums import ChannelIds, DaysOfWeekNumber, RoleIds
+from app.core.logger import logger
 from app.utils.format_message import ping_role_with_message
 from app.utils.time_helpers import get_next_date
 
@@ -56,7 +57,7 @@ async def run_ask_rides_fri(bot: Bot) -> None:
         ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     )
     if not channel:
-        print("Error channel not found")
+        logger.info("Error channel not found")
         return
     message: str | None = make_friday_msg()
     if message is None:
@@ -73,7 +74,7 @@ async def run_ask_rides_sun(bot: Bot) -> None:
         ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     )
     if not channel:
-        print("Error channel not found")
+        logger.info("Error channel not found")
         return
     message: str | None = make_sunday_msg()
     if message is None:
@@ -88,7 +89,7 @@ async def run_ask_rides_sun_class(bot: Bot) -> None:
     """Runner for Sunday class rides message."""
     channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
     if not isinstance(channel, Messageable):
-        print("Error channel not found")
+        logger.info("Error channel not found")
         return
     message: str | None = make_sunday_msg_class()
     if message is None:

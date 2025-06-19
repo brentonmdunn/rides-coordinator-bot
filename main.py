@@ -26,17 +26,17 @@ bot: Bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready() -> None:
-    print(f"✅ Logged in as {bot.user}!")
-    print(f"🛠️  Synced {len(await bot.tree.sync())} slash commands.")
+    logger.info(f"✅ Logged in as {bot.user}!")
+    logger.info(f"🛠️  Synced {len(await bot.tree.sync())} slash commands.")
 
     for guild in bot.guilds:
         try:
             members: list[discord.Member] = []
             async for member in guild.fetch_members(limit=None):
                 members.append(member)
-            print(f"📥 Cached {len(members)} members in '{guild.name}'")
+            logger.info(f"📥 Cached {len(members)} members in '{guild.name}'")
         except Exception as e:
-            print(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
+            logger.info(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
 
 
 async def load_extensions() -> None:
@@ -45,9 +45,9 @@ async def load_extensions() -> None:
             extension: str = f"app.cogs.{filename.stem}"
             try:
                 await bot.load_extension(extension)
-                print(f"Loaded extension: {extension}")
+                logger.info(f"Loaded extension: {extension}")
             except Exception as e:
-                print(f"❌ Failed to load extension {extension}: {e}")
+                logger.info(f"❌ Failed to load extension {extension}: {e}")
 
 
 @bot.tree.error
@@ -66,7 +66,7 @@ async def on_app_command_error(
 
 async def main() -> None:
     logger.info("hello")
-    print("bye")
+    logger.info("bye")
     async with bot:
         await init_db()
         await load_extensions()

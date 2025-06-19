@@ -7,6 +7,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from app.core.enums import ChannelIds, DaysOfWeek, RoleIds
+from app.core.logger import logger
 from app.utils.time_helpers import is_during_target_window
 
 load_dotenv()
@@ -37,7 +38,7 @@ class Reactions(commands.Cog):
         user = guild.get_member(payload.user_id)
 
         if user and user.bot:
-            print(f"Ignoring bot reaction from {user.name}")
+            logger.info(f"Ignoring bot reaction from {user.name}")
             return
 
         if user:
@@ -89,7 +90,7 @@ class Reactions(commands.Cog):
                 category = discord.utils.get(guild.categories, id=TARGET_CATEGORY_ID)
 
                 if not category:
-                    print(f"Category with ID {TARGET_CATEGORY_ID} not found.")
+                    logger.info(f"Category with ID {TARGET_CATEGORY_ID} not found.")
                     return
 
                 existing_channel = discord.utils.get(
@@ -97,7 +98,7 @@ class Reactions(commands.Cog):
                     name=channel_name,
                 )
                 if existing_channel:
-                    print(f"Channel {channel_name} already exists.")
+                    logger.info(f"Channel {channel_name} already exists.")
                     return
 
                 # Permissions
@@ -156,7 +157,7 @@ class Reactions(commands.Cog):
         user = guild.get_member(payload.user_id)
 
         if user and user.bot:
-            print(f"Ignoring bot reaction removal from {user.name}")
+            logger.info(f"Ignoring bot reaction removal from {user.name}")
             return
 
         if (

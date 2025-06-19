@@ -169,7 +169,7 @@ class Locations(commands.Cog):
                 async for user in reaction.users():
                     usernames_reacted.add(user)
         except Exception as e:
-            print(f"Error fetching message: {e}")
+            logger.info(f"Error fetching message: {e}")
             await interaction.response.send_message("Failed to fetch message.")
             return
 
