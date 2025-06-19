@@ -15,7 +15,7 @@ LOG_ALL_REACTIONS = os.getenv("LOG_ALL_REACTONS", "false").lower() == "true"
 TARGET_MESSAGE_ID = 940467929676406807
 TARGET_CHANNEL_ID = 916821529663250463
 TARGET_CATEGORY_ID = 1380694503391887410
-CSV_URL = os.getenv("CSV_URL")
+LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 
 class Reactions(commands.Cog):
@@ -67,7 +67,7 @@ class Reactions(commands.Cog):
                     )
 
             def we_have_location(username):
-                response = requests.get(CSV_URL, timeout=60)
+                response = requests.get(LSCC_PPL_CSV_URL, timeout=60)
 
                 csv_data = response.content.decode("utf-8")
                 csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
