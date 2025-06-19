@@ -36,7 +36,7 @@ async def on_ready() -> None:
                 members.append(member)
             logger.info(f"📥 Cached {len(members)} members in '{guild.name}'")
         except Exception as e:
-            logger.info(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
+            logger.warning(f"❌ Failed to fetch members for guild '{guild.name}': {e}")
 
 
 async def load_extensions() -> None:
@@ -47,7 +47,7 @@ async def load_extensions() -> None:
                 await bot.load_extension(extension)
                 logger.info(f"✅ Loaded extension: {extension}")
             except Exception as e:
-                logger.info(f"❌ Failed to load extension {extension}: {e}")
+                logger.warning(f"❌ Failed to load extension {extension}: {e}")
 
 
 @bot.tree.error
