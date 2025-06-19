@@ -10,6 +10,7 @@ from discord.ext.commands import Bot
 from dotenv import load_dotenv
 
 from app.core.database import init_db
+from app.core.logger import logger
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
@@ -64,6 +65,8 @@ async def on_app_command_error(
 
 
 async def main() -> None:
+    logger.info("hello")
+    print("bye")
     async with bot:
         await init_db()
         await load_extensions()
