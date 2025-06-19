@@ -89,7 +89,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot 
 ## 🧪 GitHub Workflows
 
 - **Pull Requests**
-  - Each PR runs **lint** and **format** checks via GitHub Actions
+  - Each PR to main and staging runs **lint** and **format** checks via GitHub Actions
   - PRs that fail these checks will be blocked from merging
 
 - **Main Branch Merges**
