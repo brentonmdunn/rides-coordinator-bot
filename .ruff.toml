@@ -23,6 +23,7 @@ lint.select = [
   # "D",  # pydocstyle (docstring style)
   "RUF",# Ruff-specific rules,
   "COM", # Trailing comma
+  "PTH"
 ]
 
 
