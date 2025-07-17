@@ -3,7 +3,8 @@
 import discord
 from discord.ext import commands
 
-from app.core.enums import ChannelIds, RoleIds
+from app.core.enums import ChannelIds, FeatureFlagNames, RoleIds
+from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message
 
 
@@ -15,6 +16,7 @@ class AskDrivers(commands.Cog):
         name="ask-drivers",
         description="Pings drivers to see who is available.",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def ask_drivers(self, interaction: discord.Interaction, message: str) -> None:
         """Pings the driver role with a custom message."""
         # Only allow usage in the DRIVER_CHAT_WOOOOO channel

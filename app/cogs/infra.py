@@ -2,8 +2,9 @@ import discord
 from discord.ext import commands
 
 from app.core.database import AsyncSessionLocal
+from app.core.enums import FeatureFlagNames
 from app.core.models import DiscordUsers
-from app.utils.checks import is_admin
+from app.utils.checks import feature_flag_enabled, is_admin
 
 
 class Infra(commands.Cog):
@@ -15,6 +16,7 @@ class Infra(commands.Cog):
         description="Adds user and Discord username to database",
     )
     @is_admin()
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def add_user(
         self,
         interaction: discord.Interaction,

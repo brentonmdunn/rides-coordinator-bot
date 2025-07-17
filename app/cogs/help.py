@@ -2,6 +2,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from app.core.enums import FeatureFlagNames
+from app.utils.checks import feature_flag_enabled
+
 
 class HelpCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -11,6 +14,7 @@ class HelpCog(commands.Cog):
         name="help",
         description="List all slash commands with their parameters",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def help(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="Available Slash Commands",

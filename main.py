@@ -9,7 +9,7 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from dotenv import load_dotenv
 
-from app.core.database import init_db
+from app.core.database import AsyncSessionLocal, init_db, seed_feature_flags
 from app.core.logger import logger
 
 load_dotenv()
@@ -67,6 +67,8 @@ async def on_app_command_error(
 async def main() -> None:
     async with bot:
         await init_db()
+        async with AsyncSessionLocal() as session:
+            await seed_feature_flags(session)
         await load_extensions()
         await bot.start(TOKEN)
 

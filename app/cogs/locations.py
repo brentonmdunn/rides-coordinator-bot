@@ -9,8 +9,9 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from app.core.enums import ChannelIds
+from app.core.enums import ChannelIds, FeatureFlagNames
 from app.core.logger import logger
+from app.utils.checks import feature_flag_enabled
 
 load_dotenv()
 
@@ -36,6 +37,7 @@ class Locations(commands.Cog):
         name="pickup-location",
         description="Pickup location for a person (name or Discord username).",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def pickup_location(self, interaction: discord.Interaction, name: str):
         """Finds and sends a pickup location for a given person."""
         logger.info(
@@ -82,6 +84,7 @@ class Locations(commands.Cog):
         name="list-pickups-sunday",
         description="List pickups for Sunday service.",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_sunday(self, interaction: discord.Interaction):
         await self.list_locations(interaction, day="sunday")
 
@@ -89,6 +92,7 @@ class Locations(commands.Cog):
         name="list-pickups-friday",
         description="List pickups for Friday fellowship.",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_friday(self, interaction: discord.Interaction):
         await self.list_locations(interaction, day="friday")
 
@@ -100,6 +104,7 @@ class Locations(commands.Cog):
         message_id="The message ID to fetch pickups from",
         channel_id="Optional channel ID where the message is located",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_unknown(
         self,
         interaction: discord.Interaction,
