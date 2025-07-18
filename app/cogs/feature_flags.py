@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from sqlalchemy import select, update
+from sqlalchemy import case, select, update
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
@@ -80,6 +80,42 @@ class FeatureFlagsCog(commands.Cog):
             await interaction.response.send_message(
                 f"✅ Feature flag `{feature_name}` is now **{new_state}**."
             )
+
+    @app_commands.command(
+        name="list-feature-flags",
+        description="Lists all feature flags and their current status.",
+    )
+    @is_admin()
+    async def list_feature_flags(self, interaction: discord.Interaction) -> None:
+        """Fetches all feature flags and displays their status in an embed."""
+        async with AsyncSessionLocal() as session:
+            # Custom sort: 'bot' flag first, then the rest alphabetically.
+            order_logic = case(
+                (FeatureFlagsModel.feature == FeatureFlagNames.BOT.value, 0),
+                else_=1,
+            )
+            stmt = select(FeatureFlagsModel).order_by(order_logic, FeatureFlagsModel.feature)
+            result = await session.execute(stmt)
+            all_flags = result.scalars().all()
+
+            if not all_flags:
+                await interaction.response.send_message(
+                    "No feature flags found in the database.", ephemeral=True
+                )
+                return
+
+            embed = discord.Embed(
+                title="⚙️ Feature Flag Status",
+                description="Current state of all defined feature flags.",
+                color=discord.Color.blue(),
+            )
+
+            for flag in all_flags:
+                status_icon = "✅" if flag.enabled else "❌"
+                status_text = "Enabled" if flag.enabled else "Disabled"
+                embed.add_field(name=flag.feature, value=f"{status_icon} {status_text}", inline=False)
+
+            await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot: commands.Bot):
