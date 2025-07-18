@@ -71,7 +71,9 @@ def feature_flag_enabled(feature: str):
 
             if not feature_is_enabled:
                 if interaction:
-                    print(f"Feature '{feature}' is disabled. Blocking command for {interaction.user}.")
+                    print(
+                        f"Feature '{feature}' is disabled. Blocking command for {interaction.user}."
+                    )
                     await interaction.response.send_message(
                         f"This command is currently disabled by feature flag '{feature}'.",
                         ephemeral=True,

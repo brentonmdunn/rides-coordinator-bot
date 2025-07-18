@@ -113,7 +113,9 @@ class FeatureFlagsCog(commands.Cog):
             for flag in all_flags:
                 status_icon = "✅" if flag.enabled else "❌"
                 status_text = "Enabled" if flag.enabled else "Disabled"
-                embed.add_field(name=flag.feature, value=f"{status_icon} {status_text}", inline=False)
+                embed.add_field(
+                    name=flag.feature, value=f"{status_icon} {status_text}", inline=False
+                )
 
             await interaction.response.send_message(embed=embed)
 
