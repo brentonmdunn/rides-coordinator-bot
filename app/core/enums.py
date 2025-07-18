@@ -45,3 +45,11 @@ class RoleIds(IntEnum):
     DRIVER = 1286924999730663454
     RIDES = 940467850261450752
     RIDE_COORDINATOR = 1336966439323832381
+
+
+class FeatureFlagNames(StrEnum):
+    """Enum for feature flag names. This is the single source of truth."""
+
+    BOT = "bot"
+    ASK_FRIDAY_RIDES_JOB = "ask_friday_rides_job"
+    ASK_SUNDAY_RIDES_JOB = "ask_sunday_rides_job"

@@ -1,6 +1,9 @@
 import discord
 from discord.ext import commands
 
+from app.core.enums import FeatureFlagNames
+from app.utils.checks import feature_flag_enabled
+
 
 class Events(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -15,6 +18,7 @@ class Events(commands.Cog):
         channel_id="The ID of the channel the message is in.",
         role_name="Name of the role to assign.",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def give_role(
         self,
         interaction: discord.Interaction,

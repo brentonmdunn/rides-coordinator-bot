@@ -7,8 +7,9 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from app.core.enums import ChannelIds, DaysOfWeekNumber, RoleIds
+from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
+from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message
 from app.utils.time_helpers import get_next_date
 
@@ -51,11 +52,13 @@ def format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
+@feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
 async def run_ask_rides_fri(bot: Bot) -> None:
     """Runner for Friday rides message."""
     channel: Messageable | None = bot.get_channel(
         ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     )
+
     if not channel:
         logger.info("Error channel not found")
         return
@@ -68,6 +71,7 @@ async def run_ask_rides_fri(bot: Bot) -> None:
     )
 
 
+@feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
 async def run_ask_rides_sun(bot: Bot) -> None:
     """Runner for Sunday service rides message."""
     channel: Messageable | None = bot.get_channel(

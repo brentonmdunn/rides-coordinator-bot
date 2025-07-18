@@ -6,6 +6,8 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from app.core.enums import FeatureFlagNames
+from app.utils.checks import feature_flag_enabled
 from app.utils.parsing import parse_name
 
 load_dotenv()
@@ -21,6 +23,7 @@ class Whois(commands.Cog):
         name="whois",
         description="List name and Discord username of potential matches",
     )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
     async def whois(self, interaction: discord.Interaction, name: str) -> None:
         """Fetch and parse names from CSV."""
         response = requests.get(LSCC_PPL_CSV_URL)
