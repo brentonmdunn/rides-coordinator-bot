@@ -9,7 +9,7 @@ from discord.ext.commands import Bot
 
 from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
-from app.utils.checks import feature_flag_enabled_jobs
+from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message
 from app.utils.time_helpers import get_next_date
 
@@ -52,7 +52,7 @@ def format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
-@feature_flag_enabled_jobs(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
+@feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
 async def run_ask_rides_fri(bot: Bot) -> None:
     """Runner for Friday rides message."""
     channel: Messageable | None = bot.get_channel(
@@ -71,7 +71,7 @@ async def run_ask_rides_fri(bot: Bot) -> None:
     )
 
 
-@feature_flag_enabled_jobs(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
+@feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
 async def run_ask_rides_sun(bot: Bot) -> None:
     """Runner for Sunday service rides message."""
     channel: Messageable | None = bot.get_channel(
