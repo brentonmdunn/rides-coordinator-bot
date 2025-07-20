@@ -34,6 +34,17 @@ class Locations(commands.Cog):
         self.bot = bot
 
     @discord.app_commands.command(
+        name="sync-locations",
+        description="Sync Google Sheets with database.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    async def sync_locations(self, interaction: discord.Interaction):
+        from app.utils.lookups import sync
+
+        await sync()
+        await interaction.response.send_message("Sync complete")
+
+    @discord.app_commands.command(
         name="pickup-location",
         description="Pickup location for a person (name or Discord username).",
     )
