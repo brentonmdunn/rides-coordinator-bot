@@ -18,7 +18,7 @@ load_dotenv()
 LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 # List of scholars housing locations
-SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh"]
+SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh", "new marshall"]
 
 LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_BOT_SPAM,
@@ -212,7 +212,14 @@ class Locations(commands.Cog):
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "people": "",
-                "filter": ["warren", "pcyn"],
+                "filter": [
+                    "warren",
+                    "pcyn",
+                    "pce",
+                    "pcw",
+                    "pepper canyon east",
+                    "pepper canyon west",
+                ],
                 "emoji": "🏠",
             },
             "Rita + Eighth": {
