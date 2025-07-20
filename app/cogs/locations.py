@@ -97,7 +97,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_sunday(self, interaction: discord.Interaction):
-        await self.list_locations(interaction, day="sunday")
+        await self._list_locations(interaction, day="sunday")
 
     @discord.app_commands.command(
         name="list-pickups-friday",
@@ -105,7 +105,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_friday(self, interaction: discord.Interaction):
-        await self.list_locations(interaction, day="friday")
+        await self._list_locations(interaction, day="friday")
 
     @discord.app_commands.command(
         name="list-pickups-by-message-id",
@@ -123,15 +123,44 @@ class Locations(commands.Cog):
         channel_id: Optional[str] = None,
     ):
         if channel_id:
-            await self.list_locations(
+            await self._list_locations(
                 interaction,
                 message_id=message_id,
                 channel_id=channel_id,
             )
         else:
-            await self.list_locations(interaction, message_id=message_id)
+            await self._list_locations(interaction, message_id=message_id)
 
-    async def list_locations(
+    def _get_last_sunday(self):
+        now = datetime.now()
+        if now.weekday() == 6:
+            return now - timedelta(days=7)
+        else:
+            return now - timedelta(days=(now.weekday() + 1))
+
+    async def _find_correct_message(self, interaction, day):
+        last_sunday = self._get_last_sunday()
+        channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        most_recent_message = None
+
+        if not channel:
+            await interaction.response.send_message("Channel not found.")
+            return
+
+        async for message in channel.history(after=last_sunday):
+            if (
+                day in message.content.lower()
+                and "react" in message.content.lower()
+                and "class" not in message.content.lower()
+            ):
+                most_recent_message = message
+        if not most_recent_message:
+            await interaction.response.send_message("No matching message found.")
+            return
+        message_id = most_recent_message.id
+        return message_id
+
+    async def _list_locations(
         self,
         interaction,
         day=None,
@@ -152,30 +181,9 @@ class Locations(commands.Cog):
             )
             return
 
-        now = datetime.now()
-
-        # Calculate last Sunday
-        if now.weekday() == 6:
-            last_sunday = now - timedelta(days=7)
-        else:
-            last_sunday = now - timedelta(days=(now.weekday() + 1))
-
         # Find the relevant message
         if day:
-            channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-            most_recent_message = None
-            if channel:
-                async for message in channel.history(after=last_sunday):
-                    if (
-                        day in message.content.lower()
-                        and "react" in message.content.lower()
-                        and "class" not in message.content.lower()
-                    ):
-                        most_recent_message = message
-            if not most_recent_message:
-                await interaction.response.send_message("No matching message found.")
-                return
-            message_id = most_recent_message.id
+            message_id = await self._find_correct_message(interaction, day)
 
         usernames_reacted = set()
         channel = self.bot.get_channel(int(channel_id))
