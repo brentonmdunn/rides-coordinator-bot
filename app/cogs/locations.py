@@ -1,17 +1,16 @@
-import csv
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional
 
 import discord
-import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from app.core.enums import ChannelIds, FeatureFlagNames
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
+from app.utils.lookups import get_location, get_name_location_no_sync, sync
 
 load_dotenv()
 
@@ -65,24 +64,7 @@ class Locations(commands.Cog):
             )
             return
 
-        response = requests.get(LSCC_PPL_CSV_URL)
-
-        if response.status_code != 200:
-            await interaction.response.send_message("Failed to retrieve data.")
-            return
-
-        csv_data = response.content.decode("utf-8")
-        csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
-        possible_people = []
-
-        for row in csv_reader:
-            for idx, cell in enumerate(row):
-                if name.lower() in cell.lower():
-                    try:
-                        location = row[idx + 1].strip()
-                        possible_people.append((cell, location))
-                    except:  # noqa: E722
-                        pass
+        possible_people: list[tuple[str, str]] | None = await get_location(name)
 
         if not possible_people:
             await interaction.response.send_message("No people found.")
@@ -181,6 +163,10 @@ class Locations(commands.Cog):
             )
             return
 
+        if (day is None and message_id is None) or (day is not None and message_id is not None):
+            await interaction.response.send_message("Please provide either day or message ID")
+            return
+
         # Find the relevant message
         if day:
             message_id = await self._find_correct_message(interaction, day)
@@ -197,26 +183,28 @@ class Locations(commands.Cog):
             await interaction.response.send_message("Failed to fetch message.")
             return
 
-        # Load CSV
-        response = requests.get(LSCC_PPL_CSV_URL)
-        if response.status_code != 200:
-            await interaction.response.send_message("Failed to retrieve the CSV file.")
-            return
-
-        csv_data = response.content.decode("utf-8")
-        csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
-
         locations_people = defaultdict(list)
         location_found = set()
 
-        for row in csv_reader:
-            for idx, cell in enumerate(row):
-                for username in usernames_reacted:
-                    if str(username) in cell:
-                        name = cell
-                        location = row[idx + 1].strip()
-                        locations_people[location].append(name[: name.index("(") - 1])
-                        location_found.add(username)
+        cache_miss = []
+        for username in usernames_reacted:
+            person = await get_name_location_no_sync(username)
+
+            if person is None or person.location is None:
+                cache_miss.append(username)
+                continue
+            locations_people[person.location].append(person.name)
+            location_found.add(username)
+
+        if cache_miss:
+            await sync()
+            for username in cache_miss:
+                person = await get_name_location_no_sync(username)
+                if person is None or person.location is None:
+                    continue
+
+                locations_people[person.location].append(person.name)
+                location_found.add(username)
 
         # Build Embed
         embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())

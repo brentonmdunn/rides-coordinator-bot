@@ -1,18 +1,11 @@
-import csv
-import os
-
 import discord
-import requests
 from discord.ext import commands
-from dotenv import load_dotenv
+from sqlalchemy import func, or_, select
 
+from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
+from app.core.models import Locations as LocationsModel
 from app.utils.checks import feature_flag_enabled
-from app.utils.parsing import parse_name
-
-load_dotenv()
-
-LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 
 class Whois(commands.Cog):
@@ -26,33 +19,26 @@ class Whois(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def whois(self, interaction: discord.Interaction, name: str) -> None:
         """Fetch and parse names from CSV."""
-        response = requests.get(LSCC_PPL_CSV_URL)
 
-        if response.status_code != 200:
-            await interaction.response.send_message("⚠️ Failed to fetch the CSV data.")
+        async with AsyncSessionLocal() as session:
+            stmt = select(LocationsModel.name, LocationsModel.discord_username).where(
+                or_(
+                    func.lower(LocationsModel.name).contains(name.lower()),
+                    func.lower(LocationsModel.discord_username).contains(name.lower()),
+                )
+            )
+            result = await session.execute(stmt)
+            possible_people = result.all()
+
+        if not possible_people:
+            await interaction.response.send_message("No matches found.")
             return
 
-        csv_data = response.content.decode("utf-8")
-        csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
+        message: list[str] = []
+        for person in possible_people:
+            message.append(f"**Name:** {person.name}\n**Discord:** {person.discord_username}")
 
-        message = ""
-        found = False
-
-        for row in csv_reader:
-            for _, cell in enumerate(row):
-                if name.lower() in cell.lower():
-                    saved_name, discord_username = parse_name(cell)
-                    found = True
-                    if saved_name:
-                        message += f"\n**Name:** {saved_name}"
-                    if discord_username:
-                        message += f"\n**Discord:** {discord_username}"
-                    message += "\n---"
-
-        if not found:
-            await interaction.response.send_message("No matches found.")
-        else:
-            await interaction.response.send_message(message)
+        await interaction.response.send_message("\n---\n".join(message))
 
 
 async def setup(bot: commands.Bot):
