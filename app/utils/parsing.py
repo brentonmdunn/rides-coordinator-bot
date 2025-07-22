@@ -4,7 +4,7 @@ import re
 
 
 def parse_name(text: str) -> tuple[str, str | None]:
-    """Parse the input string to extract the name and username.
+    """Parse the input string to extract the name and username in the form "name (username)".
 
     Args:
         input_string (str): The input string to parse.
