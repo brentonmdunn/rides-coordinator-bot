@@ -53,3 +53,18 @@ class FeatureFlagNames(StrEnum):
     BOT = "bot"
     ASK_FRIDAY_RIDES_JOB = "ask_friday_rides_job"
     ASK_SUNDAY_RIDES_JOB = "ask_sunday_rides_job"
+    RIDES_LOCATIONS_SYNC_JOB = "rides_locations_sync_job"
+
+
+class ClassYear(StrEnum):
+    FIRST = "1st"
+    SECOND = "2nd"
+    THIRD = "3rd"
+    FOURTH = "4th"
+    FIFTH = "5th"
+
+
+class CanBeDriver(StrEnum):
+    YES = "Yes"
+    IF_NECESSARY = "If necessary"
+    NO = "No"

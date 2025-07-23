@@ -1,24 +1,23 @@
-import csv
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional
 
 import discord
-import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from app.core.enums import ChannelIds, FeatureFlagNames
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
+from app.utils.lookups import get_location, get_name_location_no_sync, sync
 
 load_dotenv()
 
 LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 # List of scholars housing locations
-SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh"]
+SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh", "new marshall"]
 
 LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_BOT_SPAM,
@@ -32,6 +31,17 @@ LOCATIONS_CHANNELS_WHITELIST = [
 class Locations(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    @discord.app_commands.command(
+        name="sync-locations",
+        description="Sync Google Sheets with database.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    async def sync_locations(self, interaction: discord.Interaction):
+        from app.utils.lookups import sync
+
+        await sync()
+        await interaction.response.send_message("Sync complete")
 
     @discord.app_commands.command(
         name="pickup-location",
@@ -54,24 +64,7 @@ class Locations(commands.Cog):
             )
             return
 
-        response = requests.get(LSCC_PPL_CSV_URL)
-
-        if response.status_code != 200:
-            await interaction.response.send_message("Failed to retrieve data.")
-            return
-
-        csv_data = response.content.decode("utf-8")
-        csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
-        possible_people = []
-
-        for row in csv_reader:
-            for idx, cell in enumerate(row):
-                if name.lower() in cell.lower():
-                    try:
-                        location = row[idx + 1].strip()
-                        possible_people.append((cell, location))
-                    except:  # noqa: E722
-                        pass
+        possible_people: list[tuple[str, str]] | None = await get_location(name)
 
         if not possible_people:
             await interaction.response.send_message("No people found.")
@@ -86,7 +79,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_sunday(self, interaction: discord.Interaction):
-        await self.list_locations(interaction, day="sunday")
+        await self._list_locations(interaction, day="sunday")
 
     @discord.app_commands.command(
         name="list-pickups-friday",
@@ -94,7 +87,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_friday(self, interaction: discord.Interaction):
-        await self.list_locations(interaction, day="friday")
+        await self._list_locations(interaction, day="friday")
 
     @discord.app_commands.command(
         name="list-pickups-by-message-id",
@@ -112,15 +105,44 @@ class Locations(commands.Cog):
         channel_id: Optional[str] = None,
     ):
         if channel_id:
-            await self.list_locations(
+            await self._list_locations(
                 interaction,
                 message_id=message_id,
                 channel_id=channel_id,
             )
         else:
-            await self.list_locations(interaction, message_id=message_id)
+            await self._list_locations(interaction, message_id=message_id)
 
-    async def list_locations(
+    def _get_last_sunday(self):
+        now = datetime.now()
+        if now.weekday() == 6:
+            return now - timedelta(days=7)
+        else:
+            return now - timedelta(days=(now.weekday() + 1))
+
+    async def _find_correct_message(self, interaction, day):
+        last_sunday = self._get_last_sunday()
+        channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        most_recent_message = None
+
+        if not channel:
+            await interaction.response.send_message("Channel not found.")
+            return
+
+        async for message in channel.history(after=last_sunday):
+            if (
+                day in message.content.lower()
+                and "react" in message.content.lower()
+                and "class" not in message.content.lower()
+            ):
+                most_recent_message = message
+        if not most_recent_message:
+            await interaction.response.send_message("No matching message found.")
+            return
+        message_id = most_recent_message.id
+        return message_id
+
+    async def _list_locations(
         self,
         interaction,
         day=None,
@@ -141,30 +163,13 @@ class Locations(commands.Cog):
             )
             return
 
-        now = datetime.now()
-
-        # Calculate last Sunday
-        if now.weekday() == 6:
-            last_sunday = now - timedelta(days=7)
-        else:
-            last_sunday = now - timedelta(days=(now.weekday() + 1))
+        if (day is None and message_id is None) or (day is not None and message_id is not None):
+            await interaction.response.send_message("Please provide either day or message ID")
+            return
 
         # Find the relevant message
         if day:
-            channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-            most_recent_message = None
-            if channel:
-                async for message in channel.history(after=last_sunday):
-                    if (
-                        day in message.content.lower()
-                        and "react" in message.content.lower()
-                        and "class" not in message.content.lower()
-                    ):
-                        most_recent_message = message
-            if not most_recent_message:
-                await interaction.response.send_message("No matching message found.")
-                return
-            message_id = most_recent_message.id
+            message_id = await self._find_correct_message(interaction, day)
 
         usernames_reacted = set()
         channel = self.bot.get_channel(int(channel_id))
@@ -178,26 +183,28 @@ class Locations(commands.Cog):
             await interaction.response.send_message("Failed to fetch message.")
             return
 
-        # Load CSV
-        response = requests.get(LSCC_PPL_CSV_URL)
-        if response.status_code != 200:
-            await interaction.response.send_message("Failed to retrieve the CSV file.")
-            return
-
-        csv_data = response.content.decode("utf-8")
-        csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
-
         locations_people = defaultdict(list)
         location_found = set()
 
-        for row in csv_reader:
-            for idx, cell in enumerate(row):
-                for username in usernames_reacted:
-                    if str(username) in cell:
-                        name = cell
-                        location = row[idx + 1].strip()
-                        locations_people[location].append(name[: name.index("(") - 1])
-                        location_found.add(username)
+        cache_miss = []
+        for username in usernames_reacted:
+            person = await get_name_location_no_sync(username)
+
+            if person is None or person.location is None:
+                cache_miss.append(username)
+                continue
+            locations_people[person.location].append(person.name)
+            location_found.add(username)
+
+        if cache_miss:
+            await sync()
+            for username in cache_miss:
+                person = await get_name_location_no_sync(username)
+                if person is None or person.location is None:
+                    continue
+
+                locations_people[person.location].append(person.name)
+                location_found.add(username)
 
         # Build Embed
         embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
@@ -212,7 +219,14 @@ class Locations(commands.Cog):
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "people": "",
-                "filter": ["warren", "pcyn"],
+                "filter": [
+                    "warren",
+                    "pcyn",
+                    "pce",
+                    "pcw",
+                    "pepper canyon east",
+                    "pepper canyon west",
+                ],
                 "emoji": "🏠",
             },
             "Rita + Eighth": {

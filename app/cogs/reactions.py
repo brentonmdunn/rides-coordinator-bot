@@ -1,13 +1,12 @@
-import csv
 import os
 
 import discord
-import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from app.core.enums import ChannelIds, DaysOfWeek, RoleIds
 from app.core.logger import logger
+from app.utils.lookups import get_location
 from app.utils.time_helpers import is_during_target_window
 
 load_dotenv()
@@ -67,24 +66,11 @@ class Reactions(commands.Cog):
                         f"in #{channel.name}",
                     )
 
-            def we_have_location(username):
-                response = requests.get(LSCC_PPL_CSV_URL, timeout=60)
-
-                csv_data = response.content.decode("utf-8")
-                csv_reader = csv.reader(csv_data.splitlines(), delimiter=",")
-
-                for row in csv_reader:
-                    for _, cell in enumerate(row):
-                        if str(username) in cell.lower():
-                            return True
-
-                return False
-
             if (
                 payload.message_id == TARGET_MESSAGE_ID
                 and payload.channel_id == TARGET_CHANNEL_ID
                 and user is not None
-                and not we_have_location(user.name.lower())
+                and not get_location(user.name)
             ):
                 channel_name = f"{user.name.lower()}"
                 category = discord.utils.get(guild.categories, id=TARGET_CATEGORY_ID)
