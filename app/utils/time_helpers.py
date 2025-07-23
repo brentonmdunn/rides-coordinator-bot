@@ -37,6 +37,7 @@ def is_during_target_window(day: str) -> bool:
 
 
 def get_next_date(day: DaysOfWeekNumber) -> str:
+    """Gets the next `day` and returns it in mm/dd form."""
     today = datetime.today()
     days_ahead = (day - today.weekday() + 7) % 7
     if days_ahead == 0:
