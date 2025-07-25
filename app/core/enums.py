@@ -53,6 +53,7 @@ class FeatureFlagNames(StrEnum):
     BOT = "bot"
     ASK_FRIDAY_RIDES_JOB = "ask_friday_rides_job"
     ASK_SUNDAY_RIDES_JOB = "ask_sunday_rides_job"
+    ASK_WEDNESDAY_RIDES_JOB = "ask_wednesday_rides_job"
     RIDES_LOCATIONS_SYNC_JOB = "rides_locations_sync_job"
 
 
