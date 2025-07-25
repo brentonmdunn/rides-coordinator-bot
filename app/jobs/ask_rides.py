@@ -17,6 +17,17 @@ WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
 CLASS_DATES: list[str] = []
 
 
+def make_wednesday_msg() -> str | None:
+    """Create message for Wednesday rides."""
+    formatted_date: str = get_next_date(DaysOfWeekNumber.WEDNESDAY)
+    if formatted_date in WILDCARD_DATES:
+        return None
+    return (
+        f"React if you need a ride for Wednesday night Bible study {formatted_date} "
+        "(leave between 7 and 7:10pm)!"
+    )
+
+
 def make_friday_msg() -> str | None:
     """Create message for Friday rides."""
     formatted_date: str = get_next_date(DaysOfWeekNumber.FRIDAY)
@@ -53,6 +64,9 @@ def format_message(message: str) -> str:
 
 
 async def ask_rides_template(bot: Bot, make_message: callable) -> None:
+    """
+    Helper method for ask rides jobs.
+    """
     channel: Messageable | None = bot.get_channel(
         ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     )
@@ -66,6 +80,12 @@ async def ask_rides_template(bot: Bot, make_message: callable) -> None:
         format_message(message),
         allowed_mentions=discord.AllowedMentions(roles=True),
     )
+
+
+@feature_flag_enabled(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
+async def run_ask_rides_wed(bot: Bot) -> None:
+    """Runner for Wednesday rides message."""
+    await ask_rides_template(bot, make_wednesday_msg)
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
