@@ -1,6 +1,7 @@
 # utils/checks.py
 import functools
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import discord
 from discord import app_commands

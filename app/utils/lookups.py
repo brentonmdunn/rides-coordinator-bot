@@ -3,7 +3,6 @@ import functools
 import gc
 import io
 import os
-from typing import Optional
 
 import requests
 from dotenv import load_dotenv
@@ -125,7 +124,7 @@ def _verify_driver(driver: str) -> bool:
     return driver in [driver.value for driver in CanBeDriver]
 
 
-def _get_info(data: dict, key: str, verify_schema: Optional[callable] = None) -> str | None:
+def _get_info(data: dict, key: str, verify_schema: callable | None = None) -> str | None:
     value = data.get(key)
     # Ensure value is a string and not just whitespace
     if not isinstance(value, str) or not value.strip():
