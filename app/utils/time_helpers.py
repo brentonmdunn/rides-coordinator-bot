@@ -7,6 +7,7 @@ from app.core.enums import DaysOfWeek, DaysOfWeekNumber
 
 def is_during_target_window(day: str) -> bool:
     """Checks if the current time in LA is within:
+    - Tuesday 7 PM to Wednesday 7 PM
     - Thursday 7 PM to Friday 7 PM
     - Saturday 10 AM to Sunday 10 AM
     """
@@ -23,6 +24,11 @@ def is_during_target_window(day: str) -> bool:
     except ValueError:
         return False  # Invalid day passed in
 
+    if day_enum == DaysOfWeek.WEDNESDAY:
+        return (weekday_enum == DaysOfWeek.TUESDAY and hour >= 19) or (
+            weekday_enum == DaysOfWeek.WEDNESDAY and hour < 19
+        )
+
     if day_enum == DaysOfWeek.FRIDAY:
         return (weekday_enum == DaysOfWeek.THURSDAY and hour >= 19) or (
             weekday_enum == DaysOfWeek.FRIDAY and hour < 19
@@ -37,6 +43,7 @@ def is_during_target_window(day: str) -> bool:
 
 
 def get_next_date(day: DaysOfWeekNumber) -> str:
+    """Gets the next `day` and returns it in mm/dd form."""
     today = datetime.today()
     days_ahead = (day - today.weekday() + 7) % 7
     if days_ahead == 0:

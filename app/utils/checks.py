@@ -1,12 +1,14 @@
 # utils/checks.py
 import functools
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import discord
 from discord import app_commands
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
+from app.core.logger import logger
 from app.core.models import FeatureFlags
 
 
@@ -61,7 +63,7 @@ def feature_flag_enabled(feature: str):
                     if feature_flag:
                         feature_is_enabled = feature_flag.enabled
             except Exception as e:
-                print(f"Error fetching feature flag '{feature}': {e}")
+                logger.error("Error fetching feature flag '%s': %s", feature, e)
                 if interaction:
                     await interaction.response.send_message(
                         "Sorry, there was an error checking the command's availability.",
@@ -71,15 +73,17 @@ def feature_flag_enabled(feature: str):
 
             if not feature_is_enabled:
                 if interaction:
-                    print(
-                        f"Feature '{feature}' is disabled. Blocking command for {interaction.user}."
+                    logger.info(
+                        "Feature '%s' is disabled. Blocking command for %s.",
+                        feature,
+                        interaction.user,
                     )
                     await interaction.response.send_message(
                         f"This command is currently disabled by feature flag '{feature}'.",
                         ephemeral=True,
                     )
                 else:
-                    print(f"Feature '{feature}' is disabled. Blocking job.")
+                    logger.info("Feature '%s' is disabled. Blocking job.", feature)
                 return
 
             # If the flag is enabled, run the original command function.

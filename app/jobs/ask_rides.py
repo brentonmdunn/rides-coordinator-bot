@@ -17,7 +17,18 @@ WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
 CLASS_DATES: list[str] = []
 
 
-def make_friday_msg() -> str | None:
+def _make_wednesday_msg() -> str | None:
+    """Create message for Wednesday rides."""
+    formatted_date: str = get_next_date(DaysOfWeekNumber.WEDNESDAY)
+    if formatted_date in WILDCARD_DATES:
+        return None
+    return (
+        f"React if you need a ride for Wednesday night Bible study {formatted_date} "
+        "(leave between 7 and 7:10pm)!"
+    )
+
+
+def _make_friday_msg() -> str | None:
     """Create message for Friday rides."""
     formatted_date: str = get_next_date(DaysOfWeekNumber.FRIDAY)
     if formatted_date in WILDCARD_DATES:
@@ -28,7 +39,7 @@ def make_friday_msg() -> str | None:
     )
 
 
-def make_sunday_msg() -> str | None:
+def _make_sunday_msg() -> str | None:
     """Create message for Sunday service rides."""
     formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
     if formatted_date in WILDCARD_DATES:
@@ -36,7 +47,7 @@ def make_sunday_msg() -> str | None:
     return f"React if you need a ride for Sunday {formatted_date} (leave between 10 and 10:10 am)!"
 
 
-def make_sunday_msg_class() -> str | None:
+def _make_sunday_msg_class() -> str | None:
     """Create message for Sunday class rides."""
     formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
     if formatted_date in WILDCARD_DATES or formatted_date not in CLASS_DATES:
@@ -47,58 +58,48 @@ def make_sunday_msg_class() -> str | None:
     )
 
 
-def format_message(message: str) -> str:
+def _format_message(message: str) -> str:
     """Adds @Rides to message."""
     return ping_role_with_message(RoleIds.RIDES, message)
+
+
+async def _ask_rides_template(bot: Bot, make_message: callable) -> None:
+    """
+    Helper method for ask rides jobs.
+    """
+    channel: Messageable | None = bot.get_channel(
+        ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    )
+    if not channel:
+        logger.info("Error channel not found")
+        return
+    message: str | None = make_message()
+    if message is None:
+        return
+    await channel.send(
+        _format_message(message),
+        allowed_mentions=discord.AllowedMentions(roles=True),
+    )
+
+
+@feature_flag_enabled(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
+async def run_ask_rides_wed(bot: Bot) -> None:
+    """Runner for Wednesday rides message."""
+    await _ask_rides_template(bot, _make_wednesday_msg)
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
 async def run_ask_rides_fri(bot: Bot) -> None:
     """Runner for Friday rides message."""
-    channel: Messageable | None = bot.get_channel(
-        ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-    )
-
-    if not channel:
-        logger.info("Error channel not found")
-        return
-    message: str | None = make_friday_msg()
-    if message is None:
-        return
-    await channel.send(
-        format_message(message),
-        allowed_mentions=discord.AllowedMentions(roles=True),
-    )
+    await _ask_rides_template(bot, _make_friday_msg)
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
 async def run_ask_rides_sun(bot: Bot) -> None:
     """Runner for Sunday service rides message."""
-    channel: Messageable | None = bot.get_channel(
-        ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-    )
-    if not channel:
-        logger.info("Error channel not found")
-        return
-    message: str | None = make_sunday_msg()
-    if message is None:
-        return
-    await channel.send(
-        format_message(message),
-        allowed_mentions=discord.AllowedMentions(roles=True),
-    )
+    await _ask_rides_template(bot, _make_sunday_msg)
 
 
 async def run_ask_rides_sun_class(bot: Bot) -> None:
     """Runner for Sunday class rides message."""
-    channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-    if not isinstance(channel, Messageable):
-        logger.info("Error channel not found")
-        return
-    message: str | None = make_sunday_msg_class()
-    if message is None:
-        return
-    await channel.send(
-        format_message(message),
-        allowed_mentions=discord.AllowedMentions(roles=True),
-    )
+    await _ask_rides_template(bot, _make_sunday_msg_class)

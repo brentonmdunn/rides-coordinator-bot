@@ -47,6 +47,10 @@ class Reactions(commands.Cog):
                     "sunday" in message.content.lower()
                     and is_during_target_window(DaysOfWeek.SUNDAY)
                 )
+                or (
+                    "wednesday" in message.content.lower()
+                    and is_during_target_window(DaysOfWeek.WEDNESDAY)
+                )
             ):
                 log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
                 if log_channel:

@@ -1,7 +1,6 @@
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Optional
 
 import discord
 from discord.ext import commands
@@ -102,7 +101,7 @@ class Locations(commands.Cog):
         self,
         interaction: discord.Interaction,
         message_id: str,
-        channel_id: Optional[str] = None,
+        channel_id: str | None = None,
     ):
         if channel_id:
             await self._list_locations(

@@ -5,7 +5,7 @@ from apscheduler.triggers.cron import CronTrigger
 from discord.ext import commands
 
 # from jobs_disabled.retreat_sync_roles import run_csv_job
-from app.jobs.ask_rides import run_ask_rides_fri, run_ask_rides_sun, run_ask_rides_sun_class  # noqa
+from app.jobs.ask_rides import run_ask_rides_fri, run_ask_rides_sun, run_ask_rides_wed
 from app.jobs.sync_rides_locations import sync_rides_locations
 
 
@@ -26,6 +26,13 @@ class JobScheduler(commands.Cog):
             run_ask_rides_fri,
             CronTrigger(day_of_week="wed", hour=16, minute=00),
             id="run_ask_rides_fri",
+            args=[bot],
+        )
+
+        self.scheduler.add_job(
+            run_ask_rides_wed,
+            CronTrigger(day_of_week="mon", hour=16, minute=0),
+            id="run_ask_rides_wed",
             args=[bot],
         )
 
