@@ -119,14 +119,22 @@ class Locations(commands.Cog):
         else:
             return now - timedelta(days=(now.weekday() + 1))
 
-    async def _find_correct_message(self, interaction, day):
+    async def _find_correct_message(self, day) -> str | None:
+        """
+        Returns message id of message corresponding to day.
+
+        Args:
+            day
+
+        Returns:
+            channel id (str) if found, otherwise None
+        """
         last_sunday = self._get_last_sunday()
         channel = self.bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
         most_recent_message = None
 
         if not channel:
-            await interaction.response.send_message("Channel not found.")
-            return
+            return None
 
         async for message in channel.history(after=last_sunday):
             if (
@@ -136,8 +144,7 @@ class Locations(commands.Cog):
             ):
                 most_recent_message = message
         if not most_recent_message:
-            await interaction.response.send_message("No matching message found.")
-            return
+            return None
         message_id = most_recent_message.id
         return message_id
 
@@ -169,6 +176,9 @@ class Locations(commands.Cog):
         # Find the relevant message
         if day:
             message_id = await self._find_correct_message(interaction, day)
+            if message_id is None:
+                await interaction.response.send_message("No matching message found.")
+                return
 
         usernames_reacted = set()
         channel = self.bot.get_channel(int(channel_id))

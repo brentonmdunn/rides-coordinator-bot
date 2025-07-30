@@ -55,6 +55,7 @@ class FeatureFlagNames(StrEnum):
     ASK_SUNDAY_RIDES_JOB = "ask_sunday_rides_job"
     ASK_WEDNESDAY_RIDES_JOB = "ask_wednesday_rides_job"
     RIDES_LOCATIONS_SYNC_JOB = "rides_locations_sync_job"
+    NEW_RIDES_MSG = "new_rides_msg"
 
 
 class ClassYear(StrEnum):
@@ -69,3 +70,7 @@ class CanBeDriver(StrEnum):
     YES = "Yes"
     IF_NECESSARY = "If necessary"
     NO = "No"
+
+
+class CategoryIds(StrEnum):
+    NEW_RIDES = "1380694503391887410"
