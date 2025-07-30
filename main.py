@@ -8,12 +8,16 @@ from discord.app_commands import AppCommandError, CheckFailure
 from discord.ext import commands
 from discord.ext.commands import Bot
 from dotenv import load_dotenv
+from sqlalchemy import or_, update
 
 from app.core.database import AsyncSessionLocal, init_db, seed_feature_flags
 from app.core.logger import logger
+from app.core.models import FeatureFlags
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
+APP_ENV: str = os.getenv("APP_ENV", "local")
+
 
 intents: discord.Intents = discord.Intents.default()
 intents.message_content = True
@@ -64,11 +68,43 @@ async def on_app_command_error(
         raise error
 
 
+async def disable_features_for_local_env():
+    """If running locally, disable all jobs and message-related flags to prevent spam."""
+    if APP_ENV != "local":
+        return
+
+    logger.info("🔧 APP_ENV is 'local'. Disabling job and message-related feature flags...")
+    async with AsyncSessionLocal() as session:
+        try:
+            stmt = (
+                update(FeatureFlags)
+                .where(
+                    or_(
+                        FeatureFlags.feature.like("%_job"),
+                        FeatureFlags.feature.like("%_msg"),
+                    )
+                )
+                .values(enabled=False)
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            if result.rowcount > 0:
+                logger.info(f"🔩 Disabled {result.rowcount} feature flags for local development.")
+            else:
+                logger.info(
+                    "🔩 No job or message flags needed to be disabled for local development."
+                )
+        except Exception as e:
+            logger.error(f"❌ Failed to disable local-dev feature flags: {e}")
+            await session.rollback()
+
+
 async def main() -> None:
     async with bot:
         await init_db()
         async with AsyncSessionLocal() as session:
             await seed_feature_flags(session)
+        await disable_features_for_local_env()
         await load_extensions()
         await bot.start(TOKEN)
 
