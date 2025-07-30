@@ -43,7 +43,7 @@ def sync_on_cache_miss(func):
 
 
 @sync_on_cache_miss
-async def get_location(name: str) -> list[tuple[str, str]] | None:
+async def get_location(name: str, discord_only: bool = False) -> list[tuple[str, str]] | None:
     """
     Searches up locations based on a name (searches both name and username). Uses contains.
 
@@ -53,17 +53,29 @@ async def get_location(name: str) -> list[tuple[str, str]] | None:
     Returns:
         List of (name, location) tuples or None if not found.
     """
-    async with AsyncSessionLocal() as session:
-        from app.core.models import Locations as LocationsModel
+    if discord_only:
+        async with AsyncSessionLocal() as session:
+            from app.core.models import Locations as LocationsModel
 
-        stmt = select(LocationsModel.name, LocationsModel.location).where(
-            or_(
-                func.lower(LocationsModel.name).contains(name.lower()),
-                func.lower(LocationsModel.discord_username).contains(name.lower()),
+            stmt = select(LocationsModel.name, LocationsModel.location).where(
+                or_(
+                    func.lower(LocationsModel.discord_username).contains(name.lower()),
+                )
             )
-        )
-        result = await session.execute(stmt)
-        possible_people = result.all()
+            result = await session.execute(stmt)
+            possible_people = result.all()
+    else:
+        async with AsyncSessionLocal() as session:
+            from app.core.models import Locations as LocationsModel
+
+            stmt = select(LocationsModel.name, LocationsModel.location).where(
+                or_(
+                    func.lower(LocationsModel.name).contains(name.lower()),
+                    func.lower(LocationsModel.discord_username).contains(name.lower()),
+                )
+            )
+            result = await session.execute(stmt)
+            possible_people = result.all()
 
     if not possible_people:
         return None
