@@ -70,3 +70,7 @@ class CanBeDriver(StrEnum):
     YES = "Yes"
     IF_NECESSARY = "If necessary"
     NO = "No"
+
+
+class CategoryIds(StrEnum):
+    NEW_RIDES = "1380694503391887410"
