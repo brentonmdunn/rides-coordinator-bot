@@ -1,4 +1,4 @@
-import os
+from enum import StrEnum
 
 import discord
 from discord.ext import commands
@@ -10,7 +10,10 @@ from app.utils.checks import feature_flag_enabled
 from app.utils.lookups import get_location
 from app.utils.time_helpers import is_during_target_window
 
-LOG_ALL_REACTIONS = os.getenv("LOG_ALL_REACTONS", "false").lower() == "true"
+
+class ReactionAction(StrEnum):
+    ADD = "add"
+    REMOVE = "remove"
 
 
 class Reactions(commands.Cog):
@@ -20,7 +23,6 @@ class Reactions(commands.Cog):
 
     async def cog_load(self):
         """Wait until the bot is ready to get the cog."""
-        await self.bot.wait_until_ready()
         self.locations_cog = self.bot.get_cog("Locations")
 
     @commands.Cog.listener()
@@ -60,19 +62,15 @@ class Reactions(commands.Cog):
                         f"'{discord.utils.escape_mentions(message.content)}' "
                         f"in #{channel.name}",
                     )
+                await log_channel.send(
+                    _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
+                )
                 return
 
-            if LOG_ALL_REACTIONS:
-                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
-                if log_channel:
-                    await log_channel.send(
-                        f"{user.name} reacted {payload.emoji} to message "
-                        f"'{discord.utils.escape_mentions(message.content)}' "
-                        f"in #{channel.name}",
-                    )
+            await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
 
             if (
-                (self.locations_cog and (await self.locations_cog.find_correct_message("friday")))
+                (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
                 and user is not None
                 and not await get_location(user.name, discord_only=True)
             ):
@@ -109,13 +107,18 @@ class Reactions(commands.Cog):
         ):
             log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
             if log_channel:
-                await log_channel.send(format_reaction_log(user, payload, message, channel))
+                await log_channel.send(
+                    _format_reaction_log(user, payload, message, channel, ReactionAction.REMOVE)
+                )
             return
 
-            if LOG_ALL_REACTIONS:
-                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
-                if log_channel:
-                    await log_channel.send(format_reaction_log(user, payload, message, channel))
+        await self._log_reactions(user, payload, message, channel, ReactionAction.REMOVE)
+
+    @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
+    async def _log_reactions(self, user, payload, message, channel, action: ReactionAction):
+        log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
+        if log_channel:
+            await log_channel.send(_format_reaction_log(user, payload, message, channel, action))
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
     async def new_rides_helper(self, user, guild):
@@ -175,12 +178,43 @@ class Reactions(commands.Cog):
         )
 
 
-def format_reaction_log(user, payload, message, channel) -> str:
-    return (
-        f"{user.name} removed their reaction {payload.emoji} from message "
-        f"'{discord.utils.escape_mentions(message.content)}' "
-        f"in #{channel.name}"
-    )
+def _format_reaction_log(
+    user: discord.Member,
+    payload: discord.RawReactionActionEvent,
+    message: discord.Message,
+    channel: discord.TextChannel,
+    action: ReactionAction,
+) -> str:
+    """Formats a reaction log message.
+
+    Args:
+        user (discord.Member): The user who reacted.
+        payload (discord.RawReactionActionEvent): The payload of the reaction event.
+        message (discord.Message): The message that was reacted to.
+        channel (discord.TextChannel): The channel where the message was sent.
+        action (ReactionAction): The action taken (add or remove)
+
+    Returns:
+        str: The formatted log message.
+
+    Raises:
+        ValueError: If the action is not valid.
+    """
+    if action != ReactionAction.ADD and action != ReactionAction.REMOVE:
+        raise ValueError(f"Invalid action: {action}")
+
+    if action == ReactionAction.ADD:
+        return (
+            f"{user.name} reacted {payload.emoji} to message "
+            f"'{discord.utils.escape_mentions(message.content)}' "
+            f"in #{channel.name}"
+        )
+    if action == ReactionAction.REMOVE:
+        return (
+            f"{user.name} removed their reaction {payload.emoji} from message "
+            f"'{discord.utils.escape_mentions(message.content)}' "
+            f"in #{channel.name}"
+        )
 
 
 async def setup(bot: commands.Bot):
