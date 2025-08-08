@@ -44,14 +44,23 @@ async def on_ready() -> None:
 
 
 async def load_extensions() -> None:
-    for filename in (Path.cwd() / "app" / "cogs").iterdir():
-        if filename.is_file() and filename.suffix == ".py" and not filename.name.startswith("_"):
-            extension: str = f"app.cogs.{filename.stem}"
-            try:
-                await bot.load_extension(extension)
-                logger.info(f"✅ Loaded extension: {extension}")
-            except Exception as e:
-                logger.warning(f"❌ Failed to load extension {extension}: {e}")
+    cogs_path = Path.cwd() / "app" / "cogs"
+
+    eligible_files = [
+        filename
+        for filename in cogs_path.iterdir()
+        if filename.is_file() and filename.suffix == ".py" and not filename.name.startswith("_")
+    ]
+
+    # In order to ensure location is loaded before reactions since location
+    # is a dependency (or at least I think it is necessary)
+    for filename in reversed(eligible_files):
+        extension: str = f"app.cogs.{filename.stem}"
+        try:
+            await bot.load_extension(extension)
+            logger.info(f"✅ Loaded extension: {extension}")
+        except Exception as e:
+            logger.warning(f"❌ Failed to load extension {extension}: {e}")
 
 
 @bot.tree.error
