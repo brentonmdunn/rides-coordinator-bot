@@ -1,16 +1,22 @@
-import os
+from enum import StrEnum
 
 import discord
 from discord.ext import commands
+from sqlalchemy import select
 
 from app.cogs.locations import Locations
+from app.core.database import AsyncSessionLocal
 from app.core.enums import CategoryIds, ChannelIds, DaysOfWeek, FeatureFlagNames, RoleIds
 from app.core.logger import logger
+from app.core.models import EventThreads
 from app.utils.checks import feature_flag_enabled
 from app.utils.lookups import get_location
 from app.utils.time_helpers import is_during_target_window
 
-LOG_ALL_REACTIONS = os.getenv("LOG_ALL_REACTONS", "false").lower() == "true"
+
+class ReactionAction(StrEnum):
+    ADD = "add"
+    REMOVE = "remove"
 
 
 class Reactions(commands.Cog):
@@ -20,7 +26,6 @@ class Reactions(commands.Cog):
 
     async def cog_load(self):
         """Wait until the bot is ready to get the cog."""
-        await self.bot.wait_until_ready()
         self.locations_cog = self.bot.get_cog("Locations")
 
     @commands.Cog.listener()
@@ -41,42 +46,88 @@ class Reactions(commands.Cog):
             logger.info(f"Ignoring bot reaction from {user.name}")
             return
 
-        if user:
-            if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
-                ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
-                or (
-                    "sunday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.SUNDAY)
-                )
-                or (
-                    "wednesday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.WEDNESDAY)
-                )
-            ):
-                log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
-                if log_channel:
-                    await log_channel.send(
-                        f"{user.name} reacted {payload.emoji} to message "
-                        f"'{discord.utils.escape_mentions(message.content)}' "
-                        f"in #{channel.name}",
-                    )
-                return
+        if not user:
+            return
 
-            if LOG_ALL_REACTIONS:
-                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
-                if log_channel:
-                    await log_channel.send(
-                        f"{user.name} reacted {payload.emoji} to message "
-                        f"'{discord.utils.escape_mentions(message.content)}' "
-                        f"in #{channel.name}",
-                    )
+        # Late rides notif
+        if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
+            ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
+            or ("sunday" in message.content.lower() and is_during_target_window(DaysOfWeek.SUNDAY))
+            or (
+                "wednesday" in message.content.lower()
+                and is_during_target_window(DaysOfWeek.WEDNESDAY)
+            )
+        ):
+            log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+            if log_channel:
+                await log_channel.send(
+                    f"{user.name} reacted {payload.emoji} to message "
+                    f"'{discord.utils.escape_mentions(message.content)}' "
+                    f"in #{channel.name}",
+                )
+            await log_channel.send(
+                _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
+            )
+            return
 
-            if (
-                (self.locations_cog and (await self.locations_cog.find_correct_message("friday")))
-                and user is not None
-                and not await get_location(user.name, discord_only=True)
-            ):
-                await self.new_rides_helper(user, guild)
+        # Logging all reactions
+        await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
+
+        # Create channel to ask for location for new rides peeps
+        if (
+            (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
+            and user is not None
+            and not await get_location(user.name, discord_only=True)
+        ):
+            await self.new_rides_helper(user, guild)
+
+        await self._event_thread_add(payload, guild, user)
+
+    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
+    async def _event_thread_add(self, payload: discord.RawReactionActionEvent, guild, user):
+        async with AsyncSessionLocal() as session:
+            stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
+            result = await session.execute(stmt)
+            is_event_thread = result.scalar() is not None
+
+            if is_event_thread:
+                # Check if the message ID exists in our EventThreads table.
+                async with AsyncSessionLocal() as session:
+                    stmt = select(EventThreads).where(
+                        EventThreads.message_id == str(payload.message_id)
+                    )
+                    result = await session.execute(stmt)
+                    is_event_thread = result.scalar_one_or_none() is not None
+
+                    if is_event_thread:
+                        # If the message ID is a starter message for an event thread,
+                        # get the thread object.
+                        thread = guild.get_thread(payload.message_id)
+                        if not thread:
+                            logger.error(f"Could not find thread with ID {payload.message_id}")
+                            return
+
+                        try:
+                            # Fetch thread members correctly to get a list of members.
+                            thread_members = await thread.fetch_members()
+                            thread_member_ids = {member.id for member in thread_members}
+
+                            # Check if the user is already in the thread.
+                            if user.id not in thread_member_ids:
+                                await thread.add_user(user)
+                                logger.info(
+                                    f"Added user {user.name} to thread {thread.name} on reaction."
+                                )
+
+                        except discord.Forbidden:
+                            logger.error(
+                                f"Failed to add user {user.name} to thread {thread.name} "
+                                "due to insufficient permissions."
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"An unexpected error occurred while adding user to thread: {e}"
+                            )
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -109,13 +160,81 @@ class Reactions(commands.Cog):
         ):
             log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
             if log_channel:
-                await log_channel.send(format_reaction_log(user, payload, message, channel))
+                await log_channel.send(
+                    _format_reaction_log(user, payload, message, channel, ReactionAction.REMOVE)
+                )
             return
 
-            if LOG_ALL_REACTIONS:
-                log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
-                if log_channel:
-                    await log_channel.send(format_reaction_log(user, payload, message, channel))
+        await self._log_reactions(user, payload, message, channel, ReactionAction.REMOVE)
+        await self._event_thread_remove(payload, guild)
+
+    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
+    async def _event_thread_remove(self, payload: discord.RawReactionActionEvent, guild):
+        async with AsyncSessionLocal() as session:
+            stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
+            result = await session.execute(stmt)
+            is_event_thread = result.scalar_one_or_none() is not None
+
+            if is_event_thread:
+                # We need to fetch the full message to check for remaining reactions.
+                channel = self.bot.get_channel(payload.channel_id)
+                if not isinstance(channel, discord.TextChannel):
+                    return
+
+                try:
+                    message = await channel.fetch_message(payload.message_id)
+                except discord.NotFound:
+                    logger.error(f"Could not find message with ID {payload.message_id}")
+                    return
+
+                # Count the user's remaining reactions.
+                user_reactions = 0
+                for reaction in message.reactions:
+                    # reaction.users() is an async iterator
+                    async for user in reaction.users():
+                        if user.id == payload.user_id:
+                            user_reactions += 1
+
+                # Only proceed to remove the user if they have no reactions left.
+                if user_reactions == 0:
+                    user = guild.get_member(payload.user_id)
+                    if not user or user.bot:
+                        logger.info(
+                            f"Ignoring bot reaction removal from {user.name if user else 'unknown'}"
+                        )
+                        return
+
+                    thread = guild.get_thread(payload.message_id)
+                    if not thread:
+                        logger.error(f"Could not find thread with ID {payload.message_id}")
+                        return
+
+                    try:
+                        # Check if the user is a member of the thread before attempting to remove
+                        thread_members = await thread.fetch_members()
+                        thread_member_ids = {member.id for member in thread_members}
+
+                        if user.id in thread_member_ids:
+                            await thread.remove_user(user)
+                            logger.info(
+                                f"Removed user {user.name} from thread {thread.name} "
+                                "after reaction removal."
+                            )
+                    except discord.Forbidden:
+                        logger.error(
+                            f"Failed to remove user {user.name} from thread {thread.name} due "
+                            "to insufficient permissions."
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"An unexpected error occurred while removing user from thread: {e}"
+                        )
+
+    @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
+    async def _log_reactions(self, user, payload, message, channel, action: ReactionAction):
+        log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
+        if log_channel:
+            await log_channel.send(_format_reaction_log(user, payload, message, channel, action))
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
     async def new_rides_helper(self, user, guild):
@@ -175,12 +294,43 @@ class Reactions(commands.Cog):
         )
 
 
-def format_reaction_log(user, payload, message, channel) -> str:
-    return (
-        f"{user.name} removed their reaction {payload.emoji} from message "
-        f"'{discord.utils.escape_mentions(message.content)}' "
-        f"in #{channel.name}"
-    )
+def _format_reaction_log(
+    user: discord.Member,
+    payload: discord.RawReactionActionEvent,
+    message: discord.Message,
+    channel: discord.TextChannel,
+    action: ReactionAction,
+) -> str:
+    """Formats a reaction log message.
+
+    Args:
+        user (discord.Member): The user who reacted.
+        payload (discord.RawReactionActionEvent): The payload of the reaction event.
+        message (discord.Message): The message that was reacted to.
+        channel (discord.TextChannel): The channel where the message was sent.
+        action (ReactionAction): The action taken (add or remove)
+
+    Returns:
+        str: The formatted log message.
+
+    Raises:
+        ValueError: If the action is not valid.
+    """
+    if action != ReactionAction.ADD and action != ReactionAction.REMOVE:
+        raise ValueError(f"Invalid action: {action}")
+
+    if action == ReactionAction.ADD:
+        return (
+            f"{user.name} reacted {payload.emoji} to message "
+            f"'{discord.utils.escape_mentions(message.content)}' "
+            f"in #{channel.name}"
+        )
+    if action == ReactionAction.REMOVE:
+        return (
+            f"{user.name} removed their reaction {payload.emoji} from message "
+            f"'{discord.utils.escape_mentions(message.content)}' "
+            f"in #{channel.name}"
+        )
 
 
 async def setup(bot: commands.Bot):
