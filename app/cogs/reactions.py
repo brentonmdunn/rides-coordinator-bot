@@ -2,10 +2,13 @@ from enum import StrEnum
 
 import discord
 from discord.ext import commands
+from sqlalchemy import select
 
 from app.cogs.locations import Locations
+from app.core.database import AsyncSessionLocal
 from app.core.enums import CategoryIds, ChannelIds, DaysOfWeek, FeatureFlagNames, RoleIds
 from app.core.logger import logger
+from app.core.models import EventThreads
 from app.utils.checks import feature_flag_enabled
 from app.utils.lookups import get_location
 from app.utils.time_helpers import is_during_target_window
@@ -77,6 +80,54 @@ class Reactions(commands.Cog):
             and not await get_location(user.name, discord_only=True)
         ):
             await self.new_rides_helper(user, guild)
+
+        await self._event_thread_add(payload, guild, user)
+
+    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
+    async def _event_thread_add(self, payload: discord.RawReactionActionEvent, guild, user):
+        async with AsyncSessionLocal() as session:
+            stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
+            result = await session.execute(stmt)
+            is_event_thread = result.scalar() is not None
+
+            if is_event_thread:
+                # Check if the message ID exists in our EventThreads table.
+                async with AsyncSessionLocal() as session:
+                    stmt = select(EventThreads).where(
+                        EventThreads.message_id == str(payload.message_id)
+                    )
+                    result = await session.execute(stmt)
+                    is_event_thread = result.scalar_one_or_none() is not None
+
+                    if is_event_thread:
+                        # If the message ID is a starter message for an event thread,
+                        # get the thread object.
+                        thread = guild.get_thread(payload.message_id)
+                        if not thread:
+                            logger.error(f"Could not find thread with ID {payload.message_id}")
+                            return
+
+                        try:
+                            # Fetch thread members correctly to get a list of members.
+                            thread_members = await thread.fetch_members()
+                            thread_member_ids = {member.id for member in thread_members}
+
+                            # Check if the user is already in the thread.
+                            if user.id not in thread_member_ids:
+                                await thread.add_user(user)
+                                logger.info(
+                                    f"Added user {user.name} to thread {thread.name} on reaction."
+                                )
+
+                        except discord.Forbidden:
+                            logger.error(
+                                f"Failed to add user {user.name} to thread {thread.name} "
+                                "due to insufficient permissions."
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"An unexpected error occurred while adding user to thread: {e}"
+                            )
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
