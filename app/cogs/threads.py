@@ -14,19 +14,24 @@ class Threads(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    def _is_thread(self, interaction: discord.Interaction) -> bool:
+        return isinstance(interaction.channel, discord.Thread)
+
+
     @discord.app_commands.command(
         name="add-reacts-to-thread",
         description="Must be run in thread. Adds everyone who reacted to parent message to thread.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def add_reacts_to_thread(self, interaction: discord.Interaction) -> None:
-        # 1. Check if the command is used in a thread
-        if not isinstance(interaction.channel, discord.Thread):
+        await self._bulk_add_reacts_to_thread(interaction)
+
+    async def _bulk_add_reacts_to_thread(self, interaction):
+        if not self._is_thread(interaction):
             await interaction.response.send_message(
                 "This command can only be used inside a thread.", ephemeral=True
             )
             return
-
         # Defer the response because fetching users can take time
         await interaction.response.defer(ephemeral=True, thinking=True)
 
