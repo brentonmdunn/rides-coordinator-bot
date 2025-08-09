@@ -28,7 +28,7 @@ def is_admin():
     return app_commands.check(predicate)
 
 
-def feature_flag_enabled(feature: str):
+def feature_flag_enabled(feature: str, enable_logs: bool = True):
     """
     A decorator that checks if a feature flag is enabled before executing a command or job.
 
@@ -63,7 +63,8 @@ def feature_flag_enabled(feature: str):
                     if feature_flag:
                         feature_is_enabled = feature_flag.enabled
             except Exception as e:
-                logger.error("Error fetching feature flag '%s': %s", feature, e)
+                if enable_logs:
+                    logger.error("Error fetching feature flag '%s': %s", feature, e)
                 if interaction:
                     await interaction.response.send_message(
                         "Sorry, there was an error checking the command's availability.",
@@ -73,17 +74,19 @@ def feature_flag_enabled(feature: str):
 
             if not feature_is_enabled:
                 if interaction:
-                    logger.info(
-                        "Feature '%s' is disabled. Blocking command for %s.",
-                        feature,
-                        interaction.user,
-                    )
+                    if enable_logs:
+                        logger.info(
+                            "Feature '%s' is disabled. Blocking command for %s.",
+                            feature,
+                            interaction.user,
+                        )
                     await interaction.response.send_message(
                         f"This command is currently disabled by feature flag '{feature}'.",
                         ephemeral=True,
                     )
                 else:
-                    logger.info("Feature '%s' is disabled. Blocking job.", feature)
+                    if enable_logs:
+                        logger.info("Feature '%s' is disabled. Blocking job.", feature)
                 return
 
             # If the flag is enabled, run the original command function.
