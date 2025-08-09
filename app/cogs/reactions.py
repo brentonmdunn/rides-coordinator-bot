@@ -166,6 +166,69 @@ class Reactions(commands.Cog):
             return
 
         await self._log_reactions(user, payload, message, channel, ReactionAction.REMOVE)
+        await self._event_thread_remove(payload, guild)
+
+    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
+    async def _event_thread_remove(self, payload: discord.RawReactionActionEvent, guild):
+        async with AsyncSessionLocal() as session:
+            stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
+            result = await session.execute(stmt)
+            is_event_thread = result.scalar_one_or_none() is not None
+
+            if is_event_thread:
+                # We need to fetch the full message to check for remaining reactions.
+                channel = self.bot.get_channel(payload.channel_id)
+                if not isinstance(channel, discord.TextChannel):
+                    return
+
+                try:
+                    message = await channel.fetch_message(payload.message_id)
+                except discord.NotFound:
+                    logger.error(f"Could not find message with ID {payload.message_id}")
+                    return
+
+                # Count the user's remaining reactions.
+                user_reactions = 0
+                for reaction in message.reactions:
+                    # reaction.users() is an async iterator
+                    async for user in reaction.users():
+                        if user.id == payload.user_id:
+                            user_reactions += 1
+
+                # Only proceed to remove the user if they have no reactions left.
+                if user_reactions == 0:
+                    user = guild.get_member(payload.user_id)
+                    if not user or user.bot:
+                        logger.info(
+                            f"Ignoring bot reaction removal from {user.name if user else 'unknown'}"
+                        )
+                        return
+
+                    thread = guild.get_thread(payload.message_id)
+                    if not thread:
+                        logger.error(f"Could not find thread with ID {payload.message_id}")
+                        return
+
+                    try:
+                        # Check if the user is a member of the thread before attempting to remove
+                        thread_members = await thread.fetch_members()
+                        thread_member_ids = {member.id for member in thread_members}
+
+                        if user.id in thread_member_ids:
+                            await thread.remove_user(user)
+                            logger.info(
+                                f"Removed user {user.name} from thread {thread.name} "
+                                "after reaction removal."
+                            )
+                    except discord.Forbidden:
+                        logger.error(
+                            f"Failed to remove user {user.name} from thread {thread.name} due "
+                            "to insufficient permissions."
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"An unexpected error occurred while removing user from thread: {e}"
+                        )
 
     @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
     async def _log_reactions(self, user, payload, message, channel, action: ReactionAction):
