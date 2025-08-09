@@ -43,38 +43,40 @@ class Reactions(commands.Cog):
             logger.info(f"Ignoring bot reaction from {user.name}")
             return
 
-        if user:
-            if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
-                ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
-                or (
-                    "sunday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.SUNDAY)
-                )
-                or (
-                    "wednesday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.WEDNESDAY)
-                )
-            ):
-                log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
-                if log_channel:
-                    await log_channel.send(
-                        f"{user.name} reacted {payload.emoji} to message "
-                        f"'{discord.utils.escape_mentions(message.content)}' "
-                        f"in #{channel.name}",
-                    )
+        if not user:
+            return
+
+        # Late rides notif
+        if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
+            ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
+            or ("sunday" in message.content.lower() and is_during_target_window(DaysOfWeek.SUNDAY))
+            or (
+                "wednesday" in message.content.lower()
+                and is_during_target_window(DaysOfWeek.WEDNESDAY)
+            )
+        ):
+            log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+            if log_channel:
                 await log_channel.send(
-                    _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
+                    f"{user.name} reacted {payload.emoji} to message "
+                    f"'{discord.utils.escape_mentions(message.content)}' "
+                    f"in #{channel.name}",
                 )
-                return
+            await log_channel.send(
+                _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
+            )
+            return
 
-            await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
+        # Logging all reactions
+        await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
 
-            if (
-                (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
-                and user is not None
-                and not await get_location(user.name, discord_only=True)
-            ):
-                await self.new_rides_helper(user, guild)
+        # Create channel to ask for location for new rides peeps
+        if (
+            (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
+            and user is not None
+            and not await get_location(user.name, discord_only=True)
+        ):
+            await self.new_rides_helper(user, guild)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
