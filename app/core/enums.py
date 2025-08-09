@@ -57,6 +57,7 @@ class FeatureFlagNames(StrEnum):
     RIDES_LOCATIONS_SYNC_JOB = "rides_locations_sync_job"
     NEW_RIDES_MSG = "new_rides_msg"
     LOG_REACTIONS = "log_reactions"
+    EVENT_THREADS = "event_threads"
 
 
 class ClassYear(StrEnum):
