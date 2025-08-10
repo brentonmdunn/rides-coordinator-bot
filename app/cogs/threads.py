@@ -80,7 +80,7 @@ class Threads(commands.Cog):
                 return
 
         await interaction.followup.send(
-            "Event thread has been created. Anyone who reacts to the original message will " \
+            "Event thread has been created. Anyone who reacts to the original message will "
             "automatically be added to this thread."
         )
 
