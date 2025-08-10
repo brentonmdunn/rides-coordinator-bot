@@ -59,7 +59,7 @@ class Threads(commands.Cog):
     async def create_event_thread(self, interaction: discord.Interaction) -> None:
         """Automatically adds anyone new who reacts"""
 
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(ephemeral=False, thinking=True)
 
         if not self._is_thread(interaction):
             await interaction.followup.send(
@@ -79,6 +79,11 @@ class Threads(commands.Cog):
                 )
                 return
 
+        await interaction.followup.send(
+            "Event thread has been created. Anyone who reacts to the original message will " \
+            "automatically be added to this thread."
+        )
+
         await self._bulk_add_reacts_to_thread(interaction)
 
         async with AsyncSessionLocal() as session:
@@ -87,8 +92,7 @@ class Threads(commands.Cog):
             await session.commit()
 
         await interaction.followup.send(
-            "Event thread created. Anyone who reacts will automatically be added "
-            "to this thread.\n\nNOTE: This feature has a feature flag. If it is not "
+            "NOTE: This feature has a feature flag. If it is not "
             "properly working, use `/list-feature-flags` to check the status of "
             "`event_threads`",
             ephemeral=True,
@@ -184,7 +188,7 @@ class Threads(commands.Cog):
             response_message = "All users who reacted are already in the thread."
 
         # Send the final message as a followup.
-        await interaction.followup.send(response_message, ephemeral=False)
+        await interaction.followup.send(response_message, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
