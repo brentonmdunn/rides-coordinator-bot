@@ -129,7 +129,7 @@ class Threads(commands.Cog):
             return
 
         if not starter_message.reactions:
-            await interaction.followup.send("The first message has no reactions.")
+            await interaction.followup.send("The first message has no reactions.", ephemeral=True)
             return
 
         reactors = set()
