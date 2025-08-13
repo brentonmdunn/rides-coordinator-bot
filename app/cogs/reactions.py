@@ -74,12 +74,12 @@ class Reactions(commands.Cog):
         await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
 
         # Create channel to ask for location for new rides peeps
-        if (
-            (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
-            and user is not None
-            and not await get_location(user.name, discord_only=True)
-        ):
-            await self.new_rides_helper(user, guild)
+        # if (
+        #     (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
+        #     and user is not None
+        #     and not await get_location(user.name, discord_only=True)
+        # ):
+        await self._new_rides_helper(user, guild)
 
         await self._event_thread_add(payload, guild, user)
 
@@ -237,8 +237,14 @@ class Reactions(commands.Cog):
             await log_channel.send(_format_reaction_log(user, payload, message, channel, action))
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
-    async def new_rides_helper(self, user, guild):
-        channel_name = f"{user.name.lower()}-test"
+    async def _new_rides_helper(self, user, guild):
+        if not (
+            (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
+            and user is not None
+            and not await get_location(user.name, discord_only=True)
+        ):
+            return
+        channel_name = f"{user.name.lower()}"
         category = discord.utils.get(guild.categories, id=CategoryIds.NEW_RIDES)
 
         if not category:
