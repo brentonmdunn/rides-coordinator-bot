@@ -167,7 +167,7 @@ class Threads(commands.Cog):
                     "I lack the `Manage Threads` permission to add users to this private thread."
                 )
                 return
-            except Exception as e:
+            except Exception:
                 # Log any other unexpected errors, with full exception info.
                 logger.exception(f"Failed to add {user.name} to thread {thread.name}")
                 failed_users.append(user.name)
