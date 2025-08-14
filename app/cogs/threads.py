@@ -168,8 +168,8 @@ class Threads(commands.Cog):
                 )
                 return
             except Exception as e:
-                # Log any other unexpected errors.
-                print(f"Failed to add {user.name}: {e}")
+                # Log any other unexpected errors, with full exception info.
+                logger.exception(f"Failed to add {user.name} to thread {thread.name}")
                 failed_users.append(user.name)
 
         response_message = ""
