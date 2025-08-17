@@ -61,13 +61,8 @@ class Reactions(commands.Cog):
             log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
             if log_channel:
                 await log_channel.send(
-                    f"{user.name} reacted {payload.emoji} to message "
-                    f"'{discord.utils.escape_mentions(message.content)}' "
-                    f"in #{channel.name}",
+                    _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
                 )
-            await log_channel.send(
-                _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
-            )
             return
 
         # Logging all reactions
@@ -155,6 +150,10 @@ class Reactions(commands.Cog):
                 or (
                     "sunday" in message.content.lower()
                     and is_during_target_window(DaysOfWeek.SUNDAY)
+                )
+                or (
+                    "wednesday" in message.content.lower()
+                    and is_during_target_window(DaysOfWeek.WEDNESDAY)
                 )
             )
         ):
