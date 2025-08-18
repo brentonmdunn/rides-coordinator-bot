@@ -49,33 +49,9 @@ class Reactions(commands.Cog):
         if not user:
             return
 
-        # Late rides notif
-        if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
-            ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
-            or ("sunday" in message.content.lower() and is_during_target_window(DaysOfWeek.SUNDAY))
-            or (
-                "wednesday" in message.content.lower()
-                and is_during_target_window(DaysOfWeek.WEDNESDAY)
-            )
-        ):
-            log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
-            if log_channel:
-                await log_channel.send(
-                    _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
-                )
-            return
-
-        # Logging all reactions
+        await self._late_rides_react(user, payload, message, channel, ReactionAction.ADD)
         await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
-
-        # Create channel to ask for location for new rides peeps
-        # if (
-        #     (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
-        #     and user is not None
-        #     and not await get_location(user.name, discord_only=True)
-        # ):
         await self._new_rides_helper(user, guild)
-
         await self._event_thread_add(payload, guild, user)
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
@@ -142,28 +118,7 @@ class Reactions(commands.Cog):
             logger.info(f"Ignoring bot reaction removal from {user.name}")
             return
 
-        if (
-            user
-            and payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
-            and (
-                ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
-                or (
-                    "sunday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.SUNDAY)
-                )
-                or (
-                    "wednesday" in message.content.lower()
-                    and is_during_target_window(DaysOfWeek.WEDNESDAY)
-                )
-            )
-        ):
-            log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
-            if log_channel:
-                await log_channel.send(
-                    _format_reaction_log(user, payload, message, channel, ReactionAction.REMOVE)
-                )
-            return
-
+        await self._late_rides_react(user, payload, message, channel, ReactionAction.REMOVE)
         await self._log_reactions(user, payload, message, channel, ReactionAction.REMOVE)
         await self._event_thread_remove(payload, guild)
 
@@ -228,6 +183,22 @@ class Reactions(commands.Cog):
                         logger.error(
                             f"An unexpected error occurred while removing user from thread: {e}"
                         )
+
+    @feature_flag_enabled(FeatureFlagNames.LATE_RIDES_REACT)
+    async def _late_rides_react(self, user, payload, message, channel, action: ReactionAction):
+        if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
+            ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
+            or ("sunday" in message.content.lower() and is_during_target_window(DaysOfWeek.SUNDAY))
+            or (
+                "wednesday" in message.content.lower()
+                and is_during_target_window(DaysOfWeek.WEDNESDAY)
+            )
+        ):
+            log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+            if log_channel:
+                await log_channel.send(
+                    _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
+                )
 
     @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
     async def _log_reactions(self, user, payload, message, channel, action: ReactionAction):
