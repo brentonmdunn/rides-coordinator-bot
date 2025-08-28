@@ -197,7 +197,7 @@ class Reactions(commands.Cog):
             log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
             if log_channel:
                 await log_channel.send(
-                    _format_reaction_log(user, payload, message, channel, ReactionAction.ADD)
+                    _format_reaction_log(user, payload, message, channel, action)
                 )
 
     @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
