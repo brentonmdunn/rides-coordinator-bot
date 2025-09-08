@@ -86,3 +86,4 @@ class PickupLocations(StrEnum):
     RITA = "Rita"
     INNOVATION = "Innovation"
     EIGHTH = "Eighth"
+    PANGEA = "Pangea"
