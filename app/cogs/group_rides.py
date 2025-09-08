@@ -6,16 +6,19 @@ import tenacity
 from discord import app_commands
 from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
-
+from datetime import time, datetime, timedelta
 from app.core.enums import FeatureFlagNames
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
-from app.utils.locations import LOCATIONS_MATRIX
+from app.utils.locations import LOCATIONS_MATRIX, lookup_time
+from app.core.schemas import LocationQuery
 
 from app.cogs.locations import Locations
 
 prev_response = None
+
+NUM_RETRY_ATTEMPTS = 5
 
 # Define the callback function to print to the console
 def log_retry_attempt(retry_state):
@@ -52,12 +55,12 @@ def parse_numbers(s: str) -> list[int]:
 class GroupRides(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
+        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+        # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
 
     # Helper function to invoke the LLM with a fixed retry wait
     @tenacity.retry(
-        stop=tenacity.stop_after_attempt(5),
+        stop=tenacity.stop_after_attempt(NUM_RETRY_ATTEMPTS),
         wait=tenacity.wait_fixed(5),
         retry=tenacity.retry_if_exception_type(Exception),
         before_sleep=log_retry_attempt,
@@ -90,20 +93,20 @@ class GroupRides(commands.Cog):
 
         l = Locations(self.bot)
         # locations_people, usernames_reacted, location_found = await l.list_locations(message_id="1379958145656553665")
-        # locations_people = {
-        #     "seventh": ["carly"],
-        #     "ERC": ["nathan luk", "kristi"],
-        #     "muir": ["charis", "ros"],
-        #     "sixth": ["alice"],
-        #     "warren": ["sydney", "laurent"], 
-        #     "rita": ["kendra"]
-        # }
         locations_people = {
-            "seventh": [("carly", "@carbear")],
-            "muir": [("charis", "@avo")],
-            "erc": [("nathan luk", "@bleh")],
-            "sixth": [("alice", "@brentond")],
+            "Seventh": [("carly", "@carbear")],
+            "ERC": [("nathan luk", "@bleh"), ("kristi", "@kristi")],
+            "Muir": [("charis", "@avo"), ("ros", "@ros")],
+            "Sixth": [("alice", "@mango")],
+            "Warren": [("sydney", "@syd"), ("laurent", "@laurent")], 
+            "Rita": [("kendra", "@kendra")]
         }
+        # locations_people = {
+        #     "Seventh": [("carly", "@carbear")],
+        #     "Muir": [("charis", "@avo")],
+        #     "ERC": [("nathan luk", "@bleh")],
+        #     "Sixth": [("alice", "@brentond")],
+        # }
         driver_capacity = "44134"
         drivers_list = []
         for i, capacity in enumerate(parse_numbers(driver_capacity)):
@@ -135,38 +138,88 @@ class GroupRides(commands.Cog):
 
         try:
             logger.info("Calling LLM")
-            result = await asyncio.to_thread(
-                self._invoke_llm_blocking, pickups, ", ".join(drivers_list), LOCATIONS_MATRIX
-            )
+            # result = await asyncio.to_thread(
+            #     self._invoke_llm_blocking, pickups, ", ".join(drivers_list), LOCATIONS_MATRIX
+            # )
+            # result = {'Driver0': [['charis', 'Muir'], ['alice', 'Sixth'], ['nathan luk', 'ERC'], ['carly', 'Seventh']]}
+            result={'Driver2': [{'name': 'kendra', 'location': 'Rita'}], 'Driver3': [{'name': 'nathan luk', 'location': 'ERC'}, {'name': 'kristi', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}], 'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'ros', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}], 'Driver1': [{'name': 'sydney', 'location': 'Warren'}, {'name': 'laurent', 'location': 'Warren'}]}
 
 
         except Exception as e:
             # Handle the case where all retries fail
-            logger.error(f"Failed to get a successful response after 3 attempts: {e}")
-        # Use followup to send the error message
-        await interaction.followup.send(
-            "Sorry, I couldn't process your request right now. Please try again later.",
-            ephemeral=True,
-        )
+            logger.error(f"Failed to get a successful response after {NUM_RETRY_ATTEMPTS} attempts: {e}")
+            # Use followup to send the error message
+            await interaction.followup.send(
+                "Sorry, I couldn't process your request right now. Please try again later.",
+                ephemeral=True,
+            )
         # Use followup to send the final response
         output = ""
+        logger.info(f"{result=}")
         for i, driver in enumerate(result):
+            logger.info(f"Looking at {driver=}")
             output += f"Group {i+1}\n"
-            usernames = []
-            for person, college in result[driver]:
+            grouped_by_college = []
+            curr_college = []
+            # for person, college in result[driver]:
+            for obj in result[driver]:
+                person = obj['name']
+                college= obj['location']
+                logger.info(f"Looking at {person=} {driver=}")
                 username = None
                 if college.lower() in [l.lower() for l in locations_people]:
-                    for name, handle in locations_people[college.lower()]:
+                    for name, handle in locations_people[college]:
                         if name == person:
                             username = handle
+                logger.info(f"{username=}")
                 output += f"- {person} ({college}, @{username[1:]})\n"
-                usernames.append(username)
-            logger.info(f"{usernames=}")
+                logger.info(f"Before: {curr_college=}")
+                if len(curr_college) == 0 or college == curr_college[-1][1]:
+                    curr_college.append((person, college, username))
+                else:
+                    grouped_by_college.append(curr_college)
+                    curr_college = []
+                    curr_college.append((person, college, username))
+                logger.info(f"After: {curr_college=}")
+                logger.info(f"{grouped_by_college=}")
+                
+            grouped_by_college.append(curr_college)
+
+            PICKUP_CONSTANT = 1
+            curr_leave_time = time(hour=10)
+            drive_formatted = []
+            logger.info("--------------------------------------")
+            for i, grouping in enumerate(reversed(grouped_by_college)):
+                logger.info(f"{grouping=}")
+                usernames_at_location = [u for _, _, u in grouping]
+                college = grouping[0][1]
+                if i != 0:
+                    logger.warning(f"{grouped_by_college=}")
+                    time_between = PICKUP_CONSTANT + lookup_time(
+                        LocationQuery(
+                            start_location=grouped_by_college[len(grouped_by_college)-i][0][1], 
+                            end_location=college
+                        )
+                    )
+                    logger.info(f"{time_between=}")
+                    dummy_datetime = datetime.combine(datetime.today(), curr_leave_time)
+
+                    new_datetime = dummy_datetime - timedelta(minutes=time_between)
+
+                    curr_leave_time = new_datetime.time()
+                    
+                drive_formatted.append(f"{" ".join(usernames_at_location)} {curr_leave_time} {college}")
+
+
+    
+
+
+            logger.info(f"{drive_formatted=}")
             # Add code box for copy paste
-            if None in usernames:
+            if not drive_formatted:
                 output += "```\nError: could not get username\n```"
             else:
-                output += f"```\n{" ".join(usernames)}\n```"
+                output += f"```\ndrive: {", ".join(reversed(drive_formatted))}\n```"
 
             output += "\n"
 
