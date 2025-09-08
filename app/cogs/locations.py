@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 
 from app.core.enums import ChannelIds, FeatureFlagNames
 from app.core.logger import logger
@@ -78,7 +79,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_sunday(self, interaction: discord.Interaction):
-        await self._list_locations(interaction, day="sunday")
+        await self._list_locations_wrapper(interaction, day="sunday")
 
     @discord.app_commands.command(
         name="list-pickups-friday",
@@ -86,7 +87,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_friday(self, interaction: discord.Interaction):
-        await self._list_locations(interaction, day="friday")
+        await self._list_locations_wrapper(interaction, day="friday")
 
     @discord.app_commands.command(
         name="list-pickups-by-message-id",
@@ -104,13 +105,13 @@ class Locations(commands.Cog):
         channel_id: str | None = None,
     ):
         if channel_id:
-            await self._list_locations(
+            await self._list_locations_wrapper(
                 interaction,
                 message_id=message_id,
                 channel_id=channel_id,
             )
         else:
-            await self._list_locations(interaction, message_id=message_id)
+            await self._list_locations_wrapper(interaction, message_id=message_id)
 
     def _get_last_sunday(self):
         now = datetime.now()
@@ -148,74 +149,8 @@ class Locations(commands.Cog):
         message_id = most_recent_message.id
         return message_id
 
-    async def _list_locations(
-        self,
-        interaction,
-        day=None,
-        message_id=None,
-        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-    ):
-        logger.info(
-            f"list-pickups command used by {interaction.user} in #{interaction.channel}",
-        )
-
-        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
-            await interaction.response.send_message(
-                "Command cannot be used in this channel.",
-                ephemeral=True,
-            )
-            logger.info(
-                f"list-pickups not allowed in #{interaction.channel} by {interaction.user}",
-            )
-            return
-
-        if (day is None and message_id is None) or (day is not None and message_id is not None):
-            await interaction.response.send_message("Please provide either day or message ID")
-            return
-
-        # Find the relevant message
-        if day:
-            message_id = await self._find_correct_message(interaction, day)
-            if message_id is None:
-                await interaction.response.send_message("No matching message found.")
-                return
-
-        usernames_reacted = set()
-        channel = self.bot.get_channel(int(channel_id))
-        try:
-            message = await channel.fetch_message(int(message_id))
-            for reaction in message.reactions:
-                async for user in reaction.users():
-                    usernames_reacted.add(user)
-        except Exception as e:
-            logger.info(f"Error fetching message: {e}")
-            await interaction.response.send_message("Failed to fetch message.")
-            return
-
-        locations_people = defaultdict(list)
-        location_found = set()
-
-        cache_miss = []
-        for username in usernames_reacted:
-            person = await get_name_location_no_sync(username)
-
-            if person is None or person.location is None:
-                cache_miss.append(username)
-                continue
-            locations_people[person.location].append(person.name)
-            location_found.add(username)
-
-        if cache_miss:
-            await sync()
-            for username in cache_miss:
-                person = await get_name_location_no_sync(username)
-                if person is None or person.location is None:
-                    continue
-
-                locations_people[person.location].append(person.name)
-                location_found.add(username)
-
-        # Build Embed
+    def _build_embed(self, locations_people, usernames_reacted, location_found):
+        """Builds a Discord embed based on grouped locations and people."""
         embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
 
         groups = {
@@ -279,7 +214,76 @@ class Locations(commands.Cog):
                 inline=False,
             )
 
-        await interaction.response.send_message(embed=embed)
+        return embed
+
+    async def _list_locations(
+        self,
+        day=None,
+        message_id=None,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    ):
+        """
+        day and message_id have an XOR relationship
+        """
+
+        if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
+            raise NotAllowedInChannelError()
+
+        # Find the relevant message
+        if day:
+            message_id = await self._find_correct_message(day)
+            if message_id is None:
+                raise NoMatchingMessageFoundError()
+
+        usernames_reacted = set()
+        channel = self.bot.get_channel(int(channel_id))
+        message = await channel.fetch_message(int(message_id))
+        for reaction in message.reactions:
+            async for user in reaction.users():
+                usernames_reacted.add(user)
+
+        locations_people = defaultdict(list)
+        location_found = set()
+
+        cache_miss = []
+        for username in usernames_reacted:
+            person = await get_name_location_no_sync(username)
+
+            if person is None or person.location is None:
+                cache_miss.append(username)
+                continue
+            locations_people[person.location].append(person.name)
+            location_found.add(username)
+
+        if cache_miss:
+            await sync()
+            for username in cache_miss:
+                person = await get_name_location_no_sync(username)
+                if person is None or person.location is None:
+                    continue
+
+                locations_people[person.location].append(person.name)
+                location_found.add(username)
+
+        return locations_people, usernames_reacted, location_found
+
+    async def _list_locations_wrapper(
+        self,
+        interaction,
+        day=None,
+        message_id=None,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    ):
+        try:
+            args = self._list_locations(interaction, day, message_id, channel_id)
+            embed = self._build_embed(*args)
+            await interaction.response.send_message(embed=embed)
+        except NotAllowedInChannelError:
+            await interaction.response.send_message("Command not allowed in channel.")
+        except NoMatchingMessageFoundError:
+            await interaction.response.send_message("No matching message found.")
+        except Exception as e:
+            await interaction.response.send_message(f"Unknown error: {e}")
 
 
 async def setup(bot: commands.Bot):
