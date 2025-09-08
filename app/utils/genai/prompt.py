@@ -36,9 +36,24 @@ Each person will be separated by a comma. For example, "nathan luk" is one perso
 
 Example of a correct final output:
 {{
-  "DriverA": [("name1", "Rita"), ("name2", "ERC")],
-  "DriverB": [("name3", "Innovation")]
+  "DriverA": [
+    {{
+      "name": "name1",
+      "location": "Rita"
+    }},
+    {{
+      "name": "name2",
+      "location": "ERC"
+    }}
+  ],
+  "DriverB": [
+    {{
+      "name": "name3",
+      "location": "Innovation"
+    }}
+  ]
 }}
+
 
 Begin.
 """
