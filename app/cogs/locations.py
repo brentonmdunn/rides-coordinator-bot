@@ -182,7 +182,7 @@ class Locations(commands.Cog):
             "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
         }
 
-        for location, people in locations_people.items():
+        for location, (people, _) in locations_people.items():
             matched = False
             for _, group_data in groups.items():
                 if any(keyword in location.lower() for keyword in group_data["filter"]):
@@ -253,7 +253,7 @@ class Locations(commands.Cog):
             if person is None or person.location is None:
                 cache_miss.append(username)
                 continue
-            locations_people[person.location].append(person.name)
+            locations_people[person.location].append((person.name, username))
             location_found.add(username)
 
         if cache_miss:
@@ -263,9 +263,8 @@ class Locations(commands.Cog):
                 if person is None or person.location is None:
                     continue
 
-                locations_people[person.location].append(person.name)
+                locations_people[person.location].append((person.name, username))
                 location_found.add(username)
-
         return locations_people, usernames_reacted, location_found
 
     async def _list_locations_wrapper(
@@ -275,6 +274,7 @@ class Locations(commands.Cog):
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ):
+        # TODO: check whitelist
         try:
             args = self.list_locations(interaction, day, message_id, channel_id)
             embed = self._build_embed(*args)
