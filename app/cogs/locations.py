@@ -216,7 +216,7 @@ class Locations(commands.Cog):
 
         return embed
 
-    async def _list_locations(
+    async def list_locations(
         self,
         day=None,
         message_id=None,
@@ -275,7 +275,7 @@ class Locations(commands.Cog):
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ):
         try:
-            args = self._list_locations(interaction, day, message_id, channel_id)
+            args = self.list_locations(interaction, day, message_id, channel_id)
             embed = self._build_embed(*args)
             await interaction.response.send_message(embed=embed)
         except NotAllowedInChannelError:
