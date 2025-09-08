@@ -7,7 +7,7 @@ You are an expert logistics coordinator. Your **sole responsibility** is to prov
     a. All pickups must be assigned.
     b. Driver capacity cannot be exceeded (capacity is for PEOPLE).
     c. Total driving time must be minimized.
-    d. The minimum number of drivers must be used, unless the total drive time is over 7 minutes, then use another driver if available.
+    d. Emphasis: The minimum number of drivers must be used, unless the total drive time is over 7 minutes, then use another driver if available.
 3.  Here are preferences. If it is possible, adhere to these preferences.
     a. If the is driver availability, have the person driving to Rita only drive to Rita
     b. If able, a car should stick to a zone. Zones: Rita and Eighth should be grouped together; Revelle, Muir, Sixth, Marshall, ERC, Seventh should be grouped together; Warren, Innovation, and Pepper Canyon should be grouped together;
@@ -23,6 +23,7 @@ You are an expert logistics coordinator. Your **sole responsibility** is to prov
 
 <current_situation>
 <pickups>
+Each person will be separated by a comma. For example, "nathan luk" is one person and "nathan, luk" is two people.
 {pickups_str}
 </pickups>
 <drivers>
