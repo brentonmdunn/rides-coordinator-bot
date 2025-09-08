@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
+from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 
 from app.core.enums import ChannelIds, FeatureFlagNames
 from app.core.logger import logger
@@ -226,8 +226,9 @@ class Locations(commands.Cog):
         day and message_id have an XOR relationship
         """
 
-        if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
-            raise NotAllowedInChannelError()
+        # if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
+            
+        #     raise NotAllowedInChannelError(channel_id)
 
         # Find the relevant message
         if day:
