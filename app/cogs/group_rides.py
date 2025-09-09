@@ -1,32 +1,34 @@
-import asyncio  # New import
 import json
+from datetime import datetime, time, timedelta
 
 import discord
 import tenacity
 from discord import app_commands
 from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
-from datetime import time, datetime, timedelta
+
 from app.core.enums import FeatureFlagNames
 from app.core.logger import logger
+from app.core.schemas import Identity, LocationQuery, RidesUser
 from app.utils.checks import feature_flag_enabled
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
-from app.utils.locations import LOCATIONS_MATRIX, lookup_time
-from app.core.schemas import LocationQuery, Identity, RidesUser
-
-from app.cogs.locations import Locations
+from app.utils.locations import lookup_time
 
 prev_response = None
 
 NUM_RETRY_ATTEMPTS = 5
 PICKUP_ADJUSTMENT = 1
 
+
 # Define the callback function to print to the console
 def log_retry_attempt(retry_state):
     global prev_response
     logger.warning(
-        f"Failed to process request, attempting retry {retry_state.attempt_number}...Exception was: {retry_state.outcome.exception()}...Prev response: {prev_response}"
+        f"Failed to process request, attempting retry {retry_state.attempt_number}..."
+        f"Exception was: {retry_state.outcome.exception()}..."
+        f"Prev response: {prev_response}"
     )
+
 
 def parse_numbers(s: str) -> list[int]:
     """
@@ -48,7 +50,7 @@ def parse_numbers(s: str) -> list[int]:
 
 
 class GroupRides(commands.Cog):
-    def __init__(self, bot: commands.Bot=None):
+    def __init__(self, bot: commands.Bot = None):
         self.bot = bot
         # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
         self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
@@ -68,7 +70,7 @@ class GroupRides(commands.Cog):
             )
         )
         # For logging the previous response, can't pass variables to callback (I think)
-        global prev_response 
+        global prev_response
         prev_response = ai_response
 
         if "json" in ai_response.content:
@@ -78,9 +80,9 @@ class GroupRides(commands.Cog):
         else:
             ret = json.loads(ai_response.content)
 
-        # TODO: pydantic validation on the json...just bc it is valid json doesn't 
-        # mean that is json that we want 
-        return ret 
+        # TODO: pydantic validation on the json...just bc it is valid json doesn't
+        # mean that is json that we want
+        return ret
 
     @app_commands.command(
         name="group-rides",
@@ -90,14 +92,14 @@ class GroupRides(commands.Cog):
     async def group_rides(self, interaction: discord.Interaction):
         logger.info("group rides called")
 
-        l = Locations(self.bot)
-        # locations_people, usernames_reacted, location_found = await l.list_locations(message_id="1379958145656553665")
+        # l = Locations(self.bot)
+        # locations_people, usernames_reacted, location_found = await l.list_locations(message_id="1379958145656553665") # noqa
         # locations_people = {
         #     "Seventh": [("carly", "@carbear")],
         #     "ERC": [("nathan luk", "@bleh"), ("kristi", "@kristi")],
         #     "Muir": [("charis", "@avo"), ("ros", "@ros")],
         #     "Sixth": [("alice", "@mango")],
-        #     "Warren": [("sydney", "@syd"), ("laurent", "@laurent")], 
+        #     "Warren": [("sydney", "@syd"), ("laurent", "@laurent")],
         #     "Rita": [("kendra", "@kendra")]
         # }
         # locations_people = {
@@ -119,12 +121,11 @@ class GroupRides(commands.Cog):
         pickups = ""
         for location in locations_people:
             filtered = [p[0] for p in locations_people[location]]
-            pickups += f"{location}: {", ".join(filtered)}\n"
+            pickups += f"{location}: {', '.join(filtered)}\n"
         logger.info(f"{pickups=}")
         logger.info(f"{drivers_list=}")
 
         await interaction.response.defer()
-
 
         try:
             logger.info("Calling LLM")
@@ -132,19 +133,25 @@ class GroupRides(commands.Cog):
             #     self._invoke_llm_blocking, pickups, ", ".join(drivers_list), LOCATIONS_MATRIX
             # )
 
-            # llm_result={'Driver2': [{'name': 'kendra', 'location': 'Rita'}], 'Driver3': [{'name': 'nathan luk', 'location': 'ERC'}, {'name': 'kristi', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}], 'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'ros', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}], 'Driver1': [{'name': 'sydney', 'location': 'Warren'}, {'name': 'laurent', 'location': 'Warren'}]}
-            # llm_result={'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}, {'name': 'nathan luk', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}]}
-            llm_result={'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'nathan luk', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}]}
-
+            # llm_result={'Driver2': [{'name': 'kendra', 'location': 'Rita'}], 'Driver3': [{'name': 'nathan luk', 'location': 'ERC'}, {'name': 'kristi', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}], 'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'ros', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}], 'Driver1': [{'name': 'sydney', 'location': 'Warren'}, {'name': 'laurent', 'location': 'Warren'}]} # noqa
+            # llm_result={'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}, {'name': 'nathan luk', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}]} # noqa
+            llm_result = {
+                "Driver0": [
+                    {"name": "charis", "location": "Muir"},
+                    {"name": "nathan luk", "location": "ERC"},
+                    {"name": "carly", "location": "Seventh"},
+                ]
+            }
 
         except Exception as e:
-            logger.error(f"Failed to get a successful response after {NUM_RETRY_ATTEMPTS} attempts: {e}")
+            logger.error(
+                f"Failed to get a successful response after {NUM_RETRY_ATTEMPTS} attempts: {e}"
+            )
             await interaction.followup.send(
                 "Sorry, I couldn't process your request right now. Please try again later.",
                 ephemeral=True,
             )
-            return 
-
+            return
 
         output = ""
         logger.info(f"{llm_result=}")
@@ -159,27 +166,29 @@ class GroupRides(commands.Cog):
         for i, driver_id in enumerate(llm_result):
             logger.info(f"Looking at {driver_id=}")
 
-            output += f"Group {i+1}\n"
+            output += f"Group {i + 1}\n"
             grouped_by_location: list[list[RidesUser]] = []
             curr_location: list[RidesUser] = []
 
             for obj in llm_result[driver_id]:
-                person = obj['name']
-                location = obj['location']
-
-                
+                person = obj["name"]
+                location = obj["location"]
 
                 logger.info(f"Looking at {person=} {driver_id=}")
-
 
                 username = find_username(locations_people, person)
 
                 logger.info(f"{username=}")
 
+                rides_user = RidesUser(
+                    identity=Identity(name=obj["name"], username=username), location=location
+                )
 
-                rides_user = RidesUser(identity=Identity(name=obj['name'], username=username), location=location)
-
-                output += f"- {rides_user.identity.name} ({rides_user.location}, {rides_user.identity.username})\n"
+                output += (
+                    f"- {rides_user.identity.name} "
+                    f"({rides_user.location}, "
+                    f"{rides_user.identity.username})\n"
+                )
                 logger.info(f"Before: {curr_location=}")
 
                 # New group or part of same group as prev
@@ -192,48 +201,47 @@ class GroupRides(commands.Cog):
                     curr_location.append(rides_user)
                 logger.info(f"After: {curr_location=}")
                 logger.info(f"{grouped_by_location=}")
-                
+
             grouped_by_location.append(curr_location)
 
-            
             curr_leave_time = time(hour=10, minute=10)
             drive_formatted = []
             logger.info("--------------------------------------")
 
-            
             def calculate_pickup_time(curr_leave_time, grouped_by_location, location, offset):
                 time_between = PICKUP_ADJUSTMENT + lookup_time(
                     LocationQuery(
-                        start_location=grouped_by_location[len(grouped_by_location)-offset][0].location, 
-                        end_location=location
+                        start_location=grouped_by_location[len(grouped_by_location) - offset][
+                            0
+                        ].location,
+                        end_location=location,
                     )
                 )
                 dummy_datetime = datetime.combine(datetime.today(), curr_leave_time)
                 new_datetime = dummy_datetime - timedelta(minutes=time_between)
                 return new_datetime.time()
-                
-            
+
             # grouped_by_location is in order by who to pickup first. Need it
             # reversed so can calculate pickup time backwards from goal leave time
             for idx, users_at_location in enumerate(reversed(grouped_by_location)):
-
-
                 usernames_at_location = [ru.identity.username for ru in users_at_location]
-                
+
                 location = users_at_location[0].location
                 if idx != 0:
+                    curr_leave_time = calculate_pickup_time(
+                        curr_leave_time, grouped_by_location, location, idx
+                    )
 
-                    curr_leave_time = calculate_pickup_time(curr_leave_time, grouped_by_location, location, idx)
-                    
                 drive_formatted.append(
-                    f"{" ".join(usernames_at_location)} {curr_leave_time.strftime('%I:%M%p').lstrip('0')} {location}"
+                    f"{' '.join(usernames_at_location)} "
+                    f"{curr_leave_time.strftime('%I:%M%p').lstrip('0')} "
+                    f"{location}"
                 )
-
 
             if not drive_formatted:
                 output += "```\nError: could not get username\n```"
             else:
-                output += f"```\ndrive: {", ".join(reversed(drive_formatted))}\n```"
+                output += f"```\ndrive: {', '.join(reversed(drive_formatted))}\n```"
 
             output += "\n"
 

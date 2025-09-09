@@ -5,11 +5,11 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 
 from app.core.enums import ChannelIds, FeatureFlagNames
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
+from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.lookups import get_location, get_name_location_no_sync, sync
 
 load_dotenv()
@@ -227,7 +227,7 @@ class Locations(commands.Cog):
         """
 
         # if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
-            
+
         #     raise NotAllowedInChannelError(channel_id)
 
         # Find the relevant message

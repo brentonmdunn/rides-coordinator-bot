@@ -1,4 +1,6 @@
-# from langchain_google_genai import GoogleGenerativeAI
+# ruff: noqa
+
+#  from langchain_google_genai import GoogleGenerativeAI
 # from langgraph.graph import START, END, StateGraph
 # from langgraph.prebuilt import ToolNode, tools_condition
 # from typing import TypedDict, Annotated, List
@@ -27,19 +29,19 @@
 #         locations_matrix (dict): A dictionary representing the graph of locations and travel times.
 
 #     Returns:
-#         tuple(int, list[str]): A tuple containing the shortest time (integer) to get 
+#         tuple(int, list[str]): A tuple containing the shortest time (integer) to get
 #         from `location1` to `location2` and a list of the locations passed through (including start and end).
 #         Returns (float('inf'), []) if no path is found.
 #     """
 #     # Priority queue to store (time, current_location)
 #     # We use a min-heap to always explore the path with the shortest time so far.
 #     priority_queue = [(0, location1)]
-    
+
 #     # Dictionary to store the shortest time from location1 to every other location
 #     # We initialize all times to infinity.
 #     times = {location: float('inf') for location in locations_matrix}
 #     times[location1] = 0
-    
+
 #     # Dictionary to store the predecessor of each location in the shortest path.
 #     # This is crucial for reconstructing the final path.
 #     previous_locations = {location: None for location in locations_matrix}
@@ -77,7 +79,7 @@
 #     while step is not None:
 #         path.append(step)
 #         step = previous_locations[step]
-    
+
 #     # The path is constructed backwards, so we reverse it.
 #     path.reverse()
 
@@ -96,15 +98,16 @@
 #     return llm_with_tools(state)
 
 
-import os
 import heapq
-import operator
 import json
-from typing import TypedDict, Annotated, List, Dict
-from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage, AIMessage
+import operator
+import os
+from typing import Annotated, Dict, TypedDict
+
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tools import tool
 from langchain_google_genai import GoogleGenerativeAI
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 
 # --- 1. Set up your Google API Key ---
@@ -124,6 +127,7 @@ locations_matrix = {
     "Rita": [("Warren", 10), ("Innovation", 10)],
     "Innovation": [("Warren", 1), ("Rita", 10), ("Seventh", 5)],
 }
+
 
 @tool
 def find_shortest_path(location1: str, location2: str) -> str:
@@ -146,9 +150,9 @@ def find_shortest_path(location1: str, location2: str) -> str:
 
     # Priority queue to store (time, current_location, path_list)
     priority_queue = [(0, location1, [location1])]
-    
+
     # Dictionary to store the shortest time to each location to avoid redundant paths
-    visited_times = {location: float('inf') for location in locations_matrix}
+    visited_times = {location: float("inf") for location in locations_matrix}
     visited_times[location1] = 0
 
     while priority_queue:
@@ -165,7 +169,7 @@ def find_shortest_path(location1: str, location2: str) -> str:
         # Explore neighbors
         for neighbor, time_to_neighbor in locations_matrix.get(current_location, []):
             new_time = current_time + time_to_neighbor
-            
+
             # If we found a shorter path to the neighbor, update it and push to queue
             if new_time < visited_times[neighbor]:
                 visited_times[neighbor] = new_time
@@ -185,19 +189,23 @@ class AgentState(TypedDict):
     # A dictionary mapping pickup locations to the number of people needing a ride.
     pickups: Dict[str, int]
 
+
 # --- 4. Define the Graph Nodes ---
 # These are the functions that will do the work in our graph.
+
 
 def agent_node(state: AgentState, llm, tools):
     """
     The primary node that calls the LLM. It decides whether to call a tool or respond to the user.
     """
     # On the first turn, we construct a detailed prompt from the initial state
-    if len(state['messages']) == 0:
+    if len(state["messages"]) == 0:
         # Format drivers and their capacities for the prompt
-        drivers_str = "\n".join([f"- {name}: capacity of {cap} people" for name, cap in state['drivers'].items()])
-        pickups_str = "\n".join([f"- {loc}: {num} people" for loc, num in state['pickups'].items()])
-        
+        drivers_str = "\n".join(
+            [f"- {name}: capacity of {cap} people" for name, cap in state["drivers"].items()]
+        )
+        pickups_str = "\n".join([f"- {loc}: {num} people" for loc, num in state["pickups"].items()])
+
         prompt = f"""
 You are an expert logistics coordinator for a delivery service. Your job is to create the most efficient routes for your drivers to handle a list of pickups.
 
@@ -241,12 +249,14 @@ Example of a final answer:
     # Invoke the LLM with the messages and available tools
     llm_with_tools = llm.bind(tools=tools)
     response = llm_with_tools.invoke(messages)
-    
+
     # Return the LLM's response to be added to the state
     return {"messages": [response]}
 
+
 # The tool node is pre-built in LangGraph.
 tool_node = ToolNode([find_shortest_path])
+
 
 # --- 5. Define Conditional Logic for Edges ---
 # This function decides which node to go to next.
@@ -255,7 +265,7 @@ def should_continue(state: AgentState):
     Determines the next step. If the LLM made a tool call, we go to the tool node.
     Otherwise, we end the graph execution.
     """
-    last_message = state['messages'][-1]
+    last_message = state["messages"][-1]
     # If the last message has tool calls, we route to the 'tools' node
     if isinstance(last_message, AIMessage) and last_message.tool_calls:
         return "tools"
@@ -291,18 +301,11 @@ def main():
 
     # Add the conditional edge. After the 'agent' node, it will check `should_continue`.
     # If it returns "tools", it goes to the 'tools' node. If it returns END, it finishes.
-    workflow.add_conditional_edges(
-        "agent",
-        should_continue,
-        {
-            "tools": "tools",
-            END: END
-        }
-    )
+    workflow.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
 
     # Add a normal edge from the 'tools' node back to the 'agent' node.
     # This creates the loop: Agent -> Tools -> Agent
-    workflow.add_edge('tools', 'agent')
+    workflow.add_edge("tools", "agent")
 
     # Compile the graph into a runnable application
     app = workflow.compile()
@@ -317,7 +320,7 @@ def main():
     inputs = {
         "drivers": initial_drivers,
         "pickups": initial_pickups,
-        "messages": [] # Start with an empty message history
+        "messages": [],  # Start with an empty message history
     }
 
     print("\n🚀 Invoking agent with the following task:")
@@ -329,10 +332,10 @@ def main():
     final_state = app.invoke(inputs)
 
     # The final answer from the LLM is in the last message
-    final_answer_str = final_state['messages'][-1]
+    final_answer_str = final_state["messages"][-1]
 
     print(final_state)
-    
+
     print("--- AGENT'S FINAL PLAN ---")
     try:
         # Pretty-print the JSON output

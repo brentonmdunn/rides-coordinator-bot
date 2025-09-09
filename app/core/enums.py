@@ -76,13 +76,14 @@ class CanBeDriver(StrEnum):
 class CategoryIds(StrEnum):
     NEW_RIDES = "1380694503391887410"
 
+
 class PickupLocations(StrEnum):
     SEVENTH = "Seventh"
     ERC = "ERC"
     MARSHALL = "Marshall"
     SIXTH = "Sixth"
     MUIR = "Muir"
-    WARREN  = "Warren"
+    WARREN = "Warren"
     RITA = "Rita"
     INNOVATION = "Innovation"
     EIGHTH = "Eighth"
