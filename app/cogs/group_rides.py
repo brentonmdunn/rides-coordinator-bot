@@ -80,8 +80,7 @@ class GroupRides(commands.Cog):
         else:
             ret = json.loads(ai_response.content)
 
-        # TODO: pydantic validation on the json...just bc it is valid json doesn't
-        # mean that is json that we want
+        LLMOutput.model_validate(ret) # Throws error if does not have correct schema
         return ret
 
     @app_commands.command(
