@@ -91,8 +91,15 @@ class GroupRides(commands.Cog):
     async def group_rides(self, interaction: discord.Interaction):
         logger.info("group rides called")
 
-        # l = Locations(self.bot)
-        # locations_people, usernames_reacted, location_found = await l.list_locations(message_id="1379958145656553665") # noqa
+        l = Locations(self.bot)
+        locations_people, usernames_reacted, location_found = await l.list_locations(message_id="1344460380092633088") # noqa
+        locations_people_copy = {}
+        for key in locations_people:
+            if key == "erc":
+                locations_people_copy[PickupLocations.ERC] = locations_people[key]
+            else:
+                locations_people_copy[key.title()] = locations_people[key]
+        locations_people = locations_people_copy
         # locations_people = {
         #     "Seventh": [("carly", "@carbear")],
         #     "ERC": [("nathan luk", "@bleh"), ("kristi", "@kristi")],
