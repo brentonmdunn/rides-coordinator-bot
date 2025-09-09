@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime, time, timedelta
 
@@ -7,13 +8,13 @@ from discord import app_commands
 from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.core.enums import FeatureFlagNames
+from app.core.enums import FeatureFlagNames, PickupLocations
 from app.core.logger import logger
-from app.core.schemas import Identity, LocationQuery, RidesUser
+from app.core.schemas import Identity, LLMOutput, LocationQuery, RidesUser
 from app.utils.checks import feature_flag_enabled
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
-from app.utils.locations import lookup_time
-
+from app.utils.locations import LOCATIONS_MATRIX, lookup_time 
+from app.cogs.locations import Locations
 prev_response = None
 
 NUM_RETRY_ATTEMPTS = 5
@@ -50,7 +51,7 @@ def parse_numbers(s: str) -> list[int]:
 
 
 class GroupRides(commands.Cog):
-    def __init__(self, bot: commands.Bot = None):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
         self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
@@ -73,6 +74,7 @@ class GroupRides(commands.Cog):
         global prev_response
         prev_response = ai_response
 
+        # Sometimes the LLM decides to put a code box even if it is directed not to
         if "json" in ai_response.content:
             codebox_beginning_idx = 8
             codebox_ending_idx = -3
@@ -89,7 +91,7 @@ class GroupRides(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def group_rides(self, interaction: discord.Interaction):
-        logger.info("group rides called")
+        await interaction.response.defer()
 
         l = Locations(self.bot)
         locations_people, usernames_reacted, location_found = await l.list_locations(message_id="1344460380092633088") # noqa
@@ -114,40 +116,44 @@ class GroupRides(commands.Cog):
         #     "ERC": [("nathan luk", "@bleh")],
         #     "Sixth": [("alice", "@brentond")],
         # }
-        locations_people = {
-            "Seventh": [("carly", "@carbear")],
-            "Muir": [("charis", "@avo")],
-            "ERC": [("nathan luk", "@bleh")],
-        }
-        driver_capacity = "44134"
+        # locations_people = {
+        #     "Seventh": [("carly", "@carbear")],
+        #     "Muir": [("charis", "@avo")],
+        #     "ERC": [("nathan luk", "@bleh")],
+        # }
+        # driver_capacity = "44134"
+        driver_capacity = "4444"
+
+        # Data on driver capacities to send to LLM
         drivers_list = []
         for i, capacity in enumerate(parse_numbers(driver_capacity)):
             drivers_list.append(f"Driver{i} has capacity {capacity}")
 
+        # Data on pickup locations to send to LLM
         pickups = ""
         for location in locations_people:
-            filtered = [p[0] for p in locations_people[location]]
-            pickups += f"{location}: {', '.join(filtered)}\n"
-        logger.info(f"{pickups=}")
-        logger.info(f"{drivers_list=}")
-
-        await interaction.response.defer()
+            filtered_names = [user[0] for user in locations_people[location]]
+            pickups += f"{location}: {', '.join(filtered_names)}\n"
+        
+        
 
         try:
             logger.info("Calling LLM")
-            # llm_result = await asyncio.to_thread(
-            #     self._invoke_llm_blocking, pickups, ", ".join(drivers_list), LOCATIONS_MATRIX
-            # )
+            llm_result = await asyncio.to_thread(
+                self._invoke_llm_blocking, pickups, ", ".join(drivers_list), LOCATIONS_MATRIX
+            )
+            # 1367251697465819187
+            # llm_result={'Driver0': [{'name': 'Charis Chang', 'location': 'Muir'}, {'name': 'Kristi Nakatsuka', 'location': 'ERC'}, {'name': 'Nathan Luk', 'location': 'ERC'}, {'name': 'Carly Carbery', 'location': 'Seventh'}], 'Driver2': [{'name': 'Christina Zuo', 'location': 'Innovation'}]}
 
             # llm_result={'Driver2': [{'name': 'kendra', 'location': 'Rita'}], 'Driver3': [{'name': 'nathan luk', 'location': 'ERC'}, {'name': 'kristi', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}], 'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'ros', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}], 'Driver1': [{'name': 'sydney', 'location': 'Warren'}, {'name': 'laurent', 'location': 'Warren'}]} # noqa
             # llm_result={'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}, {'name': 'nathan luk', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}]} # noqa
-            llm_result = {
-                "Driver0": [
-                    {"name": "charis", "location": "Muir"},
-                    {"name": "nathan luk", "location": "ERC"},
-                    {"name": "carly", "location": "Seventh"},
-                ]
-            }
+            # llm_result = {
+            #     "Driver0": [
+            #         {"name": "charis", "location": "Muir"},
+            #         {"name": "nathan luk", "location": "ERC"},
+            #         {"name": "carly", "location": "Seventh"},
+            #     ]
+            # }
 
         except Exception as e:
             logger.error(
@@ -165,12 +171,15 @@ class GroupRides(commands.Cog):
         def find_username(locations_people, person):
             if location in locations_people:
                 for name, handle in locations_people[location]:
+                    # logger.warning(f"{type(handle)}")
+                    # logger.warning(f"{type(handle.name)}")
+                    # logger.warning(f"{handle.name=}")
                     if name == person:
-                        return handle
+                        return handle.name
+            logger.warning(f"None was returned for {locations_people=} {person=}")
             return None
 
         for i, driver_id in enumerate(llm_result):
-            logger.info(f"Looking at {driver_id=}")
 
             output += f"Group {i + 1}\n"
             grouped_by_location: list[list[RidesUser]] = []
@@ -180,11 +189,9 @@ class GroupRides(commands.Cog):
                 person = obj["name"]
                 location = obj["location"]
 
-                logger.info(f"Looking at {person=} {driver_id=}")
 
                 username = find_username(locations_people, person)
 
-                logger.info(f"{username=}")
 
                 rides_user = RidesUser(
                     identity=Identity(name=obj["name"], username=username), location=location
@@ -195,7 +202,6 @@ class GroupRides(commands.Cog):
                     f"({rides_user.location}, "
                     f"{rides_user.identity.username})\n"
                 )
-                logger.info(f"Before: {curr_location=}")
 
                 # New group or part of same group as prev
                 if len(curr_location) == 0 or location == curr_location[-1].location:
@@ -205,14 +211,12 @@ class GroupRides(commands.Cog):
                     grouped_by_location.append(curr_location)
                     curr_location: list[RidesUser] = []
                     curr_location.append(rides_user)
-                logger.info(f"After: {curr_location=}")
-                logger.info(f"{grouped_by_location=}")
+
 
             grouped_by_location.append(curr_location)
 
             curr_leave_time = time(hour=10, minute=10)
             drive_formatted = []
-            logger.info("--------------------------------------")
 
             def calculate_pickup_time(curr_leave_time, grouped_by_location, location, offset):
                 time_between = PICKUP_ADJUSTMENT + lookup_time(
