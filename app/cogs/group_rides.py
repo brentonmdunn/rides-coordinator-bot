@@ -8,13 +8,14 @@ from discord import app_commands
 from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from app.cogs.locations import Locations
 from app.core.enums import FeatureFlagNames, PickupLocations
 from app.core.logger import logger
 from app.core.schemas import Identity, LLMOutput, LocationQuery, RidesUser
 from app.utils.checks import feature_flag_enabled
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
-from app.utils.locations import LOCATIONS_MATRIX, lookup_time 
-from app.cogs.locations import Locations
+from app.utils.locations import LOCATIONS_MATRIX, lookup_time
+
 prev_response = None
 
 NUM_RETRY_ATTEMPTS = 5
@@ -82,7 +83,7 @@ class GroupRides(commands.Cog):
         else:
             ret = json.loads(ai_response.content)
 
-        LLMOutput.model_validate(ret) # Throws error if does not have correct schema
+        LLMOutput.model_validate(ret)  # Throws error if does not have correct schema
         return ret
 
     @app_commands.command(
@@ -94,7 +95,9 @@ class GroupRides(commands.Cog):
         await interaction.response.defer()
 
         l = Locations(self.bot)
-        locations_people, usernames_reacted, location_found = await l.list_locations(message_id="1344460380092633088") # noqa
+        locations_people, usernames_reacted, location_found = await l.list_locations(
+            message_id="1344460380092633088"
+        )
         locations_people_copy = {}
         for key in locations_people:
             if key == "erc":
@@ -134,8 +137,6 @@ class GroupRides(commands.Cog):
         for location in locations_people:
             filtered_names = [user[0] for user in locations_people[location]]
             pickups += f"{location}: {', '.join(filtered_names)}\n"
-        
-        
 
         try:
             logger.info("Calling LLM")
@@ -180,7 +181,6 @@ class GroupRides(commands.Cog):
             return None
 
         for i, driver_id in enumerate(llm_result):
-
             output += f"Group {i + 1}\n"
             grouped_by_location: list[list[RidesUser]] = []
             curr_location: list[RidesUser] = []
@@ -189,9 +189,7 @@ class GroupRides(commands.Cog):
                 person = obj["name"]
                 location = obj["location"]
 
-
                 username = find_username(locations_people, person)
-
 
                 rides_user = RidesUser(
                     identity=Identity(name=obj["name"], username=username), location=location
@@ -211,7 +209,6 @@ class GroupRides(commands.Cog):
                     grouped_by_location.append(curr_location)
                     curr_location: list[RidesUser] = []
                     curr_location.append(rides_user)
-
 
             grouped_by_location.append(curr_location)
 
