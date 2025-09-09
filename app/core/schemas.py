@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-
+from pydantic import BaseModel, RootModel, ValidationError
 from app.core.enums import PickupLocations
 
 
@@ -27,3 +27,15 @@ class RidesUser(BaseModel):
 
     identity: Identity
     location: PickupLocations
+
+
+class Passenger(BaseModel):
+    name: str
+    location: PickupLocations
+
+class LLMOutput(RootModel[dict[str, list[Passenger]]]):
+    """
+    A root model representing the entire assignment structure.
+    The root of this model is a dictionary mapping driver names to lists of passengers.
+    """
+    pass # No extra logic needed for basic validation
