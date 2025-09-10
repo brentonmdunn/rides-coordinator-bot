@@ -9,13 +9,13 @@ from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.cogs.locations import Locations
-from app.core.enums import FeatureFlagNames, PickupLocations
+from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations
 from app.core.logger import logger
 from app.core.schemas import Identity, LLMOutput, LocationQuery, RidesUser
 from app.utils.checks import feature_flag_enabled
+from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
-from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 
 prev_response = None
 
@@ -94,12 +94,14 @@ def calculate_pickup_time(curr_leave_time, grouped_by_location, location, offset
     new_datetime = dummy_datetime - timedelta(minutes=time_between)
     return new_datetime.time()
 
+
 def llm_input_drivers(driver_capacity):
     """Data on driver capacities to send to LLM"""
     drivers_list = []
     for i, capacity in enumerate(parse_numbers(driver_capacity)):
         drivers_list.append(f"Driver{i} has capacity {capacity}")
     return drivers_list
+
 
 def llm_input_pickups(locations_people):
     """Data on pickup locations to send to LLM"""
@@ -109,8 +111,8 @@ def llm_input_pickups(locations_people):
         pickups += f"{location}: {', '.join(filtered_names)}\n"
     return pickups
 
-def form_output(llm_result, locations_people):
 
+def form_output(llm_result, locations_people, curr_leave_time):
     output = ""
 
     for i, driver_id in enumerate(llm_result):
@@ -145,7 +147,6 @@ def form_output(llm_result, locations_people):
 
         grouped_by_location.append(curr_location)
 
-        curr_leave_time = time(hour=10, minute=10)
         drive_formatted = []
 
         # grouped_by_location is in order by who to pickup first. Need it
@@ -173,6 +174,7 @@ def form_output(llm_result, locations_people):
         output += "\n"
     return output
 
+
 def do_sunday_rides():
     """
     Checks if a given datetime is between 9 PM on Friday and 11 PM on Sunday.
@@ -184,10 +186,12 @@ def do_sunday_rides():
     day_of_week = current_datetime.weekday()
 
     # The conditional statement
-    return (day_of_week == 4 and current_datetime.hour >= 21) or \
-       (day_of_week == 5) or \
-       (day_of_week == 6 and current_datetime.hour < 23)
-        
+    return (
+        (day_of_week == 4 and current_datetime.hour >= 21)
+        or (day_of_week == 5)
+        or (day_of_week == 6 and current_datetime.hour < 23)
+    )
+
 
 class GroupRides(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -205,9 +209,15 @@ class GroupRides(commands.Cog):
     def _invoke_llm_blocking(self, pickups_str, drivers_str, locations_matrix):
         """A blocking helper function to invoke the LLM with a retry policy."""
         logger.info("Calling LLM")
-        logger.info(f"prompt={GROUP_RIDES_PROMPT.format(
-                pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
-            )}")
+        logger.info(
+            f"prompt={
+                GROUP_RIDES_PROMPT.format(
+                    pickups_str=pickups_str,
+                    drivers_str=drivers_str,
+                    locations_matrix=locations_matrix,
+                )
+            }"
+        )
         ai_response = self.llm.invoke(
             GROUP_RIDES_PROMPT.format(
                 pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
@@ -249,7 +259,6 @@ class GroupRides(commands.Cog):
         await interaction.response.defer()
 
         location_service = Locations(self.bot)
-        
 
         try:
             if message_id is not None:
@@ -284,18 +293,17 @@ class GroupRides(commands.Cog):
                 ephemeral=True,
             )
             return
-        
-
 
         unknown_location = usernames_reacted - location_found
         if unknown_location:
             unknown_names = [str(user) for user in unknown_location]
             await interaction.followup.send(
-                f"Error: Please that {", ".join(unknown_names)} username(s) are on the [spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0).",
+                f"Error: Please ensure that {', '.join(unknown_names)} username(s) are on the [spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0).",
             )
             return
-        
 
+        # Workaround since capitalization is not the same between services
+        # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
         locations_people_copy = {}
         for key in locations_people:
             if key == "erc":
@@ -327,13 +335,12 @@ class GroupRides(commands.Cog):
 
         if not is_enough_capacity(parse_numbers(driver_capacity), locations_people):
             await interaction.followup.send(
-                f"Error: more people need a ride than we have drivers.\n"
-                f"Need rides: {count_tuples(locations_people)}\n"
+                f"Error: More people need a ride than we have drivers.\n"
+                f"Num need rides: {count_tuples(locations_people)}\n"
                 f"Num drivers: {len(parse_numbers(driver_capacity))}\n"
                 f"Driver capacity: {sum(parse_numbers(driver_capacity))}"
             )
             return
-
 
         # Data on driver capacities to send to LLM
         drivers_list = llm_input_drivers(driver_capacity)
@@ -342,7 +349,6 @@ class GroupRides(commands.Cog):
         pickups = llm_input_pickups(locations_people)
 
         try:
-            
             llm_result = await asyncio.to_thread(
                 self._invoke_llm_blocking, pickups, ", ".join(drivers_list), LOCATIONS_MATRIX
             )
@@ -377,9 +383,7 @@ class GroupRides(commands.Cog):
             )
             return
 
-        
-
-        output = form_output(llm_result, locations_people)
+        output = form_output(llm_result, locations_people, end_leave_time)
 
         await interaction.followup.send(output)
 
