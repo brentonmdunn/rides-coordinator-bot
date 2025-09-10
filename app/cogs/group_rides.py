@@ -253,17 +253,31 @@ class GroupRides(commands.Cog):
 
         try:
             if message_id is not None:
-                locations_people, usernames_reacted, location_found = await location_service.list_locations(
-                    message_id=message_id
-                )            
+                (
+                    locations_people,
+                    usernames_reacted,
+                    location_found,
+                ) = await location_service.list_locations(message_id=message_id)
+                channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+                message = await channel.fetch_message(int(message_id))
+                if "sunday" in message.content.lower():
+                    end_leave_time = time(hour=10, minute=10)
+                if "friday" in message.content.lower():
+                    end_leave_time = time(hour=19, minute=10)
             elif do_sunday_rides():
-                locations_people, usernames_reacted, location_found = await location_service.list_locations(
-                    day="sunday"
-                )
+                (
+                    locations_people,
+                    usernames_reacted,
+                    location_found,
+                ) = await location_service.list_locations(day="sunday")
+                end_leave_time = time(hour=10, minute=10)
             else:
-                locations_people, usernames_reacted, location_found = await location_service.list_locations(
-                    day="friday"
-                )
+                (
+                    locations_people,
+                    usernames_reacted,
+                    location_found,
+                ) = await location_service.list_locations(day="friday")
+                end_leave_time = time(hour=19, minute=10)
         except NoMatchingMessageFoundError:
             await interaction.followup.send(
                 "No rides announcement message found.",
