@@ -250,22 +250,34 @@ class GroupRides(commands.Cog):
 
         logger.info(f"Raw LLM output={ai_response}")
 
+        def preprocess_llm_result(ai_response):
+            if "json" in ai_response.content:
+                codebox_beginning_idx = 8
+                codebox_ending_idx = -3
+                llm_result = json.loads(ai_response.content[codebox_beginning_idx:codebox_ending_idx])
+            else:
+                llm_result = json.loads(ai_response.content)
+            return llm_result
+        
+
+        def validate_llm_result(llm_result):
+            if "error" in {key.lower() for key in llm_result}:
+                LLMOutputError.model_validate(llm_result)
+            else:
+                LLMOutputNominal.model_validate(llm_result)  
+                # Sometimes the LLM puts two names in one name field
+                for driver_id in llm_result:
+                    for passenger in llm_result[driver_id]:
+                        if ',' in passenger['name']:
+                            raise Exception("Names cannot contain commas.")
         # Sometimes the LLM decides to put a code box even if it is directed not to
-        if "json" in ai_response.content:
-            codebox_beginning_idx = 8
-            codebox_ending_idx = -3
-            llm_result = json.loads(ai_response.content[codebox_beginning_idx:codebox_ending_idx])
-        else:
-            llm_result = json.loads(ai_response.content)
+        llm_result = preprocess_llm_result(ai_response)
 
         logger.info(f"{llm_result=}")
 
         # Throws error if does not have correct schema
-        if "error" in llm_result.lower():
-            LLMOutputError.model_validate(llm_result)
-        else:
-            LLMOutputNominal.model_validate(llm_result)  
-        
+        validate_llm_result(llm_result)
+
         return llm_result
 
     @app_commands.command(
