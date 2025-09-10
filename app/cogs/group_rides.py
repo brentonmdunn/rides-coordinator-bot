@@ -11,7 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.cogs.locations import Locations
 from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations
 from app.core.logger import logger
-from app.core.schemas import Identity, LLMOutput, LocationQuery, RidesUser
+from app.core.schemas import Identity, LLMOutputNominal, LocationQuery, RidesUser, LLMOutputError
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
@@ -249,8 +249,14 @@ class GroupRides(commands.Cog):
         else:
             llm_result = json.loads(ai_response.content)
 
-        LLMOutput.model_validate(llm_result)  # Throws error if does not have correct schema
         logger.info(f"{llm_result=}")
+
+        # Throws error if does not have correct schema
+        if "error" in llm_result.lower():
+            LLMOutputError.model_validate(llm_result)
+        else:
+            LLMOutputNominal.model_validate(llm_result)  
+        
         return llm_result
 
     @app_commands.command(
