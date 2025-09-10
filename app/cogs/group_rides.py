@@ -117,10 +117,11 @@ def llm_input_pickups(locations_people):
     return pickups
 
 
-def form_output(llm_result, locations_people, curr_leave_time):
+def form_output(llm_result, locations_people, end_leave_time):
     output = ""
 
     for i, driver_id in enumerate(llm_result):
+        curr_leave_time = end_leave_time
         output += f"Group {i + 1}\n"
         grouped_by_location: list[list[RidesUser]] = []
         curr_location: list[RidesUser] = []
@@ -153,11 +154,13 @@ def form_output(llm_result, locations_people, curr_leave_time):
         grouped_by_location.append(curr_location)
 
         drive_formatted = []
+        drive_summary = []
 
         # grouped_by_location is in order by who to pickup first. Need it
         # reversed so can calculate pickup time backwards from goal leave time
         for idx, users_at_location in enumerate(reversed(grouped_by_location)):
             usernames_at_location = [ru.identity.username for ru in users_at_location]
+            names_at_location = [ru.identity.name for ru in users_at_location]
 
             location = users_at_location[0].location
             if idx != 0:
@@ -177,7 +180,13 @@ def form_output(llm_result, locations_people, curr_leave_time):
                 formatted_string = base_string
 
             drive_formatted.append(formatted_string)
+            drive_summary.append(
+                f"({len(names_at_location)}) "
+                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
+                f"{location}"
+            )
 
+        output += " > ".join(reversed(drive_summary)) + '\n'
         if not drive_formatted:
             output += "```\nError: could not get username\n```"
         else:
