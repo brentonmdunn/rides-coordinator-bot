@@ -283,8 +283,13 @@ class GroupRides(commands.Cog):
                 message = await channel.fetch_message(int(message_id))
                 if "sunday" in message.content.lower():
                     end_leave_time = time(hour=10, minute=10)
-                if "friday" in message.content.lower():
+                elif "friday" in message.content.lower():
                     end_leave_time = time(hour=19, minute=10)
+                else:
+                    await interaction.followup.send(
+                        """Error: Please ensure that "friday" or "sunday" is written in message.""",
+                    )
+                    return
             elif do_sunday_rides():
                 (
                     locations_people,
