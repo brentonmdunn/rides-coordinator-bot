@@ -22,6 +22,11 @@ prev_response = None
 NUM_RETRY_ATTEMPTS = 5
 PICKUP_ADJUSTMENT = 1
 
+map_links = {
+    PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
+    PickupLocations.SEVENTH: "https://maps.app.goo.gl/qcuCR5q6Tx2EEn9c9",
+}
+
 
 # Define the callback function to print to the console
 def log_retry_attempt(retry_state):
@@ -160,11 +165,18 @@ def form_output(llm_result, locations_people, curr_leave_time):
                     curr_leave_time, grouped_by_location, location, idx
                 )
 
-            drive_formatted.append(
+            base_string = (
                 f"{' '.join(usernames_at_location)} "
                 f"{curr_leave_time.strftime('%I:%M%p').lstrip('0')} "
                 f"{location}"
             )
+
+            if location in map_links:
+                formatted_string = f"{base_string} ([link]({map_links[location]}))"
+            else:
+                formatted_string = base_string
+
+            drive_formatted.append(formatted_string)
 
         if not drive_formatted:
             output += "```\nError: could not get username\n```"
