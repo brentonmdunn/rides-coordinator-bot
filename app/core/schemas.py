@@ -34,10 +34,13 @@ class Passenger(BaseModel):
     location: PickupLocations
 
 
-class LLMOutput(RootModel[dict[str, list[Passenger]]]):
+class LLMOutputNominal(RootModel[dict[str, list[Passenger]]]):
     """
     A root model representing the entire assignment structure.
     The root of this model is a dictionary mapping driver names to lists of passengers.
     """
 
     pass  # No extra logic needed for basic validation
+
+class LLMOutputError(RootModel[dict[str, str]]):
+    pass
