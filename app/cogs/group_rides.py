@@ -167,12 +167,12 @@ def form_output(llm_result, locations_people, curr_leave_time):
 
             base_string = (
                 f"{' '.join(usernames_at_location)} "
-                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0')} "
+                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
                 f"{location}"
             )
 
             if location in map_links:
-                formatted_string = f"{base_string} ([link]({map_links[location]}))"
+                formatted_string = f"{base_string} ([pin]({map_links[location]}))"
             else:
                 formatted_string = base_string
 
