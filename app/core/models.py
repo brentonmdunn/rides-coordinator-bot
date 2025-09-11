@@ -29,3 +29,8 @@ class Locations(Base):
     year = Column(String)
     location = Column(String)
     driver = Column(String)
+
+
+class EventThreads(Base):
+    __tablename__ = "event_threads"
+    message_id = Column(String, primary_key=True)
