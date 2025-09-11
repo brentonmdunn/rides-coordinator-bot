@@ -25,8 +25,28 @@ PICKUP_ADJUSTMENT = 1
 map_links = {
     PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
     PickupLocations.SEVENTH: "https://maps.app.goo.gl/qcuCR5q6Tx2EEn9c9",
+    PickupLocations.MARSHALL: "https://maps.app.goo.gl/1NT4Q65udUvuNX7aA",
+    PickupLocations.ERC: "https://maps.app.goo.gl/dqgzKGS8DsUgLkw17",
+    PickupLocations.MUIR: "https://maps.app.goo.gl/qxABq7sEEQsz6Pth9",
+    PickupLocations.EIGHTH: "https://maps.app.goo.gl/RySbnmJGZ7zKujgq7",
+    PickupLocations.INNOVATION: "https://maps.app.goo.gl/7tDt4mT5SkPkJbRh8",
+    PickupLocations.RITA: "https://maps.app.goo.gl/qcuCR5q6Tx2EEn9c9",
 }
 
+living_to_pickup = {
+    LivingLocations.SIXTH: PickupLocations.SIXTH,
+    LivingLocations.SEVENTH: PickupLocations.SEVENTH,
+    LivingLocations.MARSHALL: PickupLocations.MARSHALL,
+    LivingLocations.ERC: PickupLocations.ERC,
+    LivingLocations.MUIR: PickupLocations.MUIR,
+    LivingLocations.EIGHTH: PickupLocations.EIGHTH,
+    LivingLocations.REVELLE: PickupLocations.EIGHTH,
+    LivingLocations.PCE: PickupLocations.INNOVATION,
+    LivingLocations.PCW: PickupLocations.INNOVATION,
+    LivingLocations.RITA: PickupLocations.RITA,
+}
+
+LocationsPeopleType = dict[str, list[tuple[str, str]]]
 
 # Define the callback function to print to the console
 def log_retry_attempt(retry_state):
@@ -59,7 +79,7 @@ def parse_numbers(s: str) -> list[int]:
     return [int(char) for char in cleaned_string]
 
 
-def find_username(locations_people, person, location):
+def find_username(locations_people: LocationsPeopleType, person: str, location: str) -> str | None:
     if location in locations_people:
         for name, handle in locations_people[location]:
             if name == person:
@@ -70,7 +90,7 @@ def find_username(locations_people, person, location):
     return None
 
 
-def count_tuples(data_dict):
+def count_tuples(data_dict: LocationsPeopleType) -> int:
     """
     Counts the total number of tuples across all lists in a dictionary.
     """
@@ -82,13 +102,13 @@ def count_tuples(data_dict):
     return total_tuples
 
 
-def is_enough_capacity(driver_capacity_list: list[int], locations_people) -> bool:
+def is_enough_capacity(driver_capacity_list: list[int], locations_people: LocationsPeopleType) -> bool:
     """True if enough driver capacity, false otherwise"""
     rider_count = count_tuples(locations_people)
     return sum(driver_capacity_list) >= rider_count
 
 
-def calculate_pickup_time(curr_leave_time, grouped_by_location, location, offset):
+def calculate_pickup_time(curr_leave_time: datetime.time, grouped_by_location: list[list[RidesUser]], location: str, offset: int) -> datetime.time:
     time_between = PICKUP_ADJUSTMENT + lookup_time(
         LocationQuery(
             start_location=grouped_by_location[len(grouped_by_location) - offset][0].location,
@@ -100,15 +120,15 @@ def calculate_pickup_time(curr_leave_time, grouped_by_location, location, offset
     return new_datetime.time()
 
 
-def llm_input_drivers(driver_capacity):
+def llm_input_drivers(driver_capacity: list[int]) -> str:
     """Data on driver capacities to send to LLM"""
     drivers_list = []
     for i, capacity in enumerate(parse_numbers(driver_capacity)):
         drivers_list.append(f"Driver{i} has capacity {capacity}")
-    return drivers_list
+    return ", ".join(drivers_list)
 
 
-def llm_input_pickups(locations_people):
+def llm_input_pickups(locations_people: LocationsPeopleType) -> str:
     """Data on pickup locations to send to LLM"""
     pickups = ""
     for location in locations_people:
@@ -117,7 +137,7 @@ def llm_input_pickups(locations_people):
     return pickups
 
 
-def form_output(llm_result, locations_people, end_leave_time):
+def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people: LocationsPeopleType, end_leave_time: datetime.time):
     output = ""
 
     for i, driver_id in enumerate(llm_result):
@@ -351,7 +371,9 @@ class GroupRides(commands.Cog):
         locations_people_copy = {}
         for key in locations_people:
             if key == "erc":
-                locations_people_copy[PickupLocations.ERC] = locations_people[key]
+                locations_people_copy["ERC"] = locations_people[key]
+            elif "villas" in key.lower():
+                locations_people_copy["Villas of Renaissance"] = locations_people[key]
             else:
                 locations_people_copy[key.title()] = locations_people[key]
         locations_people = locations_people_copy
