@@ -4,8 +4,8 @@ from app.core.enums import PickupLocations, CampusLivingLocations
 
 
 class LocationQuery(BaseModel):
-    start_location: CampusLivingLocations
-    end_location: CampusLivingLocations
+    start_location: PickupLocations
+    end_location: PickupLocations
 
 
 class Identity(BaseModel):
@@ -29,12 +29,12 @@ class RidesUser(BaseModel):
     location: CampusLivingLocations
 
 
-class Passenger(BaseModel):
+class LLMPassenger(BaseModel):
     name: str
-    location: CampusLivingLocations
+    location: PickupLocations
 
 
-class LLMOutputNominal(RootModel[dict[str, list[Passenger]]]):
+class LLMOutputNominal(RootModel[dict[str, list[LLMPassenger]]]):
     """
     A root model representing the entire assignment structure.
     The root of this model is a dictionary mapping driver names to lists of passengers.
@@ -44,3 +44,9 @@ class LLMOutputNominal(RootModel[dict[str, list[Passenger]]]):
 
 class LLMOutputError(RootModel[dict[str, str]]):
     pass
+
+
+class Passenger(BaseModel):
+    identity: Identity
+    living_location: CampusLivingLocations
+    pickup_location: PickupLocations

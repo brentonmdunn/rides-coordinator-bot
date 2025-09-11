@@ -94,7 +94,7 @@ class CampusLivingLocations(StrEnum):
 
 class PickupLocations(StrEnum):
     SEVENTH = "Seventh mail room"
-    ERC = "across from bamboo"
+    ERC = "ERC across from bamboo"
     MARSHALL = "Marshall uppers"
     SIXTH = "Sixth loop"
     MUIR = "Muir tennis courts"

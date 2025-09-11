@@ -11,7 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.cogs.locations import Locations
 from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations ,CampusLivingLocations
 from app.core.logger import logger
-from app.core.schemas import Identity, LLMOutputNominal, LocationQuery, RidesUser, LLMOutputError
+from app.core.schemas import Identity, LLMOutputNominal, LocationQuery, RidesUser, LLMOutputError, Passenger
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
@@ -59,6 +59,7 @@ living_to_pickup = {
 }
 
 LocationsPeopleType = dict[str, list[tuple[str, str]]]
+PassengersByLocation = dict[PickupLocations, list[Passenger]]
 
 # Define the callback function to print to the console
 def log_retry_attempt(retry_state):
@@ -91,18 +92,17 @@ def parse_numbers(s: str) -> list[int]:
     return [int(char) for char in cleaned_string]
 
 
-def find_username(locations_people: LocationsPeopleType, person: str, location: str) -> str | None:
+def find_passenger(locations_people: PassengersByLocation, person: str, location: str) -> Passenger:
     if location in locations_people:
-        for name, handle in locations_people[location]:
-            if name == person:
-                if isinstance(handle, str):
-                    return handle
-                return handle.name
+        for p in locations_people[location]:
+            if p.identity.name == person:
+                
+                return p
     logger.warning(f"None was returned for {locations_people=} {person=}")
     return None
 
 
-def count_tuples(data_dict: LocationsPeopleType) -> int:
+def count_tuples(data_dict: PassengersByLocation) -> int:
     """
     Counts the total number of tuples across all lists in a dictionary.
     """
@@ -114,16 +114,18 @@ def count_tuples(data_dict: LocationsPeopleType) -> int:
     return total_tuples
 
 
-def is_enough_capacity(driver_capacity_list: list[int], locations_people: LocationsPeopleType) -> bool:
+def is_enough_capacity(driver_capacity_list: list[int], locations_people: PassengersByLocation) -> bool:
     """True if enough driver capacity, false otherwise"""
     rider_count = count_tuples(locations_people)
     return sum(driver_capacity_list) >= rider_count
 
 
-def calculate_pickup_time(curr_leave_time: datetime.time, grouped_by_location: list[list[RidesUser]], location: str, offset: int) -> datetime.time:
+def calculate_pickup_time(curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int) -> datetime.time:
+    logger.info(f"{grouped_by_location=}")
+    logger.info(f"{location=}")
     time_between = PICKUP_ADJUSTMENT + lookup_time(
         LocationQuery(
-            start_location=grouped_by_location[len(grouped_by_location) - offset][0].location,
+            start_location=grouped_by_location[len(grouped_by_location) - offset][0].pickup_location,
             end_location=location,
         )
     )
@@ -140,50 +142,38 @@ def llm_input_drivers(driver_capacity: list[int]) -> str:
     return ", ".join(drivers_list)
 
 
-def llm_input_pickups(locations_people: LocationsPeopleType) -> str:
+def llm_input_pickups(locations_people: PassengersByLocation) -> str:
     """Data on pickup locations to send to LLM"""
     pickups = ""
     for location in locations_people:
-        filtered_names = [user[0] for user in locations_people[location]]
+        filtered_names = [person.identity.name for person in locations_people[location]]
         pickups += f"{location}: {', '.join(filtered_names)}\n"
     return pickups
 
 
 def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people: LocationsPeopleType, end_leave_time: datetime.time, off_campus: LocationsPeopleType):
-    output = ""
     overall_summary = "==== summary ====\n"
     output_list = []
 
-    for i, driver_id in enumerate(llm_result):
+    for driver_id in llm_result:
         curr_leave_time = end_leave_time
-        output += f"Group {i + 1}\n"
-        grouped_by_location: list[list[RidesUser]] = []
-        curr_location: list[RidesUser] = []
+        grouped_by_location: list[list[Passenger]] = []
+        curr_location: list[Passenger] = []
 
         for obj in llm_result[driver_id]:
             person = obj["name"]
             location = obj["location"]
 
-            username = find_username(locations_people, person, location)
-
-            rides_user = RidesUser(
-                identity=Identity(name=obj["name"], username=username), location=location
-            )
-
-            output += (
-                f"- {rides_user.identity.name} "
-                f"({rides_user.location}, "
-                f"{rides_user.identity.username})\n"
-            )
+            passenger = find_passenger(locations_people, person, location)
 
             # New group or part of same group as prev
-            if len(curr_location) == 0 or location == curr_location[-1].location:
-                curr_location.append(rides_user)
+            if len(curr_location) == 0 or location == curr_location[-1].pickup_location:
+                curr_location.append(passenger)
             # Need to end curr group and create new group
             else:
                 grouped_by_location.append(curr_location)
-                curr_location: list[RidesUser] = []
-                curr_location.append(rides_user)
+                curr_location: list[Passenger] = []
+                curr_location.append(passenger)
 
         grouped_by_location.append(curr_location)
 
@@ -193,22 +183,21 @@ def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people:
         # grouped_by_location is in order by who to pickup first. Need it
         # reversed so can calculate pickup time backwards from goal leave time
         for idx, users_at_location in enumerate(reversed(grouped_by_location)):
-            usernames_at_location = [ru.identity.username for ru in users_at_location]
-            names_at_location = [ru.identity.name for ru in users_at_location]
+            logger.info(f"{users_at_location=}")
+            usernames_at_location = [p.identity.username for p in users_at_location]
+            names_at_location = [p.identity.name for p in users_at_location]
 
-            location = users_at_location[0].location
+            pickup_location = users_at_location[0].pickup_location
 
             if idx != 0:
                 curr_leave_time = calculate_pickup_time(
-                    curr_leave_time, grouped_by_location, location, idx
+                    curr_leave_time, grouped_by_location, pickup_location, idx
                 )
-            living_loc = location
-            if location in living_to_pickup:
-                location = living_to_pickup[location]
+
             base_string = (
                 f"{' '.join(usernames_at_location)} "
                 f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
-                f"{location}"
+                f"{pickup_location}"
             )
 
             # Add google maps link if we have it
@@ -221,7 +210,7 @@ def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people:
             drive_summary.append(
                 f"[{len(names_at_location)}] "
                 f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
-                f"{living_loc}"
+                f"{pickup_location.split()[0]}"
             )
 
         overall_summary += f"- {' > '.join(reversed(drive_summary))}\n"
@@ -249,7 +238,7 @@ def do_sunday_rides() -> bool:
     Returns:
         True if the datetime is within the specified window, False otherwise.
     """
-    current_datetime = datetime.datetime.now()
+    current_datetime = datetime.now()
     day_of_week = current_datetime.weekday()
 
     # The conditional statement
@@ -263,8 +252,8 @@ def do_sunday_rides() -> bool:
 class GroupRides(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
+        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+        # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
 
     # Helper function to invoke the LLM with a fixed retry wait
     @tenacity.retry(
@@ -275,6 +264,7 @@ class GroupRides(commands.Cog):
     )
     def _invoke_llm(self, pickups_str, drivers_str, locations_matrix):
         """A blocking helper function to invoke the LLM with a retry policy."""
+        # return {'Driver0': [{'name': 'Christina Zuo', 'location': 'Innovation'}, {'name': 'Sydney Su', 'location': 'Warren Equality Ln'}]}
         logger.info("Calling LLM")
         logger.info(
             f"prompt={
@@ -290,7 +280,6 @@ class GroupRides(commands.Cog):
                 pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
             )
         )
-        #ai_response = '{\n  "Driver0": [\n    {\n      "name": "Alice Chen",\n      "location": "Sixth"\n    },\n    {\n      "name": "Clement",\n      "location": "ERC"\n    },\n    {\n      "name": "Kristi Nakatsuka",\n      "location": "ERC"\n    },\n    {\n      "name": "Nathan Luk",\n      "location": "ERC"\n    }\n  ],\n  "Driver1": [\n    {\n      "name": "Irene Yap",\n      "location": "Seventh"\n    },\n    {\n      "name": "Carly Carbery",\n      "location": "Seventh"\n    },\n    {\n      "name": "Sydney Su",\n      "location": "Warren"\n    },\n    {\n      "name": "Nathan Leung",\n      "location": "Warren"\n    }\n  ],\n  "Driver2": [\n    {\n      "name": "Kendra Chen",\n      "location": "Rita"\n    },\n    {\n      "name": "Rosalyn Weng",\n      "location": "Muir"\n    },\n    {\n      "name": "Charis Chang",\n      "location": "Muir"\n    }\n  ]\n}'
 
         # For logging the previous response, can't pass variables to callback (I think)
         global prev_response
@@ -320,7 +309,7 @@ class GroupRides(commands.Cog):
                             raise Exception("Names cannot contain commas.")
         # Sometimes the LLM decides to put a code box even if it is directed not to
         llm_result = preprocess_llm_result(ai_response)
-        #llm_result = json.loads(ai_response)
+
         logger.info(f"{llm_result=}")
 
         # Throws error if does not have correct schema
@@ -334,7 +323,7 @@ class GroupRides(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @discord.app_commands.describe(
-        driver_capacity="Optional area to list driver capacities, default 44444",
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
         message_id="Optional message ID to look at at specific message",
     )
     async def group_rides(
@@ -355,7 +344,7 @@ class GroupRides(commands.Cog):
             )
             return
 
-
+        # Would timeout if don't defer since LLM takes too long
         await interaction.response.defer()
 
         location_service = Locations(self.bot)
@@ -409,45 +398,35 @@ class GroupRides(commands.Cog):
             )
             return
 
-        # Workaround since capitalization is not the same between services
-        # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
-        locations_people_copy = {}
-        off_campus = {}
-        for key in locations_people:
 
-            if key.lower() not in [location.value.lower() for location in CampusLivingLocations]:
-                off_campus[key] = locations_people[key]
+        off_campus = {}
+        passengers_by_location: PassengersByLocation = {}
+        for living_location in locations_people:
+
+            if living_location.lower() not in [location.value.lower() for location in CampusLivingLocations]:
+                off_campus[living_location] = locations_people[living_location]
                 continue
 
+            def get_living_location(loc):
+                # Workaround since capitalization is not the same between services
+                # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
+                if loc == "erc":
+                    return CampusLivingLocations.ERC
+                return loc.title()
+            def get_pickup_location(loc):
+                return living_to_pickup[get_living_location(loc)]
 
-            if key == "erc":
-                locations_people_copy["ERC"] = locations_people[key]
-            else:
-                locations_people_copy[key.title()] = locations_people[key]
-        locations_people = locations_people_copy
-        # locations_people = {
-        #     "Seventh": [("carly", "@carbear")],
-        #     "ERC": [("nathan luk", "@bleh"), ("kristi", "@kristi")],
-        #     "Muir": [("charis", "@avo"), ("ros", "@ros")],
-        #     "Sixth": [("alice", "@mango")],
-        #     "Warren": [("sydney", "@syd"), ("laurent", "@laurent")],
-        #     "Rita": [("kendra", "@kendra")]
-        # }
-        # locations_people = {
-        #     "Seventh": [("carly", "@carbear")],
-        #     "Muir": [("charis", "@avo")],
-        #     "ERC": [("nathan luk", "@bleh")],
-        #     "Sixth": [("alice", "@brentond")],
-        # }
-        # locations_people = {
-        #     "Seventh": [("carly", "@carbear")],
-        #     "Muir": [("charis", "@avo")],
-        #     "ERC": [("nathan luk", "@bleh")],
-        # }
-        # driver_capacity = "44134"
-        # driver_capacity = "44"
+            passengers_by_location[get_pickup_location(living_location)] = [
+                Passenger(
+                    identity=Identity(name=person[0], username=person[1].name), 
+                    living_location=get_living_location(living_location), 
+                    pickup_location=get_pickup_location(living_location)
+                ) for person in locations_people[living_location]
+            ]
 
-        if not is_enough_capacity(parse_numbers(driver_capacity), locations_people):
+        
+
+        if not is_enough_capacity(parse_numbers(driver_capacity), passengers_by_location):
             await interaction.followup.send(
                 f"Error: More people need a ride than we have drivers.\n"
                 f"Num need rides: {count_tuples(locations_people)}\n"
@@ -466,32 +445,12 @@ class GroupRides(commands.Cog):
             )
             return
         # Data on pickup locations to send to LLM
-        pickups = llm_input_pickups(locations_people)
+        pickups = llm_input_pickups(passengers_by_location)
 
         try:
             llm_result = await asyncio.to_thread(
                 self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX
             )
-            # 1367251697465819187
-            # llm_result = {
-            #     "Driver0": [
-            #         {"name": "Charis Chang", "location": "Muir"},
-            #         {"name": "Kristi Nakatsuka", "location": "ERC"},
-            #         {"name": "Nathan Luk", "location": "ERC"},
-            #         {"name": "Carly Carbery", "location": "Seventh"},
-            #     ],
-            #     "Driver2": [{"name": "Christina Zuo", "location": "Innovation"}],
-            # }
-
-            # llm_result={'Driver2': [{'name': 'kendra', 'location': 'Rita'}], 'Driver3': [{'name': 'nathan luk', 'location': 'ERC'}, {'name': 'kristi', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}], 'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'ros', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}], 'Driver1': [{'name': 'sydney', 'location': 'Warren'}, {'name': 'laurent', 'location': 'Warren'}]} # noqa
-            # llm_result={'Driver0': [{'name': 'charis', 'location': 'Muir'}, {'name': 'alice', 'location': 'Sixth'}, {'name': 'nathan luk', 'location': 'ERC'}, {'name': 'carly', 'location': 'Seventh'}]} # noqa
-            # llm_result = {
-            #     "Driver0": [
-            #         {"name": "charis", "location": "Muir"},
-            #         {"name": "nathan luk", "location": "ERC"},
-            #         {"name": "carly", "location": "Seventh"},
-            #     ]
-            # }
 
         except Exception as e:
             logger.error(
@@ -502,11 +461,18 @@ class GroupRides(commands.Cog):
                 ephemeral=True,
             )
             return
+        
+        if "error" in {key.lower() for key in llm_result}:
+            await interaction.followup.send(
+                f"LLM returned with error: {llm_result}.",
+            )
 
-        output = create_output(llm_result, locations_people, end_leave_time, off_campus)
-        await interaction.followup.send(output[0])
-        for o in output[1:]:
-            await interaction.channel.send(o)
+        output = create_output(llm_result, passengers_by_location, end_leave_time, off_campus)
+        await interaction.followup.send(output[0])  # Need one message to respond to previous defer
+        # Individual messages allow for easy copy paste
+        # Followups reply to the initial response and it looks bad
+        for message in output[1:]:
+            await interaction.channel.send(message)
 
 
 async def setup(bot: commands.Bot):
