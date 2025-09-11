@@ -288,7 +288,16 @@ class Locations(commands.Cog):
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ):
-        # TODO: check whitelist
+        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
+            await interaction.response.send_message(
+                "Command cannot be used in this channel.",
+                ephemeral=True,
+            )
+            logger.info(
+                f"pickup-location not allowed in #{interaction.channel} by {interaction.user}",
+            )
+            return
+        
         try:
             args = self.list_locations(interaction, day, message_id, channel_id)
             embed = self._build_embed(*args)
