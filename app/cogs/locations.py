@@ -297,7 +297,7 @@ class Locations(commands.Cog):
                 f"pickup-location not allowed in #{interaction.channel} by {interaction.user}",
             )
             return
-        
+
         try:
             args = self.list_locations(interaction, day, message_id, channel_id)
             embed = self._build_embed(*args)

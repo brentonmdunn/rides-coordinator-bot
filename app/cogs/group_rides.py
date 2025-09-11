@@ -238,7 +238,7 @@ def create_output(
     if len(off_campus) != 0:
         overall_summary += "- TODO: off campus\n"
         for key in off_campus:
-            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (@{person[1]})" for person in off_campus[key]])}\n""" # noqa: E501
+            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (@{person[1]})" for person in off_campus[key]])}\n"""  # noqa: E501
 
     overall_summary += "================="
     output_list.insert(0, overall_summary)
@@ -339,7 +339,7 @@ class GroupRides(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @discord.app_commands.describe(
-        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each", #noqa: E501
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
         message_id="Optional message ID to look at at specific message",
     )
     async def group_rides(
