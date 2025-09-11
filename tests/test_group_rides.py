@@ -1,5 +1,7 @@
 import pytest
-from app.cogs.group_rides import parse_numbers, llm_input_drivers
+
+from app.cogs.group_rides import llm_input_drivers, parse_numbers
+
 
 class TestParseNumbers:
     """Test suite for the parse_numbers function."""
@@ -53,7 +55,10 @@ class TestLlmInputDrivers:
 
     def test_multiple_drivers(self):
         """Test with a list of multiple driver capacities."""
-        assert llm_input_drivers([4, 2, 5]) == "Driver0 has capacity 4, Driver1 has capacity 2, Driver2 has capacity 5"
+        assert (
+            llm_input_drivers([4, 2, 5])
+            == "Driver0 has capacity 4, Driver1 has capacity 2, Driver2 has capacity 5"
+        )
 
     def test_zero_capacity(self):
         """Test with a driver having zero capacity."""
@@ -67,4 +72,7 @@ class TestLlmInputDrivers:
         """Test with a list containing different data types."""
         # The function `llm_input_drivers` expects a list of integers.
         # Python's f-string will convert other types to strings.
-        assert llm_input_drivers([1, 2.5, "3"]) == "Driver0 has capacity 1, Driver1 has capacity 2.5, Driver2 has capacity 3"
+        assert (
+            llm_input_drivers([1, 2.5, "3"])
+            == "Driver0 has capacity 1, Driver1 has capacity 2.5, Driver2 has capacity 3"
+        )
