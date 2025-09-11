@@ -9,9 +9,15 @@ from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.cogs.locations import Locations
-from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations ,CampusLivingLocations
+from app.core.enums import CampusLivingLocations, ChannelIds, FeatureFlagNames, PickupLocations
 from app.core.logger import logger
-from app.core.schemas import Identity, LLMOutputNominal, LocationQuery, RidesUser, LLMOutputError, Passenger
+from app.core.schemas import (
+    Identity,
+    LLMOutputError,
+    LLMOutputNominal,
+    LocationQuery,
+    Passenger,
+)
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
@@ -28,7 +34,6 @@ LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.BOT_STUFF__BOTS,
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
 ]
-
 
 
 map_links = {
@@ -60,6 +65,7 @@ living_to_pickup = {
 
 LocationsPeopleType = dict[str, list[tuple[str, str]]]
 PassengersByLocation = dict[PickupLocations, list[Passenger]]
+
 
 # Define the callback function to print to the console
 def log_retry_attempt(retry_state):
@@ -96,7 +102,6 @@ def find_passenger(locations_people: PassengersByLocation, person: str, location
     if location in locations_people:
         for p in locations_people[location]:
             if p.identity.name == person:
-                
                 return p
     logger.warning(f"None was returned for {locations_people=} {person=}")
     return None
@@ -114,18 +119,24 @@ def count_tuples(data_dict: PassengersByLocation) -> int:
     return total_tuples
 
 
-def is_enough_capacity(driver_capacity_list: list[int], locations_people: PassengersByLocation) -> bool:
+def is_enough_capacity(
+    driver_capacity_list: list[int], locations_people: PassengersByLocation
+) -> bool:
     """True if enough driver capacity, false otherwise"""
     rider_count = count_tuples(locations_people)
     return sum(driver_capacity_list) >= rider_count
 
 
-def calculate_pickup_time(curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int) -> datetime.time:
+def calculate_pickup_time(
+    curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int
+) -> datetime.time:
     logger.info(f"{grouped_by_location=}")
     logger.info(f"{location=}")
     time_between = PICKUP_ADJUSTMENT + lookup_time(
         LocationQuery(
-            start_location=grouped_by_location[len(grouped_by_location) - offset][0].pickup_location,
+            start_location=grouped_by_location[len(grouped_by_location) - offset][
+                0
+            ].pickup_location,
             end_location=location,
         )
     )
@@ -151,7 +162,12 @@ def llm_input_pickups(locations_people: PassengersByLocation) -> str:
     return pickups
 
 
-def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people: LocationsPeopleType, end_leave_time: datetime.time, off_campus: LocationsPeopleType):
+def create_output(
+    llm_result: dict[str, list[dict[str, str]]],
+    locations_people: LocationsPeopleType,
+    end_leave_time: datetime.time,
+    off_campus: LocationsPeopleType,
+):
     overall_summary = "==== summary ====\n"
     output_list = []
 
@@ -215,7 +231,6 @@ def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people:
 
         overall_summary += f"- {' > '.join(reversed(drive_summary))}\n"
 
-
         copy_str = f"drive: {', '.join(reversed(drive_formatted))}\n"
         output_list.append(copy_str)
         output_list.append(f"```\n{copy_str}\n```")
@@ -223,8 +238,7 @@ def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people:
     if len(off_campus) != 0:
         overall_summary += "- TODO: off campus\n"
         for key in off_campus:
-            overall_summary += f"""  - {key}: {', '.join([f"{person[0]} (@{person[1]})" for person in off_campus[key]])}\n"""
-
+            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (@{person[1]})" for person in off_campus[key]])}\n""" # noqa: E501
 
     overall_summary += "================="
     output_list.insert(0, overall_summary)
@@ -264,7 +278,7 @@ class GroupRides(commands.Cog):
     )
     def _invoke_llm(self, pickups_str, drivers_str, locations_matrix):
         """A blocking helper function to invoke the LLM with a retry policy."""
-        # return {'Driver0': [{'name': 'Christina Zuo', 'location': 'Innovation'}, {'name': 'Sydney Su', 'location': 'Warren Equality Ln'}]}
+
         logger.info("Calling LLM")
         logger.info(
             f"prompt={
@@ -291,22 +305,24 @@ class GroupRides(commands.Cog):
             if "json" in ai_response.content:
                 codebox_beginning_idx = 8
                 codebox_ending_idx = -3
-                llm_result = json.loads(ai_response.content[codebox_beginning_idx:codebox_ending_idx])
+                llm_result = json.loads(
+                    ai_response.content[codebox_beginning_idx:codebox_ending_idx]
+                )
             else:
                 llm_result = json.loads(ai_response.content)
             return llm_result
-        
 
         def validate_llm_result(llm_result):
             if "error" in {key.lower() for key in llm_result}:
                 LLMOutputError.model_validate(llm_result)
             else:
-                LLMOutputNominal.model_validate(llm_result)  
+                LLMOutputNominal.model_validate(llm_result)
                 # Sometimes the LLM puts two names in one name field
                 for driver_id in llm_result:
                     for passenger in llm_result[driver_id]:
-                        if ',' in passenger['name']:
+                        if "," in passenger["name"]:
                             raise Exception("Names cannot contain commas.")
+
         # Sometimes the LLM decides to put a code box even if it is directed not to
         llm_result = preprocess_llm_result(ai_response)
 
@@ -323,7 +339,7 @@ class GroupRides(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @discord.app_commands.describe(
-        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each", #noqa: E501
         message_id="Optional message ID to look at at specific message",
     )
     async def group_rides(
@@ -332,8 +348,6 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         message_id: str | None = None,
     ):
-        
-
         if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
             await interaction.response.send_message(
                 "Command cannot be used in this channel.",
@@ -393,17 +407,17 @@ class GroupRides(commands.Cog):
             unknown_names = [str(user) for user in unknown_location]
             await interaction.followup.send(
                 f"Error: Please ensure that {', '.join(unknown_names)} username(s) are on the "
-                f"[spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0). " # noqa
+                f"[spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0). "  # noqa
                 "After adding them, please run `/sync-locations`.",
             )
             return
 
-
         off_campus = {}
         passengers_by_location: PassengersByLocation = {}
         for living_location in locations_people:
-
-            if living_location.lower() not in [location.value.lower() for location in CampusLivingLocations]:
+            if living_location.lower() not in [
+                location.value.lower() for location in CampusLivingLocations
+            ]:
                 off_campus[living_location] = locations_people[living_location]
                 continue
 
@@ -413,18 +427,18 @@ class GroupRides(commands.Cog):
                 if loc == "erc":
                     return CampusLivingLocations.ERC
                 return loc.title()
+
             def get_pickup_location(loc):
                 return living_to_pickup[get_living_location(loc)]
 
             passengers_by_location[get_pickup_location(living_location)] = [
                 Passenger(
-                    identity=Identity(name=person[0], username=person[1].name), 
-                    living_location=get_living_location(living_location), 
-                    pickup_location=get_pickup_location(living_location)
-                ) for person in locations_people[living_location]
+                    identity=Identity(name=person[0], username=person[1].name),
+                    living_location=get_living_location(living_location),
+                    pickup_location=get_pickup_location(living_location),
+                )
+                for person in locations_people[living_location]
             ]
-
-        
 
         if not is_enough_capacity(parse_numbers(driver_capacity), passengers_by_location):
             await interaction.followup.send(
@@ -461,7 +475,7 @@ class GroupRides(commands.Cog):
                 ephemeral=True,
             )
             return
-        
+
         if "error" in {key.lower() for key in llm_result}:
             await interaction.followup.send(
                 f"LLM returned with error: {llm_result}.",

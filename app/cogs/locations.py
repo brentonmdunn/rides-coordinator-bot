@@ -226,7 +226,7 @@ class Locations(commands.Cog):
         Gets appropriate rides announcement message and grouped people by location.
 
         Note: day and message_id have an XOR relationship
-        
+
         Args:
             day: lowercase day of the week to get rides message for
             message_id: message id of rides announcement message

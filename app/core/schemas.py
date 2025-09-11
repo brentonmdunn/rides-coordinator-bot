@@ -1,6 +1,6 @@
 from pydantic import BaseModel, RootModel, field_validator
 
-from app.core.enums import PickupLocations, CampusLivingLocations
+from app.core.enums import CampusLivingLocations, PickupLocations
 
 
 class LocationQuery(BaseModel):
@@ -41,6 +41,7 @@ class LLMOutputNominal(RootModel[dict[str, list[LLMPassenger]]]):
     """
 
     pass  # No extra logic needed for basic validation
+
 
 class LLMOutputError(RootModel[dict[str, str]]):
     pass
