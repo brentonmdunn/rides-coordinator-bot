@@ -130,8 +130,6 @@ def is_enough_capacity(
 def calculate_pickup_time(
     curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int
 ) -> datetime.time:
-    logger.info(f"{grouped_by_location=}")
-    logger.info(f"{location=}")
     time_between = PICKUP_ADJUSTMENT + lookup_time(
         LocationQuery(
             start_location=grouped_by_location[len(grouped_by_location) - offset][
@@ -199,7 +197,6 @@ def create_output(
         # grouped_by_location is in order by who to pickup first. Need it
         # reversed so can calculate pickup time backwards from goal leave time
         for idx, users_at_location in enumerate(reversed(grouped_by_location)):
-            logger.info(f"{users_at_location=}")
             usernames_at_location = [p.identity.username for p in users_at_location]
             names_at_location = [p.identity.name for p in users_at_location]
 
@@ -279,7 +276,6 @@ class GroupRides(commands.Cog):
     def _invoke_llm(self, pickups_str, drivers_str, locations_matrix):
         """A blocking helper function to invoke the LLM with a retry policy."""
 
-        logger.info("Calling LLM")
         logger.info(
             f"prompt={
                 GROUP_RIDES_PROMPT.format(
@@ -393,7 +389,7 @@ class GroupRides(commands.Cog):
                     locations_people,
                     usernames_reacted,
                     location_found,
-                ) = await location_service.list_locations(day="friday", channel_id=ChannelIds.BOT_STUFF__BOT_SPAM_2)
+                ) = await location_service.list_locations(day="friday")
                 end_leave_time = time(hour=19, minute=10)
         except NoMatchingMessageFoundError:
             await interaction.followup.send(

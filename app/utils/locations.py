@@ -47,7 +47,7 @@ def lookup_time(query: LocationQuery) -> int:
     Returns:
         The travel time as an integer, or raises an exception if the path is not found.
     """
-    logger.info(f"{query=}")
+    logger.debug(f"{query=}")
     distances = {location: float("inf") for location in LOCATIONS_MATRIX}
     distances[query.start_location] = 0
     priority_queue = [(0, query.start_location)]
