@@ -120,7 +120,9 @@ class Locations(commands.Cog):
         else:
             return now - timedelta(days=(now.weekday() + 1))
 
-    async def _find_correct_message(self, day, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS) -> str | None:
+    async def _find_correct_message(
+        self, day, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    ) -> str | None:
         """
         Returns message id of message corresponding to day.
 

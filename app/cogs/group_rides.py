@@ -402,7 +402,7 @@ class GroupRides(commands.Cog):
         if unknown_location:
             unknown_names = [str(user) for user in unknown_location]
             await interaction.followup.send(
-                f"Error: Please ensure that {', '.join(unknown_names)} username(s) and location(s) are on the " # noqa
+                f"Error: Please ensure that {', '.join(unknown_names)} username(s) and location(s) are on the "  # noqa
                 f"[spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0)."
             )
             return
