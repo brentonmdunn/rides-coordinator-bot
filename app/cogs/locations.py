@@ -223,7 +223,21 @@ class Locations(commands.Cog):
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ):
         """
-        day and message_id have an XOR relationship
+        Gets appropriate rides announcement message and grouped people by location.
+
+        Note: day and message_id have an XOR relationship
+        
+        Args:
+            day: lowercase day of the week to get rides message for
+            message_id: message id of rides announcement message
+            channel_id: channel to look for message id
+
+        Returns:
+            tuple of:
+                - dict[str, [list[tuple[str,str]]]]: dictionary of location that contains a list of
+                  people who live there in the tuple form (name, discord.Member)
+                - set[str]: set of usernames who reacted to message
+                - set[str]: set of usernames who bot found a location for
         """
 
         # if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
