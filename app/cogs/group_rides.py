@@ -21,6 +21,13 @@ prev_response = None
 
 NUM_RETRY_ATTEMPTS = 5
 PICKUP_ADJUSTMENT = 1
+LOCATIONS_CHANNELS_WHITELIST = [
+    ChannelIds.SERVING__DRIVER_BOT_SPAM,
+    ChannelIds.SERVING__LEADERSHIP,
+    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+    ChannelIds.BOT_STUFF__BOTS,
+    ChannelIds.BOT_STUFF__BOT_SPAM_2,
+]
 
 map_links = {
     PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
@@ -139,6 +146,8 @@ def llm_input_pickups(locations_people: LocationsPeopleType) -> str:
 
 def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people: LocationsPeopleType, end_leave_time: datetime.time):
     output = ""
+    overall_summary = "==== summary ====\n"
+    output_list = []
 
     for i, driver_id in enumerate(llm_result):
         curr_leave_time = end_leave_time
@@ -323,6 +332,19 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         message_id: str | None = None,
     ):
+        
+
+        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
+            await interaction.response.send_message(
+                "Command cannot be used in this channel.",
+                ephemeral=True,
+            )
+            logger.info(
+                f"pickup-location not allowed in #{interaction.channel} by {interaction.user}",
+            )
+            return
+
+
         await interaction.response.defer()
 
         location_service = Locations(self.bot)
@@ -370,7 +392,9 @@ class GroupRides(commands.Cog):
         if unknown_location:
             unknown_names = [str(user) for user in unknown_location]
             await interaction.followup.send(
-                f"Error: Please ensure that {', '.join(unknown_names)} username(s) are on the [spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0).",
+                f"Error: Please ensure that {', '.join(unknown_names)} username(s) are on the "
+                f"[spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0). " # noqa
+                "After adding them, please run `/sync-locations`.",
             )
             return
 
@@ -417,8 +441,14 @@ class GroupRides(commands.Cog):
             return
 
         # Data on driver capacities to send to LLM
-        drivers_list = llm_input_drivers(driver_capacity)
-
+        try:
+            drivers = llm_input_drivers(parse_numbers(driver_capacity))
+        except ValueError:
+            await interaction.followup.send(
+                "Error: `driver_capacity` must only contain integers.",
+                ephemeral=True,
+            )
+            return
         # Data on pickup locations to send to LLM
         pickups = llm_input_pickups(locations_people)
 
