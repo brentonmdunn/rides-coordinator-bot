@@ -393,7 +393,7 @@ class GroupRides(commands.Cog):
                     locations_people,
                     usernames_reacted,
                     location_found,
-                ) = await location_service.list_locations(day="friday")
+                ) = await location_service.list_locations(day="friday", channel_id=ChannelIds.BOT_STUFF__BOT_SPAM_2)
                 end_leave_time = time(hour=19, minute=10)
         except NoMatchingMessageFoundError:
             await interaction.followup.send(
@@ -406,9 +406,8 @@ class GroupRides(commands.Cog):
         if unknown_location:
             unknown_names = [str(user) for user in unknown_location]
             await interaction.followup.send(
-                f"Error: Please ensure that {', '.join(unknown_names)} username(s) are on the "
-                f"[spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0). "  # noqa
-                "After adding them, please run `/sync-locations`.",
+                f"Error: Please ensure that {', '.join(unknown_names)} username(s) and location(s) are on the " # noqa
+                f"[spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0)."
             )
             return
 
