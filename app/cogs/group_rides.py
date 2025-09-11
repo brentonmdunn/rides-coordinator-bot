@@ -9,7 +9,7 @@ from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.cogs.locations import Locations
-from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations
+from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations ,LivingLocations
 from app.core.logger import logger
 from app.core.schemas import Identity, LLMOutputNominal, LocationQuery, RidesUser, LLMOutputError
 from app.utils.checks import feature_flag_enabled
@@ -264,7 +264,7 @@ class GroupRides(commands.Cog):
         retry=tenacity.retry_if_exception_type(Exception),
         before_sleep=log_retry_attempt,
     )
-    def _invoke_llm_blocking(self, pickups_str, drivers_str, locations_matrix):
+    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix):
         """A blocking helper function to invoke the LLM with a retry policy."""
         logger.info("Calling LLM")
         logger.info(
@@ -454,7 +454,7 @@ class GroupRides(commands.Cog):
 
         try:
             llm_result = await asyncio.to_thread(
-                self._invoke_llm_blocking, pickups, ", ".join(drivers_list), LOCATIONS_MATRIX
+                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX
             )
             # 1367251697465819187
             # llm_result = {
