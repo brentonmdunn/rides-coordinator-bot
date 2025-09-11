@@ -123,7 +123,7 @@ def calculate_pickup_time(curr_leave_time: datetime.time, grouped_by_location: l
 def llm_input_drivers(driver_capacity: list[int]) -> str:
     """Data on driver capacities to send to LLM"""
     drivers_list = []
-    for i, capacity in enumerate(parse_numbers(driver_capacity)):
+    for i, capacity in enumerate(driver_capacity):
         drivers_list.append(f"Driver{i} has capacity {capacity}")
     return ", ".join(drivers_list)
 
@@ -183,40 +183,48 @@ def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people:
             names_at_location = [ru.identity.name for ru in users_at_location]
 
             location = users_at_location[0].location
+
             if idx != 0:
                 curr_leave_time = calculate_pickup_time(
                     curr_leave_time, grouped_by_location, location, idx
                 )
-
+            living_loc = location
+            if location in living_to_pickup:
+                location = living_to_pickup[location]
             base_string = (
                 f"{' '.join(usernames_at_location)} "
                 f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
                 f"{location}"
             )
 
+            # Add google maps link if we have it
             if location in map_links:
-                formatted_string = f"{base_string} ([pin]({map_links[location]}))"
+                formatted_string = f"{base_string} ([Google Maps]({map_links[location]}))"
             else:
                 formatted_string = base_string
 
             drive_formatted.append(formatted_string)
             drive_summary.append(
-                f"({len(names_at_location)}) "
+                f"[{len(names_at_location)}] "
                 f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
-                f"{location}"
+                f"{living_loc}"
             )
 
-        output += " > ".join(reversed(drive_summary)) + '\n'
-        if not drive_formatted:
-            output += "```\nError: could not get username\n```"
-        else:
-            output += f"```\ndrive: {', '.join(reversed(drive_formatted))}\n```"
-
-        output += "\n"
-    return output
+        overall_summary += f"- {' > '.join(reversed(drive_summary))}\n"
 
 
-def do_sunday_rides():
+        copy_str = f"drive: {', '.join(reversed(drive_formatted))}\n"
+        output_list.append(copy_str)
+        output_list.append(f"```\n{copy_str}\n```")
+
+
+
+    overall_summary += "================="
+    output_list.insert(0, overall_summary)
+    return output_list
+
+
+def do_sunday_rides() -> bool:
     """
     Checks if a given datetime is between 9 PM on Friday and 11 PM on Sunday.
 
@@ -449,9 +457,10 @@ class GroupRides(commands.Cog):
             )
             return
 
-        output = form_output(llm_result, locations_people, end_leave_time)
-
-        await interaction.followup.send(output)
+        output = create_output(llm_result, locations_people, end_leave_time)
+        await interaction.followup.send(output[0])
+        for o in output[1:]:
+            await interaction.channel.send(o)
 
 
 async def setup(bot: commands.Bot):
