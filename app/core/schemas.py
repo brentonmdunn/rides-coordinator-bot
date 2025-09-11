@@ -1,11 +1,11 @@
 from pydantic import BaseModel, RootModel, field_validator
 
-from app.core.enums import PickupLocations, LivingLocations
+from app.core.enums import PickupLocations, CampusLivingLocations
 
 
 class LocationQuery(BaseModel):
-    start_location: LivingLocations
-    end_location: LivingLocations
+    start_location: CampusLivingLocations
+    end_location: CampusLivingLocations
 
 
 class Identity(BaseModel):
@@ -26,12 +26,12 @@ class RidesUser(BaseModel):
     """
 
     identity: Identity
-    location: LivingLocations
+    location: CampusLivingLocations
 
 
 class Passenger(BaseModel):
     name: str
-    location: LivingLocations
+    location: CampusLivingLocations
 
 
 class LLMOutputNominal(RootModel[dict[str, list[Passenger]]]):

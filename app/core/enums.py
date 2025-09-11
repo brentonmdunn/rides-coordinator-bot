@@ -77,7 +77,7 @@ class CategoryIds(StrEnum):
     NEW_RIDES = "1380694503391887410"
 
 
-class LivingLocations(StrEnum):
+class CampusLivingLocations(StrEnum):
     SEVENTH = "Seventh"
     ERC = "ERC"
     MARSHALL = "Marshall"
@@ -85,12 +85,10 @@ class LivingLocations(StrEnum):
     MUIR = "Muir"
     WARREN = "Warren"
     RITA = "Rita"
-    INNOVATION = "Innovation"
     EIGHTH = "Eighth"
     PANGEA = "Pangea"
-    VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
     PCE = "Pepper Canyon East"
-    PCW = "Pepper Canyonn West"
+    PCW = "Pepper Canyon West"
     REVELLE = "Revelle"
 
 
@@ -100,7 +98,8 @@ class PickupLocations(StrEnum):
     MARSHALL = "Marshall uppers"
     SIXTH = "Sixth loop"
     MUIR = "Muir tennis courts"
-    WARREN = "Warren"
+    WARREN_EQL = "Warren Equality Ln"
+    WARREN_JST = "Warren Justince Ln"
     RITA = "Rita"
     INNOVATION = "Innovation"
     EIGHTH = "Eighth basketball courts"

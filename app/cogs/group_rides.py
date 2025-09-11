@@ -9,7 +9,7 @@ from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.cogs.locations import Locations
-from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations ,LivingLocations
+from app.core.enums import ChannelIds, FeatureFlagNames, PickupLocations ,CampusLivingLocations
 from app.core.logger import logger
 from app.core.schemas import Identity, LLMOutputNominal, LocationQuery, RidesUser, LLMOutputError
 from app.utils.checks import feature_flag_enabled
@@ -19,7 +19,7 @@ from app.utils.locations import LOCATIONS_MATRIX, lookup_time
 
 prev_response = None
 
-NUM_RETRY_ATTEMPTS = 5
+NUM_RETRY_ATTEMPTS = 4
 PICKUP_ADJUSTMENT = 1
 LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_BOT_SPAM,
@@ -28,6 +28,8 @@ LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.BOT_STUFF__BOTS,
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
 ]
+
+
 
 map_links = {
     PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
@@ -38,19 +40,22 @@ map_links = {
     PickupLocations.EIGHTH: "https://maps.app.goo.gl/RySbnmJGZ7zKujgq7",
     PickupLocations.INNOVATION: "https://maps.app.goo.gl/7tDt4mT5SkPkJbRh8",
     PickupLocations.RITA: "https://maps.app.goo.gl/qcuCR5q6Tx2EEn9c9",
+    PickupLocations.WARREN_EQL: "https://maps.app.goo.gl/b4vLo5ZCGdZXEoni8",
+    PickupLocations.WARREN_JST: "https://maps.app.goo.gl/h5LJCGhvBUbpmkmL7",
 }
 
 living_to_pickup = {
-    LivingLocations.SIXTH: PickupLocations.SIXTH,
-    LivingLocations.SEVENTH: PickupLocations.SEVENTH,
-    LivingLocations.MARSHALL: PickupLocations.MARSHALL,
-    LivingLocations.ERC: PickupLocations.ERC,
-    LivingLocations.MUIR: PickupLocations.MUIR,
-    LivingLocations.EIGHTH: PickupLocations.EIGHTH,
-    LivingLocations.REVELLE: PickupLocations.EIGHTH,
-    LivingLocations.PCE: PickupLocations.INNOVATION,
-    LivingLocations.PCW: PickupLocations.INNOVATION,
-    LivingLocations.RITA: PickupLocations.RITA,
+    CampusLivingLocations.SIXTH: PickupLocations.SIXTH,
+    CampusLivingLocations.SEVENTH: PickupLocations.SEVENTH,
+    CampusLivingLocations.MARSHALL: PickupLocations.MARSHALL,
+    CampusLivingLocations.ERC: PickupLocations.ERC,
+    CampusLivingLocations.MUIR: PickupLocations.MUIR,
+    CampusLivingLocations.EIGHTH: PickupLocations.EIGHTH,
+    CampusLivingLocations.REVELLE: PickupLocations.EIGHTH,
+    CampusLivingLocations.PCE: PickupLocations.INNOVATION,
+    CampusLivingLocations.PCW: PickupLocations.INNOVATION,
+    CampusLivingLocations.RITA: PickupLocations.RITA,
+    CampusLivingLocations.WARREN: PickupLocations.WARREN_EQL,
 }
 
 LocationsPeopleType = dict[str, list[tuple[str, str]]]
@@ -144,7 +149,7 @@ def llm_input_pickups(locations_people: LocationsPeopleType) -> str:
     return pickups
 
 
-def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people: LocationsPeopleType, end_leave_time: datetime.time):
+def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people: LocationsPeopleType, end_leave_time: datetime.time, off_campus: LocationsPeopleType):
     output = ""
     overall_summary = "==== summary ====\n"
     output_list = []
@@ -226,6 +231,10 @@ def create_output(llm_result: dict[str, list[dict[str, str]]], locations_people:
         output_list.append(copy_str)
         output_list.append(f"```\n{copy_str}\n```")
 
+    if len(off_campus) != 0:
+        overall_summary += "- TODO: off campus\n"
+        for key in off_campus:
+            overall_summary += f"""  - {key}: {', '.join([f"{person[0]} (@{person[1]})" for person in off_campus[key]])}\n"""
 
 
     overall_summary += "================="
@@ -281,6 +290,8 @@ class GroupRides(commands.Cog):
                 pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
             )
         )
+        #ai_response = '{\n  "Driver0": [\n    {\n      "name": "Alice Chen",\n      "location": "Sixth"\n    },\n    {\n      "name": "Clement",\n      "location": "ERC"\n    },\n    {\n      "name": "Kristi Nakatsuka",\n      "location": "ERC"\n    },\n    {\n      "name": "Nathan Luk",\n      "location": "ERC"\n    }\n  ],\n  "Driver1": [\n    {\n      "name": "Irene Yap",\n      "location": "Seventh"\n    },\n    {\n      "name": "Carly Carbery",\n      "location": "Seventh"\n    },\n    {\n      "name": "Sydney Su",\n      "location": "Warren"\n    },\n    {\n      "name": "Nathan Leung",\n      "location": "Warren"\n    }\n  ],\n  "Driver2": [\n    {\n      "name": "Kendra Chen",\n      "location": "Rita"\n    },\n    {\n      "name": "Rosalyn Weng",\n      "location": "Muir"\n    },\n    {\n      "name": "Charis Chang",\n      "location": "Muir"\n    }\n  ]\n}'
+
         # For logging the previous response, can't pass variables to callback (I think)
         global prev_response
         prev_response = ai_response
@@ -309,7 +320,7 @@ class GroupRides(commands.Cog):
                             raise Exception("Names cannot contain commas.")
         # Sometimes the LLM decides to put a code box even if it is directed not to
         llm_result = preprocess_llm_result(ai_response)
-
+        #llm_result = json.loads(ai_response)
         logger.info(f"{llm_result=}")
 
         # Throws error if does not have correct schema
@@ -401,11 +412,16 @@ class GroupRides(commands.Cog):
         # Workaround since capitalization is not the same between services
         # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
         locations_people_copy = {}
+        off_campus = {}
         for key in locations_people:
+
+            if key.lower() not in [location.value.lower() for location in CampusLivingLocations]:
+                off_campus[key] = locations_people[key]
+                continue
+
+
             if key == "erc":
                 locations_people_copy["ERC"] = locations_people[key]
-            elif "villas" in key.lower():
-                locations_people_copy["Villas of Renaissance"] = locations_people[key]
             else:
                 locations_people_copy[key.title()] = locations_people[key]
         locations_people = locations_people_copy
@@ -487,7 +503,7 @@ class GroupRides(commands.Cog):
             )
             return
 
-        output = create_output(llm_result, locations_people, end_leave_time)
+        output = create_output(llm_result, locations_people, end_leave_time, off_campus)
         await interaction.followup.send(output[0])
         for o in output[1:]:
             await interaction.channel.send(o)
