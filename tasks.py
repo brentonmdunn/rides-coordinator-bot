@@ -39,3 +39,8 @@ def all(c):
     lint(c)
     fix(c)
     format(c)
+
+
+@task
+def test(c):
+    c.run("python -m pytest --color=yes -v")

@@ -77,3 +77,34 @@ class CanBeDriver(StrEnum):
 
 class CategoryIds(StrEnum):
     NEW_RIDES = "1380694503391887410"
+
+
+class CampusLivingLocations(StrEnum):
+    SEVENTH = "Seventh"
+    ERC = "ERC"
+    MARSHALL = "Marshall"
+    SIXTH = "Sixth"
+    MUIR = "Muir"
+    WARREN = "Warren"
+    RITA = "Rita"
+    EIGHTH = "Eighth"
+    PANGEA = "Pangea"
+    PCE = "Pepper Canyon East"
+    PCW = "Pepper Canyon West"
+    REVELLE = "Revelle"
+
+
+class PickupLocations(StrEnum):
+    SEVENTH = "Seventh mail room"
+    ERC = "ERC across from bamboo"
+    MARSHALL = "Marshall uppers"
+    SIXTH = "Sixth loop"
+    MUIR = "Muir tennis courts"
+    WARREN_EQL = "Warren Equality Ln"
+    WARREN_JST = "Warren Justince Ln"
+    RITA = "Rita"
+    INNOVATION = "Innovation"
+    EIGHTH = "Eighth basketball courts"
+    PANGEA = "Pangea"
+    VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
+    REVELLE = "Eighth basketball courts"
