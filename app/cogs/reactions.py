@@ -51,7 +51,18 @@ class Reactions(commands.Cog):
 
         await self._late_rides_react(user, payload, message, channel, ReactionAction.ADD)
         await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
-        await self._new_rides_helper(user, guild)
+        if (
+            (
+                self.locations_cog
+                and (
+                    await self.locations_cog._find_correct_message("friday")
+                    or await self.locations_cog._find_correct_message("sunday")
+                )
+            )
+            and user is not None
+            and not await get_location(user.name, discord_only=True)
+        ):
+            await self._new_rides_helper(user, guild)
         await self._event_thread_add(payload, guild, user)
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
@@ -208,12 +219,7 @@ class Reactions(commands.Cog):
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
     async def _new_rides_helper(self, user, guild):
-        if not (
-            (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
-            and user is not None
-            and not await get_location(user.name, discord_only=True)
-        ):
-            return
+
         channel_name = f"{user.name.lower()}"
         category = discord.utils.get(guild.categories, id=CategoryIds.NEW_RIDES)
 
