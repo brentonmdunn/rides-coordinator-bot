@@ -34,6 +34,8 @@ LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.BOT_STUFF__BOTS,
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
 ]
+LML_MODEL = "gemini-2.5-pro"
+# LLM_MODEL = "gemini-2.5-flash"
 
 
 map_links = {
@@ -263,8 +265,7 @@ def do_sunday_rides() -> bool:
 class GroupRides(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
-        # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
+        self.llm = ChatGoogleGenerativeAI(model=LML_MODEL)
 
     # Helper function to invoke the LLM with a fixed retry wait
     @tenacity.retry(
