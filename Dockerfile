@@ -1,7 +1,9 @@
 FROM python:3.13-slim
 
-# Install sqlite3 and vim
-RUN apt update && apt install -y sqlite3 vim && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt update && apt install -y sqlite3 vim curl tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
 WORKDIR /app
@@ -15,7 +17,7 @@ COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv sync for reproducible builds
 # --system tells uv to install into the global Python environment
-RUN uv sync --system --no-cache
+RUN uv sync --no-cache
 
 # Copy the rest of your application code
 COPY . .
