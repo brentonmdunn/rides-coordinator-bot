@@ -16,8 +16,7 @@ ENV PATH="/root/.local/bin:$PATH"
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv sync for reproducible builds
-# --system tells uv to install into the global Python environment
-RUN uv sync --no-cache
+RUN uv sync --no-cache --no-dev
 
 # Copy the rest of your application code
 COPY . .
