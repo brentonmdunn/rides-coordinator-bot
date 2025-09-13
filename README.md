@@ -57,6 +57,7 @@ invoke <command>
 | `invoke fix`    | Automatically fix lint issues with Ruff                                     |
 | `invoke format` | Format the code using Ruff’s formatter                                      |
 | `invoke all`    | Run `lint`, `fix`, and `format` in sequence (for full code quality check)   |
+| `invoke test`   | Runs pytest test suite                                                      |
 
 > **Note:** Ensure `ruff` and `invoke` are installed:
 > ```bash
