@@ -9,6 +9,7 @@ dependencies = [
     "apscheduler>=3.11.0",
     "discord>=2.3.2",
     "greenlet>=3.2.4",
+    "invoke>=2.2.0",
     "langchain>=0.3.27",
     "langchain-google-genai>=2.1.10",
     "python-dotenv>=1.1.1",
@@ -19,6 +20,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "invoke>=2.2.0",
     "pytest>=8.4.2",
     "ruff>=0.13.0",
 ]
