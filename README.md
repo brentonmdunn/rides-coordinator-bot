@@ -18,17 +18,12 @@ git clone https://github.com/brentonmdunn/rides-coordinator-bot
 cd rides-coordinator-bot
 ```
 
-Create and activate a virtual environment (optional but recommended):
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
+If not already installed, download `uv` [here](https://docs.astral.sh/uv/getting-started/installation/).
 
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 Set up environment variables:
