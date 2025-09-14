@@ -18,17 +18,12 @@ git clone https://github.com/brentonmdunn/rides-coordinator-bot
 cd rides-coordinator-bot
 ```
 
-Create and activate a virtual environment (optional but recommended):
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
+If not already installed, download `uv` [here](https://docs.astral.sh/uv/getting-started/installation/).
 
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 Set up environment variables:
@@ -57,6 +52,7 @@ invoke <command>
 | `invoke fix`    | Automatically fix lint issues with Ruff                                     |
 | `invoke format` | Format the code using Ruff’s formatter                                      |
 | `invoke all`    | Run `lint`, `fix`, and `format` in sequence (for full code quality check)   |
+| `invoke test`   | Runs pytest test suite                                                      |
 
 > **Note:** Ensure `ruff` and `invoke` are installed:
 > ```bash
