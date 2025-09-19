@@ -14,7 +14,7 @@ from app.utils.lookups import get_location, get_name_location_no_sync, sync
 
 load_dotenv()
 
-LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
+RIDES_LOCATIONS_CSV_URL = os.getenv("RIDES_LOCATIONS_CSV_URL")
 
 # List of scholars housing locations
 SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh", "new marshall"]

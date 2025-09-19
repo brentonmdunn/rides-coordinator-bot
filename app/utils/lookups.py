@@ -16,7 +16,7 @@ from app.core.models import Locations
 
 load_dotenv()
 
-LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
+RIDES_LOCATIONS_CSV_URL = os.getenv("RIDES_LOCATIONS_CSV_URL")
 
 
 def sync_on_cache_miss(func):
@@ -154,10 +154,10 @@ async def sync():
     Syncs the Google Sheet with databas table `locations`.
     """
     logger.info("Syncing locations...")
-    if not LSCC_PPL_CSV_URL:
-        raise Exception("LSCC_PPL_CSV_URL environment variable not set.")
+    if not RIDES_LOCATIONS_CSV_URL:
+        raise Exception("RIDES_LOCATIONS_CSV_URL environment variable not set.")
 
-    response = requests.get(LSCC_PPL_CSV_URL)
+    response = requests.get(RIDES_LOCATIONS_CSV_URL)
 
     if response.status_code != 200:
         raise Exception("Failed to retrieve data.")
