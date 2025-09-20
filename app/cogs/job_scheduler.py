@@ -6,7 +6,6 @@ from discord.ext import commands
 
 # from jobs_disabled.retreat_sync_roles import run_csv_job
 from app.jobs.ask_rides import run_ask_rides_fri, run_ask_rides_sun, run_ask_rides_wed
-from app.jobs.non_discord_rides import delete_past_pickups
 from app.jobs.sync_rides_locations import sync_rides_locations
 
 
@@ -57,11 +56,11 @@ class JobScheduler(commands.Cog):
             id="sync_rides_locations",
         )
 
-        self.scheduler.add_job(
-            delete_past_pickups,
-            CronTrigger(day_of_week="mon", hour=3, minute=0),
-            id="delete_past_pickups",
-        )
+        # self.scheduler.add_job(
+        #     delete_past_pickups,
+        #     CronTrigger(day_of_week="mon", hour=3, minute=0),
+        #     id="delete_past_pickups",
+        # )
 
         self.scheduler.start()
 
