@@ -24,6 +24,7 @@ intents.message_content = True
 intents.guilds = True
 intents.reactions = True
 intents.members = True
+intents.message_content = True
 
 bot: Bot = commands.Bot(command_prefix="!", intents=intents)
 
