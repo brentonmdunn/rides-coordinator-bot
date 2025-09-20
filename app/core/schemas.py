@@ -10,11 +10,11 @@ class LocationQuery(BaseModel):
 
 class Identity(BaseModel):
     name: str
-    username: str
+    username: str | None = None
 
     @field_validator("username", mode="before")
     def add_at_symbol(cls, v: str) -> str:  # noqa: N805
-        if not v.startswith("@"):
+        if v and not v.startswith("@"):
             return f"@{v}"
         return v
 

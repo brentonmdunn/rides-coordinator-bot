@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, Date, Integer, PrimaryKeyConstraint, String
 
 from app.core.base import Base
 
@@ -34,3 +34,11 @@ class Locations(Base):
 class EventThreads(Base):
     __tablename__ = "event_threads"
     message_id = Column(String, primary_key=True)
+
+
+class NonDiscordRides(Base):
+    __tablename__ = "non_discord_rides"
+    __table_args__ = (PrimaryKeyConstraint("name", "date"),)
+    name = Column(String, nullable=False)
+    date = Column(Date, nullable=False)
+    location = Column(String)
