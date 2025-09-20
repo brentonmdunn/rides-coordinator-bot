@@ -219,8 +219,8 @@ def create_output(
             )
 
             # Add google maps link if we have it
-            if location in map_links:
-                formatted_string = f"{base_string} ([Google Maps]({map_links[location]}))"
+            if pickup_location in map_links:
+                formatted_string = f"{base_string} ([Google Maps]({map_links[pickup_location]}))"
             else:
                 formatted_string = base_string
 
