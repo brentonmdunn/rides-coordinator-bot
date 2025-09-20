@@ -5,34 +5,34 @@ import discord
 from app.core.enums import ChannelIds
 from app.core.logger import logger
 
-LOCATIONS_CHANNELS_WHITELIST = [
-    ChannelIds.SERVING__DRIVER_BOT_SPAM,
-    ChannelIds.SERVING__LEADERSHIP,
-    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
-]
-
-BOT_TESTING_CHANNELS = [
+BOT_TESTING_CHANNELS = {
     ChannelIds.BOT_STUFF__BOTS,
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
     ChannelIds.BOT_STUFF__BOT_LOGS,
-]
+}
+LOCATIONS_CHANNELS_WHITELIST = BOT_TESTING_CHANNELS | {
+    ChannelIds.SERVING__DRIVER_BOT_SPAM,
+    ChannelIds.SERVING__LEADERSHIP,
+    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+}
 
 
 async def is_allowed_locations(
     interaction: discord.Interaction,
     channel_id: int,
+    whitelisted_channels: set[int] = BOT_TESTING_CHANNELS,
 ) -> bool:
-    if channel_id in BOT_TESTING_CHANNELS:
+    if channel_id in whitelisted_channels:
         return True
-    if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
-        await interaction.response.send_message(
-            "Command cannot be used in this channel.",
-            ephemeral=True,
-        )
-        logger.info(
-            "Command not allowed in #%s by %s",
-            interaction.channel,
-            interaction.user,
-        )
-        return False
-    return True
+
+    await interaction.response.send_message(
+        f"`/{interaction.data['name']}` cannot be used in #{interaction.channel}.",
+        ephemeral=True,
+    )
+    logger.info(
+        "/%s not allowed in #%s by %s",
+        interaction.data["name"],
+        interaction.channel,
+        interaction.user,
+    )
+    return False

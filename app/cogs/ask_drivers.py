@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 from app.core.enums import ChannelIds, FeatureFlagNames, RoleIds
+from app.utils.channel_whitelist import BOT_TESTING_CHANNELS, is_allowed_locations
 from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message
 
@@ -19,12 +20,11 @@ class AskDrivers(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def ask_drivers(self, interaction: discord.Interaction, message: str) -> None:
         """Pings the driver role with a custom message."""
-        # Only allow usage in the DRIVER_CHAT_WOOOOO channel
-        if interaction.channel_id != ChannelIds.SERVING__DRIVER_CHAT_WOOOOO:
-            await interaction.response.send_message(
-                f"`/ask-drivers` can only be used in <#{ChannelIds.SERVING__DRIVER_CHAT_WOOOOO}>",
-                ephemeral=True,
-            )
+        if not await is_allowed_locations(
+            interaction,
+            interaction.channel_id,
+            BOT_TESTING_CHANNELS | {ChannelIds.SERVING__DRIVER_CHAT_WOOOOO},
+        ):
             return
 
         message_to_send = ping_role_with_message(RoleIds.DRIVER, message)

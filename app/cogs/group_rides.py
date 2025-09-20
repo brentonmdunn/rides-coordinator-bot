@@ -18,6 +18,7 @@ from app.core.schemas import (
     LocationQuery,
     Passenger,
 )
+from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, is_allowed_locations
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
@@ -27,13 +28,7 @@ prev_response = None
 
 NUM_RETRY_ATTEMPTS = 4
 PICKUP_ADJUSTMENT = 1
-LOCATIONS_CHANNELS_WHITELIST = [
-    ChannelIds.SERVING__DRIVER_BOT_SPAM,
-    ChannelIds.SERVING__LEADERSHIP,
-    ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
-    ChannelIds.BOT_STUFF__BOTS,
-    ChannelIds.BOT_STUFF__BOT_SPAM_2,
-]
+
 # LLM_MODEL = "gemini-2.5-pro"
 LLM_MODEL = "gemini-2.5-flash"
 
@@ -348,14 +343,9 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         message_id: str | None = None,
     ):
-        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
-            await interaction.response.send_message(
-                "Command cannot be used in this channel.",
-                ephemeral=True,
-            )
-            logger.info(
-                f"pickup-location not allowed in #{interaction.channel} by {interaction.user}",
-            )
+        if not await is_allowed_locations(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
             return
 
         # Would timeout if don't defer since LLM takes too long
