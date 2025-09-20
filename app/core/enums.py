@@ -101,7 +101,7 @@ class PickupLocations(StrEnum):
     SIXTH = "Sixth loop"
     MUIR = "Muir tennis courts"
     WARREN_EQL = "Warren Equality Ln"
-    WARREN_JST = "Warren Justince Ln"
+    WARREN_JST = "Warren Justice Ln"
     RITA = "Rita"
     INNOVATION = "Innovation"
     EIGHTH = "Eighth basketball courts"
