@@ -11,6 +11,7 @@ from app.core.enums import (
     FeatureFlagNames,
 )
 from app.core.models import NonDiscordRides
+from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, is_allowed_locations
 from app.utils.checks import feature_flag_enabled
 from app.utils.time_helpers import get_next_date_obj
 
@@ -53,6 +54,11 @@ class NonDiscordRidesCog(commands.Cog):
     async def add_pickup(
         self, interaction: discord.Interaction, name: str, day: str, location: str
     ):
+        if not await is_allowed_locations(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
         try:
             async with AsyncSessionLocal() as session:
                 session.add(
@@ -78,6 +84,11 @@ class NonDiscordRidesCog(commands.Cog):
         """
         Removes a non-Discord user's pickup entry.
         """
+        if not await is_allowed_locations(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
         date_to_remove = get_next_date_obj(day)
 
         async with AsyncSessionLocal() as session:
@@ -129,6 +140,11 @@ class NonDiscordRidesCog(commands.Cog):
         """
         Lists all non-Discord user pickups for a given day.
         """
+        if not await is_allowed_locations(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
         date_to_list = get_next_date_obj(day)
 
         async with AsyncSessionLocal() as session:

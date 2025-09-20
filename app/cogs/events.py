@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from app.core.enums import FeatureFlagNames
-from app.utils.checks import feature_flag_enabled
+from app.utils.checks import feature_flag_enabled, is_admin
 
 
 class Events(commands.Cog):
@@ -19,6 +19,7 @@ class Events(commands.Cog):
         role_name="Name of the role to assign.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @is_admin()
     async def give_role(
         self,
         interaction: discord.Interaction,
