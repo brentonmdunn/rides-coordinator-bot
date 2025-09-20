@@ -57,11 +57,11 @@ class JobScheduler(commands.Cog):
             id="sync_rides_locations",
         )
 
-        self.scheduler.add_job(
-            delete_past_pickups,
-            CronTrigger(day_of_week="mon", hour=3, minute=0),
-            id="delete_past_pickups",
-        )
+        # self.scheduler.add_job(
+        #     delete_past_pickups,
+        #     CronTrigger(day_of_week="mon", hour=3, minute=0),
+        #     id="delete_past_pickups",
+        # )
 
         self.scheduler.start()
 
