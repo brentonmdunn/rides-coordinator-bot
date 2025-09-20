@@ -199,7 +199,10 @@ def create_output(
         # grouped_by_location is in order by who to pickup first. Need it
         # reversed so can calculate pickup time backwards from goal leave time
         for idx, users_at_location in enumerate(reversed(grouped_by_location)):
-            usernames_at_location = [p.identity.username for p in users_at_location]
+            usernames_at_location = [
+                p.identity.username if p.identity.username is not None else p.identity.name
+                for p in users_at_location
+            ]
             names_at_location = [p.identity.name for p in users_at_location]
 
             pickup_location = users_at_location[0].pickup_location
@@ -429,7 +432,9 @@ class GroupRides(commands.Cog):
 
             passengers_by_location[get_pickup_location(living_location)] = [
                 Passenger(
-                    identity=Identity(name=person[0], username=person[1].name),
+                    identity=Identity(
+                        name=person[0], username=person[1].name if person[1] else None
+                    ),
                     living_location=get_living_location(living_location),
                     pickup_location=get_pickup_location(living_location),
                 )

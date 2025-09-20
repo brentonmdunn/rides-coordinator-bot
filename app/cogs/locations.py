@@ -5,12 +5,19 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from sqlalchemy import select
 
-from app.core.enums import ChannelIds, FeatureFlagNames
+from app.core.database import AsyncSessionLocal
+from app.core.enums import (
+    ChannelIds,
+    FeatureFlagNames,
+)
 from app.core.logger import logger
+from app.core.models import NonDiscordRides
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.lookups import get_location, get_name_location_no_sync, sync
+from app.utils.time_helpers import get_next_date_obj
 
 load_dotenv()
 
@@ -184,7 +191,9 @@ class Locations(commands.Cog):
             "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
         }
 
-        for location, (people, _) in locations_people.items():
+        for location, people_username_list in locations_people.items():
+            people = [person[0] for person in people_username_list]
+
             matched = False
             for _, group_data in groups.items():
                 if any(keyword in location.lower() for keyword in group_data["filter"]):
@@ -281,6 +290,28 @@ class Locations(commands.Cog):
 
                 locations_people[person.location].append((person.name, username))
                 location_found.add(username)
+
+        if day:
+            date_to_list = get_next_date_obj(day.title())
+            # non discord additions
+            async with AsyncSessionLocal() as session:
+                try:
+                    stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
+                    result = await session.execute(stmt)
+                    pickups = result.scalars().all()
+
+                    logger.info(f"{pickups=}")
+
+                    if pickups:
+                        # Format the list of pickups
+                        for pickup in pickups:
+                            locations_people[pickup.location].append((pickup.name, None))
+                    else:
+                        pass
+
+                except Exception:
+                    logger.exception("An error occurred while listing pickups")
+
         return locations_people, usernames_reacted, location_found
 
     async def _list_locations_wrapper(
@@ -301,7 +332,7 @@ class Locations(commands.Cog):
             return
 
         try:
-            args = self.list_locations(interaction, day, message_id, channel_id)
+            args = await self.list_locations(day, message_id, channel_id)
             embed = self._build_embed(*args)
             await interaction.response.send_message(embed=embed)
         except NotAllowedInChannelError:
@@ -309,6 +340,7 @@ class Locations(commands.Cog):
         except NoMatchingMessageFoundError:
             await interaction.response.send_message("No matching message found.")
         except Exception as e:
+            logger.exception("An error occurred: ")
             await interaction.response.send_message(f"Unknown error: {e}")
 
 

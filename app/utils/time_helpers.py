@@ -1,8 +1,18 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytz
 
 from app.core.enums import DaysOfWeek, DaysOfWeekNumber
+
+days_of_week_to_number = {
+    DaysOfWeek.MONDAY: DaysOfWeekNumber.MONDAY,
+    DaysOfWeek.TUESDAY: DaysOfWeekNumber.TUESDAY,
+    DaysOfWeek.WEDNESDAY: DaysOfWeekNumber.WEDNESDAY,
+    DaysOfWeek.THURSDAY: DaysOfWeekNumber.THURSDAY,
+    DaysOfWeek.FRIDAY: DaysOfWeekNumber.FRIDAY,
+    DaysOfWeek.SATURDAY: DaysOfWeekNumber.SATURDAY,
+    DaysOfWeek.SUNDAY: DaysOfWeekNumber.SUNDAY,
+}
 
 
 def is_during_target_window(day: str) -> bool:
@@ -49,6 +59,17 @@ def get_next_date(day: DaysOfWeekNumber) -> str:
     if days_ahead == 0:
         days_ahead = 7  # Skip to next day if `day` is current day
 
-    next_friday = today + timedelta(days=days_ahead)
-    formatted_date = next_friday.strftime("%-m/%-d")
+    next_day = today + timedelta(days=days_ahead)
+    formatted_date = next_day.strftime("%-m/%-d")
     return formatted_date
+
+
+def get_next_date_obj(day: DaysOfWeek) -> date:
+    day_num = days_of_week_to_number[day]
+    today = datetime.today()
+    days_ahead = (day_num - today.weekday() + 7) % 7
+    if days_ahead == 0:
+        days_ahead = 7  # Skip to next day if `day` is current day
+
+    # The key change is here: we convert the final datetime object to a date object
+    return (today + timedelta(days=days_ahead)).date()
