@@ -74,8 +74,6 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_pickups_sunday(self, interaction: discord.Interaction):
-
-
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -365,7 +363,6 @@ class Locations(commands.Cog):
 
         if day:
             await self._get_non_discord_pickups(day, locations_people)
-
 
         return locations_people, usernames_reacted, location_found
 

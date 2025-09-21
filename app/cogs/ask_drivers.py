@@ -10,14 +10,11 @@ from app.core.enums import (
     FeatureFlagNames,
     RoleIds,
 )
+from app.core.logger import log_cmd
 from app.utils.channel_whitelist import (
     BOT_TESTING_CHANNELS,
     cmd_is_allowed,
 )
-
-from app.core.enums import ChannelIds, FeatureFlagNames, RoleIds
-from app.core.logger import log_cmd
-from app.utils.channel_whitelist import BOT_TESTING_CHANNELS, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message
 
