@@ -8,9 +8,9 @@ RUN apt update && apt install -y sqlite3 vim curl tzdata && \
 # Set the working directory in the container
 WORKDIR /app
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+# Install uv globally and make it available in the PATH for all users
+# The new approach installs uv into a shared system directory
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --platform $(uname -m)-unknown-linux-musl --path /usr/local/bin
 
 # Copy only the dependency files first to leverage Docker's layer caching
 COPY pyproject.toml uv.lock ./
