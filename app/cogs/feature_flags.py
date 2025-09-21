@@ -5,6 +5,7 @@ from sqlalchemy import case, select, update
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
+from app.core.logger import log_cmd
 from app.core.models import FeatureFlags as FeatureFlagsModel
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 
@@ -33,6 +34,7 @@ class FeatureFlagsCog(commands.Cog):
         description="Enable or disable a feature flag.",
     )
     @app_commands.autocomplete(feature_name=feature_name_autocomplete)
+    @log_cmd
     async def modify_feature_flag(
         self, interaction: discord.Interaction, feature_name: str, enabled: bool
     ) -> None:
@@ -89,6 +91,7 @@ class FeatureFlagsCog(commands.Cog):
         name="list-feature-flags",
         description="Lists all feature flags and their current status.",
     )
+    @log_cmd
     async def list_feature_flags(self, interaction: discord.Interaction) -> None:
         """Fetches all feature flags and displays their status in an embed."""
 

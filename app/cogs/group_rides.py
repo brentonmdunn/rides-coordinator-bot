@@ -10,7 +10,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.cogs.locations import Locations
 from app.core.enums import CampusLivingLocations, ChannelIds, FeatureFlagNames, PickupLocations
-from app.core.logger import logger
+from app.core.logger import log_cmd, logger
 from app.core.schemas import (
     Identity,
     LLMOutputError,
@@ -337,6 +337,7 @@ class GroupRides(commands.Cog):
         driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
         message_id="Optional message ID to look at at specific message",
     )
+    @log_cmd
     async def group_rides(
         self,
         interaction: discord.Interaction,

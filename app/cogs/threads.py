@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
-from app.core.logger import logger
+from app.core.logger import log_cmd, logger
 from app.core.models import EventThreads
 from app.utils.checks import feature_flag_enabled
 
@@ -26,6 +26,7 @@ class Threads(commands.Cog):
         description="Stops adding everyone who reacts.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def end_event_thread(self, interaction: discord.Interaction) -> None:
         if not self._is_thread(interaction):
             await interaction.response.send(
@@ -56,6 +57,7 @@ class Threads(commands.Cog):
         description="Must be run in thread. Automatically adds anyone new who reacts.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def create_event_thread(self, interaction: discord.Interaction) -> None:
         """Automatically adds anyone new who reacts"""
 
@@ -103,6 +105,7 @@ class Threads(commands.Cog):
         description="Must be run in thread. Adds everyone who reacted to parent message to thread.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def add_reacts_to_thread(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
         await self._bulk_add_reacts_to_thread(interaction)
