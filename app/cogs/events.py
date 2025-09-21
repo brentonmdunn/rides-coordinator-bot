@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 from app.core.enums import FeatureFlagNames
+from app.core.logger import log_cmd
 from app.utils.checks import feature_flag_enabled, is_admin
 
 
@@ -18,6 +19,7 @@ class Events(commands.Cog):
         channel_id="The ID of the channel the message is in.",
         role_name="Name of the role to assign.",
     )
+    @log_cmd
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @is_admin()
     async def give_role(

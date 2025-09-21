@@ -1,6 +1,9 @@
+import functools
 import logging
 import os
+from typing import Any
 
+import discord
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,3 +32,18 @@ console_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 # logger.addHandler(file_handler)
+
+
+def log_cmd(func):
+    """
+    A decorator that logs Discord slash commands, preserving the function signature.
+    """
+
+    @functools.wraps(func)
+    async def wrapper(self, interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:
+        logger.info(
+            f"command={interaction.data['name']} used by user={interaction.user} in channel={interaction.channel}."  # noqa
+        )
+        return await func(self, interaction, *args, **kwargs)
+
+    return wrapper
