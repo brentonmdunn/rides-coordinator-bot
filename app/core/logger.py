@@ -42,7 +42,7 @@ def log_cmd(func):
     @functools.wraps(func)
     async def wrapper(self, interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:
         logger.info(
-            f"command={interaction.data['name']} used by user={interaction.user} in channel={interaction.channel}." # noqa
+            f"command={interaction.data['name']} used by user={interaction.user} in channel={interaction.channel}."  # noqa
         )
         return await func(self, interaction, *args, **kwargs)
 
