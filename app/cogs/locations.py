@@ -12,7 +12,7 @@ from app.core.enums import (
     ChannelIds,
     FeatureFlagNames,
 )
-from app.core.logger import logger
+from app.core.logger import log_cmd, logger
 from app.core.models import NonDiscordRides
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
@@ -37,6 +37,7 @@ class Locations(commands.Cog):
         description="Sync Google Sheets with database.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def sync_locations(self, interaction: discord.Interaction):
         from app.utils.lookups import sync
 
@@ -48,6 +49,7 @@ class Locations(commands.Cog):
         description="Pickup location for a person (name or Discord username).",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def pickup_location(self, interaction: discord.Interaction, name: str):
         """Finds and sends a pickup location for a given person."""
         if not await cmd_is_allowed(
@@ -69,6 +71,7 @@ class Locations(commands.Cog):
         description="List pickups for Sunday service.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def list_locations_sunday(self, interaction: discord.Interaction):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
@@ -82,6 +85,7 @@ class Locations(commands.Cog):
         description="List pickups for Friday fellowship.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def list_locations_friday(self, interaction: discord.Interaction):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
@@ -99,6 +103,7 @@ class Locations(commands.Cog):
         channel_id="Optional channel ID where the message is located",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def list_locations_unknown(
         self,
         interaction: discord.Interaction,
@@ -298,8 +303,6 @@ class Locations(commands.Cog):
                     stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
                     result = await session.execute(stmt)
                     pickups = result.scalars().all()
-
-                    logger.info(f"{pickups=}")
 
                     if pickups:
                         # Format the list of pickups

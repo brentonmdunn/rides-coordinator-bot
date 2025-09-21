@@ -10,6 +10,7 @@ from app.core.enums import (
     DaysOfWeek,
     FeatureFlagNames,
 )
+from app.core.logger import log_cmd
 from app.core.models import NonDiscordRides
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
@@ -51,6 +52,7 @@ class NonDiscordRidesCog(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @app_commands.autocomplete(day=day_autocomplete)
     @app_commands.autocomplete(location=location_autocomplete)
+    @log_cmd
     async def add_pickup(
         self, interaction: discord.Interaction, name: str, day: str, location: str
     ):
@@ -80,6 +82,7 @@ class NonDiscordRidesCog(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @app_commands.autocomplete(day=day_autocomplete)
+    @log_cmd
     async def remove_pickup(self, interaction: discord.Interaction, name: str, day: str):
         """
         Removes a non-Discord user's pickup entry.
@@ -136,6 +139,7 @@ class NonDiscordRidesCog(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @app_commands.autocomplete(day=day_autocomplete)
+    @log_cmd
     async def list_added_pickups(self, interaction: discord.Interaction, day: str):
         """
         Lists all non-Discord user pickups for a given day.

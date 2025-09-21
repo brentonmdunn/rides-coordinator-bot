@@ -4,6 +4,7 @@ from sqlalchemy import func, or_, select
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
+from app.core.logger import log_cmd
 from app.core.models import Locations as LocationsModel
 from app.utils.checks import feature_flag_enabled
 
@@ -17,6 +18,7 @@ class Whois(commands.Cog):
         description="List name and Discord username of potential matches",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
     async def whois(self, interaction: discord.Interaction, name: str) -> None:
         """Fetch and parse names from CSV."""
 
