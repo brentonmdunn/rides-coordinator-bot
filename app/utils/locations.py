@@ -4,18 +4,6 @@ from app.core.enums import PickupLocations
 from app.core.logger import logger
 from app.core.schemas import LocationQuery
 
-# LOCATIONS_MATRIX = {
-#     "Muir": [("Sixth", 1), ("Eighth", 3)],
-#     "Sixth": [("Muir", 1), ("ERC", 2)],
-#     "ERC": [("Sixth", 2), ("Seventh", 1)],
-#     "Seventh": [("ERC", 1), ("Warren", 4)],
-#     "Warren": [("Seventh", 4), ("Rita", 8), ("Innovation", 2), ("Villas of Renaissance", 10)],
-#     "Rita": [("Warren", 8), ("Innovation", 7), ("Eighth", 4)],
-#     "Innovation": [("Warren", 2), ("Rita", 7)],
-#     "Eighth": [("Rita", 4), ("Muir", 3)],
-#     "Villas of Renaissance": [("Warren", 10)],
-# }
-
 LOCATIONS_MATRIX = {
     PickupLocations.MUIR: [(PickupLocations.SIXTH, 1), (PickupLocations.EIGHTH, 2)],
     PickupLocations.SIXTH: [(PickupLocations.MUIR, 1), (PickupLocations.MARSHALL, 1)],
@@ -25,15 +13,15 @@ LOCATIONS_MATRIX = {
     PickupLocations.WARREN_EQL: [
         (PickupLocations.SEVENTH, 4),
         (PickupLocations.RITA, 8),
-        (PickupLocations.INNOVATION, 2),
+        (PickupLocations.INNOVATION, 1),
     ],
     PickupLocations.RITA: [
         (PickupLocations.WARREN_EQL, 8),
         (PickupLocations.INNOVATION, 7),
         (PickupLocations.EIGHTH, 4),
     ],
-    PickupLocations.INNOVATION: [(PickupLocations.WARREN_EQL, 2), (PickupLocations.RITA, 7)],
-    PickupLocations.EIGHTH: [(PickupLocations.RITA, 4), (PickupLocations.MUIR, 3)],
+    PickupLocations.INNOVATION: [(PickupLocations.WARREN_EQL, 1), (PickupLocations.RITA, 7)],
+    PickupLocations.EIGHTH: [(PickupLocations.RITA, 4), (PickupLocations.MUIR, 2)],
 }
 
 
