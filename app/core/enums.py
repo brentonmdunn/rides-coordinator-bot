@@ -29,6 +29,7 @@ class DaysOfWeek(StrEnum):
     SATURDAY = "Saturday"
     SUNDAY = "Sunday"
 
+
 class DaysOfWeekNumber(IntEnum):
     """Enum for consistent case for days of the week."""
 

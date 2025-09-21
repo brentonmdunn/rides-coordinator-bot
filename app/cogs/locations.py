@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Literal
 
 import discord
 from discord.ext import commands
@@ -19,7 +20,7 @@ from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.lookups import get_location, get_name_location_no_sync, sync
 from app.utils.time_helpers import get_next_date_obj
-from typing import Literal
+
 load_dotenv()
 
 LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
@@ -170,7 +171,13 @@ class Locations(commands.Cog):
         message_id = most_recent_message.id
         return message_id
 
-    def _build_embed(self, locations_people, usernames_reacted, location_found, option: Literal['Sunday pickup', 'Sunday dropoff', 'Friday'] | None = None):
+    def _build_embed(
+        self,
+        locations_people,
+        usernames_reacted,
+        location_found,
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+    ):
         """Builds a Discord embed based on grouped locations and people."""
         title = "Housing Breakdown"
         if option:
@@ -243,7 +250,6 @@ class Locations(commands.Cog):
         return embed
 
     async def _sort_locations(self, usernames_reacted):
-
         locations_people = defaultdict(list)
         location_found = set()
 
@@ -268,14 +274,27 @@ class Locations(commands.Cog):
                 location_found.add(username)
         return locations_people, location_found
 
-    async def _get_usernames_who_reacted(self, channel_id, message_id, option: Literal['Sunday pickup', 'Sunday dropoff', 'Friday'] | None = None):
+    async def _get_usernames_who_reacted(
+        self,
+        channel_id,
+        message_id,
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+    ):
         usernames_reacted = set()
         channel = self.bot.get_channel(int(channel_id))
         message = await channel.fetch_message(int(message_id))
         for reaction in message.reactions:
-            if option and option == "Sunday pickup" and (str(reaction.emoji) == "⬅️" or str(reaction.emoji) == "✳️"):
+            if (
+                option
+                and option == "Sunday pickup"
+                and (str(reaction.emoji) == "⬅️" or str(reaction.emoji) == "✳️")
+            ):
                 continue
-            if option and option == "Sunday dropoff" and (str(reaction.emoji) == "➡️" or str(reaction.emoji) == "✳️"):
+            if (
+                option
+                and option == "Sunday dropoff"
+                and (str(reaction.emoji) == "➡️" or str(reaction.emoji) == "✳️")
+            ):
                 continue
             async for user in reaction.users():
                 if user.bot:
@@ -292,7 +311,7 @@ class Locations(commands.Cog):
                 stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
                 result = await session.execute(stmt)
                 pickups = result.scalars().all()
-        
+
                 if pickups:
                     # Format the list of pickups
                     for pickup in pickups:
@@ -302,12 +321,13 @@ class Locations(commands.Cog):
 
             except Exception:
                 logger.exception("An error occurred while listing pickups")
+
     async def list_locations(
         self,
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-        option: Literal['Sunday pickup', 'Sunday dropoff', 'Friday'] | None = None
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
     ):
         """
         Gets appropriate rides announcement message and grouped people by location.
@@ -336,7 +356,6 @@ class Locations(commands.Cog):
         usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
-
         if day:
             await self._get_non_discord_pickups(day, locations_people)
 
@@ -348,9 +367,8 @@ class Locations(commands.Cog):
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-        option: Literal['Sunday pickup', 'Sunday dropoff', 'Friday'] | None = None,
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
     ):
-
         try:
             args = await self.list_locations(day, message_id, channel_id, option)
             embed = self._build_embed(*args, option=option)

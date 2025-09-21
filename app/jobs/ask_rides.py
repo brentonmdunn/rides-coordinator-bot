@@ -10,7 +10,7 @@ from discord.ext.commands import Bot
 from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
-from app.utils.format_message import ping_role_with_message, ping_channel, ping_role
+from app.utils.format_message import ping_channel, ping_role, ping_role_with_message
 from app.utils.time_helpers import get_next_date
 
 WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
@@ -45,12 +45,12 @@ def _make_sunday_msg() -> str | None:
     if formatted_date in WILDCARD_DATES:
         return None
     return (
-        f"React if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10 am)!\n\n"
+        f"React if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10 am)!\n\n" #noqa
         "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
         "🏠 = ride to church and leave back to campus/apt before lunch (arrive back ~1:00pm)\n"
         "➡️ = only need ride to church\n"
-        "⬅️ = only need ride to lunch and back to campus/apt\n" \
-        f"✳️ = something else (please ping {ping_role(RoleIds.RIDE_COORDINATOR)} in {ping_channel(ChannelIds.REFERENCES__RIDES_GENERAL)})"
+        "⬅️ = only need ride to lunch and back to campus/apt\n"
+        f"✳️ = something else (please ping {ping_role(RoleIds.RIDE_COORDINATOR)} in {ping_channel(ChannelIds.REFERENCES__RIDES_GENERAL)})" # noqa
     )
 
 
@@ -108,6 +108,7 @@ async def run_ask_rides_sun(bot: Bot) -> None:
     reactions = ["🍔", "🏠", "➡️", "⬅️", "✳️"]
     for emoji in reactions:
         await sent_message.add_reaction(emoji)
+
 
 async def run_ask_rides_sun_class(bot: Bot) -> None:
     """Runner for Sunday class rides message."""
