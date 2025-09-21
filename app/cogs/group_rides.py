@@ -235,7 +235,7 @@ def create_output(
     if len(off_campus) != 0:
         overall_summary += "- TODO: off campus\n"
         for key in off_campus:
-            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (@{person[1]})" for person in off_campus[key]])}\n"""  # noqa: E501
+            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (`@{person[1]}`)" for person in off_campus[key]])}\n"""  # noqa: E501
 
     overall_summary += "================="
     output_list.insert(0, overall_summary)
