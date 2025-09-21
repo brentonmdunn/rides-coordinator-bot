@@ -62,6 +62,23 @@ async def load_extensions() -> None:
         except Exception as e:
             logger.warning(f"❌ Failed to load extension {extension}: {e}")
 
+    if APP_ENV == "local":
+        cogs_testing_path = Path.cwd() / "app" / "cogs_testing"
+
+        eligible_files = [
+            filename
+            for filename in cogs_testing_path.iterdir()
+            if filename.is_file() and filename.suffix == ".py" and not filename.name.startswith("_")
+        ]
+
+        for filename in reversed(eligible_files):
+            extension: str = f"app.cogs_testing.{filename.stem}"
+            try:
+                await bot.load_extension(extension)
+                logger.info(f"✅ Loaded extension: {extension}")
+            except Exception as e:
+                logger.warning(f"❌ Failed to load extension {extension}: {e}")
+
 
 @bot.tree.error
 async def on_app_command_error(

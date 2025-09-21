@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Literal
 
 import discord
 from discord.ext import commands
@@ -72,13 +73,26 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
-    async def list_locations_sunday(self, interaction: discord.Interaction):
+    async def list_pickups_sunday(self, interaction: discord.Interaction):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
 
-        await self._list_locations_wrapper(interaction, day="sunday")
+        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday pickup")
+
+    @discord.app_commands.command(
+        name="list-dropoffs-sunday",
+        description="List dropoffs after Sunday service.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    async def list_dropoffs_sunday(self, interaction: discord.Interaction):
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
+        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday dropoff")
 
     @discord.app_commands.command(
         name="list-pickups-friday",
@@ -162,9 +176,18 @@ class Locations(commands.Cog):
         message_id = most_recent_message.id
         return message_id
 
-    def _build_embed(self, locations_people, usernames_reacted, location_found):
+    def _build_embed(
+        self,
+        locations_people,
+        usernames_reacted,
+        location_found,
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+    ):
         """Builds a Discord embed based on grouped locations and people."""
-        embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
+        title = "Housing Breakdown"
+        if option:
+            title += f" ({option})"
+        embed = discord.Embed(title=title, color=discord.Color.blue())
 
         groups = {
             "Scholars (no Eighth)": {
@@ -231,47 +254,7 @@ class Locations(commands.Cog):
 
         return embed
 
-    async def list_locations(
-        self,
-        day=None,
-        message_id=None,
-        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-    ):
-        """
-        Gets appropriate rides announcement message and grouped people by location.
-
-        Note: day and message_id have an XOR relationship
-
-        Args:
-            day: lowercase day of the week to get rides message for
-            message_id: message id of rides announcement message
-            channel_id: channel to look for message id
-
-        Returns:
-            tuple of:
-                - dict[str, [list[tuple[str,str]]]]: dictionary of location that contains a list of
-                  people who live there in the tuple form (name, discord.Member)
-                - set[str]: set of usernames who reacted to message
-                - set[str]: set of usernames who bot found a location for
-        """
-
-        # if channel_id not in LOCATIONS_CHANNELS_WHITELIST:
-
-        #     raise NotAllowedInChannelError(channel_id)
-
-        # Find the relevant message
-        if day:
-            message_id = await self._find_correct_message(day, channel_id)
-            if message_id is None:
-                raise NoMatchingMessageFoundError()
-
-        usernames_reacted = set()
-        channel = self.bot.get_channel(int(channel_id))
-        message = await channel.fetch_message(int(message_id))
-        for reaction in message.reactions:
-            async for user in reaction.users():
-                usernames_reacted.add(user)
-
+    async def _sort_locations(self, usernames_reacted):
         locations_people = defaultdict(list)
         location_found = set()
 
@@ -294,25 +277,92 @@ class Locations(commands.Cog):
 
                 locations_people[person.location].append((person.name, username))
                 location_found.add(username)
+        return locations_people, location_found
+
+    async def _get_usernames_who_reacted(
+        self,
+        channel_id,
+        message_id,
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+    ):
+        usernames_reacted = set()
+        channel = self.bot.get_channel(int(channel_id))
+        message = await channel.fetch_message(int(message_id))
+        for reaction in message.reactions:
+            if (
+                option
+                and option == "Sunday pickup"
+                and (str(reaction.emoji) == "⬅️" or str(reaction.emoji) == "✳️")
+            ):
+                continue
+            if (
+                option
+                and option == "Sunday dropoff"
+                and (str(reaction.emoji) == "➡️" or str(reaction.emoji) == "✳️")
+            ):
+                continue
+            async for user in reaction.users():
+                if user.bot:
+                    continue
+                usernames_reacted.add(user)
+        return usernames_reacted
+
+    async def _get_non_discord_pickups(self, day, locations_people) -> None:
+        """Modifies `location_people` in place"""
+        date_to_list = get_next_date_obj(day.title())
+        # non discord additions
+        async with AsyncSessionLocal() as session:
+            try:
+                stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
+                result = await session.execute(stmt)
+                pickups = result.scalars().all()
+
+                if pickups:
+                    # Format the list of pickups
+                    for pickup in pickups:
+                        locations_people[pickup.location].append((pickup.name, None))
+                else:
+                    pass
+
+            except Exception:
+                logger.exception("An error occurred while listing pickups")
+
+    async def list_locations(
+        self,
+        day=None,
+        message_id=None,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+    ):
+        """
+        Gets appropriate rides announcement message and grouped people by location.
+
+        Note: day and message_id have an XOR relationship
+
+        Args:
+            day: lowercase day of the week to get rides message for
+            message_id: message id of rides announcement message
+            channel_id: channel to look for message id
+
+        Returns:
+            tuple of:
+                - dict[str, [list[tuple[str,str]]]]: dictionary of location that contains a list of
+                  people who live there in the tuple form (name, discord.Member)
+                - set[str]: set of usernames who reacted to message
+                - set[str]: set of usernames who bot found a location for
+        """
+
+        # Find the relevant message
+        if day:
+            message_id = await self._find_correct_message(day, channel_id)
+            if message_id is None:
+                raise NoMatchingMessageFoundError()
+
+        usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
+        locations_people, location_found = await self._sort_locations(usernames_reacted)
 
         if day:
-            date_to_list = get_next_date_obj(day.title())
-            # non discord additions
-            async with AsyncSessionLocal() as session:
-                try:
-                    stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
-                    result = await session.execute(stmt)
-                    pickups = result.scalars().all()
-
-                    if pickups:
-                        # Format the list of pickups
-                        for pickup in pickups:
-                            locations_people[pickup.location].append((pickup.name, None))
-                    else:
-                        pass
-
-                except Exception:
-                    logger.exception("An error occurred while listing pickups")
+            await self._get_non_discord_pickups(day, locations_people)
 
         return locations_people, usernames_reacted, location_found
 
@@ -322,20 +372,11 @@ class Locations(commands.Cog):
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
     ):
-        if interaction.channel_id not in LOCATIONS_CHANNELS_WHITELIST:
-            await interaction.response.send_message(
-                "Command cannot be used in this channel.",
-                ephemeral=True,
-            )
-            logger.info(
-                f"pickup-location not allowed in #{interaction.channel} by {interaction.user}",
-            )
-            return
-
         try:
-            args = await self.list_locations(day, message_id, channel_id)
-            embed = self._build_embed(*args)
+            args = await self.list_locations(day, message_id, channel_id, option)
+            embed = self._build_embed(*args, option=option)
             await interaction.response.send_message(embed=embed)
         except NotAllowedInChannelError:
             await interaction.response.send_message("Command not allowed in channel.")
