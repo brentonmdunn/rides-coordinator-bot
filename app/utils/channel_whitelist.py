@@ -17,7 +17,7 @@ LOCATIONS_CHANNELS_WHITELIST = BOT_TESTING_CHANNELS | {
 }
 
 
-async def is_allowed_locations(
+async def cmd_is_allowed(
     interaction: discord.Interaction,
     channel_id: int,
     whitelisted_channels: set[int] = BOT_TESTING_CHANNELS,

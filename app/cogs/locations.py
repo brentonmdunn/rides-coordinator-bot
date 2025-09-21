@@ -14,7 +14,7 @@ from app.core.enums import (
 )
 from app.core.logger import logger
 from app.core.models import NonDiscordRides
-from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, is_allowed_locations
+from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.lookups import get_location, get_name_location_no_sync, sync
@@ -50,7 +50,7 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def pickup_location(self, interaction: discord.Interaction, name: str):
         """Finds and sends a pickup location for a given person."""
-        if not await is_allowed_locations(
+        if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
@@ -70,7 +70,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_sunday(self, interaction: discord.Interaction):
-        if not await is_allowed_locations(
+        if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
@@ -83,7 +83,7 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def list_locations_friday(self, interaction: discord.Interaction):
-        if not await is_allowed_locations(
+        if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
@@ -105,7 +105,7 @@ class Locations(commands.Cog):
         message_id: str,
         channel_id: str | None = None,
     ):
-        if not await is_allowed_locations(
+        if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return

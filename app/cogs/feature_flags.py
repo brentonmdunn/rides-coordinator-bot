@@ -6,7 +6,7 @@ from sqlalchemy import case, select, update
 from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
 from app.core.models import FeatureFlags as FeatureFlagsModel
-from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, is_allowed_locations
+from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 
 
 class FeatureFlagsCog(commands.Cog):
@@ -37,7 +37,7 @@ class FeatureFlagsCog(commands.Cog):
         self, interaction: discord.Interaction, feature_name: str, enabled: bool
     ) -> None:
         """Modifies a feature flag's 'enabled' state in the database."""
-        if not await is_allowed_locations(
+        if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
@@ -92,7 +92,7 @@ class FeatureFlagsCog(commands.Cog):
     async def list_feature_flags(self, interaction: discord.Interaction) -> None:
         """Fetches all feature flags and displays their status in an embed."""
 
-        if not await is_allowed_locations(
+        if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
