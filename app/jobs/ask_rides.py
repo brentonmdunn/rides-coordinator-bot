@@ -10,7 +10,7 @@ from discord.ext.commands import Bot
 from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
-from app.utils.format_message import ping_role_with_message
+from app.utils.format_message import ping_role_with_message, ping_channel, ping_role
 from app.utils.time_helpers import get_next_date
 
 WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
@@ -44,7 +44,14 @@ def _make_sunday_msg() -> str | None:
     formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
     if formatted_date in WILDCARD_DATES:
         return None
-    return f"React if you need a ride for Sunday {formatted_date} (leave between 10 and 10:10 am)!"
+    return (
+        f"React if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10 am)!\n\n"
+        "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
+        "🏠 = ride to church and leave back to campus/apt before lunch (arrive back ~1:00pm)\n"
+        "➡️ = only need ride to church\n"
+        "⬅️ = only need ride to lunch and back to campus/apt\n" \
+        f"✳️ = something else (please ping {ping_role(RoleIds.RIDE_COORDINATOR)} in {ping_channel(ChannelIds.REFERENCES__RIDES_GENERAL)})"
+    )
 
 
 def _make_sunday_msg_class() -> str | None:
@@ -63,7 +70,7 @@ def _format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
-async def _ask_rides_template(bot: Bot, make_message: callable) -> None:
+async def _ask_rides_template(bot: Bot, make_message: callable) -> discord.Message | None:
     """
     Helper method for ask rides jobs.
     """
@@ -76,7 +83,7 @@ async def _ask_rides_template(bot: Bot, make_message: callable) -> None:
     message: str | None = make_message()
     if message is None:
         return
-    await channel.send(
+    return await channel.send(
         _format_message(message),
         allowed_mentions=discord.AllowedMentions(roles=True),
     )
@@ -97,8 +104,10 @@ async def run_ask_rides_fri(bot: Bot) -> None:
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
 async def run_ask_rides_sun(bot: Bot) -> None:
     """Runner for Sunday service rides message."""
-    await _ask_rides_template(bot, _make_sunday_msg)
-
+    sent_message = await _ask_rides_template(bot, _make_sunday_msg)
+    reactions = ["🍔", "🏠", "➡️", "⬅️", "✳️"]
+    for emoji in reactions:
+        await sent_message.add_reaction(emoji)
 
 async def run_ask_rides_sun_class(bot: Bot) -> None:
     """Runner for Sunday class rides message."""
