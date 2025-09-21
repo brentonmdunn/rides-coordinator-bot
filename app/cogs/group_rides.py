@@ -18,7 +18,7 @@ from app.core.schemas import (
     LocationQuery,
     Passenger,
 )
-from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, is_allowed_locations
+from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
@@ -235,7 +235,7 @@ def create_output(
     if len(off_campus) != 0:
         overall_summary += "- TODO: off campus\n"
         for key in off_campus:
-            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (@{person[1]})" for person in off_campus[key]])}\n"""  # noqa: E501
+            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (`@{person[1]}`)" for person in off_campus[key]])}\n"""  # noqa: E501
 
     overall_summary += "================="
     output_list.insert(0, overall_summary)
@@ -343,7 +343,7 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         message_id: str | None = None,
     ):
-        if not await is_allowed_locations(
+        if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return

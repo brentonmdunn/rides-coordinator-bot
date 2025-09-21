@@ -6,7 +6,7 @@ from sqlalchemy import case, select, update
 from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
 from app.core.models import FeatureFlags as FeatureFlagsModel
-from app.utils.checks import is_admin
+from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 
 
 class FeatureFlagsCog(commands.Cog):
@@ -33,11 +33,15 @@ class FeatureFlagsCog(commands.Cog):
         description="Enable or disable a feature flag.",
     )
     @app_commands.autocomplete(feature_name=feature_name_autocomplete)
-    @is_admin()
     async def modify_feature_flag(
         self, interaction: discord.Interaction, feature_name: str, enabled: bool
     ) -> None:
         """Modifies a feature flag's 'enabled' state in the database."""
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
         # Validate that the provided feature_name is a valid enum member
         try:
             FeatureFlagNames(feature_name)
@@ -85,9 +89,14 @@ class FeatureFlagsCog(commands.Cog):
         name="list-feature-flags",
         description="Lists all feature flags and their current status.",
     )
-    @is_admin()
     async def list_feature_flags(self, interaction: discord.Interaction) -> None:
         """Fetches all feature flags and displays their status in an embed."""
+
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
         async with AsyncSessionLocal() as session:
             # Custom sort: 'bot' flag first, then the rest alphabetically.
             order_logic = case(
