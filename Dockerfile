@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Install uv globally and make it available in the PATH for all users
 # The new approach installs uv into a shared system directory
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --path /usr/local/bin
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
 
 # Copy only the dependency files first to leverage Docker's layer caching
 COPY pyproject.toml uv.lock ./
