@@ -96,7 +96,7 @@ class FeatureFlagsCog(commands.Cog):
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
-        
+
         async with AsyncSessionLocal() as session:
             # Custom sort: 'bot' flag first, then the rest alphabetically.
             order_logic = case(
