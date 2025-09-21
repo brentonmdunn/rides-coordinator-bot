@@ -3,7 +3,7 @@
 Helper functions to format messages.
 """
 
-from app.core.enums import RoleIds
+from app.core.enums import RoleIds, ChannelIds
 
 
 def ping_role(role_id: RoleIds) -> str:
@@ -14,3 +14,8 @@ def ping_role(role_id: RoleIds) -> str:
 def ping_role_with_message(role_id: RoleIds, message: str) -> str:
     """Adds @role to message."""
     return f"<@&{role_id}> {message}"
+
+
+def ping_channel(channel_id: ChannelIds) -> str:
+    """Returns formatted message that pings a channel."""
+    return f"<#{channel_id}> "
