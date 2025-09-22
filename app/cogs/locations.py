@@ -28,6 +28,10 @@ LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 # List of scholars housing locations
 SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh", "new marshall"]
 
+RideOptionsSchema = Literal[
+    "Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"
+]
+
 
 class Locations(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -82,17 +86,32 @@ class Locations(commands.Cog):
         await self._list_locations_wrapper(interaction, day="sunday", option="Sunday pickup")
 
     @discord.app_commands.command(
-        name="list-dropoffs-sunday",
-        description="List dropoffs after Sunday service.",
+        name="list-dropoffs-sunday-back",
+        description="List dropoffs after Sunday service no lunch.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
-    async def list_dropoffs_sunday(self, interaction: discord.Interaction):
+    @log_cmd
+    async def list_dropoffs_sunday_back(self, interaction: discord.Interaction):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
 
-        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday dropoff")
+        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday dropoff back")
+
+    @discord.app_commands.command(
+        name="list-dropoffs-sunday-lunch",
+        description="List dropoffs after Sunday service lunch.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
+    async def list_dropoffs_sunday_lunch(self, interaction: discord.Interaction):
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
+        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday dropoff lunch")
 
     @discord.app_commands.command(
         name="list-pickups-friday",
@@ -181,7 +200,7 @@ class Locations(commands.Cog):
         locations_people,
         usernames_reacted,
         location_found,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: RideOptionsSchema | None = None,
     ):
         """Builds a Discord embed based on grouped locations and people."""
         title = "Housing Breakdown"
@@ -283,22 +302,24 @@ class Locations(commands.Cog):
         self,
         channel_id,
         message_id,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: RideOptionsSchema | None = None,
     ):
         usernames_reacted = set()
         channel = self.bot.get_channel(int(channel_id))
         message = await channel.fetch_message(int(message_id))
         for reaction in message.reactions:
+            if option and option == "Sunday pickup" and str(reaction.emoji) == "✳️":
+                continue
             if (
                 option
-                and option == "Sunday pickup"
-                and (str(reaction.emoji) == "⬅️" or str(reaction.emoji) == "✳️")
+                and option == "Sunday dropoff back"
+                and (str(reaction.emoji) == "🍔" or str(reaction.emoji) == "✳️")
             ):
                 continue
             if (
                 option
-                and option == "Sunday dropoff"
-                and (str(reaction.emoji) == "➡️" or str(reaction.emoji) == "✳️")
+                and option == "Sunday dropoff lunch"
+                and (str(reaction.emoji) == "🏠" or str(reaction.emoji) == "✳️")
             ):
                 continue
             async for user in reaction.users():
@@ -332,7 +353,8 @@ class Locations(commands.Cog):
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: Literal["Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"]
+        | None = None,
     ):
         """
         Gets appropriate rides announcement message and grouped people by location.
@@ -372,7 +394,7 @@ class Locations(commands.Cog):
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: RideOptionsSchema | None = None,
     ):
         try:
             args = await self.list_locations(day, message_id, channel_id, option)
