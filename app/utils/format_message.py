@@ -19,3 +19,7 @@ def ping_role_with_message(role_id: RoleIds, message: str) -> str:
 def ping_channel(channel_id: ChannelIds) -> str:
     """Returns formatted message that pings a channel."""
     return f"<#{channel_id}> "
+
+
+def ping_user(user_id):
+    return f"<@{user_id}> "

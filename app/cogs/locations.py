@@ -28,6 +28,10 @@ LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 # List of scholars housing locations
 SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh", "new marshall"]
 
+RideOptionsSchema = Literal[
+    "Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"
+]
+
 
 class Locations(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -82,17 +86,32 @@ class Locations(commands.Cog):
         await self._list_locations_wrapper(interaction, day="sunday", option="Sunday pickup")
 
     @discord.app_commands.command(
-        name="list-dropoffs-sunday",
-        description="List dropoffs after Sunday service.",
+        name="list-dropoffs-sunday-back",
+        description="List dropoffs after Sunday service no lunch.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
-    async def list_dropoffs_sunday(self, interaction: discord.Interaction):
+    @log_cmd
+    async def list_dropoffs_sunday_back(self, interaction: discord.Interaction):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
 
-        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday dropoff")
+        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday dropoff back")
+
+    @discord.app_commands.command(
+        name="list-dropoffs-sunday-lunch",
+        description="List dropoffs after Sunday service lunch.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
+    async def list_dropoffs_sunday_lunch(self, interaction: discord.Interaction):
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+
+        await self._list_locations_wrapper(interaction, day="sunday", option="Sunday dropoff lunch")
 
     @discord.app_commands.command(
         name="list-pickups-friday",
@@ -181,13 +200,16 @@ class Locations(commands.Cog):
         locations_people,
         usernames_reacted,
         location_found,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: RideOptionsSchema | None = None,
+        custom_title: str | None = None,
     ):
         """Builds a Discord embed based on grouped locations and people."""
         title = "Housing Breakdown"
         if option:
             title += f" ({option})"
-        embed = discord.Embed(title=title, color=discord.Color.blue())
+        embed = discord.Embed(
+            title=title if custom_title is None else custom_title, color=discord.Color.blue()
+        )
 
         groups = {
             "Scholars (no Eighth)": {
@@ -283,22 +305,24 @@ class Locations(commands.Cog):
         self,
         channel_id,
         message_id,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: RideOptionsSchema | None = None,
     ):
         usernames_reacted = set()
         channel = self.bot.get_channel(int(channel_id))
         message = await channel.fetch_message(int(message_id))
         for reaction in message.reactions:
+            if option and option == "Sunday pickup" and str(reaction.emoji) == "✳️":
+                continue
             if (
                 option
-                and option == "Sunday pickup"
-                and (str(reaction.emoji) == "⬅️" or str(reaction.emoji) == "✳️")
+                and option == "Sunday dropoff back"
+                and (str(reaction.emoji) == "🍔" or str(reaction.emoji) == "✳️")
             ):
                 continue
             if (
                 option
-                and option == "Sunday dropoff"
-                and (str(reaction.emoji) == "➡️" or str(reaction.emoji) == "✳️")
+                and option == "Sunday dropoff lunch"
+                and (str(reaction.emoji) == "🏠" or str(reaction.emoji) == "✳️")
             ):
                 continue
             async for user in reaction.users():
@@ -307,8 +331,7 @@ class Locations(commands.Cog):
                 usernames_reacted.add(user)
         return usernames_reacted
 
-    async def _get_non_discord_pickups(self, day, locations_people) -> None:
-        """Modifies `location_people` in place"""
+    async def _get_non_discord_pickups(self, day) -> list[NonDiscordRides]:
         date_to_list = get_next_date_obj(day.title())
         # non discord additions
         async with AsyncSessionLocal() as session:
@@ -318,21 +341,20 @@ class Locations(commands.Cog):
                 pickups = result.scalars().all()
 
                 if pickups:
-                    # Format the list of pickups
-                    for pickup in pickups:
-                        locations_people[pickup.location].append((pickup.name, None))
+                    return pickups
                 else:
                     pass
 
             except Exception:
                 logger.exception("An error occurred while listing pickups")
+        return []
 
     async def list_locations(
         self,
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: RideOptionsSchema | None = None,
     ):
         """
         Gets appropriate rides announcement message and grouped people by location.
@@ -361,8 +383,10 @@ class Locations(commands.Cog):
         usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
-        if day:
-            await self._get_non_discord_pickups(day, locations_people)
+        if day and "dropoff" not in option.lower():
+            pickups = await self._get_non_discord_pickups(day)
+            for pickup in pickups:
+                locations_people[pickup.location].append((pickup.name, None))
 
         return locations_people, usernames_reacted, location_found
 
@@ -372,11 +396,33 @@ class Locations(commands.Cog):
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-        option: Literal["Sunday pickup", "Sunday dropoff", "Friday"] | None = None,
+        option: RideOptionsSchema | None = None,
     ):
         try:
             args = await self.list_locations(day, message_id, channel_id, option)
             embed = self._build_embed(*args, option=option)
+            if day and option and "dropoff" in option.lower():
+                non_discord = await self._get_non_discord_pickups(day)
+                if non_discord:
+                    # do smth
+                    non_discord_locations_people = defaultdict(list)
+
+                    for pickup in non_discord:
+                        non_discord_locations_people[pickup.location].append((pickup.name, None))
+
+                    await interaction.response.send_message(
+                        embeds=[
+                            embed,
+                            self._build_embed(
+                                non_discord_locations_people,
+                                set(),
+                                set(),
+                                custom_title="Non-Discord Dropoffs (unknown lunch)",
+                            ),
+                        ]
+                    )
+                    return
+
             await interaction.response.send_message(embed=embed)
         except NotAllowedInChannelError:
             await interaction.response.send_message("Command not allowed in channel.")

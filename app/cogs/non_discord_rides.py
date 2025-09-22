@@ -10,7 +10,7 @@ from app.core.enums import (
     DaysOfWeek,
     FeatureFlagNames,
 )
-from app.core.logger import log_cmd
+from app.core.logger import log_cmd, logger
 from app.core.models import NonDiscordRides
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
@@ -117,18 +117,18 @@ class NonDiscordRidesCog(commands.Cog):
                         ephemeral=True,
                     )
 
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 # Handle any potential database errors gracefully
                 await session.rollback()
-                print(f"Database error: {e}")
+                logger.exception("Database error")
                 await interaction.response.send_message(
                     "An error occurred while trying to remove the pickup entry. "
                     "Please try again later.",
                     ephemeral=True,
                 )
-            except Exception as e:
+            except Exception:
                 # Handle other potential errors
-                print(f"An unexpected error occurred: {e}")
+                logger.exception("An unexpected error occurred")
                 await interaction.response.send_message(
                     "An unexpected error occurred. Please try again later.", ephemeral=True
                 )
@@ -170,8 +170,8 @@ class NonDiscordRidesCog(commands.Cog):
                         f"No pickups found for **{day}**.", ephemeral=True
                     )
 
-            except Exception as e:
-                print(f"An error occurred while listing pickups: {e}")
+            except Exception:
+                logger.exception("An error occurred while listing pickups:")
                 await interaction.response.send_message(
                     "An error occurred while trying to list the pickups. Please try again later.",
                     ephemeral=True,

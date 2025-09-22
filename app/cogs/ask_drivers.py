@@ -63,9 +63,9 @@ class AskDrivers(commands.Cog):
         sent_message = await interaction.original_response()
 
         if day == DaysOfWeek.SUNDAY:
-            reactions = ["🍔", "🏠", "🔄", "❌", "➡️", "⬅️", "💩"]
+            reactions = ["🍔", "🏠", "🔄", "❌", "➡️", "⬅️", "✳️"]
         else:  # Friday
-            reactions = ["👍", "❌", "➡️", "⬅️", "💩"]
+            reactions = ["👍", "❌", "➡️", "⬅️", "✳️"]
         for emoji in reactions:
             await sent_message.add_reaction(emoji)
 
