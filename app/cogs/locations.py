@@ -417,7 +417,7 @@ class Locations(commands.Cog):
                                 non_discord_locations_people,
                                 set(),
                                 set(),
-                                custom_title="Non-Discord Dropoffs (unkonwn lunch)",
+                                custom_title="Non-Discord Dropoffs (unknown lunch)",
                             ),
                         ]
                     )
