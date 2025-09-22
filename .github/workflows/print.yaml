@@ -1,0 +1,33 @@
+name: Lint for Print Statements
+
+
+on:
+  pull_request:
+    branches:
+      - main 
+      - staging
+
+jobs:
+  check-for-prints:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan for print() statements
+        # We use grep to search for 'print(' recursively (-r) inside the 'app/' directory.
+        # We only include files ending in .py (--include=\*.py).
+        # The command is structured to provide clear success or failure messages.
+        #
+        # How it works:
+        # 1. `grep ...`: Searches for the pattern. It exits with 0 (success) if found, and 1 (failure) if not found.
+        # 2. `&& (...)`: This part only runs if grep SUCCEEDS (finds a print statement). It prints an error and exits with 1, failing the step.
+        # 3. `|| echo ...`: This part only runs if grep FAILS (finds no print statements). It prints a success message, and the step succeeds.
+        run: |
+          if grep --exclude-dir=scripts --include=\*.py -r "print(" app/; then
+            echo "Error: Found print() statements. Please use the logging module instead."
+            exit 1
+          else
+            echo "No print() statements found. Good job!"
+          fi
