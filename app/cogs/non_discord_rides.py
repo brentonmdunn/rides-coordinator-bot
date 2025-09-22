@@ -170,7 +170,7 @@ class NonDiscordRidesCog(commands.Cog):
                         f"No pickups found for **{day}**.", ephemeral=True
                     )
 
-            except Exception as e:
+            except Exception:
                 logger.exception("An error occurred while listing pickups:")
                 await interaction.response.send_message(
                     "An error occurred while trying to list the pickups. Please try again later.",
