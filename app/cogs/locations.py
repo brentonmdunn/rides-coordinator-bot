@@ -376,8 +376,7 @@ class Locations(commands.Cog):
 
         # Find the relevant message
         if day:
-            # message_id = await self._find_correct_message(day, channel_id)
-            message_id = 1418733667949215956
+            message_id = await self._find_correct_message(day, channel_id)
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
