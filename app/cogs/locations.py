@@ -201,12 +201,15 @@ class Locations(commands.Cog):
         usernames_reacted,
         location_found,
         option: RideOptionsSchema | None = None,
+        custom_title: str | None = None,
     ):
         """Builds a Discord embed based on grouped locations and people."""
         title = "Housing Breakdown"
         if option:
             title += f" ({option})"
-        embed = discord.Embed(title=title, color=discord.Color.blue())
+        embed = discord.Embed(
+            title=title if custom_title is None else custom_title, color=discord.Color.blue()
+        )
 
         groups = {
             "Scholars (no Eighth)": {
@@ -328,8 +331,7 @@ class Locations(commands.Cog):
                 usernames_reacted.add(user)
         return usernames_reacted
 
-    async def _get_non_discord_pickups(self, day, locations_people) -> None:
-        """Modifies `location_people` in place"""
+    async def _get_non_discord_pickups(self, day) -> list[NonDiscordRides]:
         date_to_list = get_next_date_obj(day.title())
         # non discord additions
         async with AsyncSessionLocal() as session:
@@ -339,22 +341,20 @@ class Locations(commands.Cog):
                 pickups = result.scalars().all()
 
                 if pickups:
-                    # Format the list of pickups
-                    for pickup in pickups:
-                        locations_people[pickup.location].append((pickup.name, None))
+                    return pickups
                 else:
                     pass
 
             except Exception:
                 logger.exception("An error occurred while listing pickups")
+        return []
 
     async def list_locations(
         self,
         day=None,
         message_id=None,
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-        option: Literal["Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"]
-        | None = None,
+        option: RideOptionsSchema | None = None,
     ):
         """
         Gets appropriate rides announcement message and grouped people by location.
@@ -376,15 +376,18 @@ class Locations(commands.Cog):
 
         # Find the relevant message
         if day:
-            message_id = await self._find_correct_message(day, channel_id)
+            # message_id = await self._find_correct_message(day, channel_id)
+            message_id = 1418733667949215956
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
         usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
-        if day:
-            await self._get_non_discord_pickups(day, locations_people)
+        if day and "dropoff" not in option.lower():
+            pickups = await self._get_non_discord_pickups(day)
+            for pickup in pickups:
+                locations_people[pickup.location].append((pickup.name, None))
 
         return locations_people, usernames_reacted, location_found
 
@@ -399,6 +402,28 @@ class Locations(commands.Cog):
         try:
             args = await self.list_locations(day, message_id, channel_id, option)
             embed = self._build_embed(*args, option=option)
+            if day and option and "dropoff" in option.lower():
+                non_discord = await self._get_non_discord_pickups(day)
+                if non_discord:
+                    # do smth
+                    non_discord_locations_people = defaultdict(list)
+
+                    for pickup in non_discord:
+                        non_discord_locations_people[pickup.location].append((pickup.name, None))
+
+                    await interaction.response.send_message(
+                        embeds=[
+                            embed,
+                            self._build_embed(
+                                non_discord_locations_people,
+                                set(),
+                                set(),
+                                custom_title="Non-Discord Dropoffs (unkonwn lunch)",
+                            ),
+                        ]
+                    )
+                    return
+
             await interaction.response.send_message(embed=embed)
         except NotAllowedInChannelError:
             await interaction.response.send_message("Command not allowed in channel.")
