@@ -54,7 +54,8 @@ async def load_extensions() -> None:
 
     # In order to ensure location is loaded before reactions since location
     # is a dependency (or at least I think it is necessary)
-    for filename in reversed(eligible_files):
+    eligible_files.sort()
+    for filename in eligible_files:
         extension: str = f"app.cogs.{filename.stem}"
         try:
             await bot.load_extension(extension)
@@ -130,7 +131,7 @@ async def main() -> None:
         await init_db()
         async with AsyncSessionLocal() as session:
             await seed_feature_flags(session)
-        await disable_features_for_local_env()
+        # await disable_features_for_local_env()
         await load_extensions()
         await bot.start(TOKEN)
 

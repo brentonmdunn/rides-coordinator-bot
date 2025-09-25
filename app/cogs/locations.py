@@ -174,7 +174,7 @@ class Locations(commands.Cog):
             day
 
         Returns:
-            channel id (str) if found, otherwise None
+            message id (str) if found, otherwise None
         """
         last_sunday = self._get_last_sunday()
         channel = self.bot.get_channel(channel_id)
