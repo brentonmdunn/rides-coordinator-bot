@@ -7,8 +7,8 @@ from app.core.schemas import LocationQuery
 LOCATIONS_MATRIX = {
     PickupLocations.MUIR: [(PickupLocations.SIXTH, 1), (PickupLocations.EIGHTH, 2)],
     PickupLocations.SIXTH: [(PickupLocations.MUIR, 1), (PickupLocations.MARSHALL, 1)],
-    PickupLocations.MARSHALL: [(PickupLocations.SIXTH, 1), (PickupLocations.ERC, 0)],
-    PickupLocations.ERC: [(PickupLocations.MARSHALL, 0), (PickupLocations.SEVENTH, 1)],
+    PickupLocations.MARSHALL: [(PickupLocations.SIXTH, 1), (PickupLocations.ERC, 1)],
+    PickupLocations.ERC: [(PickupLocations.MARSHALL, 1), (PickupLocations.SEVENTH, 1)],
     PickupLocations.SEVENTH: [(PickupLocations.ERC, 1), (PickupLocations.WARREN_EQL, 4)],
     PickupLocations.WARREN_EQL: [
         (PickupLocations.SEVENTH, 4),

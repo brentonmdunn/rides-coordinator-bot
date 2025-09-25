@@ -51,7 +51,7 @@ class Reactions(commands.Cog):
 
         await self._late_rides_react(user, payload, message, channel, ReactionAction.ADD)
         await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
-        await self._new_rides_helper(user, guild)
+        await self._new_rides_helper(user, guild, payload.message_id)
         await self._event_thread_add(payload, guild, user)
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
@@ -207,15 +207,22 @@ class Reactions(commands.Cog):
             await log_channel.send(_format_reaction_log(user, payload, message, channel, action))
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
-    async def _new_rides_helper(self, user, guild):
+    async def _new_rides_helper(self, user, guild, message_id):
         if not (
-            (self.locations_cog and (await self.locations_cog._find_correct_message("friday")))
+            (
+                self.locations_cog
+                and (
+                    message_id == await self.locations_cog._find_correct_message("friday")
+                    or message_id == await self.locations_cog._find_correct_message("sunday")
+                )
+            )
             and user is not None
             and not await get_location(user.name, discord_only=True)
         ):
             return
         channel_name = f"{user.name.lower()}"
-        category = discord.utils.get(guild.categories, id=CategoryIds.NEW_RIDES)
+        category = discord.utils.get(guild.categories, id=int(CategoryIds.NEW_RIDES))
+        logger.info(f"{category=}")
 
         if not category:
             logger.info(f"Category with ID {CategoryIds.NEW_RIDES} not found.")
@@ -260,13 +267,14 @@ class Reactions(commands.Cog):
             overwrites=overwrites,
             reason=f"{user.name} reacted for rides.",
         )
-
+        logger.info(f"{new_channel=}")
         await new_channel.send(
             f"Hi {user.mention}! Thanks for reacting in for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "  # noqa
             "We don't yet know where to pick you up. "
             "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "  # noqa
             "If you live **off campus**, please share your apartment complex or address. "
             "One of our ride coordinators will check in with you shortly!",
+            allowed_mentions=discord.AllowedMentions(users=True),
         )
 
 

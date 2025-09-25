@@ -174,7 +174,7 @@ class Locations(commands.Cog):
             day
 
         Returns:
-            channel id (str) if found, otherwise None
+            message id (str) if found, otherwise None
         """
         last_sunday = self._get_last_sunday()
         channel = self.bot.get_channel(channel_id)
@@ -383,7 +383,7 @@ class Locations(commands.Cog):
         usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
-        if day and "dropoff" not in option.lower():
+        if day and (option is None or "dropoff" not in option.lower()):
             pickups = await self._get_non_discord_pickups(day)
             for pickup in pickups:
                 locations_people[pickup.location].append((pickup.name, None))
