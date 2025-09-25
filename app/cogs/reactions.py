@@ -215,7 +215,8 @@ class Reactions(commands.Cog):
         ):
             return
         channel_name = f"{user.name.lower()}"
-        category = discord.utils.get(guild.categories, id=CategoryIds.NEW_RIDES)
+        category = discord.utils.get(guild.categories, id=int(CategoryIds.NEW_RIDES))
+        logger.info(f"{category=}")
 
         if not category:
             logger.info(f"Category with ID {CategoryIds.NEW_RIDES} not found.")
@@ -260,13 +261,14 @@ class Reactions(commands.Cog):
             overwrites=overwrites,
             reason=f"{user.name} reacted for rides.",
         )
-
+        logger.info(f"{new_channel=}")
         await new_channel.send(
             f"Hi {user.mention}! Thanks for reacting in for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "  # noqa
             "We don't yet know where to pick you up. "
             "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "  # noqa
             "If you live **off campus**, please share your apartment complex or address. "
             "One of our ride coordinators will check in with you shortly!",
+            allowed_mentions=discord.AllowedMentions(users=True),
         )
 
 
