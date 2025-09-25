@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     try:
         print("🚀 Running main.py (will terminate in 10s)...")
-        process = subprocess.Popen(["python", str(MAIN_PATH)])
+        process = subprocess.Popen(["uv", "run", "python", str(MAIN_PATH)])
 
         time.sleep(10)
 
