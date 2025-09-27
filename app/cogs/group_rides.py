@@ -35,7 +35,7 @@ LLM_MODEL = "gemini-2.5-flash"
 
 map_links = {
     PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
-    PickupLocations.SEVENTH: "https://maps.app.goo.gl/qcuCR5q6Tx2EEn9c9",
+    PickupLocations.SEVENTH: "https://maps.app.goo.gl/1zKQiGKH6ecq1qzS8",
     PickupLocations.MARSHALL: "https://maps.app.goo.gl/1NT4Q65udUvuNX7aA",
     PickupLocations.ERC: "https://maps.app.goo.gl/dqgzKGS8DsUgLkw17",
     PickupLocations.MUIR: "https://maps.app.goo.gl/qxABq7sEEQsz6Pth9",
