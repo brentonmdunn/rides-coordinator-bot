@@ -35,7 +35,7 @@ LLM_MODEL = "gemini-2.5-flash"
 
 map_links = {
     PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
-    PickupLocations.SEVENTH: "https://maps.app.goo.gl/qcuCR5q6Tx2EEn9c9",
+    PickupLocations.SEVENTH: "https://maps.app.goo.gl/1zKQiGKH6ecq1qzS8",
     PickupLocations.MARSHALL: "https://maps.app.goo.gl/1NT4Q65udUvuNX7aA",
     PickupLocations.ERC: "https://maps.app.goo.gl/dqgzKGS8DsUgLkw17",
     PickupLocations.MUIR: "https://maps.app.goo.gl/qxABq7sEEQsz6Pth9",
@@ -263,7 +263,7 @@ def do_sunday_rides() -> bool:
 class GroupRides(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL)
+        self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
 
     # Helper function to invoke the LLM with a fixed retry wait
     @tenacity.retry(
@@ -421,16 +421,19 @@ class GroupRides(commands.Cog):
             def get_pickup_location(loc):
                 return living_to_pickup[get_living_location(loc)]
 
-            passengers_by_location[get_pickup_location(living_location)] = [
+            pickup_key = get_pickup_location(living_location)
+
+            # Get the existing list or create a new one, then extend it
+            passengers_by_location.setdefault(pickup_key, []).extend(
                 Passenger(
                     identity=Identity(
                         name=person[0], username=person[1].name if person[1] else None
                     ),
                     living_location=get_living_location(living_location),
-                    pickup_location=get_pickup_location(living_location),
+                    pickup_location=pickup_key,  # Reuse the calculated key
                 )
                 for person in locations_people[living_location]
-            ]
+            )
 
         if not is_enough_capacity(parse_numbers(driver_capacity), passengers_by_location):
             await interaction.followup.send(
