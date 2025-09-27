@@ -263,7 +263,7 @@ def do_sunday_rides() -> bool:
 class GroupRides(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL)
+        self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
 
     # Helper function to invoke the LLM with a fixed retry wait
     @tenacity.retry(
