@@ -421,16 +421,19 @@ class GroupRides(commands.Cog):
             def get_pickup_location(loc):
                 return living_to_pickup[get_living_location(loc)]
 
-            passengers_by_location[get_pickup_location(living_location)] = [
+            pickup_key = get_pickup_location(living_location)
+
+            # Get the existing list or create a new one, then extend it
+            passengers_by_location.setdefault(pickup_key, []).extend(
                 Passenger(
                     identity=Identity(
                         name=person[0], username=person[1].name if person[1] else None
                     ),
                     living_location=get_living_location(living_location),
-                    pickup_location=get_pickup_location(living_location),
+                    pickup_location=pickup_key,  # Reuse the calculated key
                 )
                 for person in locations_people[living_location]
-            ]
+            )
 
         if not is_enough_capacity(parse_numbers(driver_capacity), passengers_by_location):
             await interaction.followup.send(
