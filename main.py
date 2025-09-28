@@ -45,6 +45,7 @@ async def on_ready() -> None:
 
 async def load_extensions() -> None:
     cogs_path = Path.cwd() / "app" / "cogs"
+    priority_filename = "job_scheduler.py"
 
     eligible_files = [
         filename
@@ -52,9 +53,10 @@ async def load_extensions() -> None:
         if filename.is_file() and filename.suffix == ".py" and not filename.name.startswith("_")
     ]
 
-    # In order to ensure location is loaded before reactions since location
-    # is a dependency (or at least I think it is necessary)
-    eligible_files.sort()
+    # Sort files, ensuring job_scheduler.py is always first,
+    # and the rest are sorted alphabetically.
+    eligible_files.sort(key=lambda f: (f.name != priority_filename, f.name))
+
     for filename in eligible_files:
         extension: str = f"app.cogs.{filename.stem}"
         try:

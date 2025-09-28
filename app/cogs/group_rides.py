@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from datetime import datetime, time, timedelta
 
 import discord
@@ -275,15 +276,21 @@ class GroupRides(commands.Cog):
     def _invoke_llm(self, pickups_str, drivers_str, locations_matrix):
         """A blocking helper function to invoke the LLM with a retry policy."""
 
-        logger.info(
-            f"prompt={
-                GROUP_RIDES_PROMPT.format(
-                    pickups_str=pickups_str,
-                    drivers_str=drivers_str,
-                    locations_matrix=locations_matrix,
-                )
-            }"
-        )
+        if os.getenv("APP_ENV", "local") == "local":
+            logger.debug(
+                f"prompt={
+                    GROUP_RIDES_PROMPT.format(
+                        pickups_str=pickups_str,
+                        drivers_str=drivers_str,
+                        locations_matrix=locations_matrix,
+                    )
+                }"
+            )
+        else:
+            logger.info(f"{pickups_str=}")
+            logger.info(f"{drivers_str=}")
+            logger.info(f"{locations_matrix=}")
+
         ai_response = self.llm.invoke(
             GROUP_RIDES_PROMPT.format(
                 pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
@@ -294,7 +301,7 @@ class GroupRides(commands.Cog):
         global prev_response
         prev_response = ai_response
 
-        logger.info(f"Raw LLM output={ai_response}")
+        logger.debug(f"Raw LLM output={ai_response}")
 
         def preprocess_llm_result(ai_response):
             if "json" in ai_response.content:
