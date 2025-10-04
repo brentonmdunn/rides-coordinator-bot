@@ -311,7 +311,7 @@ class Locations(commands.Cog):
         channel = self.bot.get_channel(int(channel_id))
         message = await channel.fetch_message(int(message_id))
         for reaction in message.reactions:
-            if option and option == "Sunday pickup" and str(reaction.emoji) == "✳️":
+            if option and option == "Sunday pickup":
                 continue
             if (
                 option
