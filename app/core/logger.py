@@ -61,14 +61,28 @@ logging.getLogger("sqlalchemy.orm.mapper.Mapper").setLevel(logging.WARNING)
 # Decorator
 # ------------------------------
 def log_cmd(func):
-    """A decorator that logs Discord slash commands, preserving the function signature."""
+    """A decorator that logs Discord slash commands, including their arguments."""
 
     @functools.wraps(func)
     async def wrapper(self, interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:
+        command_name = interaction.data.get('name', 'unknown_command')
+        user = interaction.user
+        channel = interaction.channel
+        
+        # Extract and format arguments from the interaction data
+        options = interaction.data.get('options', [])
+        arg_list = []
+        for option in options:
+            arg_list.append(f"{option['name']}:{option['value']}")
+        
+        # Create a string of comma-separated arguments
+        args_str = ", ".join(arg_list)
+
         logger.info(
-            f"command={interaction.data['name']} used by user={interaction.user} "
-            / "in channel={interaction.channel}."
+            f"command=/{command_name} used by user={user} in channel={channel}. "
+            f"arguments={args_str}"
         )
+        
         return await func(self, interaction, *args, **kwargs)
 
     return wrapper
