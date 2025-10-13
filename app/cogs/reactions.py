@@ -305,13 +305,13 @@ def _format_reaction_log(
 
     if action == ReactionAction.ADD:
         return (
-            f"{user.name} reacted {payload.emoji} to message "
+            f"`{user.name}` reacted {payload.emoji} to message "
             f"'{discord.utils.escape_mentions(message.content)}' "
             f"in #{channel.name}"
         )
     if action == ReactionAction.REMOVE:
         return (
-            f"{user.name} removed their reaction {payload.emoji} from message "
+            f"`{user.name}` removed their reaction {payload.emoji} from message "
             f"'{discord.utils.escape_mentions(message.content)}' "
             f"in #{channel.name}"
         )
