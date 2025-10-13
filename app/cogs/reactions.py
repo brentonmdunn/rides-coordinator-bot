@@ -269,7 +269,7 @@ class Reactions(commands.Cog):
         )
         logger.info(f"{new_channel=}")
         await new_channel.send(
-            f"Hi {user.mention}! Thanks for reacting in for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "  # noqa
+            f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "  # noqa
             "We don't yet know where to pick you up. "
             "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "  # noqa
             "If you live **off campus**, please share your apartment complex or address. "
