@@ -44,3 +44,7 @@ def all(c):
 @task
 def test(c):
     c.run("python -m pytest --color=yes -v")
+
+@task
+def clean(c):
+    c.run("python scripts/remove_dev_commands.py")
