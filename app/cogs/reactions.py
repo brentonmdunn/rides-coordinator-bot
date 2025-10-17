@@ -198,7 +198,7 @@ class Reactions(commands.Cog):
             log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
             if log_channel:
                 await log_channel.send(
-                    _format_reaction_log(user, payload, message, channel, action)
+                    _format_reaction_log_late_rides(user, payload, message, action)
                 )
 
     @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
@@ -316,6 +316,34 @@ def _format_reaction_log(
             f"```{message.content}\n```"
             f"in {ping_channel(channel.id)}"
         )
+
+
+def _format_reaction_log_late_rides(
+    user: discord.Member,
+    payload: discord.RawReactionActionEvent,
+    message: discord.Message,
+    action: ReactionAction,
+) -> str:
+    if action not in (ReactionAction.ADD, ReactionAction.REMOVE):
+        raise ValueError(f"Invalid action: {action}")
+
+    action_verb = "reacted" if action == ReactionAction.ADD else "removed their reaction"
+
+    event_map = {
+        "sunday": "Sunday Service",
+        "friday": "Friday Fellowship",
+    }
+
+    event_name = None
+    for keyword, full_name in event_map.items():
+        if keyword in message.content.lower():
+            event_name = full_name
+            break
+
+    if event_name is None:
+        return f"`{user.name}` {action_verb} {payload.emoji} to an unknown message."
+
+    return f"`{user.name}` {action_verb} {payload.emoji} to {event_name}"
 
 
 async def setup(bot: commands.Bot):
