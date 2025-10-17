@@ -133,7 +133,7 @@ async def main() -> None:
         await init_db()
         async with AsyncSessionLocal() as session:
             await seed_feature_flags(session)
-        # await disable_features_for_local_env()
+        await disable_features_for_local_env()
         await load_extensions()
         await bot.start(TOKEN)
 
