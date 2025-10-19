@@ -8,6 +8,7 @@ async def lscc_day_autocomplete(
     _,
     current: str,
 ) -> list[app_commands.Choice[str]]:
+    """Command autocomplete for LSCC event days (currently Friday and Sunday)"""
     return [
         app_commands.Choice(name=day, value=day)
         for day in LSCC_DAYS
@@ -19,6 +20,7 @@ async def location_autocomplete(
     _,
     current: str,
 ) -> list[app_commands.Choice[str]]:
+    """Command autocomplete for campus living locations"""
     locations = [location.value for location in CampusLivingLocations]
     return [
         app_commands.Choice(name=location, value=location)
