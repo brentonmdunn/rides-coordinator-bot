@@ -78,10 +78,10 @@ def log_cmd(func):
         # Create a string of comma-separated arguments
         args_str = ", ".join(arg_list)
 
-        logger.info(
-            f"command=/{command_name} used by user={user} in channel={channel}. "
-            f"arguments={args_str}"
-        )
+        log = f"command=/{command_name} used by user={user} in channel={channel}."
+        if args_str:
+            log += f" arguments={args_str}"
+        logger.info(log)
 
         return await func(self, interaction, *args, **kwargs)
 
