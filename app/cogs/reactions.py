@@ -10,7 +10,7 @@ from app.core.enums import CategoryIds, ChannelIds, DaysOfWeek, FeatureFlagNames
 from app.core.logger import logger
 from app.core.models import EventThreads
 from app.utils.checks import feature_flag_enabled
-from app.utils.format_message import ping_channel
+from app.utils.format_message import message_link
 from app.utils.lookups import get_location
 from app.utils.time_helpers import is_during_target_window
 
@@ -308,13 +308,13 @@ def _format_reaction_log(
         return (
             f"`{user.name}` reacted {payload.emoji} to message \n"
             f"```{message.content}\n```"
-            f"in {ping_channel(channel.id)}"
+            f"Message link: {message_link(channel.guild.id, channel.id, message.id)}"
         )
     if action == ReactionAction.REMOVE:
         return (
             f"`{user.name}` removed their reaction {payload.emoji} from message \n"
             f"```{message.content}\n```"
-            f"in {ping_channel(channel.id)}"
+            f"Message link: {message_link(channel.guild.id, channel.id, message.id)}"
         )
 
 
