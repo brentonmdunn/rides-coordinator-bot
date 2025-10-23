@@ -293,7 +293,7 @@ def _format_reaction_log(
         payload (discord.RawReactionActionEvent): The payload of the reaction event.
         message (discord.Message): The message that was reacted to.
         channel (discord.TextChannel): The channel where the message was sent.
-        action (ReactionAction): The action taken (add or remove)
+        action (ReactionAction): The action taken (add or remove).
 
     Returns:
         str: The formatted log message.
@@ -301,21 +301,22 @@ def _format_reaction_log(
     Raises:
         ValueError: If the action is not valid.
     """
-    if action != ReactionAction.ADD and action != ReactionAction.REMOVE:
-        raise ValueError(f"Invalid action: {action}")
 
     if action == ReactionAction.ADD:
-        return (
-            f"`{user.name}` reacted {payload.emoji} to message \n"
-            f"```{message.content}\n```"
-            f"Message link: {message_link(channel.guild.id, channel.id, message.id)}"
-        )
-    if action == ReactionAction.REMOVE:
-        return (
-            f"`{user.name}` removed their reaction {payload.emoji} from message \n"
-            f"```{message.content}\n```"
-            f"Message link: {message_link(channel.guild.id, channel.id, message.id)}"
-        )
+        verb = "reacted"
+    elif action == ReactionAction.REMOVE:
+        verb = "removed their reaction"
+    else:
+        raise ValueError(f"Invalid action: {action}")
+
+    link = message_link(channel.guild.id, channel.id, message.id)
+
+    # Handle empty message content (e.g., embeds, images)
+    content = message.content or "[No Content/Embed]"
+
+    return (
+        f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"
+    )
 
 
 def _format_reaction_log_late_rides(
