@@ -25,7 +25,7 @@ def _make_wednesday_msg() -> str | None:
     if formatted_date in WILDCARD_DATES:
         return None
     return (
-        f"React if you need a ride for Wednesday night Bible study {formatted_date} "
+        f"React to this message if you need a ride for Wednesday night Bible study {formatted_date} "
         "(leave between 7 and 7:10pm)!"
     )
 
@@ -36,7 +36,7 @@ def _make_friday_msg() -> str | None:
     if formatted_date in WILDCARD_DATES:
         return None
     return (
-        f"React if you need a ride for Friday night fellowship {formatted_date} "
+        f"React to this message if you need a ride for Friday night fellowship {formatted_date} "
         "(leave between 7 and 7:10pm)!"
     )
 
@@ -47,7 +47,7 @@ def _make_sunday_msg() -> str | None:
     if formatted_date in WILDCARD_DATES:
         return None
     return (
-        f"React if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10 am)!\n\n"  # noqa
+        f"React to this message if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10am)!\n\n"  # noqa
         "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
         "🏠 = ride to church and back to campus/apt (arrive back ~1:00pm)\n"
         f"✳️ = something else (please ping {ping_role(RoleIds.RIDE_COORDINATOR)} in {ping_channel(ChannelIds.REFERENCES__RIDES_GENERAL)} or DM {ping_user(os.getenv('MAIN_RIDES_COORD_USER_ID'))})"  # noqa
