@@ -26,7 +26,16 @@ load_dotenv()
 LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 # List of scholars housing locations
-SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh", "new marshall"]
+SCHOLARS_LOCATIONS = [
+    "revelle",
+    "muir",
+    "sixth",
+    "marshall",
+    "erc",
+    "seventh",
+    "new marshall",
+    "eighth",
+]
 
 RideOptionsSchema = Literal[
     "Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"
@@ -212,7 +221,7 @@ class Locations(commands.Cog):
         )
 
         groups = {
-            "Scholars (no Eighth)": {
+            "Scholars": {
                 "count": 0,
                 "people": "",
                 "filter": SCHOLARS_LOCATIONS,
@@ -231,10 +240,10 @@ class Locations(commands.Cog):
                 ],
                 "emoji": "🏠",
             },
-            "Rita + Eighth": {
+            "Rita": {
                 "count": 0,
                 "people": "",
-                "filter": ["rita", "eighth"],
+                "filter": ["rita"],
                 "emoji": "🏡",
             },
             "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
