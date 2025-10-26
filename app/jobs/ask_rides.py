@@ -4,6 +4,7 @@ Scheduled jobs for asking for rides.
 """
 
 import os
+from collections.abc import Callable
 
 import discord
 from discord.abc import Messageable
@@ -70,23 +71,66 @@ def _format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
-async def _ask_rides_template(bot: Bot, make_message: callable) -> discord.Message | None:
+
+RIDE_TYPES_CONFIG = {
+    "friday": {
+        "title": "Rides to Friday Fellowship",
+        "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
+    },
+    "class": {"title": "Rides to Bible Theology Class", "color": discord.Color.blue()},
+    "sunday": {
+        "title": "Rides to Sunday Service",
+        "color": discord.Color.from_rgb(3, 58, 145),  # Dark Blue
+    },
+}
+
+DEFAULT_RIDE_TITLE = "Rides Announcement"
+DEFAULT_RIDE_COLOR = discord.Color.default()
+
+
+async def _ask_rides_template(
+    bot: Bot,
+    make_message: Callable[[], str | None],  # More specific type hint
+    channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+) -> discord.Message | None:
     """
     Helper method for ask rides jobs.
     """
-    channel: Messageable | None = bot.get_channel(
-        ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
-    )
+    channel: Messageable | None = bot.get_channel(channel_id)
     if not channel:
-        logger.info("Error channel not found")
-        return
+        logger.warning(f"Channel not found with ID: {channel_id}")
+        return None
+
     message: str | None = make_message()
-    if message is None:
-        return
-    return await channel.send(
-        _format_message(message),
-        allowed_mentions=discord.AllowedMentions(roles=True),
+    if not message:
+        logger.info("make_message() returned None, skipping message send.")
+        return None
+
+    title = DEFAULT_RIDE_TITLE
+    color = DEFAULT_RIDE_COLOR
+
+    message_lower = message.lower()
+
+    for keyword, config in RIDE_TYPES_CONFIG.items():
+        if keyword in message_lower:
+            title = config["title"]
+            color = config["color"]
+            break
+
+    embed = discord.Embed(
+        title=title,
+        description=message,
+        color=color,
     )
+
+    try:
+        return await channel.send(
+            allowed_mentions=discord.AllowedMentions(roles=True),
+            embed=embed,
+        )
+    except discord.HTTPException as e:
+        logger.error(f"Failed to send message to channel {channel_id}: {e}")
+        return None
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
