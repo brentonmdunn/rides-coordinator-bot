@@ -96,15 +96,20 @@ async def run_ask_rides_wed(bot: Bot) -> None:
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
-async def run_ask_rides_fri(bot: Bot) -> None:
+async def run_ask_rides_fri(
+    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+) -> None:
     """Runner for Friday rides message."""
-    await _ask_rides_template(bot, _make_friday_msg)
+    sent_message = await _ask_rides_template(bot, _make_friday_msg, channel_id)
+    await sent_message.add_reaction("🪨")
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
-async def run_ask_rides_sun(bot: Bot) -> None:
+async def run_ask_rides_sun(
+    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+) -> None:
     """Runner for Sunday service rides message."""
-    sent_message = await _ask_rides_template(bot, _make_sunday_msg)
+    sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
     reactions = ["🍔", "🏠", "✳️"]
     for emoji in reactions:
         await sent_message.add_reaction(emoji)
