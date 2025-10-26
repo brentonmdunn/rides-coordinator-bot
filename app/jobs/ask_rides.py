@@ -10,10 +10,11 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
+from app.cogs.feature_flags import feature_flag_status
 from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
-from app.utils.format_message import ping_channel, ping_role, ping_role_with_message, ping_user
+from app.utils.format_message import ping_role_with_message, ping_user
 from app.utils.time_helpers import get_next_date
 
 WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
