@@ -118,3 +118,22 @@ async def run_ask_rides_sun(
 async def run_ask_rides_sun_class(bot: Bot) -> None:
     """Runner for Sunday class rides message."""
     await _ask_rides_template(bot, _make_sunday_msg_class)
+
+
+async def run_ask_rides_header(
+    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+) -> None:
+    channel: Messageable | None = bot.get_channel(channel_id)
+    if not channel:
+        logger.info("Error channel not found")
+        return
+
+    if (
+        await feature_flag_status(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
+        or await feature_flag_status(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
+        or await feature_flag_status(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
+    ):
+        await channel.send(
+            _format_message("for this week!"),
+            allowed_mentions=discord.AllowedMentions(roles=True),
+        )
