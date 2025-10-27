@@ -185,3 +185,9 @@ async def run_ask_rides_header(
             _format_message("for this week!"),
             allowed_mentions=discord.AllowedMentions(roles=True),
         )
+
+async def run_ask_rides_all(bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS) -> None:
+    await run_ask_rides_header(bot, channel_id)
+    await run_ask_rides_fri(bot, channel_id)
+    # await run_ask_rides_sun_class(self.bot, interaction.channel_id)
+    await run_ask_rides_sun(bot, channel_id)
