@@ -4,10 +4,14 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from discord.ext import commands
 
-# from jobs_disabled.retreat_sync_roles import run_csv_job
-from app.jobs.ask_rides import run_ask_rides_fri, run_ask_rides_sun, run_ask_rides_wed, run_ask_rides_all
-from app.jobs.sync_rides_locations import sync_rides_locations
 from app.core.enums import ChannelIds
+
+# from jobs_disabled.retreat_sync_roles import run_csv_job
+from app.jobs.ask_rides import (
+    run_ask_rides_all,
+)
+from app.jobs.sync_rides_locations import sync_rides_locations
+
 
 class JobScheduler(commands.Cog):
     def __init__(self, bot):
