@@ -59,11 +59,9 @@ def _make_sunday_msg() -> str | None:
 def _make_sunday_msg_class() -> str | None:
     """Create message for Sunday class rides."""
     formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
-    if formatted_date in WILDCARD_DATES or formatted_date not in CLASS_DATES:
-        return None
     return (
-        f"React if you need a ride to Bible Theology Class on Sunday {formatted_date} "
-        "(leave between 8:30 and 8:40 am)"
+        f"React to this message if you need a ride to Bible Theology Class on Sunday {formatted_date} "  # noqa
+        "(leave between 8:30 and 8:40am)"
     )
 
 
@@ -106,7 +104,7 @@ async def _ask_rides_template(
 
     message: str | None = make_message()
     if not message:
-        logger.info("make_message() returned None, skipping message send.")
+        logger.error("make_message() returned None, skipping message send.")
         return None
 
     title = DEFAULT_RIDE_TITLE
