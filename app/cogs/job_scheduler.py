@@ -28,8 +28,7 @@ class JobScheduler(commands.Cog):
 
         self.scheduler.add_job(
             run_ask_rides_all,
-            CronTrigger(day_of_week="mon", hour=9, minute=29),
-            # CronTrigger(day_of_week="wed", hour=12, minute=0),
+            CronTrigger(day_of_week="wed", hour=12, minute=0),
             id="run_ask_rides_all",
             args=[bot, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS],
         )
