@@ -159,10 +159,13 @@ async def run_ask_rides_sun(
     for emoji in reactions:
         await sent_message.add_reaction(emoji)
 
-
-async def run_ask_rides_sun_class(bot: Bot) -> None:
+@feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB)
+async def run_ask_rides_sun_class(
+    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+) -> None:
     """Runner for Sunday class rides message."""
-    await _ask_rides_template(bot, _make_sunday_msg_class)
+    sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
+    await sent_message.add_reaction("📖")
 
 
 async def run_ask_rides_header(
