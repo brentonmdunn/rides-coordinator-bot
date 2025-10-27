@@ -27,7 +27,7 @@ def _make_wednesday_msg() -> str | None:
     if formatted_date in WILDCARD_DATES:
         return None
     return (
-        f"React to this message if you need a ride for Wednesday night Bible study {formatted_date} " #noqa
+        f"React to this message if you need a ride for Wednesday night Bible study {formatted_date} "  # noqa
         "(leave between 7 and 7:10pm)!"
     )
 
