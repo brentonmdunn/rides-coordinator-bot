@@ -8,7 +8,6 @@ from app.core.enums import FeatureFlagNames
 from app.core.logger import log_cmd
 from app.core.models import FeatureFlags as FeatureFlagsModel
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
-from app.core.logger import logger
 
 
 async def feature_flag_status(feature_flag: FeatureFlagNames):
