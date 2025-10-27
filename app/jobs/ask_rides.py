@@ -72,16 +72,18 @@ def _format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
-
 RIDE_TYPES_CONFIG = {
     "friday": {
         "title": "Rides to Friday Fellowship",
         "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
     },
-    "class": {"title": "Rides to Bible Theology Class", "color": discord.Color.blue()},
+    "class": {
+        "title": "Rides to Bible Theology Class",
+        "color": discord.Color.blurple(),
+    },
     "sunday": {
         "title": "Rides to Sunday Service",
-        "color": discord.Color.from_rgb(3, 58, 145),  # Dark Blue
+        "color": discord.Color.blue(),
     },
 }
 
