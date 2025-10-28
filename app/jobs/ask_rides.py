@@ -180,14 +180,12 @@ async def run_ask_rides_sun_class(
     """Runner for Sunday class rides message."""
     gcal_event_summaries = get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
     for event in gcal_event_summaries:
-        if "sunday school" not in event.lower():
-            logger.info(
-                "Blocking run_ask_rides_sun_class due to no class detected on mastercalendar"
-            )
+        if "sunday school" in event.lower():
+            sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
+            await sent_message.add_reaction("📖")
             return
-
-    sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
-    await sent_message.add_reaction("📖")
+    logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
+    return
 
 
 async def run_ask_rides_header(
@@ -214,5 +212,6 @@ async def run_ask_rides_all(
 ) -> None:
     await run_ask_rides_header(bot, channel_id)
     await run_ask_rides_fri(bot, channel_id)
+    logger.debug("here3")
     await run_ask_rides_sun_class(bot, channel_id)
     await run_ask_rides_sun(bot, channel_id)
