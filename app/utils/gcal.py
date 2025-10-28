@@ -31,10 +31,10 @@ def get_events_on_date(ical_url, target_date):
         return events
 
     except requests.exceptions.RequestException as e:
-        print(f"Error downloading calendar: {e}")
+        logger.debug(f"Error downloading calendar: {e}")
         return []
     except ValueError as e:
-        print(f"Error parsing iCal data: {e}")
+        logger.debug(f"Error parsing iCal data: {e}")
         return []
 
 # --- Execution ---
@@ -42,7 +42,7 @@ def get_events_on_date(ical_url, target_date):
 events_for_day = get_events_on_date(ICAL_URL, TARGET_DATE)
 
 if events_for_day:
-    print(f"🎉 Events on {TARGET_DATE.strftime('%Y-%m-%d')}:")
+    logger.debug(f"🎉 Events on {TARGET_DATE.strftime('%Y-%m-%d')}:")
     for event in events_for_day:
         # DTSTART and SUMMARY are common and useful properties
         start_time = event.get('DTSTART').dt
@@ -51,12 +51,12 @@ if events_for_day:
         # Handle all-day vs. timed events for display
         if isinstance(start_time, datetime.datetime):
             # Timed event
-            print(f"  - {start_time.strftime('%H:%M')} | {summary}")
+            logger.debug(f"  - {start_time.strftime('%H:%M')} | {summary}")
         else:
             # All-day event (start_time will be a datetime.date object)
-            print(f"  - All Day | {summary}")
+            logger.debug(f"  - All Day | {summary}")
 else:
-    print(f"No events found on {TARGET_DATE.strftime('%Y-%m-%d')}.")
+    logger.debug(f"No events found on {TARGET_DATE.strftime('%Y-%m-%d')}.")
 """
 
 import datetime
@@ -65,6 +65,8 @@ from os import getenv
 import recurring_ical_events
 import requests
 from icalendar import Calendar
+
+from app.core.logger import logger
 
 # --- Configuration ---
 ICAL_URL = getenv("ICAL_URL")
@@ -92,10 +94,10 @@ def get_events_on_date(ical_url, target_date):
         return events
 
     except requests.exceptions.RequestException as e:
-        print(f"Error downloading calendar: {e}")
+        logger.debug(f"Error downloading calendar: {e}")
         return []
     except ValueError as e:
-        print(f"Error parsing iCal data: {e}")
+        logger.debug(f"Error parsing iCal data: {e}")
         return []
 
 
