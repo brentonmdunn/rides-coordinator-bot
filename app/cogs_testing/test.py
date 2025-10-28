@@ -4,9 +4,7 @@ from discord.ext import commands
 
 from app.core.enums import FeatureFlagNames
 from app.jobs.ask_rides import (
-    run_ask_rides_fri,
-    run_ask_rides_header,
-    run_ask_rides_sun,
+    run_ask_rides_all,
 )
 from app.utils.checks import feature_flag_enabled
 
@@ -20,10 +18,8 @@ class TestCog(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def test(self, interaction: discord.Interaction):
-        await run_ask_rides_header(self.bot, interaction.channel_id)
-        await run_ask_rides_fri(self.bot, interaction.channel_id)
-        # await run_ask_rides_sun_class(self.bot, interaction.channel_id)
-        await run_ask_rides_sun(self.bot, interaction.channel_id)
+        await interaction.response.send_message("Complete")
+        await run_ask_rides_all(self.bot, interaction.channel_id)
 
 
 async def setup(bot: commands.Bot):

@@ -11,11 +11,12 @@ from discord.abc import Messageable
 from discord.ext.commands import Bot
 
 from app.cogs.feature_flags import feature_flag_status
-from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
+from app.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message, ping_user
-from app.utils.time_helpers import get_next_date
+from app.utils.gcal import get_event_summaries
+from app.utils.time_helpers import get_next_date, get_next_date_obj
 
 WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
 CLASS_DATES: list[str] = []
@@ -154,6 +155,18 @@ async def run_ask_rides_sun(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday service rides message."""
+    gcal_event_summaries = get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    for event in gcal_event_summaries:
+        if "wildcard" in event.lower():
+            logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
+            channel: Messageable | None = bot.get_channel(
+                ChannelIds.SERVING__DRIVER_BOT_SPAM,
+            )
+            if not channel:
+                logger.info("Error channel not found")
+                return
+            await channel.send("Widlcard detected on mastercalendar so sunday rides were not sent.")
+            return
     sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
     reactions = ["🍔", "🏠", "✳️"]
     for emoji in reactions:
@@ -165,8 +178,14 @@ async def run_ask_rides_sun_class(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday class rides message."""
-    sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
-    await sent_message.add_reaction("📖")
+    gcal_event_summaries = get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    for event in gcal_event_summaries:
+        if "sunday school" in event.lower():
+            sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
+            await sent_message.add_reaction("📖")
+            return
+    logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
+    return
 
 
 async def run_ask_rides_header(
@@ -193,5 +212,6 @@ async def run_ask_rides_all(
 ) -> None:
     await run_ask_rides_header(bot, channel_id)
     await run_ask_rides_fri(bot, channel_id)
-    # await run_ask_rides_sun_class(self.bot, interaction.channel_id)
+    logger.debug("here3")
+    await run_ask_rides_sun_class(bot, channel_id)
     await run_ask_rides_sun(bot, channel_id)
