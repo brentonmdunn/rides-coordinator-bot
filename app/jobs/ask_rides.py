@@ -15,6 +15,7 @@ from app.jobs.ask_rides import _make_sunday_msg
 from app.utils.checks import feature_flag_enabled
 from app.utils.gcal import get_event_summaries
 from app.utils.time_helpers import get_next_date_obj
+
 from app.cogs.feature_flags import feature_flag_status
 from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger

@@ -193,11 +193,26 @@ class Locations(commands.Cog):
             return None
 
         async for message in channel.history(after=last_sunday):
-            if (
-                day in message.content.lower()
-                and "react" in message.content.lower()
-                and "class" not in message.content.lower()
-            ):
+            # Gather lowercase text from content and embeds
+            text_blobs = []
+
+            # Raw content
+            if message.content:
+                text_blobs.append(message.content.lower())
+
+            # Embeds text
+            for embed in message.embeds:
+                if embed.title:
+                    text_blobs.append(embed.title.lower())
+                if embed.description:
+                    text_blobs.append(embed.description.lower())
+                for field in embed.fields:
+                    text_blobs.append(field.name.lower())
+                    text_blobs.append(field.value.lower())
+
+            combined_text = " ".join(text_blobs)
+
+            if day in combined_text and "react" in combined_text and "class" not in combined_text:
                 most_recent_message = message
         if not most_recent_message:
             return None
