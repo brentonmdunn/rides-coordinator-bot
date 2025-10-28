@@ -80,7 +80,7 @@ def log_cmd(func):
 
         log = f"command=/{command_name} used by user={user} in channel={channel}."
         if args_str:
-            log += f" arguments={args_str}"
+            log += f" arguments=[{args_str}]"
         logger.info(log)
 
         return await func(self, interaction, *args, **kwargs)
