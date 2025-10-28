@@ -10,6 +10,14 @@ from app.core.models import FeatureFlags as FeatureFlagsModel
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 
 
+async def feature_flag_status(feature_flag: FeatureFlagNames):
+    async with AsyncSessionLocal() as session:
+        stmt = select(FeatureFlagsModel.enabled).where(FeatureFlagsModel.feature == feature_flag)
+        result = await session.execute(stmt)
+        feature_flag_model = result.one_or_none()
+        return feature_flag_model[0] if feature_flag_model else None
+
+
 class FeatureFlagsCog(commands.Cog):
     """A cog for managing feature flags with slash commands."""
 

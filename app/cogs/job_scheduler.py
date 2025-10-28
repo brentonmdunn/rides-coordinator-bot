@@ -4,8 +4,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from discord.ext import commands
 
+from app.core.enums import ChannelIds
+
 # from jobs_disabled.retreat_sync_roles import run_csv_job
-from app.jobs.ask_rides import run_ask_rides_fri, run_ask_rides_sun, run_ask_rides_wed
+from app.jobs.ask_rides import (
+    run_ask_rides_all,
+)
 from app.jobs.sync_rides_locations import sync_rides_locations
 
 
@@ -23,25 +27,32 @@ class JobScheduler(commands.Cog):
         # )
 
         self.scheduler.add_job(
-            run_ask_rides_fri,
+            run_ask_rides_all,
             CronTrigger(day_of_week="wed", hour=12, minute=0),
-            id="run_ask_rides_fri",
-            args=[bot],
+            id="run_ask_rides_all",
+            args=[bot, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS],
         )
 
-        self.scheduler.add_job(
-            run_ask_rides_wed,
-            CronTrigger(day_of_week="mon", hour=16, minute=0),
-            id="run_ask_rides_wed",
-            args=[bot],
-        )
+        # self.scheduler.add_job(
+        #     run_ask_rides_fri,
+        #     CronTrigger(day_of_week="wed", hour=12, minute=0),
+        #     id="run_ask_rides_fri",
+        #     args=[bot],
+        # )
 
-        self.scheduler.add_job(
-            run_ask_rides_sun,
-            CronTrigger(day_of_week="wed", hour=12, minute=1),
-            id="run_ask_rides_sun",
-            args=[bot],
-        )
+        # self.scheduler.add_job(
+        #     run_ask_rides_wed,
+        #     CronTrigger(day_of_week="mon", hour=16, minute=0),
+        #     id="run_ask_rides_wed",
+        #     args=[bot],
+        # )
+
+        # self.scheduler.add_job(
+        #     run_ask_rides_sun,
+        #     CronTrigger(day_of_week="fri", hour=23, minute=19),
+        #     id="run_ask_rides_sun",
+        #     args=[bot],
+        # )
 
         # self.scheduler.add_job(
         #     run_ask_rides_sun_class,
