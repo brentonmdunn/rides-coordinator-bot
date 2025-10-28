@@ -9,18 +9,14 @@ from collections.abc import Callable
 import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
-from app.core.enums import ChannelIds, FeatureFlagNames, DaysOfWeek
-from app.core.logger import logger
-from app.jobs.ask_rides import _make_sunday_msg
-from app.utils.checks import feature_flag_enabled
-from app.utils.gcal import get_event_summaries
-from app.utils.time_helpers import get_next_date_obj
+
 from app.cogs.feature_flags import feature_flag_status
-from app.core.enums import ChannelIds, DaysOfWeekNumber, FeatureFlagNames, RoleIds
+from app.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
 from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message, ping_user
-from app.utils.time_helpers import get_next_date
+from app.utils.gcal import get_event_summaries
+from app.utils.time_helpers import get_next_date, get_next_date_obj
 
 WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
 CLASS_DATES: list[str] = []
@@ -185,7 +181,9 @@ async def run_ask_rides_sun_class(
     gcal_event_summaries = get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
     for event in gcal_event_summaries:
         if "sunday school" not in event.lower():
-            logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
+            logger.info(
+                "Blocking run_ask_rides_sun_class due to no class detected on mastercalendar"
+            )
             return
 
     sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
