@@ -24,6 +24,7 @@ from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
+from app.utils.parsing import get_message_and_embed_content
 
 prev_response = None
 
@@ -370,9 +371,11 @@ class GroupRides(commands.Cog):
                 ) = await location_service.list_locations(message_id=message_id)
                 channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
                 message = await channel.fetch_message(int(message_id))
-                if "sunday" in message.content.lower():
+                combined_text = get_message_and_embed_content(message)
+
+                if "sunday" in combined_text:
                     end_leave_time = time(hour=10, minute=10)
-                elif "friday" in message.content.lower():
+                elif "friday" in combined_text:
                     end_leave_time = time(hour=19, minute=10)
                 else:
                     await interaction.followup.send(
