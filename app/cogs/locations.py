@@ -19,6 +19,7 @@ from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_all
 from app.utils.checks import feature_flag_enabled
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.lookups import get_location, get_name_location_no_sync, sync
+from app.utils.parsing import get_message_and_embed_content
 from app.utils.time_helpers import get_next_date_obj
 
 load_dotenv()
