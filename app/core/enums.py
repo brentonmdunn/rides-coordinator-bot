@@ -111,3 +111,9 @@ class PickupLocations(StrEnum):
     VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
     REVELLE = "Eighth basketball courts"
     GEISEL_LOOP = "Geisel Loop"
+
+
+class AskRidesMessage(StrEnum):
+    FRIDAY_FELLOWSHIP = "Friday"
+    SUNDAY_SERVICE = "Sunday service"
+    SUNDAY_CLASS = "class"

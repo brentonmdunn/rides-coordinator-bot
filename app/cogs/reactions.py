@@ -6,7 +6,14 @@ from sqlalchemy import select
 
 from app.cogs.locations import Locations
 from app.core.database import AsyncSessionLocal
-from app.core.enums import CategoryIds, ChannelIds, DaysOfWeek, FeatureFlagNames, RoleIds
+from app.core.enums import (
+    AskRidesMessage,
+    CategoryIds,
+    ChannelIds,
+    DaysOfWeek,
+    FeatureFlagNames,
+    RoleIds,
+)
 from app.core.logger import logger
 from app.core.models import EventThreads
 from app.utils.checks import feature_flag_enabled
@@ -213,8 +220,14 @@ class Reactions(commands.Cog):
             (
                 self.locations_cog
                 and (
-                    message_id == await self.locations_cog._find_correct_message("friday")
-                    or message_id == await self.locations_cog._find_correct_message("sunday")
+                    message_id
+                    == await self.locations_cog._find_correct_message(
+                        AskRidesMessage.FRIDAY_FELLOWSHIP
+                    )
+                    or message_id
+                    == await self.locations_cog._find_correct_message(
+                        AskRidesMessage.SUNDAY_SERVICE
+                    )
                 )
             )
             and user is not None

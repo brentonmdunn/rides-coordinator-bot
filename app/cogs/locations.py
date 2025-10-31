@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import (
+    AskRidesMessage,
     ChannelIds,
     FeatureFlagNames,
 )
@@ -176,13 +177,15 @@ class Locations(commands.Cog):
             return now - timedelta(days=(now.weekday() + 1))
 
     async def _find_correct_message(
-        self, day, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+        self,
+        ask_rides_message: AskRidesMessage,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ) -> str | None:
         """
         Returns message id of message corresponding to day.
 
         Args:
-            day
+            ask_rides_message
 
         Returns:
             message id (str) if found, otherwise None
@@ -196,7 +199,7 @@ class Locations(commands.Cog):
 
         async for message in channel.history(after=last_sunday):
             combined_text = get_message_and_embed_content(message)
-            if day in combined_text and "react" in combined_text and "class" not in combined_text:
+            if ask_rides_message.lower() in combined_text.lower():
                 most_recent_message = message
         if not most_recent_message:
             return None
@@ -384,11 +387,36 @@ class Locations(commands.Cog):
 
         # Find the relevant message
         if day:
-            message_id = await self._find_correct_message(day, channel_id)
+            if day.lower() == "sunday":
+                ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
+            elif day.lower() == "friday":
+                ask_rides_message = AskRidesMessage.FRIDAY_FELLOWSHIP
+            else:
+                raise ValueError(f"Invalid day: {day}")
+            message_id = await self._find_correct_message(ask_rides_message, channel_id)
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
         usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
+        # -----
+        # If use message_id instead of day
+        # Need to only delete class reacts if doing sunday rides
+        tmp_content = ""
+        if not day:
+            tmp_channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+            tmp_message = await tmp_channel.fetch_message(int(message_id))
+            tmp_content = get_message_and_embed_content(tmp_message).lower()
+        if (
+            (day and day.lower() == "sunday")
+            or ("service" in tmp_content and "sunday" in tmp_content)
+        ) and (
+            class_message_id := await self._find_correct_message(
+                AskRidesMessage.SUNDAY_CLASS, channel_id
+            )
+        ) is not None:
+            usernames_reacted -= await self._get_usernames_who_reacted(channel_id, class_message_id)
+        # -----
+
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
         if day and (option is None or "dropoff" not in option.lower()):
