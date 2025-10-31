@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import (
+    AskRidesMessage,
     ChannelIds,
     FeatureFlagNames,
 )
@@ -175,13 +176,15 @@ class Locations(commands.Cog):
             return now - timedelta(days=(now.weekday() + 1))
 
     async def _find_correct_message(
-        self, day, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+        self,
+        ask_rides_message: AskRidesMessage,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ) -> str | None:
         """
         Returns message id of message corresponding to day.
 
         Args:
-            day
+            ask_rides_message
 
         Returns:
             message id (str) if found, otherwise None
@@ -195,7 +198,7 @@ class Locations(commands.Cog):
 
         async for message in channel.history(after=last_sunday):
             combined_text = get_message_and_embed_content(message)
-            if day in combined_text and "react" in combined_text and "class" not in combined_text:
+            if ask_rides_message.lower() in combined_text.lower():
                 most_recent_message = message
         if not most_recent_message:
             return None
@@ -383,7 +386,13 @@ class Locations(commands.Cog):
 
         # Find the relevant message
         if day:
-            message_id = await self._find_correct_message(day, channel_id)
+            if day.lower() == "sunday":
+                ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
+            elif day.lower() == "friday":
+                ask_rides_message = AskRidesMessage.FRIDAY_FELLOWSHIP
+            else:
+                raise ValueError(f"Invalid day: {day}")
+            message_id = await self._find_correct_message(ask_rides_message, channel_id)
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
