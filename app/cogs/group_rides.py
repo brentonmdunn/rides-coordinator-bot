@@ -21,6 +21,7 @@ from app.core.schemas import (
 )
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
+from app.utils.constants import MAP_LINKS
 from app.utils.custom_exceptions import NoMatchingMessageFoundError
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
@@ -34,19 +35,6 @@ PICKUP_ADJUSTMENT = 1
 # LLM_MODEL = "gemini-2.5-pro"
 LLM_MODEL = "gemini-2.5-flash"
 
-
-map_links = {
-    PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
-    PickupLocations.SEVENTH: "https://maps.app.goo.gl/1zKQiGKH6ecq1qzS8",
-    PickupLocations.MARSHALL: "https://maps.app.goo.gl/1NT4Q65udUvuNX7aA",
-    PickupLocations.ERC: "https://maps.app.goo.gl/dqgzKGS8DsUgLkw17",
-    PickupLocations.MUIR: "https://maps.app.goo.gl/qxABq7sEEQsz6Pth9",
-    PickupLocations.EIGHTH: "https://maps.app.goo.gl/RySbnmJGZ7zKujgq7",
-    PickupLocations.INNOVATION: "https://maps.app.goo.gl/7tDt4mT5SkPkJbRh8",
-    PickupLocations.RITA: "https://maps.app.goo.gl/qcuCR5q6Tx2EEn9c9",
-    PickupLocations.WARREN_EQL: "https://maps.app.goo.gl/b4vLo5ZCGdZXEoni8",
-    PickupLocations.WARREN_JST: "https://maps.app.goo.gl/h5LJCGhvBUbpmkmL7",
-}
 
 living_to_pickup = {
     CampusLivingLocations.SIXTH: PickupLocations.SIXTH,
@@ -216,8 +204,8 @@ def create_output(
             )
 
             # Add google maps link if we have it
-            if pickup_location in map_links:
-                formatted_string = f"{base_string} ([Google Maps]({map_links[pickup_location]}))"
+            if pickup_location in MAP_LINKS:
+                formatted_string = f"{base_string} ([Google Maps]({MAP_LINKS[pickup_location]}))"
             else:
                 formatted_string = base_string
 
