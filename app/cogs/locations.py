@@ -397,6 +397,25 @@ class Locations(commands.Cog):
                 raise NoMatchingMessageFoundError()
 
         usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
+        # -----
+        # If use message_id instead of day
+        # Need to only delete class reacts if doing sunday rides
+        tmp_content = ""
+        if not day:
+            tmp_channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+            tmp_message = await tmp_channel.fetch_message(int(message_id))
+            tmp_content = get_message_and_embed_content(tmp_message).lower()
+        if (
+            (day and day.lower() == "sunday")
+            or ("service" in tmp_content and "sunday" in tmp_content)
+        ) and (
+            class_message_id := await self._find_correct_message(
+                AskRidesMessage.SUNDAY_CLASS, channel_id
+            )
+        ) is not None:
+            usernames_reacted -= await self._get_usernames_who_reacted(channel_id, class_message_id)
+        # -----
+
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
         if day and (option is None or "dropoff" not in option.lower()):
