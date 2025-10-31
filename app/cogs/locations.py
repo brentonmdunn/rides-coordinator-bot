@@ -447,7 +447,7 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def map_links(self, interaction: discord.Interaction):
-        message = []
+        message: list[str] = []
         for location, link in MAP_LINKS.items():
             message.append(f"{location}: <{link}>")
         await interaction.response.send_message("\n".join(message))
