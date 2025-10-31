@@ -110,3 +110,9 @@ class PickupLocations(StrEnum):
     PANGEA = "Pangea"
     VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
     REVELLE = "Eighth basketball courts"
+
+
+class AskRidesMessage(StrEnum):
+    FRIDAY_FELLOWSHIP = "Friday"
+    SUNDAY_SERVICE = "Sunday service"
+    SUNDAY_CLASS = "class"
