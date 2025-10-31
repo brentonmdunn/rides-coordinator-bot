@@ -110,6 +110,7 @@ class PickupLocations(StrEnum):
     PANGEA = "Pangea"
     VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
     REVELLE = "Eighth basketball courts"
+    GEISEL_LOOP = "Geisel Loop"
 
 
 class AskRidesMessage(StrEnum):

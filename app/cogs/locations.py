@@ -18,6 +18,7 @@ from app.core.logger import log_cmd, logger
 from app.core.models import NonDiscordRides
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
+from app.utils.constants import MAP_LINKS
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.lookups import get_location, get_name_location_no_sync, sync
 from app.utils.parsing import get_message_and_embed_content
@@ -466,6 +467,18 @@ class Locations(commands.Cog):
         except Exception as e:
             logger.exception("An error occurred: ")
             await interaction.response.send_message(f"Unknown error: {e}")
+
+    @discord.app_commands.command(
+        name="map-links",
+        description="Google Map links for pickups",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
+    async def map_links(self, interaction: discord.Interaction):
+        message: list[str] = []
+        for location, link in MAP_LINKS.items():
+            message.append(f"{location}: <{link}>")
+        await interaction.response.send_message("\n".join(message))
 
 
 async def setup(bot: commands.Bot):
