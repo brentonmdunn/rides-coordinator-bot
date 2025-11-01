@@ -13,6 +13,7 @@ from app.core.enums import (
     AskRidesMessage,
     ChannelIds,
     FeatureFlagNames,
+    RideType,
 )
 from app.core.logger import log_cmd, logger
 from app.core.models import NonDiscordRides
@@ -170,6 +171,7 @@ class Locations(commands.Cog):
             await self._list_locations_wrapper(interaction, message_id=message_id)
 
     def _get_last_sunday(self):
+        """Returns the date of the last Sunday."""
         now = datetime.now()
         if now.weekday() == 6:
             return now - timedelta(days=7)
@@ -182,29 +184,28 @@ class Locations(commands.Cog):
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ) -> str | None:
         """
-        Returns message id of message corresponding to day.
+        Returns message id of message corresponding to ask_rides_message.
 
         Args:
-            ask_rides_message
+            ask_rides_message: Type of ask rides message to find
+            channel_id: Channel to look for message in
 
         Returns:
             message id (str) if found, otherwise None
         """
-        last_sunday = self._get_last_sunday()
         channel = self.bot.get_channel(channel_id)
         most_recent_message = None
 
         if not channel:
+            logger.error(f"Channel with ID {channel_id} not found.")
             return None
 
-        async for message in channel.history(after=last_sunday):
-            combined_text = get_message_and_embed_content(message)
-            if ask_rides_message.lower() in combined_text.lower():
+        # I'm prety sure it goes oldest to newest
+        async for message in channel.history(after=self._get_last_sunday()):
+            if ask_rides_message.lower() in get_message_and_embed_content(message).lower():
                 most_recent_message = message
-        if not most_recent_message:
-            return None
-        message_id = most_recent_message.id
-        return message_id
+
+        return None if most_recent_message is None else most_recent_message.id
 
     def _build_embed(
         self,
@@ -475,6 +476,7 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def map_links(self, interaction: discord.Interaction):
+        """Lists the Google Map links for all pickup locations."""
         message: list[str] = []
         for location, link in MAP_LINKS.items():
             message.append(f"{location}: <{link}>")
