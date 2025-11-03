@@ -57,7 +57,9 @@ def get_last_name(name: str) -> str | None:
     return None
 
 
-def get_message_and_embed_content(message: discord.Message, message_content: bool = True, embed_content: bool = True):
+def get_message_and_embed_content(
+    message: discord.Message, message_content: bool = True, embed_content: bool = True
+):
     """
     Combines the text in message.content and of any embeds.
     """

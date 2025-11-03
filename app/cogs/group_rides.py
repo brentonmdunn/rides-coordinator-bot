@@ -468,8 +468,6 @@ class GroupRides(commands.Cog):
         message_id = await location_service._find_correct_message(AskRidesMessage.SUNDAY_SERVICE)
         await self._group_rides(interaction, message_id, driver_capacity)
 
-
-
     @app_commands.command(
         name="group-rides-sunday-by-message-id",
         description="Uses GenAI to group riders with drivers",
@@ -491,6 +489,7 @@ class GroupRides(commands.Cog):
         ):
             return
         await self._group_rides(interaction, message_id, driver_capacity)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(GroupRides(bot))
