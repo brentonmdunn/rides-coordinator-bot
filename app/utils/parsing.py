@@ -57,7 +57,7 @@ def get_last_name(name: str) -> str | None:
     return None
 
 
-def get_message_and_embed_content(message: discord.Message):
+def get_message_and_embed_content(message: discord.Message, message_content: bool = True, embed_content: bool = True):
     """
     Combines the text in message.content and of any embeds.
     """
@@ -65,17 +65,18 @@ def get_message_and_embed_content(message: discord.Message):
     text_blobs = []
 
     # Raw content
-    if message.content:
+    if message.content and message_content:
         text_blobs.append(message.content.lower())
 
     # Embeds text
-    for embed in message.embeds:
-        if embed.title:
-            text_blobs.append(embed.title.lower())
-        if embed.description:
-            text_blobs.append(embed.description.lower())
-        for field in embed.fields:
-            text_blobs.append(field.name.lower())
-            text_blobs.append(field.value.lower())
+    if embed_content:
+        for embed in message.embeds:
+            if embed.title:
+                text_blobs.append(embed.title.lower())
+            if embed.description:
+                text_blobs.append(embed.description.lower())
+            for field in embed.fields:
+                text_blobs.append(field.name.lower())
+                text_blobs.append(field.value.lower())
 
     return " ".join(text_blobs)
