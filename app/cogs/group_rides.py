@@ -327,6 +327,17 @@ class GroupRides(commands.Cog):
 
         if "sunday" in combined_text:
             end_leave_time = time(hour=10, minute=10)
+            class_message_id = await location_service._find_correct_message(
+                AskRidesMessage.SUNDAY_CLASS,
+            )
+            if class_message_id is not None:
+                (
+                    _,
+                    class_usernames_reacted,
+                    _,
+                ) = await location_service.list_locations(message_id=class_message_id)
+                usernames_reacted - class_usernames_reacted
+
         elif "friday" in combined_text:
             end_leave_time = time(hour=19, minute=10)
         else:
@@ -443,7 +454,7 @@ class GroupRides(commands.Cog):
         ):
             return
         location_service = Locations(self.bot)
-        message_id = await location_service._find_correct_message(AskRidesMessage.FRIDAY)
+        message_id = await location_service._find_correct_message(AskRidesMessage.FRIDAY_FELLOWSHIP)
         await self._group_rides(interaction, message_id, driver_capacity)
 
     @app_commands.command(
