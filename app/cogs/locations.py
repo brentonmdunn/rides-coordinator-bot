@@ -198,7 +198,7 @@ class Locations(commands.Cog):
             return None
 
         async for message in channel.history(after=last_sunday):
-            combined_text = get_message_and_embed_content(message)
+            combined_text = get_message_and_embed_content(message, message_content=False)
             if ask_rides_message.lower() in combined_text.lower():
                 most_recent_message = message
         if not most_recent_message:
