@@ -54,6 +54,7 @@ class FeatureFlagNames(StrEnum):
     BOT = "bot"
     ASK_FRIDAY_RIDES_JOB = "ask_friday_rides_job"
     ASK_SUNDAY_RIDES_JOB = "ask_sunday_rides_job"
+    ASK_SUNDAY_CLASS_RIDES_JOB = "ask_sunday_class_rides_job"
     ASK_WEDNESDAY_RIDES_JOB = "ask_wednesday_rides_job"
     RIDES_LOCATIONS_SYNC_JOB = "rides_locations_sync_job"
     NEW_RIDES_MSG = "new_rides_msg"
@@ -109,3 +110,10 @@ class PickupLocations(StrEnum):
     PANGEA = "Pangea"
     VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
     REVELLE = "Eighth basketball courts"
+    GEISEL_LOOP = "Geisel Loop"
+
+
+class AskRidesMessage(StrEnum):
+    FRIDAY_FELLOWSHIP = "Friday"
+    SUNDAY_SERVICE = "Sunday service"
+    SUNDAY_CLASS = "class"

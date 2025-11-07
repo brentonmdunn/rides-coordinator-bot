@@ -23,3 +23,7 @@ def ping_channel(channel_id: ChannelIds) -> str:
 
 def ping_user(user_id):
     return f"<@{user_id}> "
+
+
+def message_link(guild_id, channel_id, message_id):
+    return f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"

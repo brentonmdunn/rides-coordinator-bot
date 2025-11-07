@@ -6,11 +6,18 @@ from sqlalchemy import select
 
 from app.cogs.locations import Locations
 from app.core.database import AsyncSessionLocal
-from app.core.enums import CategoryIds, ChannelIds, DaysOfWeek, FeatureFlagNames, RoleIds
+from app.core.enums import (
+    AskRidesMessage,
+    CategoryIds,
+    ChannelIds,
+    DaysOfWeek,
+    FeatureFlagNames,
+    RoleIds,
+)
 from app.core.logger import logger
 from app.core.models import EventThreads
 from app.utils.checks import feature_flag_enabled
-from app.utils.format_message import ping_channel
+from app.utils.format_message import message_link
 from app.utils.lookups import get_location
 from app.utils.time_helpers import is_during_target_window
 
@@ -213,8 +220,14 @@ class Reactions(commands.Cog):
             (
                 self.locations_cog
                 and (
-                    message_id == await self.locations_cog._find_correct_message("friday")
-                    or message_id == await self.locations_cog._find_correct_message("sunday")
+                    message_id
+                    == await self.locations_cog._find_correct_message(
+                        AskRidesMessage.FRIDAY_FELLOWSHIP
+                    )
+                    or message_id
+                    == await self.locations_cog._find_correct_message(
+                        AskRidesMessage.SUNDAY_SERVICE
+                    )
                 )
             )
             and user is not None
@@ -293,7 +306,7 @@ def _format_reaction_log(
         payload (discord.RawReactionActionEvent): The payload of the reaction event.
         message (discord.Message): The message that was reacted to.
         channel (discord.TextChannel): The channel where the message was sent.
-        action (ReactionAction): The action taken (add or remove)
+        action (ReactionAction): The action taken (add or remove).
 
     Returns:
         str: The formatted log message.
@@ -301,21 +314,22 @@ def _format_reaction_log(
     Raises:
         ValueError: If the action is not valid.
     """
-    if action != ReactionAction.ADD and action != ReactionAction.REMOVE:
-        raise ValueError(f"Invalid action: {action}")
 
     if action == ReactionAction.ADD:
-        return (
-            f"`{user.name}` reacted {payload.emoji} to message \n"
-            f"```{message.content}\n```"
-            f"in {ping_channel(channel.id)}"
-        )
-    if action == ReactionAction.REMOVE:
-        return (
-            f"`{user.name}` removed their reaction {payload.emoji} from message \n"
-            f"```{message.content}\n```"
-            f"in {ping_channel(channel.id)}"
-        )
+        verb = "reacted"
+    elif action == ReactionAction.REMOVE:
+        verb = "removed their reaction"
+    else:
+        raise ValueError(f"Invalid action: {action}")
+
+    link = message_link(channel.guild.id, channel.id, message.id)
+
+    # Handle empty message content (e.g., embeds, images)
+    content = message.content or "[No Content/Embed]"
+
+    return (
+        f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"
+    )
 
 
 def _format_reaction_log_late_rides(

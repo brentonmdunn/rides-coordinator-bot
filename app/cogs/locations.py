@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import (
+    AskRidesMessage,
     ChannelIds,
     FeatureFlagNames,
 )
@@ -17,8 +18,10 @@ from app.core.logger import log_cmd, logger
 from app.core.models import NonDiscordRides
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
+from app.utils.constants import MAP_LINKS
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.lookups import get_location, get_name_location_no_sync, sync
+from app.utils.parsing import get_message_and_embed_content
 from app.utils.time_helpers import get_next_date_obj
 
 load_dotenv()
@@ -26,7 +29,16 @@ load_dotenv()
 LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 # List of scholars housing locations
-SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh", "new marshall"]
+SCHOLARS_LOCATIONS = [
+    "revelle",
+    "muir",
+    "sixth",
+    "marshall",
+    "erc",
+    "seventh",
+    "new marshall",
+    "eighth",
+]
 
 RideOptionsSchema = Literal[
     "Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"
@@ -165,13 +177,15 @@ class Locations(commands.Cog):
             return now - timedelta(days=(now.weekday() + 1))
 
     async def _find_correct_message(
-        self, day, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+        self,
+        ask_rides_message: AskRidesMessage,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ) -> str | None:
         """
         Returns message id of message corresponding to day.
 
         Args:
-            day
+            ask_rides_message
 
         Returns:
             message id (str) if found, otherwise None
@@ -184,11 +198,8 @@ class Locations(commands.Cog):
             return None
 
         async for message in channel.history(after=last_sunday):
-            if (
-                day in message.content.lower()
-                and "react" in message.content.lower()
-                and "class" not in message.content.lower()
-            ):
+            combined_text = get_message_and_embed_content(message, message_content=False)
+            if ask_rides_message.lower() in combined_text.lower():
                 most_recent_message = message
         if not most_recent_message:
             return None
@@ -212,7 +223,7 @@ class Locations(commands.Cog):
         )
 
         groups = {
-            "Scholars (no Eighth)": {
+            "Scholars": {
                 "count": 0,
                 "people": "",
                 "filter": SCHOLARS_LOCATIONS,
@@ -231,10 +242,10 @@ class Locations(commands.Cog):
                 ],
                 "emoji": "🏠",
             },
-            "Rita + Eighth": {
+            "Rita": {
                 "count": 0,
                 "people": "",
-                "filter": ["rita", "eighth"],
+                "filter": ["rita"],
                 "emoji": "🏡",
             },
             "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
@@ -376,11 +387,36 @@ class Locations(commands.Cog):
 
         # Find the relevant message
         if day:
-            message_id = await self._find_correct_message(day, channel_id)
+            if day.lower() == "sunday":
+                ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
+            elif day.lower() == "friday":
+                ask_rides_message = AskRidesMessage.FRIDAY_FELLOWSHIP
+            else:
+                raise ValueError(f"Invalid day: {day}")
+            message_id = await self._find_correct_message(ask_rides_message, channel_id)
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
         usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
+        # -----
+        # If use message_id instead of day
+        # Need to only delete class reacts if doing sunday rides
+        tmp_content = ""
+        if not day:
+            tmp_channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+            tmp_message = await tmp_channel.fetch_message(int(message_id))
+            tmp_content = get_message_and_embed_content(tmp_message).lower()
+        if (
+            (day and day.lower() == "sunday")
+            or ("service" in tmp_content and "sunday" in tmp_content)
+        ) and (
+            class_message_id := await self._find_correct_message(
+                AskRidesMessage.SUNDAY_CLASS, channel_id
+            )
+        ) is not None:
+            usernames_reacted -= await self._get_usernames_who_reacted(channel_id, class_message_id)
+        # -----
+
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
         if day and (option is None or "dropoff" not in option.lower()):
@@ -431,6 +467,18 @@ class Locations(commands.Cog):
         except Exception as e:
             logger.exception("An error occurred: ")
             await interaction.response.send_message(f"Unknown error: {e}")
+
+    @discord.app_commands.command(
+        name="map-links",
+        description="Google Map links for pickups",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
+    async def map_links(self, interaction: discord.Interaction):
+        message: list[str] = []
+        for location, link in MAP_LINKS.items():
+            message.append(f"{location}: <{link}>")
+        await interaction.response.send_message("\n".join(message))
 
 
 async def setup(bot: commands.Bot):
