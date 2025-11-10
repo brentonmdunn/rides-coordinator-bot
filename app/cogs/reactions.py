@@ -199,10 +199,7 @@ class Reactions(commands.Cog):
         if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
             ("friday" in message_content and is_during_target_window(DaysOfWeek.FRIDAY))
             or ("sunday" in message_content and is_during_target_window(DaysOfWeek.SUNDAY))
-            or (
-                "wednesday" in message_content
-                and is_during_target_window(DaysOfWeek.WEDNESDAY)
-            )
+            or ("wednesday" in message_content and is_during_target_window(DaysOfWeek.WEDNESDAY))
         ):
             log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
             if log_channel:
