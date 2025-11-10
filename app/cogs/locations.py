@@ -474,11 +474,16 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
-    async def map_links(self, interaction: discord.Interaction):
-        message: list[str] = []
-        for location, link in MAP_LINKS.items():
-            message.append(f"{location}: <{link}>")
-        await interaction.response.send_message("\n".join(message))
+    async def map_links(self, interaction: discord.Interaction, location: str | None):
+        if location is None:
+            await interaction.response.send_message("**All locations**")
+        else:
+            await interaction.response.send_message(f"**{location}**")
+        for _location, link in MAP_LINKS.items():
+            if location and location.lower() not in _location.lower():
+                continue
+            await interaction.channel.send(f"{_location}")
+            await interaction.channel.send(f"([Google Maps]({link}))")
 
 
 async def setup(bot: commands.Bot):
