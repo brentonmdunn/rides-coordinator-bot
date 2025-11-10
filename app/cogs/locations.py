@@ -475,15 +475,35 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def map_links(self, interaction: discord.Interaction, location: str | None):
-        if location is None:
-            await interaction.response.send_message("**All locations**")
-        else:
-            await interaction.response.send_message(f"**{location}**")
-        for _location, link in MAP_LINKS.items():
-            if location and location.lower() not in _location.lower():
+        """Send Google Maps links for all known locations or those matching a search term.
+
+        Args:
+            location (str | None):
+                Optional case-insensitive filter. If provided, only locations whose
+                names contain this substring will be sent. If None, all locations are sent.
+
+        Behavior:
+            - Sends an initial message indicating whether all locations are being listed,
+            or a filtered subset.
+            - For each matching location, sends two separate messages:
+                1. The location name.
+                2. The corresponding Google Maps link.
+        """
+        search_term = location.lower() if location else None
+
+        header = (
+            f"**{location}**"
+            if location
+            else "**All locations** (slight rate limit warning so all don't send at once)"
+        )
+        await interaction.response.send_message(header)
+
+        for loc_name, map_url in MAP_LINKS.items():
+            if search_term and search_term not in loc_name.lower():
                 continue
-            await interaction.channel.send(f"{_location}")
-            await interaction.channel.send(f"([Google Maps]({link}))")
+
+            await interaction.channel.send(loc_name)
+            await interaction.channel.send(f"([Google Maps]({map_url}))")
 
 
 async def setup(bot: commands.Bot):
