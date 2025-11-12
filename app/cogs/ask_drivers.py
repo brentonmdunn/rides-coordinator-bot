@@ -11,6 +11,7 @@ from app.core.enums import (
     RoleIds,
 )
 from app.core.logger import log_cmd
+from app.utils.autocomplete import lscc_day_autocomplete
 from app.utils.channel_whitelist import (
     BOT_TESTING_CHANNELS,
     cmd_is_allowed,
@@ -23,23 +24,11 @@ class AskDrivers(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def day_autocomplete(
-        self,
-        interaction: discord.Interaction,
-        current: str,
-    ) -> list[app_commands.Choice[str]]:
-        days = [DaysOfWeek.SUNDAY, DaysOfWeek.FRIDAY]
-        return [
-            app_commands.Choice(name=day, value=day)
-            for day in days
-            if current.lower() in day.lower()
-        ]
-
     @discord.app_commands.command(
         name="ask-drivers",
         description="Pings drivers to see who is available.",
     )
-    @app_commands.autocomplete(day=day_autocomplete)
+    @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def ask_drivers(self, interaction: discord.Interaction, day: str, message: str) -> None:

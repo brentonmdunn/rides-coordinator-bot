@@ -6,12 +6,11 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import (
-    CampusLivingLocations,
-    DaysOfWeek,
     FeatureFlagNames,
 )
 from app.core.logger import log_cmd, logger
 from app.core.models import NonDiscordRides
+from app.utils.autocomplete import location_autocomplete, lscc_day_autocomplete
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
 from app.utils.time_helpers import get_next_date_obj
@@ -21,36 +20,12 @@ class NonDiscordRidesCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def day_autocomplete(
-        self,
-        interaction: discord.Interaction,
-        current: str,
-    ) -> list[app_commands.Choice[str]]:
-        days = [DaysOfWeek.SUNDAY, DaysOfWeek.FRIDAY]
-        return [
-            app_commands.Choice(name=day, value=day)
-            for day in days
-            if current.lower() in day.lower()
-        ]
-
-    async def location_autocomplete(
-        self,
-        interaction: discord.Interaction,
-        current: str,
-    ) -> list[app_commands.Choice[str]]:
-        locations = [location.value for location in CampusLivingLocations]
-        return [
-            app_commands.Choice(name=location, value=location)
-            for location in locations
-            if current.lower() in location.lower()
-        ]
-
     @app_commands.command(
         name="add-pickup",
         description="Add non-Discord user to list of pickups",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
-    @app_commands.autocomplete(day=day_autocomplete)
+    @app_commands.autocomplete(day=lscc_day_autocomplete)
     @app_commands.autocomplete(location=location_autocomplete)
     @log_cmd
     async def add_pickup(
@@ -81,7 +56,7 @@ class NonDiscordRidesCog(commands.Cog):
         description="Remove a non-Discord user from the list of pickups",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
-    @app_commands.autocomplete(day=day_autocomplete)
+    @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def remove_pickup(self, interaction: discord.Interaction, name: str, day: str):
         """
@@ -138,7 +113,7 @@ class NonDiscordRidesCog(commands.Cog):
         description="Lists all added pickups for a specific day.",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
-    @app_commands.autocomplete(day=day_autocomplete)
+    @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def list_added_pickups(self, interaction: discord.Interaction, day: str):
         """

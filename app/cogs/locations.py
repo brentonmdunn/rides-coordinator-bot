@@ -199,28 +199,30 @@ class Locations(commands.Cog):
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     ) -> str | None:
         """
-        Returns message id of message corresponding to ask_rides_message.
+        Returns message id of message corresponding to day.
 
         Args:
-            ask_rides_message: Type of ask rides message to find
-            channel_id: Channel to look for message in
+            ask_rides_message
 
         Returns:
             message id (str) if found, otherwise None
         """
+        last_sunday = self._get_last_sunday()
         channel = self.bot.get_channel(channel_id)
         most_recent_message = None
 
         if not channel:
-            logger.error(f"Channel with ID {channel_id} not found.")
             return None
 
-        # I'm prety sure it goes oldest to newest
-        async for message in channel.history(after=self._get_last_sunday()):
-            if ask_rides_message.lower() in get_message_and_embed_content(message).lower():
+        async for message in channel.history(after=last_sunday):
+            combined_text = get_message_and_embed_content(message, message_content=False)
+            if ask_rides_message.lower() in combined_text.lower():
                 most_recent_message = message
-
-        return None if most_recent_message is None else most_recent_message.id
+        if not most_recent_message:
+            return None
+        message_id = most_recent_message.id
+        return message_id
+    
 
     def _build_embed(
         self,
@@ -490,12 +492,36 @@ class Locations(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
-    async def map_links(self, interaction: discord.Interaction):
-        """Lists the Google Map links for all pickup locations."""
-        message: list[str] = []
-        for location, link in MAP_LINKS.items():
-            message.append(f"{location}: <{link}>")
-        await interaction.response.send_message("\n".join(message))
+    async def map_links(self, interaction: discord.Interaction, location: str | None):
+        """Send Google Maps links for all known locations or those matching a search term.
+
+        Args:
+            location (str | None):
+                Optional case-insensitive filter. If provided, only locations whose
+                names contain this substring will be sent. If None, all locations are sent.
+
+        Behavior:
+            - Sends an initial message indicating whether all locations are being listed,
+            or a filtered subset.
+            - For each matching location, sends two separate messages:
+                1. The location name.
+                2. The corresponding Google Maps link.
+        """
+        search_term = location.lower() if location else None
+
+        header = (
+            f"**{location}**"
+            if location
+            else "**All locations** (slight rate limit warning so all don't send at once)"
+        )
+        await interaction.response.send_message(header)
+
+        for loc_name, map_url in MAP_LINKS.items():
+            if search_term and search_term not in loc_name.lower():
+                continue
+
+            await interaction.channel.send(loc_name)
+            await interaction.channel.send(f"([Google Maps]({map_url}))")
 
 
 async def setup(bot: commands.Bot):

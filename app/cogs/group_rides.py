@@ -10,7 +10,13 @@ from discord.ext import commands
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.cogs.locations import Locations
-from app.core.enums import CampusLivingLocations, ChannelIds, FeatureFlagNames, PickupLocations
+from app.core.enums import (
+    AskRidesMessage,
+    CampusLivingLocations,
+    ChannelIds,
+    FeatureFlagNames,
+    PickupLocations,
+)
 from app.core.logger import log_cmd, logger
 from app.core.schemas import (
     Identity,
@@ -22,8 +28,7 @@ from app.core.schemas import (
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
 from app.utils.constants import MAP_LINKS
-from app.utils.custom_exceptions import NoMatchingMessageFoundError
-from app.utils.genai.prompt import GROUP_RIDES_PROMPT
+from app.utils.genai.prompt import GROUP_RIDES_PROMPT, GROUP_RIDES_PROMPT_LEGACY
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
 from app.utils.parsing import get_message_and_embed_content
 
@@ -232,24 +237,6 @@ def create_output(
     return output_list
 
 
-def do_sunday_rides() -> bool:
-    """
-    Checks if a given datetime is between 9 PM on Friday and 11 PM on Sunday.
-
-    Returns:
-        True if the datetime is within the specified window, False otherwise.
-    """
-    current_datetime = datetime.now()
-    day_of_week = current_datetime.weekday()
-
-    # The conditional statement
-    return (
-        (day_of_week == 4 and current_datetime.hour >= 21)
-        or (day_of_week == 5)
-        or (day_of_week == 6 and current_datetime.hour < 23)
-    )
-
-
 class GroupRides(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -262,13 +249,15 @@ class GroupRides(commands.Cog):
         retry=tenacity.retry_if_exception_type(Exception),
         before_sleep=log_retry_attempt,
     )
-    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix):
+    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix, legacy_prompt=False):
         """A blocking helper function to invoke the LLM with a retry policy."""
+
+        prompt = GROUP_RIDES_PROMPT_LEGACY if legacy_prompt else GROUP_RIDES_PROMPT
 
         if os.getenv("APP_ENV", "local") == "local":
             logger.debug(
                 f"prompt={
-                    GROUP_RIDES_PROMPT.format(
+                    prompt.format(
                         pickups_str=pickups_str,
                         drivers_str=drivers_str,
                         locations_matrix=locations_matrix,
@@ -281,7 +270,7 @@ class GroupRides(commands.Cog):
             logger.info(f"{locations_matrix=}")
 
         ai_response = self.llm.invoke(
-            GROUP_RIDES_PROMPT.format(
+            prompt.format(
                 pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
             )
         )
@@ -324,72 +313,43 @@ class GroupRides(commands.Cog):
 
         return llm_result
 
-    @app_commands.command(
-        name="group-rides",
-        description="Uses GenAI to group riders with drivers",
-    )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
-    @discord.app_commands.describe(
-        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
-        message_id="Optional message ID to look at at specific message",
-    )
-    @log_cmd
-    async def group_rides(
+    async def _group_rides(
         self,
         interaction: discord.Interaction,
-        driver_capacity: str = "44444",
-        message_id: str | None = None,
+        message_id,
+        driver_capacity: str,
+        legacy_prompt: bool = False,
     ):
-        if not await cmd_is_allowed(
-            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
-        ):
-            return
-
-        # Would timeout if don't defer since LLM takes too long
         await interaction.response.defer()
-
         location_service = Locations(self.bot)
+        (
+            locations_people,
+            usernames_reacted,
+            location_found,
+        ) = await location_service.list_locations(message_id=message_id)
+        channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+        message = await channel.fetch_message(int(message_id))
+        combined_text = get_message_and_embed_content(message)
 
-        try:
-            if message_id is not None:
-                (
-                    locations_people,
-                    usernames_reacted,
-                    location_found,
-                ) = await location_service.list_locations(message_id=message_id)
-                channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
-                message = await channel.fetch_message(int(message_id))
-                combined_text = get_message_and_embed_content(message)
-
-                if "sunday" in combined_text:
-                    end_leave_time = time(hour=10, minute=10)
-                elif "friday" in combined_text:
-                    end_leave_time = time(hour=19, minute=10)
-                else:
-                    await interaction.followup.send(
-                        """Error: Please ensure that "friday" or "sunday" is written in message.""",
-                    )
-                    return
-            elif do_sunday_rides():
-                (
-                    locations_people,
-                    usernames_reacted,
-                    location_found,
-                ) = await location_service.list_locations(day="sunday")
-                end_leave_time = time(hour=10, minute=10)
-            else:
-                (
-                    locations_people,
-                    usernames_reacted,
-                    location_found,
-                ) = await location_service.list_locations(day="friday")
-                end_leave_time = time(hour=19, minute=10)
-        except NoMatchingMessageFoundError:
-            await interaction.followup.send(
-                "No rides announcement message found.",
-                ephemeral=True,
+        if "sunday" in combined_text:
+            end_leave_time = time(hour=10, minute=10)
+            class_message_id = await location_service._find_correct_message(
+                AskRidesMessage.SUNDAY_CLASS,
             )
-            return
+            if class_message_id is not None:
+                (
+                    _,
+                    class_usernames_reacted,
+                    _,
+                ) = await location_service.list_locations(message_id=class_message_id)
+                usernames_reacted - class_usernames_reacted
+
+        elif "friday" in combined_text:
+            end_leave_time = time(hour=19, minute=10)
+        else:
+            raise ValueError(
+                """Error: Please ensure that "friday" or "sunday" is written in message.""",
+            )
 
         unknown_location = usernames_reacted - location_found
         if unknown_location:
@@ -456,7 +416,7 @@ class GroupRides(commands.Cog):
 
         try:
             llm_result = await asyncio.to_thread(
-                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX
+                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX, legacy_prompt
             )
 
         except Exception as e:
@@ -480,6 +440,75 @@ class GroupRides(commands.Cog):
         # Followups reply to the initial response and it looks bad
         for message in output[1:]:
             await interaction.channel.send(message)
+
+    @app_commands.command(
+        name="group-rides-friday",
+        description="Uses GenAI to group riders with drivers",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @discord.app_commands.describe(
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
+    )
+    @log_cmd
+    async def group_rides_friday(
+        self,
+        interaction: discord.Interaction,
+        driver_capacity: str = "44444",
+        legacy_prompt: bool = False,
+    ):
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+        location_service = Locations(self.bot)
+        message_id = await location_service._find_correct_message(AskRidesMessage.FRIDAY_FELLOWSHIP)
+        await self._group_rides(interaction, message_id, driver_capacity, legacy_prompt)
+
+    @app_commands.command(
+        name="group-rides-sunday",
+        description="Uses GenAI to group riders with drivers",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @discord.app_commands.describe(
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
+    )
+    @log_cmd
+    async def group_rides_sunday(
+        self,
+        interaction: discord.Interaction,
+        driver_capacity: str = "44444",
+        legacy_prompt: bool = False,
+    ):
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+        location_service = Locations(self.bot)
+        message_id = await location_service._find_correct_message(AskRidesMessage.SUNDAY_SERVICE)
+        await self._group_rides(interaction, message_id, driver_capacity, legacy_prompt)
+
+    @app_commands.command(
+        name="group-rides-sunday-by-message-id",
+        description="Uses GenAI to group riders with drivers",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @discord.app_commands.describe(
+        message_id="The message ID to fetch pickups from",
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
+    )
+    @log_cmd
+    async def group_rides_message_id(
+        self,
+        interaction: discord.Interaction,
+        message_id: str,
+        driver_capacity: str = "44444",
+        legacy_prompt: bool = False,
+    ):
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+        await self._group_rides(interaction, message_id, driver_capacity, legacy_prompt)
 
 
 async def setup(bot: commands.Bot):
