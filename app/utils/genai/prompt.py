@@ -4,6 +4,68 @@ GROUP_RIDES_PROMPT = """
 You are an expert logistics coordinator. Your **sole responsibility** is to provide the most efficient driver routes as a JSON object. Do not include "```json" in the response, just the raw json.
 
 <instructions>
+1.  Analyze the provided pickups, driver capacities, and the locations_matrix to determine optimal routes.
+2.  Adhere strictly to the following priorities:
+    a. All pickups must be assigned.
+    b. Driver capacity cannot be exceeded (capacity is for PEOPLE).
+    c. Total driving time must be minimized.
+    d. Emphasis: The minimum number of drivers must be used, unless there are over 3 stops, then use another driver if available.
+    e. It is implied that drivers are going from "START", doing their pickups, and going to "END".
+3.  Here are preferences. If it is possible, adhere to these preferences.
+    a. If the is driver availability, have the person driving to Rita only drive to Rita
+    b. If able, keep people from the same location together in one car. If this requires moving drivers around so that a driver with more capacity services different people, then make that change.
+    c. If able, pickups per driver should not overlap. For example, if there is A-B-C-D, driver1 AC and driver2 BD would be overlapping. This is non-optimal when it can be split AB CD.
+    d. If able, Warren and Innovation should be kept together, and put Warren at the end.
+4.  The final output **MUST be a single JSON object** with driver names as keys and an ordered list of pickup locations as values.
+5.  **DO NOT** include any other text, explanations, or code blocks.
+6.  If a matching is not possible, give the following output:
+    {{
+        "error": "reason for error"
+    }}
+</instructions>
+
+<current_situation>
+<pickups>
+Each person will be separated by a comma. For example, "nathan luk" is one person and "nathan, luk" is two people.
+{pickups_str}
+</pickups>
+<drivers>
+{drivers_str}
+</drivers>
+<matrix>
+{locations_matrix}
+</matrix>
+</current_situation>
+
+Example of a correct final output:
+{{
+  "DriverA": [
+    {{
+      "name": "name1",
+      "location": "Rita"
+    }},
+    {{
+      "name": "name2",
+      "location": "ERC"
+    }}
+  ],
+  "DriverB": [
+    {{
+      "name": "name3",
+      "location": "Innovation"
+    }}
+  ]
+}}
+
+
+Begin.
+"""
+
+
+GROUP_RIDES_PROMPT_LEGACY = """
+You are an expert logistics coordinator. Your **sole responsibility** is to provide the most efficient driver routes as a JSON object. Do not include "```json" in the response, just the raw json.
+
+<instructions>
 <relative_map>
 | 1       | 2      | 3                     |
 | Seventh | Warren | Innovation            |
