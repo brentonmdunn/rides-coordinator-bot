@@ -28,7 +28,7 @@ from app.core.schemas import (
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
 from app.utils.constants import MAP_LINKS
-from app.utils.genai.prompt import GROUP_RIDES_PROMPT
+from app.utils.genai.prompt import GROUP_RIDES_PROMPT, GROUP_RIDES_PROMPT_LEGACY
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
 from app.utils.parsing import get_message_and_embed_content
 
@@ -249,13 +249,15 @@ class GroupRides(commands.Cog):
         retry=tenacity.retry_if_exception_type(Exception),
         before_sleep=log_retry_attempt,
     )
-    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix):
+    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix, legacy_prompt=False):
         """A blocking helper function to invoke the LLM with a retry policy."""
+
+        prompt = GROUP_RIDES_PROMPT_LEGACY if legacy_prompt else GROUP_RIDES_PROMPT
 
         if os.getenv("APP_ENV", "local") == "local":
             logger.debug(
                 f"prompt={
-                    GROUP_RIDES_PROMPT.format(
+                    prompt.format(
                         pickups_str=pickups_str,
                         drivers_str=drivers_str,
                         locations_matrix=locations_matrix,
@@ -268,7 +270,7 @@ class GroupRides(commands.Cog):
             logger.info(f"{locations_matrix=}")
 
         ai_response = self.llm.invoke(
-            GROUP_RIDES_PROMPT.format(
+            prompt.format(
                 pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
             )
         )
@@ -312,7 +314,11 @@ class GroupRides(commands.Cog):
         return llm_result
 
     async def _group_rides(
-        self, interaction: discord.Interaction, message_id, driver_capacity: str
+        self,
+        interaction: discord.Interaction,
+        message_id,
+        driver_capacity: str,
+        legacy_prompt: bool = False,
     ):
         await interaction.response.defer()
         location_service = Locations(self.bot)
@@ -410,7 +416,7 @@ class GroupRides(commands.Cog):
 
         try:
             llm_result = await asyncio.to_thread(
-                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX
+                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX, legacy_prompt
             )
 
         except Exception as e:
@@ -448,6 +454,7 @@ class GroupRides(commands.Cog):
         self,
         interaction: discord.Interaction,
         driver_capacity: str = "44444",
+        legacy_prompt: bool = False,
     ):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
@@ -455,7 +462,7 @@ class GroupRides(commands.Cog):
             return
         location_service = Locations(self.bot)
         message_id = await location_service._find_correct_message(AskRidesMessage.FRIDAY_FELLOWSHIP)
-        await self._group_rides(interaction, message_id, driver_capacity)
+        await self._group_rides(interaction, message_id, driver_capacity, legacy_prompt)
 
     @app_commands.command(
         name="group-rides-sunday",
@@ -470,6 +477,7 @@ class GroupRides(commands.Cog):
         self,
         interaction: discord.Interaction,
         driver_capacity: str = "44444",
+        legacy_prompt: bool = False,
     ):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
@@ -477,7 +485,7 @@ class GroupRides(commands.Cog):
             return
         location_service = Locations(self.bot)
         message_id = await location_service._find_correct_message(AskRidesMessage.SUNDAY_SERVICE)
-        await self._group_rides(interaction, message_id, driver_capacity)
+        await self._group_rides(interaction, message_id, driver_capacity, legacy_prompt)
 
     @app_commands.command(
         name="group-rides-sunday-by-message-id",
@@ -494,12 +502,13 @@ class GroupRides(commands.Cog):
         interaction: discord.Interaction,
         message_id: str,
         driver_capacity: str = "44444",
+        legacy_prompt: bool = False,
     ):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
-        await self._group_rides(interaction, message_id, driver_capacity)
+        await self._group_rides(interaction, message_id, driver_capacity, legacy_prompt)
 
 
 async def setup(bot: commands.Bot):
