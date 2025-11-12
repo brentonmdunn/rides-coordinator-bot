@@ -117,3 +117,12 @@ class AskRidesMessage(StrEnum):
     FRIDAY_FELLOWSHIP = "Friday"
     SUNDAY_SERVICE = "Sunday service"
     SUNDAY_CLASS = "class"
+
+
+class RideType(StrEnum):
+    FRI_PICKUP = "Friday pickup"
+    FRI_DROPOFF = "Friday dropoff"
+    SUN_SERVICE_PICKUP = "Sunday service pickup"
+    SUN_CLASS_PICKUP = "Sunday class pickup"
+    SUN_BACK_HOME_DROPOFF = "Sunday back home dropoff"
+    SUN_LUNCH_DROPOFF = "Sunday lunch dropoff"
