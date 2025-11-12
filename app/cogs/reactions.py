@@ -19,6 +19,7 @@ from app.core.models import EventThreads
 from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import message_link
 from app.utils.lookups import get_location
+from app.utils.parsing import get_message_and_embed_content
 from app.utils.time_helpers import is_during_target_window
 
 
@@ -194,13 +195,11 @@ class Reactions(commands.Cog):
 
     @feature_flag_enabled(FeatureFlagNames.LATE_RIDES_REACT)
     async def _late_rides_react(self, user, payload, message, channel, action: ReactionAction):
+        message_content = get_message_and_embed_content(message)
         if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
-            ("friday" in message.content.lower() and is_during_target_window(DaysOfWeek.FRIDAY))
-            or ("sunday" in message.content.lower() and is_during_target_window(DaysOfWeek.SUNDAY))
-            or (
-                "wednesday" in message.content.lower()
-                and is_during_target_window(DaysOfWeek.WEDNESDAY)
-            )
+            ("friday" in message_content and is_during_target_window(DaysOfWeek.FRIDAY))
+            or ("sunday" in message_content and is_during_target_window(DaysOfWeek.SUNDAY))
+            or ("wednesday" in message_content and is_during_target_window(DaysOfWeek.WEDNESDAY))
         ):
             log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
             if log_channel:
@@ -350,7 +349,7 @@ def _format_reaction_log_late_rides(
 
     event_name = None
     for keyword, full_name in event_map.items():
-        if keyword in message.content.lower():
+        if keyword in get_message_and_embed_content(message).lower():
             event_name = full_name
             break
 
