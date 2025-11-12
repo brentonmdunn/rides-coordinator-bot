@@ -12,7 +12,6 @@ from app.core.database import AsyncSessionLocal
 from app.core.enums import (
     AskRidesMessage,
     ChannelIds,
-    DaysOfWeekNumber,
     FeatureFlagNames,
 )
 from app.core.logger import log_cmd, logger
@@ -172,25 +171,25 @@ class Locations(commands.Cog):
 
     def _get_last_sunday(self):
         """
-        Returns the date of the previous Sunday. 
+        Returns the date of the previous Sunday.
         If today is Sunday, it returns the Sunday from the week prior (7 days ago).
         """
         now = datetime.now()
-        
+
         # now.weekday() returns Mon=0 to Sun=6.
         # We want to subtract (Mon=1, Tue=2, ..., Sat=6, Sun=7) days.
-        
+
         # 1. Add 1: This changes the range to Mon=1 to Sun=7.
         # 2. Modulo 7: This changes the range to Mon=1 to Sat=6, but Sun=7 becomes Sun=0.
         # 3. Add a check: If the result is 0 (Sunday), we want it to be 7.
-        
+
         days_to_subtract = (now.weekday() + 1) % 7
-        
-        # If today is Sunday (days_to_subtract is 0), we force it to 7 
+
+        # If today is Sunday (days_to_subtract is 0), we force it to 7
         # to get last week's Sunday. Otherwise, use the calculated value.
         if days_to_subtract == 0:
             days_to_subtract = 7
-            
+
         return now - timedelta(days=days_to_subtract)
 
     async def _find_correct_message(
@@ -222,7 +221,6 @@ class Locations(commands.Cog):
             return None
         message_id = most_recent_message.id
         return message_id
-    
 
     def _build_embed(
         self,
