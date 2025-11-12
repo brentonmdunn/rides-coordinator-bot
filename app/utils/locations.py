@@ -9,19 +9,38 @@ LOCATIONS_MATRIX = {
     PickupLocations.SIXTH: [(PickupLocations.MUIR, 1), (PickupLocations.MARSHALL, 1)],
     PickupLocations.MARSHALL: [(PickupLocations.SIXTH, 1), (PickupLocations.ERC, 1)],
     PickupLocations.ERC: [(PickupLocations.MARSHALL, 1), (PickupLocations.SEVENTH, 1)],
-    PickupLocations.SEVENTH: [(PickupLocations.ERC, 1), (PickupLocations.WARREN_EQL, 4)],
+    PickupLocations.SEVENTH: [
+        (PickupLocations.ERC, 1),
+        (PickupLocations.WARREN_EQL, 4),
+        (PickupLocations.GEISEL_LOOP, 5),
+        ("END", 20),
+    ],
     PickupLocations.WARREN_EQL: [
         (PickupLocations.SEVENTH, 4),
         (PickupLocations.RITA, 8),
         (PickupLocations.INNOVATION, 1),
+        (PickupLocations.GEISEL_LOOP, 3),
     ],
+    PickupLocations.GEISEL_LOOP: [(PickupLocations.WARREN_EQL, 3), (PickupLocations.SEVENTH, 5)],
     PickupLocations.RITA: [
         (PickupLocations.WARREN_EQL, 8),
         (PickupLocations.INNOVATION, 7),
         (PickupLocations.EIGHTH, 4),
+        ("START", 10),
     ],
-    PickupLocations.INNOVATION: [(PickupLocations.WARREN_EQL, 1), (PickupLocations.RITA, 7)],
-    PickupLocations.EIGHTH: [(PickupLocations.RITA, 4), (PickupLocations.MUIR, 2)],
+    PickupLocations.INNOVATION: [
+        (PickupLocations.WARREN_EQL, 1),
+        (PickupLocations.RITA, 7),
+        ("START", 10),
+        ("END", 20),
+    ],
+    PickupLocations.EIGHTH: [(PickupLocations.RITA, 4), (PickupLocations.MUIR, 2), ("START", 10)],
+    "START": [
+        (PickupLocations.INNOVATION, 10),
+        (PickupLocations.EIGHTH, 10),
+        (PickupLocations.RITA, 10),
+    ],
+    "END": [(PickupLocations.INNOVATION, 20), (PickupLocations.SEVENTH, 20)],
 }
 
 
