@@ -20,7 +20,7 @@ class Whois(commands.Cog):
     async def whois(self, interaction: discord.Interaction, name: str) -> None:
         """Fetch and parse names from CSV."""
         res = await WhoisService.get_whois_data(name)
-        message = res if res else "No matches found."
+        message = res if res is not None else "No matches found."
         await interaction.response.send_message(message)
 
 
