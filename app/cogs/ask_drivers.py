@@ -8,16 +8,15 @@ from app.core.enums import (
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
-    RoleIds,
 )
 from app.core.logger import log_cmd
+from app.services.driver_service import DriverService
 from app.utils.autocomplete import lscc_day_autocomplete
 from app.utils.channel_whitelist import (
     BOT_TESTING_CHANNELS,
     cmd_is_allowed,
 )
 from app.utils.checks import feature_flag_enabled
-from app.utils.format_message import ping_role_with_message
 
 
 class AskDrivers(commands.Cog):
@@ -40,22 +39,16 @@ class AskDrivers(commands.Cog):
         ):
             return
 
-        message_to_send = ping_role_with_message(RoleIds.DRIVER, message)
-
         # Send the message and allow role mentions
         await interaction.response.send_message(
-            message_to_send,
+            DriverService.format_message(message),
             allowed_mentions=discord.AllowedMentions(roles=True),
         )
 
         # Fetch the original response
         sent_message = await interaction.original_response()
 
-        if day == DaysOfWeek.SUNDAY:
-            reactions = ["🍔", "🏠", "🔄", "❌", "➡️", "⬅️", "✳️"]
-        else:  # Friday
-            reactions = ["👍", "❌", "➡️", "⬅️", "✳️"]
-        for emoji in reactions:
+        for emoji in DriverService.get_emojis(DaysOfWeek(day)):
             await sent_message.add_reaction(emoji)
 
 
