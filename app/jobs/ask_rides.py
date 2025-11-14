@@ -10,9 +10,9 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from app.cogs.feature_flags import feature_flag_status
 from app.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
+from app.repositories.feature_flags_repository import FeatureFlagsRepository
 from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message, ping_user
 from app.utils.gcal import get_event_summaries
@@ -197,9 +197,13 @@ async def run_ask_rides_header(
         return
 
     if (
-        await feature_flag_status(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
-        or await feature_flag_status(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
-        or await feature_flag_status(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
+        await FeatureFlagsRepository.get_feature_flag_status(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
+        or await FeatureFlagsRepository.get_feature_flag_status(
+            FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+        )
+        or await FeatureFlagsRepository.get_feature_flag_status(
+            FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+        )
     ):
         await channel.send(
             _format_message("for this week!"),
