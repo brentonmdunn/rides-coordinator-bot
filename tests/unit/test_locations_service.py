@@ -1,6 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from app.services.locations_service import LocationsService
 
 
@@ -21,9 +22,7 @@ async def test_pickup_location_found(monkeypatch):
 @pytest.mark.asyncio
 async def test_pickup_location_none(monkeypatch):
     """Should handle no results gracefully."""
-    monkeypatch.setattr(
-        "app.services.locations_service.get_location", AsyncMock(return_value=[])
-    )
+    monkeypatch.setattr("app.services.locations_service.get_location", AsyncMock(return_value=[]))
 
     svc = LocationsService(bot=None)
     result = await svc.pickup_location("Unknown")
@@ -116,8 +115,8 @@ async def test_list_locations_adds_non_discord_pickups(monkeypatch):
     monkeypatch.setattr("app.services.locations_service.sync", AsyncMock())
 
     result = await svc._sort_locations({"Alice"})
-    locations_people, location_found = result
+    locations_people, _ = result
 
     # manually call the post-processing logic
     locations_people["Off Campus"].append(("Charlie", None))
-    assert any("Off Campus" in loc for loc in locations_people.keys())
+    assert any("Off Campus" in loc for loc in locations_people)
