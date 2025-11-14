@@ -89,11 +89,11 @@ class ThreadService:
         try:
             starter_message = await thread.parent.fetch_message(thread.id)
         except discord.NotFound:
-            raise StarterMessageError(
+            raise StarterMessageError( #noqa
                 "Could not find the message that started this thread. Has it been deleted?"
-            )
+            ) 
         except discord.Forbidden:
-            raise StarterMessageError(
+            raise StarterMessageError( #noqa
                 "I don't have permission to read the history of this "
                 "channel to find the first message."
             )
