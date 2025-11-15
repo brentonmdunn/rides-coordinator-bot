@@ -20,8 +20,9 @@ from app.utils.checks import feature_flag_enabled
 
 
 class AskDrivers(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, driver_service):
         self.bot = bot
+        self.driver_service = driver_service
 
     @discord.app_commands.command(
         name="ask-drivers",
@@ -41,16 +42,17 @@ class AskDrivers(commands.Cog):
 
         # Send the message and allow role mentions
         await interaction.response.send_message(
-            DriverService.format_message(message),
+            self.driver_service.format_message(message),
             allowed_mentions=discord.AllowedMentions(roles=True),
         )
 
         # Fetch the original response
         sent_message = await interaction.original_response()
 
-        for emoji in DriverService.get_emojis(DaysOfWeek(day)):
+        for emoji in self.driver_service.get_emojis(DaysOfWeek(day)):
             await sent_message.add_reaction(emoji)
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(AskDrivers(bot))
+    service = DriverService
+    await bot.add_cog(AskDrivers(bot, driver_service=service))
