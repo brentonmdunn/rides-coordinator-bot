@@ -9,8 +9,9 @@ from app.utils.checks import feature_flag_enabled
 
 
 class HelpCog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, help_service: HelpService):
         self.bot = bot
+        self.help_service = help_service
 
     @app_commands.command(
         name="help",
@@ -20,9 +21,10 @@ class HelpCog(commands.Cog):
     @log_cmd
     async def help(self, interaction: discord.Interaction):
         """Show a list of all available commands."""
-        embed = HelpService.build_help_embed(self.bot)
+        embed = self.help_service.build_help_embed(self.bot)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(HelpCog(bot))
+    service = HelpService()
+    await bot.add_cog(HelpCog(bot, help_service=service))

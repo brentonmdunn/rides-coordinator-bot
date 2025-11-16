@@ -3,8 +3,7 @@ from discord import app_commands
 
 
 class HelpService:
-    @staticmethod
-    def build_help_embed(bot) -> discord.Embed:
+    def build_help_embed(self, bot) -> discord.Embed:
         """Generate an embed showing all slash commands and their parameters."""
         embed = discord.Embed(
             title="Available Slash Commands",
