@@ -6,8 +6,7 @@ from app.utils.format_message import ping_role_with_message
 
 
 class DriverService:
-    @staticmethod
-    def get_emojis(day: DaysOfWeek) -> list[str]:
+    def get_emojis(self, day: DaysOfWeek) -> list[str]:
         """
         Lists emoji reactions for driver availability.
 
@@ -22,8 +21,7 @@ class DriverService:
         else:  # Friday
             return ["👍", "❌", "➡️", "⬅️", "✳️"]
 
-    @staticmethod
-    def format_message(message: str) -> str:
+    def format_message(self, message: str) -> str:
         """
         Adds @driver ping before message
 

@@ -54,5 +54,5 @@ class AskDrivers(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    service = DriverService
+    service = DriverService()
     await bot.add_cog(AskDrivers(bot, driver_service=service))
