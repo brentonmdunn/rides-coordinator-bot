@@ -6,26 +6,29 @@ from discord.ext import commands
 
 from app.core.enums import FeatureFlagNames
 from app.core.logger import log_cmd
+from app.repositories.feature_flags_repository import FeatureFlagsRepository
 from app.services.feature_flags_service import FeatureFlagsService
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
+
+
+async def feature_name_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    """Autocompletes feature flag names based on current user input."""
+    flags = [flag.value for flag in FeatureFlagNames]
+    return [
+        app_commands.Choice(name=flag, value=flag)
+        for flag in flags
+        if current.lower() in flag.lower()
+    ]
 
 
 class FeatureFlagsCog(commands.Cog):
     """Cog that exposes commands for listing and modifying feature flags."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, feature_flags_service: FeatureFlagsService):
         self.bot = bot
-
-    async def feature_name_autocomplete(
-        self, interaction: discord.Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:
-        """Autocompletes feature flag names based on current user input."""
-        flags = [flag.value for flag in FeatureFlagNames]
-        return [
-            app_commands.Choice(name=flag, value=flag)
-            for flag in flags
-            if current.lower() in flag.lower()
-        ]
+        self.feature_flags_service = feature_flags_service
 
     @app_commands.command(name="feature-flag", description="Enable or disable a feature flag.")
     @app_commands.autocomplete(feature_name=feature_name_autocomplete)
@@ -40,14 +43,16 @@ class FeatureFlagsCog(commands.Cog):
             return
 
         # Validate feature flag name
-        feature_enum = await FeatureFlagsService.validate_feature_name(feature_name)
+        feature_enum = await self.feature_flags_service.validate_feature_name(feature_name)
         if not feature_enum:
             await interaction.response.send_message(
                 f"❌ `{feature_name}` is not a valid feature flag.", ephemeral=True
             )
             return
 
-        success, message = await FeatureFlagsService.modify_feature_flag(feature_name, enabled)
+        success, message = await self.feature_flags_service.modify_feature_flag(
+            feature_name, enabled
+        )
         await interaction.response.send_message(message, ephemeral=not success)
 
     @app_commands.command(
@@ -62,10 +67,12 @@ class FeatureFlagsCog(commands.Cog):
         ):
             return
 
-        embed = await FeatureFlagsService.list_feature_flags_embed()
+        embed = await self.feature_flags_service.list_feature_flags_embed()
         await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot: commands.Bot):
     """Add the FeatureFlagsCog to the Discord bot."""
-    await bot.add_cog(FeatureFlagsCog(bot))
+    repo = FeatureFlagsRepository()
+    service = FeatureFlagsService(repository=repo)
+    await bot.add_cog(FeatureFlagsCog(bot, feature_flags_service=service))

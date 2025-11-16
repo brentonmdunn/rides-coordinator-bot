@@ -9,16 +9,17 @@ from app.repositories.feature_flags_repository import FeatureFlagsRepository
 class FeatureFlagsService:
     """Handles feature flag business logic between the Cog and Repository."""
 
-    @staticmethod
-    async def validate_feature_name(feature_name: str) -> FeatureFlagNames | None:
+    def __init__(self, repository: FeatureFlagsRepository):
+        self.repository = repository
+
+    async def validate_feature_name(self, feature_name: str) -> FeatureFlagNames | None:
         """Validate and convert a feature name to an enum member."""
         try:
             return FeatureFlagNames(feature_name)
         except ValueError:
             return None
 
-    @staticmethod
-    async def modify_feature_flag(feature_name: str, enabled: bool) -> tuple[bool, str]:
+    async def modify_feature_flag(self, feature_name: str, enabled: bool) -> tuple[bool, str]:
         """Modify a feature flag state and return a message tuple (success, message)."""
         flag = await FeatureFlagsRepository.get_feature_flag(feature_name)
 
@@ -33,8 +34,7 @@ class FeatureFlagsService:
         new_state = "enabled" if enabled else "disabled"
         return True, f"✅ Feature flag `{feature_name}` is now **{new_state}**."
 
-    @staticmethod
-    async def list_feature_flags_embed() -> discord.Embed:
+    async def list_feature_flags_embed(self) -> discord.Embed:
         """Return a Discord embed listing all feature flags and their current states."""
         all_flags = await FeatureFlagsRepository.get_all_feature_flags()
 
