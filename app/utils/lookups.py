@@ -7,12 +7,13 @@ from collections.abc import Callable
 
 import requests
 from dotenv import load_dotenv
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, select
 
 from app.core.database import AsyncSessionLocal
 from app.core.enums import CanBeDriver, ClassYear
 from app.core.logger import logger
 from app.core.models import Locations
+from app.repositories.locations_repository import LocationsRepository
 
 load_dotenv()
 
@@ -53,34 +54,14 @@ async def get_location(name: str, discord_only: bool = False) -> list[tuple[str,
     Returns:
         List of (name, location) tuples or None if not found.
     """
-    if discord_only:
-        async with AsyncSessionLocal() as session:
-            from app.core.models import Locations as LocationsModel
-
-            stmt = select(LocationsModel.name, LocationsModel.location).where(
-                or_(
-                    func.lower(LocationsModel.discord_username).contains(name.lower()),
-                )
-            )
-            result = await session.execute(stmt)
-            possible_people = result.all()
-    else:
-        async with AsyncSessionLocal() as session:
-            from app.core.models import Locations as LocationsModel
-
-            stmt = select(LocationsModel.name, LocationsModel.location).where(
-                or_(
-                    func.lower(LocationsModel.name).contains(name.lower()),
-                    func.lower(LocationsModel.discord_username).contains(name.lower()),
-                )
-            )
-            result = await session.execute(stmt)
-            possible_people = result.all()
-
-    if not possible_people:
-        return None
-    return possible_people
-
+    repo = LocationsRepository()
+    async with AsyncSessionLocal() as session:
+        possible_people = (
+            await repo.get_location_check_discord(session, name)
+            if discord_only
+            else await repo.get_location_check_name_and_discord(session, name)
+        )
+    return possible_people if possible_people else None
 
 @sync_on_cache_miss
 async def get_discord_username(name: str) -> str | None:
