@@ -3,7 +3,7 @@
 import discord
 from discord.ext import commands
 
-from app.core.enums import FeatureFlagNames
+from app.core.enums import ChannelIds, FeatureFlagNames
 from app.core.logger import log_cmd
 from app.services.locations_service import LocationsService
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
@@ -107,7 +107,10 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_locations_unknown(
-        self, interaction: discord.Interaction, message_id: str, channel_id: str | None = None
+        self,
+        interaction: discord.Interaction,
+        message_id: str,
+        channel_id: str | None = str(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS),
     ):
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
