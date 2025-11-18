@@ -63,6 +63,7 @@ async def get_location(name: str, discord_only: bool = False) -> list[tuple[str,
         )
     return possible_people if possible_people else None
 
+
 @sync_on_cache_miss
 async def get_discord_username(name: str) -> str | None:
     """
