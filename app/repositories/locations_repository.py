@@ -1,4 +1,4 @@
-# app/features/locations/locations_repository.py
+# app/repositories/locations_repository.py
 
 from sqlalchemy import func, or_, select
 
