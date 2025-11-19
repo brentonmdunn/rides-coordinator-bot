@@ -24,12 +24,35 @@ from app.utils.time_helpers import is_during_target_window
 
 
 class ReactionAction(StrEnum):
+    """Enum representing the type of reaction action.
+
+    Attributes:
+        ADD: Represents adding a reaction to a message.
+        REMOVE: Represents removing a reaction from a message.
+    """
+
     ADD = "add"
     REMOVE = "remove"
 
 
 class Reactions(commands.Cog):
+    """Cog for handling reaction events on Discord messages.
+
+    This cog monitors reaction additions and removals to trigger various automated
+    behaviors such as logging reactions, managing event threads, creating ride
+    coordination channels, and notifying about late ride requests.
+
+    Attributes:
+        bot: The Discord bot instance.
+        locations_cog: Reference to the Locations cog for location lookups.
+    """
+
     def __init__(self, bot: commands.Bot):
+        """Initialize the Reactions cog.
+
+        Args:
+            bot: The Discord bot instance.
+        """
         self.bot = bot
         self.locations_cog: Locations | None = None
 
@@ -65,6 +88,19 @@ class Reactions(commands.Cog):
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
     async def _event_thread_add(self, payload: discord.RawReactionActionEvent, guild, user):
+        """Add a user to an event thread when they react to the thread's starter message.
+
+        This method checks if the reacted message is associated with an event thread.
+        If so, it automatically adds the reacting user to that thread.
+
+        Args:
+            payload: The raw reaction event payload containing message and emoji info.
+            guild: The Discord guild where the reaction occurred.
+            user: The user who added the reaction.
+
+        Note:
+            This method is only active when the EVENT_THREADS feature flag is enabled.
+        """
         async with AsyncSessionLocal() as session:
             stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
             result = await session.execute(stmt)
@@ -133,6 +169,20 @@ class Reactions(commands.Cog):
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
     async def _event_thread_remove(self, payload: discord.RawReactionActionEvent, guild):
+        """Remove a user from an event thread when they remove all their reactions.
+
+        This method checks if the reacted message is associated with an event thread.
+        If the user has no remaining reactions on the message, they are removed from
+        the thread.
+
+        Args:
+            payload: The raw reaction event payload containing message and emoji info.
+            guild: The Discord guild where the reaction was removed.
+
+        Note:
+            This method is only active when the EVENT_THREADS feature flag is enabled.
+            Users are only removed if they have zero reactions remaining on the message.
+        """
         async with AsyncSessionLocal() as session:
             stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
             result = await session.execute(stmt)
@@ -195,6 +245,22 @@ class Reactions(commands.Cog):
 
     @feature_flag_enabled(FeatureFlagNames.LATE_RIDES_REACT)
     async def _late_rides_react(self, user, payload, message, channel, action: ReactionAction):
+        """Log late ride reactions during specific time windows.
+
+        Monitors reactions to ride announcement messages during target time windows
+        (Friday, Sunday, or Wednesday) and logs them to the driver bot spam channel.
+
+        Args:
+            user: The user who reacted.
+            payload: The raw reaction event payload.
+            message: The message that was reacted to.
+            channel: The channel where the message was sent.
+            action: Whether the reaction was added or removed.
+
+        Note:
+            This method is only active when the LATE_RIDES_REACT feature flag is enabled.
+            Only logs reactions in the rides announcements channel during target windows.
+        """
         message_content = get_message_and_embed_content(message)
         if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
             ("friday" in message_content and is_during_target_window(DaysOfWeek.FRIDAY))
@@ -209,12 +275,43 @@ class Reactions(commands.Cog):
 
     @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
     async def _log_reactions(self, user, payload, message, channel, action: ReactionAction):
+        """Log all reaction events to the bot logs channel.
+
+        Sends a formatted log message to the bot logs channel whenever a reaction
+        is added or removed from any message.
+
+        Args:
+            user: The user who reacted.
+            payload: The raw reaction event payload.
+            message: The message that was reacted to.
+            channel: The channel where the message was sent.
+            action: Whether the reaction was added or removed.
+
+        Note:
+            This method is only active when the LOG_REACTIONS feature flag is enabled.
+        """
         log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
         if log_channel:
             await log_channel.send(_format_reaction_log(user, payload, message, channel, action))
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
     async def _new_rides_helper(self, user, guild, message_id):
+        """Create a private channel for new riders who need location information.
+
+        When a user without a registered location reacts to a ride announcement,
+        this creates a private channel where ride coordinators can collect their
+        location information.
+
+        Args:
+            user: The user who reacted to the ride announcement.
+            guild: The Discord guild where the reaction occurred.
+            message_id: The ID of the message that was reacted to.
+
+        Note:
+            This method is only active when the NEW_RIDES_MSG feature flag is enabled.
+            Only creates channels for users without registered locations who react
+            to Friday Fellowship or Sunday Service ride announcements.
+        """
         if not (
             (
                 self.locations_cog
@@ -337,6 +434,23 @@ def _format_reaction_log_late_rides(
     message: discord.Message,
     action: ReactionAction,
 ) -> str:
+    """Format a log message for late ride reactions.
+
+    Creates a human-readable log message indicating which user reacted to which
+    event (Friday Fellowship or Sunday Service) during a late time window.
+
+    Args:
+        user: The user who reacted.
+        payload: The raw reaction event payload containing emoji information.
+        message: The message that was reacted to.
+        action: Whether the reaction was added or removed.
+
+    Returns:
+        A formatted string describing the late ride reaction.
+
+    Raises:
+        ValueError: If the action is not ADD or REMOVE.
+    """
     if action not in (ReactionAction.ADD, ReactionAction.REMOVE):
         raise ValueError(f"Invalid action: {action}")
 
@@ -360,4 +474,9 @@ def _format_reaction_log_late_rides(
 
 
 async def setup(bot: commands.Bot):
+    """Add the Reactions cog to the bot.
+
+    Args:
+        bot: The Discord bot instance to add the cog to.
+    """
     await bot.add_cog(Reactions(bot))
