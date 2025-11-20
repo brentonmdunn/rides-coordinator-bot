@@ -43,9 +43,7 @@ class EventThreadRepository:
         result = await self.get_by_message_id(session, message_id)
         return result is not None
 
-    async def get_thread_members(
-        self, thread: discord.Thread
-    ) -> set[int]:
+    async def get_thread_members(self, thread: discord.Thread) -> set[int]:
         """Get all member IDs in a thread.
 
         Args:
@@ -64,9 +62,7 @@ class EventThreadRepository:
             logger.error(f"Failed to fetch thread members: {e}")
             return set()
 
-    async def add_user_to_thread(
-        self, thread: discord.Thread, user: discord.Member
-    ) -> bool:
+    async def add_user_to_thread(self, thread: discord.Thread, user: discord.Member) -> bool:
         """Add a user to a Discord thread.
 
         Args:
@@ -90,9 +86,7 @@ class EventThreadRepository:
             logger.error(f"An unexpected error occurred while adding user to thread: {e}")
             return False
 
-    async def remove_user_from_thread(
-        self, thread: discord.Thread, user: discord.Member
-    ) -> bool:
+    async def remove_user_from_thread(self, thread: discord.Thread, user: discord.Member) -> bool:
         """Remove a user from a Discord thread.
 
         Args:
@@ -118,9 +112,7 @@ class EventThreadRepository:
             logger.error(f"An unexpected error occurred while removing user from thread: {e}")
             return False
 
-    async def count_user_reactions(
-        self, message: discord.Message, user_id: int
-    ) -> int:
+    async def count_user_reactions(self, message: discord.Message, user_id: int) -> int:
         """Count how many reactions a user has on a message.
 
         Args:

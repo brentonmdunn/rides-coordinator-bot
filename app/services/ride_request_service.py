@@ -78,7 +78,7 @@ class RideRequestService:
         except Exception as e:
             logger.error(f"Failed to send welcome message to {new_channel.name}: {e}")
             # Channel was created, so still return True
-        
+
         return True
 
     def _build_channel_permissions(

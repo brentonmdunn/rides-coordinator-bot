@@ -207,9 +207,7 @@ class Reactions(commands.Cog):
         await self.logging_service.log_reaction(user, payload, message, channel, action)
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
-    async def _new_rides_helper(
-        self, user: discord.Member, guild: discord.Guild, message_id: int
-    ):
+    async def _new_rides_helper(self, user: discord.Member, guild: discord.Guild, message_id: int):
         """Create a private channel for new riders who need location information.
 
         When a user without a registered location reacts to a ride announcement,
@@ -236,7 +234,9 @@ class Reactions(commands.Cog):
                         AskRidesMessage.FRIDAY_FELLOWSHIP
                     )
                     or message_id
-                    == await self.locations_cog._find_correct_message(AskRidesMessage.SUNDAY_SERVICE)
+                    == await self.locations_cog._find_correct_message(
+                        AskRidesMessage.SUNDAY_SERVICE
+                    )
                 )
             )
             and user is not None

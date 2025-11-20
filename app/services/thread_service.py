@@ -227,9 +227,7 @@ class ThreadService:
 
         user = guild.get_member(payload.user_id)
         if not user or user.bot:
-            logger.info(
-                f"Ignoring bot reaction removal from {user.name if user else 'unknown'}"
-            )
+            logger.info(f"Ignoring bot reaction removal from {user.name if user else 'unknown'}")
             return False
 
         thread = guild.get_thread(payload.message_id)
@@ -245,4 +243,3 @@ class ThreadService:
 
         # Remove the user from the thread
         return await self.repository.remove_user_from_thread(thread, user)
-

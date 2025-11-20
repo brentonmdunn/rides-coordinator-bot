@@ -43,7 +43,7 @@ class ReactionLoggingService:
             return False
 
         log_message = self._format_reaction_log(user, payload, message, channel, action)
-        
+
         try:
             await log_channel.send(log_message)
             return True
@@ -77,7 +77,7 @@ class ReactionLoggingService:
             return False
 
         log_message = self._format_reaction_log_late_rides(user, payload, message, action)
-        
+
         try:
             await log_channel.send(log_message)
             return True
