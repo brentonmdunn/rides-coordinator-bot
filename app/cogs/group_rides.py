@@ -61,7 +61,7 @@ class GroupRides(commands.Cog):
         )
 
     @app_commands.command(
-        name="group-rides-sunday-by-message-id",
+        name="group-rides-by-message-id",
         description="Uses GenAI to group riders with drivers",
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
