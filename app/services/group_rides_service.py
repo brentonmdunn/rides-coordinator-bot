@@ -97,14 +97,9 @@ def find_passenger(locations_people: PassengersByLocation, person: str, location
 
 def count_tuples(data_dict: PassengersByLocation) -> int:
     """
-    Counts the total number of tuples across all lists in a dictionary.
+    Counts the total number of passengers across all locations.
     """
-    total_tuples = 0
-    # Iterate through the values of the dictionary
-    for people_list in data_dict.values():
-        # Add the number of items in the current list to the total
-        total_tuples += len(people_list)
-    return total_tuples
+    return sum(len(people_list) for people_list in data_dict.values())
 
 
 def is_enough_capacity(
@@ -133,28 +128,31 @@ def calculate_pickup_time(
 
 def llm_input_drivers(driver_capacity: list[int]) -> str:
     """Data on driver capacities to send to LLM"""
-    drivers_list = []
-    for i, capacity in enumerate(driver_capacity):
-        drivers_list.append(f"Driver{i} has capacity {capacity}")
-    return ", ".join(drivers_list)
+    return ", ".join(f"Driver{i} has capacity {capacity}" for i, capacity in enumerate(driver_capacity))
 
 
 def llm_input_pickups(locations_people: PassengersByLocation) -> str:
     """Data on pickup locations to send to LLM"""
-    pickups = ""
-    for location in locations_people:
-        filtered_names = [person.identity.name for person in locations_people[location]]
-        pickups += f"{location}: {', '.join(filtered_names)}\n"
-    return pickups
+    return "\n".join(
+        f"{location}: {', '.join(person.identity.name for person in locations_people[location])}"
+        for location in locations_people
+    ) + ("\n" if locations_people else "")
 
 
 def create_output(
     llm_result: dict[str, list[dict[str, str]]],
-    locations_people: LocationsPeopleType,
+    locations_people: PassengersByLocation,
     end_leave_time: datetime.time,
     off_campus: LocationsPeopleType,
 ):
     overall_summary = "==== summary ====\n"
+    
+    # Create O(1) lookup map for passengers by name to avoid repeated O(N) searches
+    passenger_lookup = {
+        passenger.identity.name: passenger
+        for passengers in locations_people.values()
+        for passenger in passengers
+    }
     output_list = []
 
     for driver_id in llm_result:
@@ -163,10 +161,13 @@ def create_output(
         curr_location: list[Passenger] = []
 
         for obj in llm_result[driver_id]:
-            person = obj["name"]
+            person_name = obj["name"]
             location = obj["location"]
-
-            passenger = find_passenger(locations_people, person, location)
+            
+            passenger = passenger_lookup.get(person_name)
+            if not passenger:
+                logger.warning(f"Passenger {person_name} not found in lookup map")
+                continue
 
             # New group or part of same group as prev
             if len(curr_location) == 0 or location == curr_location[-1].pickup_location:
@@ -239,6 +240,20 @@ class GroupRidesService:
         self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
         self.locations_service = LocationsService(bot)
         self.repo = GroupRidesRepository(bot)
+    
+    @staticmethod
+    def _get_living_location(location: str) -> CampusLivingLocations:
+        """Convert location string to CampusLivingLocations enum."""
+        # Workaround since capitalization is not the same between services
+        # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
+        if location.lower() == "erc":
+            return CampusLivingLocations.ERC
+        return CampusLivingLocations(location.title())
+    
+    @staticmethod
+    def _get_pickup_location(living_location: CampusLivingLocations) -> PickupLocations:
+        """Get pickup location from living location."""
+        return living_to_pickup[living_location]
 
     # Helper function to invoke the LLM with a fixed retry wait
     @tenacity.retry(
@@ -391,24 +406,17 @@ class GroupRidesService:
 
         off_campus = {}
         passengers_by_location: PassengersByLocation = {}
+        
+        # Pre-compute valid campus locations for faster lookup
+        valid_campus_locations = {location.value.lower() for location in CampusLivingLocations}
+        
         for living_location in locations_people:
-            if living_location.lower() not in [
-                location.value.lower() for location in CampusLivingLocations
-            ]:
+            if living_location.lower() not in valid_campus_locations:
                 off_campus[living_location] = locations_people[living_location]
                 continue
 
-            def get_living_location(loc):
-                # Workaround since capitalization is not the same between services
-                # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
-                if loc == "erc":
-                    return CampusLivingLocations.ERC
-                return loc.title()
-
-            def get_pickup_location(loc):
-                return living_to_pickup[get_living_location(loc)]
-
-            pickup_key = get_pickup_location(living_location)
+            living_loc_enum = self._get_living_location(living_location)
+            pickup_key = self._get_pickup_location(living_loc_enum)
 
             # Get the existing list or create a new one, then extend it
             passengers_by_location.setdefault(pickup_key, []).extend(
@@ -416,31 +424,33 @@ class GroupRidesService:
                     identity=Identity(
                         name=person[0], username=person[1].name if person[1] else None
                     ),
-                    living_location=get_living_location(living_location),
-                    pickup_location=pickup_key,  # Reuse the calculated key
+                    living_location=living_loc_enum,
+                    pickup_location=pickup_key,
                 )
                 for person in locations_people[living_location]
             )
 
-        if not is_enough_capacity(parse_numbers(driver_capacity), passengers_by_location):
-            await interaction.followup.send(
-                f"Error: More people need a ride than we have drivers.\n"
-                f"Num need rides: {count_tuples(locations_people)}\n"
-                f"Num drivers: {len(parse_numbers(driver_capacity))}\n"
-                f"Driver capacity: {sum(parse_numbers(driver_capacity))}"
-            )
-            return
-
-        # Data on driver capacities to send to LLM
+        # Parse driver capacity once and reuse
         try:
-            drivers = llm_input_drivers(parse_numbers(driver_capacity))
+            driver_capacity_list = parse_numbers(driver_capacity)
         except ValueError:
             await interaction.followup.send(
                 "Error: `driver_capacity` must only contain integers.",
                 ephemeral=True,
             )
             return
-        # Data on pickup locations to send to LLM
+        
+        if not is_enough_capacity(driver_capacity_list, passengers_by_location):
+            await interaction.followup.send(
+                f"Error: More people need a ride than we have drivers.\n"
+                f"Num need rides: {count_tuples(passengers_by_location)}\n"
+                f"Num drivers: {len(driver_capacity_list)}\n"
+                f"Driver capacity: {sum(driver_capacity_list)}"
+            )
+            return
+
+        # Data on driver capacities and pickup locations to send to LLM
+        drivers = llm_input_drivers(driver_capacity_list)
         pickups = llm_input_pickups(passengers_by_location)
 
         try:
