@@ -141,3 +141,108 @@ class ThreadService:
                 failed_users.append(user.name)
 
         return added_users, failed_users
+
+    async def add_reactor_to_thread(
+        self, payload: discord.RawReactionActionEvent, guild: discord.Guild, user: discord.Member
+    ) -> bool:
+        """Add a user to an event thread when they react to the thread's starter message.
+
+        This method checks if the reacted message is associated with an event thread.
+        If so, it automatically adds the reacting user to that thread.
+
+        Args:
+            payload: The raw reaction event payload containing message and emoji info.
+            guild: The Discord guild where the reaction occurred.
+            user: The user who added the reaction.
+
+        Returns:
+            True if user was added to a thread, False otherwise.
+        """
+        async with AsyncSessionLocal() as session:
+            # Check if this message is an event thread
+            is_event = await self.repository.is_event_thread(session, str(payload.message_id))
+
+            if not is_event:
+                return False
+
+            # Get the thread object
+            thread = guild.get_thread(payload.message_id)
+            if not thread:
+                logger.error(f"Could not find thread with ID {payload.message_id}")
+                return False
+
+            # Check if user is already in the thread
+            thread_member_ids = await self.repository.get_thread_members(thread)
+
+            if user.id in thread_member_ids:
+                return False  # User already in thread
+
+            # Add the user to the thread
+            return await self.repository.add_user_to_thread(thread, user)
+
+    async def remove_reactor_from_thread(
+        self,
+        payload: discord.RawReactionActionEvent,
+        guild: discord.Guild,
+        bot,
+    ) -> bool:
+        """Remove a user from an event thread when they remove all their reactions.
+
+        This method checks if the reacted message is associated with an event thread.
+        If the user has no remaining reactions on the message, they are removed from
+        the thread.
+
+        Args:
+            payload: The raw reaction event payload containing message and emoji info.
+            guild: The Discord guild where the reaction was removed.
+            bot: The Discord bot instance for fetching messages.
+
+        Returns:
+            True if user was removed from thread, False otherwise.
+        """
+        async with AsyncSessionLocal() as session:
+            # Check if this message is an event thread
+            is_event = await self.repository.is_event_thread(session, str(payload.message_id))
+
+            if not is_event:
+                return False
+
+        # We need to fetch the full message to check for remaining reactions
+        channel = bot.get_channel(payload.channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return False
+
+        try:
+            message = await channel.fetch_message(payload.message_id)
+        except discord.NotFound:
+            logger.error(f"Could not find message with ID {payload.message_id}")
+            return False
+
+        # Count the user's remaining reactions
+        user_reactions = await self.repository.count_user_reactions(message, payload.user_id)
+
+        # Only proceed to remove the user if they have no reactions left
+        if user_reactions > 0:
+            return False
+
+        user = guild.get_member(payload.user_id)
+        if not user or user.bot:
+            logger.info(
+                f"Ignoring bot reaction removal from {user.name if user else 'unknown'}"
+            )
+            return False
+
+        thread = guild.get_thread(payload.message_id)
+        if not thread:
+            logger.error(f"Could not find thread with ID {payload.message_id}")
+            return False
+
+        # Check if the user is a member of the thread before attempting to remove
+        thread_member_ids = await self.repository.get_thread_members(thread)
+
+        if user.id not in thread_member_ids:
+            return False  # User not in thread
+
+        # Remove the user from the thread
+        return await self.repository.remove_user_from_thread(thread, user)
+
