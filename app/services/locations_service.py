@@ -43,6 +43,7 @@ SCHOLARS_LOCATIONS = [
 
 class LocationsService:
     """Service for handling location data and synchronization."""
+
     def __init__(self, bot):
         self.bot = bot
         self.repo = LocationsRepository()

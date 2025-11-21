@@ -1,4 +1,5 @@
 """Service for group rides logic."""
+
 import asyncio
 import json
 import os
@@ -302,6 +303,7 @@ def create_output(
 
 class GroupRidesService:
     """Service for handling group rides logic and LLM interaction."""
+
     def __init__(self, bot):
         self.bot = bot
         self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)

@@ -1,4 +1,5 @@
 """Cog for managing non-Discord rides."""
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -15,6 +16,7 @@ from app.utils.checks import feature_flag_enabled
 
 class NonDiscordRidesCog(commands.Cog):
     """Cog for handling pickups for users without Discord."""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.service = NonDiscordRidesService()

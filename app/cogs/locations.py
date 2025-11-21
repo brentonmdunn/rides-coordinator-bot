@@ -13,6 +13,7 @@ from app.utils.constants import MAP_LINKS
 
 class Locations(commands.Cog):
     """Cog for managing user locations and pickups."""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.service = LocationsService(bot)

@@ -1,5 +1,7 @@
 """Service for managing non-Discord rides."""
+
 from datetime import date
+
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import AsyncSessionLocal
@@ -16,6 +18,7 @@ class DuplicateRideError(Exception):
 
 class NonDiscordRidesService:
     """Service for handling non-Discord ride logic."""
+
     def __init__(self):
         # No dependencies needed in init for now, as we create session per method
         pass

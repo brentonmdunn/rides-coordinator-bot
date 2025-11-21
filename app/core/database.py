@@ -2,6 +2,7 @@
 
 This module handles the database connection, session creation, and initialization routines.
 """
+
 import os
 
 from sqlalchemy import select

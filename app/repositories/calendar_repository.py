@@ -1,4 +1,5 @@
 """Repository for calendar data access."""
+
 import datetime
 from os import getenv
 

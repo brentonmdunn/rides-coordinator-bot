@@ -1,4 +1,5 @@
 """Repository for event thread data access."""
+
 import discord
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

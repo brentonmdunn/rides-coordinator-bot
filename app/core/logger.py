@@ -3,6 +3,7 @@
 This module sets up the logging configuration for the application, including
 console handlers, formatters, and log levels for external libraries.
 """
+
 import functools
 import logging
 import os

@@ -1,4 +1,5 @@
 """Cog for managing Discord threads."""
+
 import discord
 from discord.ext import commands
 
@@ -16,6 +17,7 @@ from app.utils.checks import feature_flag_enabled
 
 class Threads(commands.Cog):
     """Cog for managing event-based threads."""
+
     def __init__(self, bot: commands.Bot, thread_service: ThreadService):
         self.bot = bot
         self.thread_service = thread_service

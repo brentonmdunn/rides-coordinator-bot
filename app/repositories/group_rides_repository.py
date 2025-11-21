@@ -1,10 +1,12 @@
 """Repository for group rides data access."""
+
 import discord
 from discord.ext import commands
 
 
 class GroupRidesRepository:
     """Handles data access for group rides."""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 

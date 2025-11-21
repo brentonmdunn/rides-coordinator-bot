@@ -19,7 +19,8 @@ class FeatureFlagsService:
             feature_name (str): The name of the feature flag to validate.
 
         Returns:
-            FeatureFlagNames | None: The corresponding FeatureFlagNames enum member, or None if invalid.
+            FeatureFlagNames | None: The corresponding FeatureFlagNames enum member, or None
+                                     if invalid.
         """
         try:
             return FeatureFlagNames(feature_name)

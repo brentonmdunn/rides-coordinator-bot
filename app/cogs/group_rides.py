@@ -1,4 +1,5 @@
 """Cog for grouping rides."""
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -12,6 +13,7 @@ from app.utils.checks import feature_flag_enabled
 
 class GroupRides(commands.Cog):
     """Cog for handling group rides logic."""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.service = GroupRidesService(bot)

@@ -11,6 +11,7 @@ from app.utils.time_helpers import get_next_date_obj
 
 class LocationsRepository:
     """Handles database operations for locations."""
+
     async def get_non_discord_pickups(self, day):
         """Retrieves non-Discord pickups for a specific day.
 

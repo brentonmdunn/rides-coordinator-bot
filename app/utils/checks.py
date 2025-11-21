@@ -1,4 +1,5 @@
 """utils/checks.py"""
+
 import functools
 from collections.abc import Callable
 from typing import Any
@@ -16,6 +17,7 @@ def is_admin():
     Returns:
         Callable: The decorated command.
     """
+
     async def predicate(interaction: discord.Interaction) -> bool:
         # Ensure this is used in a guild (not a DM)
         if not interaction.guild or not interaction.user:

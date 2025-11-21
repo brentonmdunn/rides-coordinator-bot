@@ -1,4 +1,5 @@
 """Service for driver-related operations."""
+
 from app.core.enums import (
     DaysOfWeek,
     RoleIds,
@@ -8,6 +9,7 @@ from app.utils.format_message import ping_role_with_message
 
 class DriverService:
     """Service for handling driver-related logic."""
+
     def get_emojis(self, day: DaysOfWeek) -> list[str]:
         """Lists emoji reactions for driver availability.
 

@@ -1,4 +1,5 @@
 """Cog for the help command."""
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -11,6 +12,7 @@ from app.utils.checks import feature_flag_enabled
 
 class HelpCog(commands.Cog):
     """Cog for displaying help information."""
+
     def __init__(self, bot: commands.Bot, help_service: HelpService):
         self.bot = bot
         self.help_service = help_service

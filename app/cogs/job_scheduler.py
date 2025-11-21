@@ -15,6 +15,7 @@ from app.jobs.sync_rides_locations import sync_rides_locations
 
 class JobScheduler(commands.Cog):
     """Cog that manages scheduled tasks using APScheduler."""
+
     def __init__(self, bot):
         self.bot = bot
         self.scheduler = AsyncIOScheduler()

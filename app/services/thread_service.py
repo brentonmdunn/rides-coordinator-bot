@@ -1,4 +1,5 @@
 """Service for event thread management."""
+
 import asyncio
 
 import discord

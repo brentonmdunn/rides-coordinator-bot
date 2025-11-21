@@ -1,4 +1,5 @@
 """Repository for non-Discord rides data access."""
+
 from datetime import date
 
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from app.core.models import NonDiscordRides
 
 class NonDiscordRidesRepository:
     """Handles database operations for non-Discord rides."""
+
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -78,6 +80,6 @@ class NonDiscordRidesRepository:
 
         for record in records_to_delete:
             await self.session.delete(record)
-        
+
         await self.session.commit()
         return len(records_to_delete)

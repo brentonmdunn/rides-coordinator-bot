@@ -1,4 +1,5 @@
 """Service for logging reaction events."""
+
 import discord
 
 from app.core.enums import ChannelIds

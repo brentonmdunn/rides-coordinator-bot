@@ -2,6 +2,7 @@
 
 This module defines the Pydantic models used for data validation and serialization.
 """
+
 from pydantic import BaseModel, RootModel, field_validator
 
 from app.core.enums import CampusLivingLocations, PickupLocations
@@ -9,12 +10,14 @@ from app.core.enums import CampusLivingLocations, PickupLocations
 
 class LocationQuery(BaseModel):
     """Schema for querying locations."""
+
     start_location: PickupLocations
     end_location: PickupLocations
 
 
 class Identity(BaseModel):
     """Schema representing a user's identity."""
+
     name: str
     username: str | None = None
 
@@ -40,6 +43,7 @@ class RidesUser(BaseModel):
 
 class LLMPassenger(BaseModel):
     """Schema representing a passenger in the LLM output."""
+
     name: str
     location: PickupLocations
 
@@ -55,11 +59,13 @@ class LLMOutputNominal(RootModel[dict[str, list[LLMPassenger]]]):
 
 class LLMOutputError(RootModel[dict[str, str]]):
     """Schema representing an error output from the LLM."""
+
     pass
 
 
 class Passenger(BaseModel):
     """Schema representing a passenger with full location details."""
+
     identity: Identity
     living_location: CampusLivingLocations
     pickup_location: PickupLocations

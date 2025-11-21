@@ -1,4 +1,5 @@
 """Service for whois command operations."""
+
 from sqlalchemy.engine import Row
 
 from app.core.database import AsyncSessionLocal
@@ -7,6 +8,7 @@ from app.repositories.whois_repo import WhoisRepo
 
 class WhoisService:
     """Service for handling whois lookups."""
+
     @staticmethod
     async def get_whois_data(name: str) -> str | None:
         """Retrieves matching user data from the database and formats it into a display message.
