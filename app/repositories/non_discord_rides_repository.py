@@ -1,5 +1,4 @@
 from datetime import date
-from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +15,7 @@ class NonDiscordRidesRepository:
         await self.session.commit()
         return ride
 
-    async def get_ride(self, name: str, ride_date: date) -> Optional[NonDiscordRides]:
+    async def get_ride(self, name: str, ride_date: date) -> NonDiscordRides | None:
         stmt = select(NonDiscordRides).where(
             NonDiscordRides.name == name, NonDiscordRides.date == ride_date
         )
@@ -27,7 +26,7 @@ class NonDiscordRidesRepository:
         await self.session.delete(ride)
         await self.session.commit()
 
-    async def get_rides_by_date(self, ride_date: date) -> List[NonDiscordRides]:
+    async def get_rides_by_date(self, ride_date: date) -> list[NonDiscordRides]:
         stmt = select(NonDiscordRides).where(NonDiscordRides.date == ride_date)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

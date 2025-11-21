@@ -33,8 +33,10 @@ async def test_sync_locations(monkeypatch):
     """Should call repo.sync_locations() exactly once."""
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.content = b"Name,Discord Username,Year,Location,Driver\nAlice,alice,2025,Revelle,Yes"
-    
+    mock_response.content = (
+        b"Name,Discord Username,Year,Location,Driver\nAlice,alice,2025,Revelle,Yes"
+    )
+
     monkeypatch.setattr("requests.get", MagicMock(return_value=mock_response))
     monkeypatch.setattr("app.services.locations_service.LSCC_PPL_CSV_URL", "http://example.com")
 

@@ -7,8 +7,6 @@ import discord
 import tenacity
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.services.locations_service import LocationsService
-from app.repositories.group_rides_repository import GroupRidesRepository
 from app.core.enums import (
     AskRidesMessage,
     CampusLivingLocations,
@@ -23,6 +21,8 @@ from app.core.schemas import (
     LocationQuery,
     Passenger,
 )
+from app.repositories.group_rides_repository import GroupRidesRepository
+from app.services.locations_service import LocationsService
 from app.utils.constants import MAP_LINKS
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT, GROUP_RIDES_PROMPT_LEGACY
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
@@ -128,7 +128,9 @@ def calculate_pickup_time(
 
 def llm_input_drivers(driver_capacity: list[int]) -> str:
     """Data on driver capacities to send to LLM"""
-    return ", ".join(f"Driver{i} has capacity {capacity}" for i, capacity in enumerate(driver_capacity))
+    return ", ".join(
+        f"Driver{i} has capacity {capacity}" for i, capacity in enumerate(driver_capacity)
+    )
 
 
 def llm_input_pickups(locations_people: PassengersByLocation) -> str:
@@ -146,7 +148,7 @@ def create_output(
     off_campus: LocationsPeopleType,
 ):
     overall_summary = "==== summary ====\n"
-    
+
     # Create O(1) lookup map for passengers by name to avoid repeated O(N) searches
     passenger_lookup = {
         passenger.identity.name: passenger
@@ -163,7 +165,7 @@ def create_output(
         for obj in llm_result[driver_id]:
             person_name = obj["name"]
             location = obj["location"]
-            
+
             passenger = passenger_lookup.get(person_name)
             if not passenger:
                 logger.warning(f"Passenger {person_name} not found in lookup map")
@@ -240,7 +242,7 @@ class GroupRidesService:
         self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
         self.locations_service = LocationsService(bot)
         self.repo = GroupRidesRepository(bot)
-    
+
     @staticmethod
     def _get_living_location(location: str) -> CampusLivingLocations:
         """Convert location string to CampusLivingLocations enum."""
@@ -249,7 +251,7 @@ class GroupRidesService:
         if location.lower() == "erc":
             return CampusLivingLocations.ERC
         return CampusLivingLocations(location.title())
-    
+
     @staticmethod
     def _get_pickup_location(living_location: CampusLivingLocations) -> PickupLocations:
         """Get pickup location from living location."""
@@ -330,12 +332,12 @@ class GroupRidesService:
         self,
         interaction: discord.Interaction,
         driver_capacity: str,
-        message_id: str = None,
-        day: str = None,
+        message_id: str | None = None,
+        day: str | None = None,
         legacy_prompt: bool = False,
     ):
         await interaction.response.defer()
-        
+
         if day:
             if day.lower() == "friday":
                 ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
@@ -344,11 +346,11 @@ class GroupRidesService:
             else:
                 # This shouldn't happen if called correctly
                 raise ValueError("Invalid day")
-            
+
             message_id = await self.locations_service._find_correct_message(
                 ask_message, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             )
-            
+
             if message_id is None:
                 await interaction.followup.send("Could not find the rides message.")
                 return
@@ -358,22 +360,21 @@ class GroupRidesService:
             usernames_reacted,
             location_found,
         ) = await self.locations_service.list_locations(message_id=message_id)
-        
+
         channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
         message = await self.repo.fetch_message(channel_id, int(message_id))
-        
+
         if not message:
-             # Fallback or error
-             await interaction.followup.send("Could not fetch the message content.")
-             return
+            # Fallback or error
+            await interaction.followup.send("Could not fetch the message content.")
+            return
 
         combined_text = get_message_and_embed_content(message)
 
         if "sunday" in combined_text:
             end_leave_time = time(hour=10, minute=10)
             class_message_id = await self.locations_service._find_correct_message(
-                AskRidesMessage.SUNDAY_CLASS,
-                int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+                AskRidesMessage.SUNDAY_CLASS, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             )
             if class_message_id is not None:
                 (
@@ -390,10 +391,10 @@ class GroupRidesService:
             # But if message_id was passed manually, we check content.
             # The original code raises ValueError if neither is found.
             # We can just warn.
-             await interaction.followup.send(
+            await interaction.followup.send(
                 """Error: Please ensure that "friday" or "sunday" is written in message.""",
             )
-             return
+            return
 
         unknown_location = usernames_reacted - location_found
         if unknown_location:
@@ -406,10 +407,10 @@ class GroupRidesService:
 
         off_campus = {}
         passengers_by_location: PassengersByLocation = {}
-        
+
         # Pre-compute valid campus locations for faster lookup
         valid_campus_locations = {location.value.lower() for location in CampusLivingLocations}
-        
+
         for living_location in locations_people:
             if living_location.lower() not in valid_campus_locations:
                 off_campus[living_location] = locations_people[living_location]
@@ -439,7 +440,7 @@ class GroupRidesService:
                 ephemeral=True,
             )
             return
-        
+
         if not is_enough_capacity(driver_capacity_list, passengers_by_location):
             await interaction.followup.send(
                 f"Error: More people need a ride than we have drivers.\n"

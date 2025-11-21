@@ -68,9 +68,9 @@ class RideRequestService:
         # Send welcome message
         try:
             await new_channel.send(
-                f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
+                f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "  # noqa E501
                 "We don't yet know where to pick you up. "
-                "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "
+                "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "  # noqa E501
                 "If you live **off campus**, please share your apartment complex or address. "
                 "One of our ride coordinators will check in with you shortly!",
                 allowed_mentions=discord.AllowedMentions(users=True),

@@ -239,7 +239,10 @@ class Reactions(commands.Cog):
                 )
             )
             and user is not None
-            and (self.locations_cog and not await self.locations_cog.service.get_location(user.name, discord_only=True))
+            and (
+                self.locations_cog
+                and not await self.locations_cog.service.get_location(user.name, discord_only=True)
+            )
         ):
             return
 

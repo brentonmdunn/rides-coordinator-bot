@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
+from app.core.enums import CampusLivingLocations, PickupLocations
+from app.core.schemas import Identity, LocationQuery, Passenger
 from app.services.group_rides_service import (
     PassengersByLocation,
     calculate_pickup_time,
@@ -15,8 +17,6 @@ from app.services.group_rides_service import (
     llm_input_pickups,
     parse_numbers,
 )
-from app.core.enums import CampusLivingLocations, PickupLocations
-from app.core.schemas import Identity, LocationQuery, Passenger
 
 
 @pytest.fixture
@@ -232,7 +232,9 @@ class TestCalculatePickupTime:
     sample_route_so_far = [[p_warren]]  # noqa
 
     @patch("app.services.group_rides_service.lookup_time")
-    @patch("app.services.group_rides_service.PICKUP_ADJUSTMENT", 2)  # Mock the constant to be 2 minutes
+    @patch(
+        "app.services.group_rides_service.PICKUP_ADJUSTMENT", 2
+    )  # Mock the constant to be 2 minutes
     def test_simple_calculation(self, mock_lookup_time):
         """Should correctly calculate a new pickup time by subtracting travel and adjustment time."""
         # Arrange: Mock the travel time between Innovation (the stop we are calculating)

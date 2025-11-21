@@ -94,9 +94,7 @@ class LocationsService:
     def _verify_driver(self, driver: str) -> bool:
         return driver in [driver.value for driver in CanBeDriver]
 
-    def _get_info(
-        self, data: dict, key: str, verify_schema: Callable | None = None
-    ) -> str | None:
+    def _get_info(self, data: dict, key: str, verify_schema: Callable | None = None) -> str | None:
         value = data.get(key)
         # Ensure value is a string and not just whitespace
         if not isinstance(value, str) or not value.strip():
@@ -107,7 +105,9 @@ class LocationsService:
             return None
         return info
 
-    async def get_location(self, name: str, discord_only: bool = False) -> list[tuple[str, str]] | None:
+    async def get_location(
+        self, name: str, discord_only: bool = False
+    ) -> list[tuple[str, str]] | None:
         async with AsyncSessionLocal() as session:
             possible_people = (
                 await self.repo.get_location_check_discord(session, name)
@@ -116,10 +116,10 @@ class LocationsService:
             )
         if possible_people:
             return possible_people
-        
-        logger.info(f"Cache miss in get_location. Triggering sync and retrying.")
+
+        logger.info("Cache miss in get_location. Triggering sync and retrying.")
         await self.sync_locations()
-        
+
         async with AsyncSessionLocal() as session:
             possible_people = (
                 await self.repo.get_location_check_discord(session, name)

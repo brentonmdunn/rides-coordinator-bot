@@ -123,7 +123,7 @@ class ReactionLoggingService:
         # Handle empty message content (e.g., embeds, images)
         content = message.content or "[No Content/Embed]"
 
-        return f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"
+        return f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"  # noqa E501
 
     def _format_reaction_log_late_rides(
         self,

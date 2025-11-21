@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+
 class GroupRidesRepository:
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -13,7 +14,7 @@ class GroupRidesRepository:
                 channel = await self.bot.fetch_channel(channel_id)
             except discord.NotFound:
                 return None
-        
+
         try:
             return await channel.fetch_message(message_id)
         except discord.NotFound:
