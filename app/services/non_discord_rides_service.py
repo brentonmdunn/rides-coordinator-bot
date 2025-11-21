@@ -1,3 +1,4 @@
+from datetime import date
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import AsyncSessionLocal
@@ -42,3 +43,9 @@ class NonDiscordRidesService:
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)
             return await repo.get_rides_by_date(ride_date)
+
+    async def delete_past_pickups(self) -> int:
+        today = date.today()
+        async with AsyncSessionLocal() as session:
+            repo = NonDiscordRidesRepository(session)
+            return await repo.delete_past_rides(today)

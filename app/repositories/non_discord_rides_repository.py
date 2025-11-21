@@ -30,3 +30,14 @@ class NonDiscordRidesRepository:
         stmt = select(NonDiscordRides).where(NonDiscordRides.date == ride_date)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def delete_past_rides(self, date_limit: date) -> int:
+        stmt = select(NonDiscordRides).where(NonDiscordRides.date < date_limit)
+        result = await self.session.execute(stmt)
+        records_to_delete = result.scalars().all()
+
+        for record in records_to_delete:
+            await self.session.delete(record)
+        
+        await self.session.commit()
+        return len(records_to_delete)
