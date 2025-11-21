@@ -1,37 +1,61 @@
-from enum import StrEnum
+"""Cog for handling reactions."""
 
 import discord
 from discord.ext import commands
-from sqlalchemy import select
 
 from app.cogs.locations import Locations
-from app.core.database import AsyncSessionLocal
 from app.core.enums import (
     AskRidesMessage,
-    CategoryIds,
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
-    RoleIds,
 )
 from app.core.logger import logger
-from app.core.models import EventThreads
+from app.core.reaction_enums import ReactionAction
+from app.repositories.thread_repository import EventThreadRepository
+from app.services.reaction_logging_service import ReactionLoggingService
+from app.services.ride_request_service import RideRequestService
+from app.services.thread_service import ThreadService
 from app.utils.checks import feature_flag_enabled
-from app.utils.format_message import message_link
-from app.utils.lookups import get_location
 from app.utils.parsing import get_message_and_embed_content
 from app.utils.time_helpers import is_during_target_window
 
 
-class ReactionAction(StrEnum):
-    ADD = "add"
-    REMOVE = "remove"
-
-
 class Reactions(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    """Cog for handling reaction events on Discord messages.
+
+    This cog monitors reaction additions and removals to trigger various automated
+    behaviors such as logging reactions, managing event threads, creating ride
+    coordination channels, and notifying about late ride requests.
+
+    Attributes:
+        bot: The Discord bot instance.
+        locations_cog: Reference to the Locations cog for location lookups.
+        thread_service: Service for managing event thread operations.
+        logging_service: Service for logging reaction events.
+        ride_request_service: Service for managing ride request channels.
+    """
+
+    def __init__(
+        self,
+        bot: commands.Bot,
+        thread_service: ThreadService,
+        logging_service: ReactionLoggingService,
+        ride_request_service: RideRequestService,
+    ):
+        """Initialize the Reactions cog.
+
+        Args:
+            bot: The Discord bot instance.
+            thread_service: Service for thread management.
+            logging_service: Service for reaction logging.
+            ride_request_service: Service for ride request handling.
+        """
         self.bot = bot
         self.locations_cog: Locations | None = None
+        self.thread_service = thread_service
+        self.logging_service = logging_service
+        self.ride_request_service = ride_request_service
 
     async def cog_load(self):
         """Wait until the bot is ready to get the cog."""
@@ -63,52 +87,6 @@ class Reactions(commands.Cog):
         await self._new_rides_helper(user, guild, payload.message_id)
         await self._event_thread_add(payload, guild, user)
 
-    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
-    async def _event_thread_add(self, payload: discord.RawReactionActionEvent, guild, user):
-        async with AsyncSessionLocal() as session:
-            stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
-            result = await session.execute(stmt)
-            is_event_thread = result.scalar() is not None
-
-            if is_event_thread:
-                # Check if the message ID exists in our EventThreads table.
-                async with AsyncSessionLocal() as session:
-                    stmt = select(EventThreads).where(
-                        EventThreads.message_id == str(payload.message_id)
-                    )
-                    result = await session.execute(stmt)
-                    is_event_thread = result.scalar_one_or_none() is not None
-
-                    if is_event_thread:
-                        # If the message ID is a starter message for an event thread,
-                        # get the thread object.
-                        thread = guild.get_thread(payload.message_id)
-                        if not thread:
-                            logger.error(f"Could not find thread with ID {payload.message_id}")
-                            return
-
-                        try:
-                            # Fetch thread members correctly to get a list of members.
-                            thread_members = await thread.fetch_members()
-                            thread_member_ids = {member.id for member in thread_members}
-
-                            # Check if the user is already in the thread.
-                            if user.id not in thread_member_ids:
-                                await thread.add_user(user)
-                                logger.info(
-                                    f"Added user {user.name} to thread {thread.name} on reaction."
-                                )
-
-                        except discord.Forbidden:
-                            logger.error(
-                                f"Failed to add user {user.name} to thread {thread.name} "
-                                "due to insufficient permissions."
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"An unexpected error occurred while adding user to thread: {e}"
-                            )
-
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         """Handles when a reaction is removed from a message."""
@@ -132,89 +110,122 @@ class Reactions(commands.Cog):
         await self._event_thread_remove(payload, guild)
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
-    async def _event_thread_remove(self, payload: discord.RawReactionActionEvent, guild):
-        async with AsyncSessionLocal() as session:
-            stmt = select(EventThreads).where(EventThreads.message_id == str(payload.message_id))
-            result = await session.execute(stmt)
-            is_event_thread = result.scalar_one_or_none() is not None
+    async def _event_thread_add(
+        self, payload: discord.RawReactionActionEvent, guild: discord.Guild, user: discord.Member
+    ):
+        """Add a user to an event thread when they react to the thread's starter message.
 
-            if is_event_thread:
-                # We need to fetch the full message to check for remaining reactions.
-                channel = self.bot.get_channel(payload.channel_id)
-                if not isinstance(channel, discord.TextChannel):
-                    return
+        This method checks if the reacted message is associated with an event thread.
+        If so, it automatically adds the reacting user to that thread.
 
-                try:
-                    message = await channel.fetch_message(payload.message_id)
-                except discord.NotFound:
-                    logger.error(f"Could not find message with ID {payload.message_id}")
-                    return
+        Args:
+            payload: The raw reaction event payload containing message and emoji info.
+            guild: The Discord guild where the reaction occurred.
+            user: The user who added the reaction.
 
-                # Count the user's remaining reactions.
-                user_reactions = 0
-                for reaction in message.reactions:
-                    # reaction.users() is an async iterator
-                    async for user in reaction.users():
-                        if user.id == payload.user_id:
-                            user_reactions += 1
+        Note:
+            This method is only active when the EVENT_THREADS feature flag is enabled.
+        """
+        await self.thread_service.add_reactor_to_thread(payload, guild, user)
 
-                # Only proceed to remove the user if they have no reactions left.
-                if user_reactions == 0:
-                    user = guild.get_member(payload.user_id)
-                    if not user or user.bot:
-                        logger.info(
-                            f"Ignoring bot reaction removal from {user.name if user else 'unknown'}"
-                        )
-                        return
+    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
+    async def _event_thread_remove(
+        self, payload: discord.RawReactionActionEvent, guild: discord.Guild
+    ):
+        """Remove a user from an event thread when they remove all their reactions.
 
-                    thread = guild.get_thread(payload.message_id)
-                    if not thread:
-                        logger.error(f"Could not find thread with ID {payload.message_id}")
-                        return
+        This method checks if the reacted message is associated with an event thread.
+        If the user has no remaining reactions on the message, they are removed from
+        the thread.
 
-                    try:
-                        # Check if the user is a member of the thread before attempting to remove
-                        thread_members = await thread.fetch_members()
-                        thread_member_ids = {member.id for member in thread_members}
+        Args:
+            payload: The raw reaction event payload containing message and emoji info.
+            guild: The Discord guild where the reaction was removed.
 
-                        if user.id in thread_member_ids:
-                            await thread.remove_user(user)
-                            logger.info(
-                                f"Removed user {user.name} from thread {thread.name} "
-                                "after reaction removal."
-                            )
-                    except discord.Forbidden:
-                        logger.error(
-                            f"Failed to remove user {user.name} from thread {thread.name} due "
-                            "to insufficient permissions."
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"An unexpected error occurred while removing user from thread: {e}"
-                        )
+        Note:
+            This method is only active when the EVENT_THREADS feature flag is enabled.
+            Users are only removed if they have zero reactions remaining on the message.
+        """
+        await self.thread_service.remove_reactor_from_thread(payload, guild, self.bot)
 
     @feature_flag_enabled(FeatureFlagNames.LATE_RIDES_REACT)
-    async def _late_rides_react(self, user, payload, message, channel, action: ReactionAction):
+    async def _late_rides_react(
+        self,
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        message: discord.Message,
+        channel: discord.TextChannel,
+        action: ReactionAction,
+    ):
+        """Log late ride reactions during specific time windows.
+
+        Monitors reactions to ride announcement messages during target time windows
+        (Friday, Sunday, or Wednesday) and logs them to the driver bot spam channel.
+
+        Args:
+            user: The user who reacted.
+            payload: The raw reaction event payload.
+            message: The message that was reacted to.
+            channel: The channel where the message was sent.
+            action: Whether the reaction was added or removed.
+
+        Note:
+            This method is only active when the LATE_RIDES_REACT feature flag is enabled.
+            Only logs reactions in the rides announcements channel during target windows.
+        """
         message_content = get_message_and_embed_content(message)
         if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
             ("friday" in message_content and is_during_target_window(DaysOfWeek.FRIDAY))
             or ("sunday" in message_content and is_during_target_window(DaysOfWeek.SUNDAY))
             or ("wednesday" in message_content and is_during_target_window(DaysOfWeek.WEDNESDAY))
         ):
-            log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
-            if log_channel:
-                await log_channel.send(
-                    _format_reaction_log_late_rides(user, payload, message, action)
-                )
+            await self.logging_service.log_late_ride_reaction(user, payload, message, action)
 
     @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
-    async def _log_reactions(self, user, payload, message, channel, action: ReactionAction):
-        log_channel = self.bot.get_channel(ChannelIds.BOT_STUFF__BOT_LOGS)
-        if log_channel:
-            await log_channel.send(_format_reaction_log(user, payload, message, channel, action))
+    async def _log_reactions(
+        self,
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        message: discord.Message,
+        channel: discord.TextChannel,
+        action: ReactionAction,
+    ):
+        """Log all reaction events to the bot logs channel.
+
+        Sends a formatted log message to the bot logs channel whenever a reaction
+        is added or removed from any message.
+
+        Args:
+            user: The user who reacted.
+            payload: The raw reaction event payload.
+            message: The message that was reacted to.
+            channel: The channel where the message was sent.
+            action: Whether the reaction was added or removed.
+
+        Note:
+            This method is only active when the LOG_REACTIONS feature flag is enabled.
+        """
+        await self.logging_service.log_reaction(user, payload, message, channel, action)
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
-    async def _new_rides_helper(self, user, guild, message_id):
+    async def _new_rides_helper(self, user: discord.Member, guild: discord.Guild, message_id: int):
+        """Create a private channel for new riders who need location information.
+
+        When a user without a registered location reacts to a ride announcement,
+        this creates a private channel where ride coordinators can collect their
+        location information.
+
+        Args:
+            user: The user who reacted to the ride announcement.
+            guild: The Discord guild where the reaction occurred.
+            message_id: The ID of the message that was reacted to.
+
+        Note:
+            This method is only active when the NEW_RIDES_MSG feature flag is enabled.
+            Only creates channels for users without registered locations who react
+            to Friday Fellowship or Sunday Service ride announcements.
+        """
+        # Check if this is a valid ride announcement reaction
         if not (
             (
                 self.locations_cog
@@ -230,134 +241,30 @@ class Reactions(commands.Cog):
                 )
             )
             and user is not None
-            and not await get_location(user.name, discord_only=True)
+            and (
+                self.locations_cog
+                and not await self.locations_cog.service.get_location(user.name, discord_only=True)
+            )
         ):
             return
-        channel_name = f"{user.name.lower()}"
-        category = discord.utils.get(guild.categories, id=int(CategoryIds.NEW_RIDES))
-        logger.info(f"{category=}")
 
-        if not category:
-            logger.info(f"Category with ID {CategoryIds.NEW_RIDES} not found.")
-            return
-
-        existing_channel = discord.utils.get(
-            category.channels,
-            name=channel_name,
-        )
-        if existing_channel:
-            logger.info(f"Channel {channel_name} already exists.")
-            return
-
-        # Permissions
-
-        role = guild.get_role(RoleIds.RIDE_COORDINATOR)
-
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(
-                read_messages=False,
-            ),
-            user: discord.PermissionOverwrite(
-                read_messages=True,
-                send_messages=True,
-            ),
-            role: discord.PermissionOverwrite(
-                read_messages=True,
-                send_messages=True,
-            ),
-        }
-
-        for role in guild.roles:
-            if role.permissions.administrator:
-                overwrites[role] = discord.PermissionOverwrite(
-                    read_messages=True,
-                    send_messages=True,
-                )
-
-        new_channel = await guild.create_text_channel(
-            name=channel_name,
-            category=category,
-            overwrites=overwrites,
-            reason=f"{user.name} reacted for rides.",
-        )
-        logger.info(f"{new_channel=}")
-        await new_channel.send(
-            f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "  # noqa
-            "We don't yet know where to pick you up. "
-            "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "  # noqa
-            "If you live **off campus**, please share your apartment complex or address. "
-            "One of our ride coordinators will check in with you shortly!",
-            allowed_mentions=discord.AllowedMentions(users=True),
-        )
-
-
-def _format_reaction_log(
-    user: discord.Member,
-    payload: discord.RawReactionActionEvent,
-    message: discord.Message,
-    channel: discord.TextChannel,
-    action: ReactionAction,
-) -> str:
-    """Formats a reaction log message.
-
-    Args:
-        user (discord.Member): The user who reacted.
-        payload (discord.RawReactionActionEvent): The payload of the reaction event.
-        message (discord.Message): The message that was reacted to.
-        channel (discord.TextChannel): The channel where the message was sent.
-        action (ReactionAction): The action taken (add or remove).
-
-    Returns:
-        str: The formatted log message.
-
-    Raises:
-        ValueError: If the action is not valid.
-    """
-
-    if action == ReactionAction.ADD:
-        verb = "reacted"
-    elif action == ReactionAction.REMOVE:
-        verb = "removed their reaction"
-    else:
-        raise ValueError(f"Invalid action: {action}")
-
-    link = message_link(channel.guild.id, channel.id, message.id)
-
-    # Handle empty message content (e.g., embeds, images)
-    content = message.content or "[No Content/Embed]"
-
-    return (
-        f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"
-    )
-
-
-def _format_reaction_log_late_rides(
-    user: discord.Member,
-    payload: discord.RawReactionActionEvent,
-    message: discord.Message,
-    action: ReactionAction,
-) -> str:
-    if action not in (ReactionAction.ADD, ReactionAction.REMOVE):
-        raise ValueError(f"Invalid action: {action}")
-
-    action_verb = "reacted" if action == ReactionAction.ADD else "removed their reaction"
-
-    event_map = {
-        "sunday": "Sunday Service",
-        "friday": "Friday Fellowship",
-    }
-
-    event_name = None
-    for keyword, full_name in event_map.items():
-        if keyword in get_message_and_embed_content(message).lower():
-            event_name = full_name
-            break
-
-    if event_name is None:
-        return f"`{user.name}` {action_verb} {payload.emoji} to an unknown message."
-
-    return f"`{user.name}` {action_verb} {payload.emoji} to {event_name}"
+        # Delegate to service
+        await self.ride_request_service.handle_new_rider_reaction(user, guild)
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Reactions(bot))
+    """Add the Reactions cog to the bot.
+
+    Args:
+        bot: The Discord bot instance to add the cog to.
+    """
+    # Initialize repository (only for database operations)
+    thread_repository = EventThreadRepository()
+
+    # Initialize services
+    thread_service = ThreadService(thread_repository)
+    logging_service = ReactionLoggingService(bot)
+    ride_request_service = RideRequestService(bot)
+
+    # Add cog with dependency injection
+    await bot.add_cog(Reactions(bot, thread_service, logging_service, ride_request_service))

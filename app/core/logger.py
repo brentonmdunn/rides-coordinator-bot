@@ -1,3 +1,9 @@
+"""Logger configuration.
+
+This module sets up the logging configuration for the application, including
+console handlers, formatters, and log levels for external libraries.
+"""
+
 import functools
 import logging
 import os
@@ -61,7 +67,14 @@ logging.getLogger("sqlalchemy.orm.mapper.Mapper").setLevel(logging.WARNING)
 # Decorator
 # ------------------------------
 def log_cmd(func):
-    """A decorator that logs Discord slash commands, including their arguments."""
+    """A decorator that logs Discord slash commands, including their arguments.
+
+    Args:
+        func: The command function to wrap.
+
+    Returns:
+        The wrapped function.
+    """
 
     @functools.wraps(func)
     async def wrapper(self, interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:

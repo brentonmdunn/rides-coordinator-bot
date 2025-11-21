@@ -1,184 +1,57 @@
-"""cogs/threads.py"""
-
-import asyncio
+"""Cog for managing Discord threads."""
 
 import discord
 from discord.ext import commands
-from sqlalchemy import select
 
-from app.core.database import AsyncSessionLocal
 from app.core.enums import FeatureFlagNames
-from app.core.logger import log_cmd, logger
-from app.core.models import EventThreads
+from app.core.logger import log_cmd
+from app.repositories.thread_repository import EventThreadRepository
+from app.services.thread_service import (
+    EventThreadAlreadyExistsError,
+    EventThreadNotFoundError,
+    StarterMessageError,
+    ThreadService,
+)
 from app.utils.checks import feature_flag_enabled
 
 
 class Threads(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    """Cog for managing event-based threads."""
+
+    def __init__(self, bot: commands.Bot, thread_service: ThreadService):
         self.bot = bot
+        self.thread_service = thread_service
 
     def _is_thread(self, interaction: discord.Interaction) -> bool:
-        """Helper to check if the interaction is in a thread."""
+        """Helper to check if the interaction is in a thread.
+
+        Args:
+            interaction: The Discord interaction.
+
+        Returns:
+            True if the interaction channel is a thread, False otherwise.
+        """
         return isinstance(interaction.channel, discord.Thread)
 
-    @discord.app_commands.command(
-        name="end-event-thread",
-        description="Stops adding everyone who reacts.",
-    )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
-    @log_cmd
-    async def end_event_thread(self, interaction: discord.Interaction) -> None:
-        if not self._is_thread(interaction):
-            await interaction.response.send(
-                "This command can only be used inside a thread.", ephemeral=True
-            )
-            return
-        thread = interaction.channel
-        # The starter message ID is the same as the thread ID.
-        starter_message_id = str(thread.id)
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(EventThreads).filter_by(message_id=starter_message_id)
-            )
-            message_to_delete = result.scalar_one_or_none()
-            if message_to_delete:
-                await session.delete(message_to_delete)
-                await session.commit()
-                await interaction.response.send_message(
-                    "Event thread has ended. New reactions will not be added to the thread."
-                )
-            else:
-                await interaction.response.send_message(
-                    "No active event thread found.", ephemeral=True
-                )
+    def _format_bulk_add_response(
+        self,
+        added_users: list[discord.Member],
+        failed_users: list[str],
+    ) -> str:
+        """Formats the response message for a bulk-add operation.
 
-    @discord.app_commands.command(
-        name="create-event-thread",
-        description="Must be run in thread. Automatically adds anyone new who reacts.",
-    )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
-    @log_cmd
-    async def create_event_thread(self, interaction: discord.Interaction) -> None:
-        """Automatically adds anyone new who reacts"""
+        Args:
+            added_users: List of users successfully added.
+            failed_users: List of names of users who couldn't be added.
 
-        await interaction.response.defer(ephemeral=False, thinking=True)
-
-        if not self._is_thread(interaction):
-            await interaction.followup.send(
-                "This command can only be used inside a thread.", ephemeral=True
-            )
-            return
-
-        thread = interaction.channel
-        # The starter message ID is the same as the thread ID.
-        starter_message_id = str(thread.id)
-
-        async with AsyncSessionLocal() as session:
-            existing_thread = await session.get(EventThreads, starter_message_id)
-            if existing_thread:
-                await interaction.followup.send(
-                    "Event thread has already been created.", ephemeral=True
-                )
-                return
-
-        await interaction.followup.send(
-            "Event thread has been created. Anyone who reacts to the original message will "
-            "automatically be added to this thread."
-        )
-
-        await self._bulk_add_reacts_to_thread(interaction)
-
-        async with AsyncSessionLocal() as session:
-            new_thread = EventThreads(message_id=starter_message_id)
-            session.add(new_thread)
-            await session.commit()
-
-        await interaction.followup.send(
-            "NOTE: This feature has a feature flag. If it is not "
-            "properly working, use `/list-feature-flags` to check the status of "
-            "`event_threads`",
-            ephemeral=True,
-        )
-
-    @discord.app_commands.command(
-        name="add-reacts-to-thread",
-        description="Must be run in thread. Adds everyone who reacted to parent message to thread.",
-    )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
-    @log_cmd
-    async def add_reacts_to_thread(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        await self._bulk_add_reacts_to_thread(interaction)
-
-    async def _bulk_add_reacts_to_thread(self, interaction):
-        thread = interaction.channel
-        starter_message = None
-
-        # The thread's ID is the same as the starter message's ID.
-        try:
-            # We must use fetch_message to ensure we get the message object
-            # and its reactions, as it might not be in the bot's cache.
-            starter_message = await thread.parent.fetch_message(thread.id)
-        except discord.NotFound:
-            await interaction.followup.send(
-                "Could not find the message that started this thread. Has it been deleted?"
-            )
-            return
-        except discord.Forbidden:
-            await interaction.followup.send(
-                "I don't have permission to read the history of this "
-                "channel to find the first message."
-            )
-            return
-
-        if not starter_message.reactions:
-            await interaction.followup.send("The first message has no reactions.", ephemeral=True)
-            return
-
-        reactors = set()
-        for reaction in starter_message.reactions:
-            # reaction.users() is an async iterator
-            async for user in reaction.users():
-                if not user.bot:
-                    reactors.add(user)
-
-        if not reactors:
-            await interaction.followup.send("No users have reacted to the starter message yet.")
-            return
-
-        added_users = []
-        failed_users = []
-
-        # Fetch existing thread members to avoid adding them again.
-        thread_members = await thread.fetch_members()
-        thread_member_ids = {member.id for member in thread_members}
-
-        for user in reactors:
-            logger.info(f"{user=}")
-            # Skip bots and users already in the thread.
-            if user.bot or user.id in thread_member_ids:
-                continue
-
-            try:
-                await thread.add_user(user)
-                added_users.append(user.mention)
-                # Small sleep to avoid hitting Discord's rate limits.
-                await asyncio.sleep(0.25)
-            except discord.Forbidden:
-                # The bot doesn't have the necessary permissions.
-                await interaction.followup.send(
-                    "I lack the `Manage Threads` permission to add users to this private thread."
-                )
-                return
-            except Exception:
-                # Log any other unexpected errors, with full exception info.
-                logger.exception(f"Failed to add {user.name} to thread {thread.name}")
-                failed_users.append(user.name)
-
+        Returns:
+            A formatted string summarizing the operation results.
+        """
         response_message = ""
         if added_users:
+            mentions = [user.mention for user in added_users]
             response_message += f"✅ Successfully added {len(added_users)} users:\n" + ", ".join(
-                added_users
+                mentions
             )
         if failed_users:
             if added_users:
@@ -189,10 +62,127 @@ class Threads(commands.Cog):
 
         if not response_message:
             response_message = "All users who reacted are already in the thread."
+        return response_message
 
-        # Send the final message as a followup.
-        await interaction.followup.send(response_message, ephemeral=True)
+    @discord.app_commands.command(
+        name="end-event-thread",
+        description="Stops adding everyone who reacts.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
+    async def end_event_thread(self, interaction: discord.Interaction) -> None:
+        """Stops adding everyone who reacts to the thread.
+
+        Args:
+            interaction: The Discord interaction.
+        """
+        if not self._is_thread(interaction):
+            await interaction.response.send_message(
+                "This command can only be used inside a thread.", ephemeral=True
+            )
+            return
+
+        thread_id = str(interaction.channel.id)
+
+        try:
+            await self.thread_service.end_event_thread(thread_id)
+            await interaction.response.send_message(
+                "Event thread has ended. New reactions will not be added to the thread."
+            )
+        except EventThreadNotFoundError as e:
+            await interaction.response.send_message(str(e), ephemeral=True)
+
+    @discord.app_commands.command(
+        name="create-event-thread",
+        description="Must be run in thread. Automatically adds anyone new who reacts.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
+    async def create_event_thread(self, interaction: discord.Interaction) -> None:
+        """Automatically adds anyone new who reacts to the parent message.
+
+        Args:
+            interaction: The Discord interaction.
+        """
+        await interaction.response.defer(ephemeral=False, thinking=True)
+
+        if not self._is_thread(interaction):
+            await interaction.followup.send(
+                "This command can only be used inside a thread.", ephemeral=True
+            )
+            return
+
+        thread = interaction.channel
+
+        try:
+            added, failed = await self.thread_service.create_event_thread(thread)
+
+            # Send the first success message
+            await interaction.followup.send(
+                "Event thread has been created. Anyone who reacts to the "
+                "original message will automatically be added to this thread."
+            )
+
+            # Send the bulk add report
+            response = self._format_bulk_add_response(added, failed)
+            if response != "All users who reacted are already in the thread.":
+                await interaction.followup.send(response, ephemeral=True)
+
+            # Send the feature flag note
+            await interaction.followup.send(
+                "NOTE: This feature has a feature flag. If it is not "
+                "properly working, use `/list-feature-flags` to check "
+                "the status of `event_threads`",
+                ephemeral=True,
+            )
+
+        except EventThreadAlreadyExistsError as e:
+            await interaction.followup.send(str(e), ephemeral=True)
+        except StarterMessageError as e:
+            await interaction.followup.send(str(e))
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "I lack the `Manage Threads` permission to add users to this private thread."
+            )
+
+    @discord.app_commands.command(
+        name="add-reacts-to-thread",
+        description="Must be run in thread. Adds everyone who reacted to parent message to thread.",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @log_cmd
+    async def add_reacts_to_thread(self, interaction: discord.Interaction) -> None:
+        """Adds everyone who reacted to the parent message to the thread.
+
+        Args:
+            interaction: The Discord interaction.
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        if not self._is_thread(interaction):
+            await interaction.followup.send(
+                "This command can only be used inside a thread.", ephemeral=True
+            )
+            return
+
+        thread = interaction.channel
+
+        try:
+            added, failed = await self.thread_service.bulk_add_reactors_to_thread(thread)
+            response = self._format_bulk_add_response(added, failed)
+            await interaction.followup.send(response, ephemeral=True)
+
+        except StarterMessageError as e:
+            await interaction.followup.send(str(e))
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "I lack the `Manage Threads` permission to add users to this private thread."
+            )
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Threads(bot))
+    """Sets up the Threads cog."""
+    # This is where Dependency Injection happens
+    repo = EventThreadRepository()
+    service = ThreadService(repository=repo)
+    await bot.add_cog(Threads(bot, thread_service=service))

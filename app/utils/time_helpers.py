@@ -1,3 +1,5 @@
+"""utils/time_helpers.py"""
+
 from datetime import date, datetime, timedelta
 
 import pytz
@@ -16,10 +18,18 @@ days_of_week_to_number = {
 
 
 def is_during_target_window(day: str) -> bool:
-    """Checks if the current time in LA is within:
-    - Tuesday 7 PM to Wednesday 7 PM
-    - Thursday 7 PM to Friday 7 PM
-    - Saturday 10 AM to Sunday 10 AM
+    """Checks if the current time in LA is within the target window for the given day.
+
+    The windows are:
+    - Tuesday 7 PM to Wednesday 7 PM (for Wednesday)
+    - Thursday 7 PM to Friday 7 PM (for Friday)
+    - Saturday 10 AM to Sunday 10 AM (for Sunday)
+
+    Args:
+        day (str): The day to check (Wednesday, Friday, or Sunday).
+
+    Returns:
+        bool: True if the current time is within the window, False otherwise.
     """
     la_tz = pytz.timezone("America/Los_Angeles")
     now = datetime.now().astimezone(la_tz)
@@ -53,7 +63,14 @@ def is_during_target_window(day: str) -> bool:
 
 
 def get_next_date(day: DaysOfWeekNumber) -> str:
-    """Gets the next `day` and returns it in mm/dd form."""
+    """Gets the next `day` and returns it in mm/dd form.
+
+    Args:
+        day (DaysOfWeekNumber): The day of the week to find the next date for.
+
+    Returns:
+        str: The formatted date string (mm/dd).
+    """
     today = datetime.today()
     days_ahead = (day - today.weekday() + 7) % 7
     if days_ahead == 0:
@@ -65,6 +82,14 @@ def get_next_date(day: DaysOfWeekNumber) -> str:
 
 
 def get_next_date_obj(day: DaysOfWeek) -> date:
+    """Gets the next `day` as a date object.
+
+    Args:
+        day (DaysOfWeek): The day of the week to find the next date for.
+
+    Returns:
+        date: The date object for the next occurrence of the given day.
+    """
     day_num = days_of_week_to_number[day]
     today = datetime.today()
     days_ahead = (day_num - today.weekday() + 7) % 7

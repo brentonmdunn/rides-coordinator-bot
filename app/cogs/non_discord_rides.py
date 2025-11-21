@@ -1,24 +1,25 @@
+"""Cog for managing non-Discord rides."""
+
 import discord
 from discord import app_commands
 from discord.ext import commands
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app.core.database import AsyncSessionLocal
 from app.core.enums import (
     FeatureFlagNames,
 )
 from app.core.logger import log_cmd, logger
-from app.core.models import NonDiscordRides
+from app.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
 from app.utils.autocomplete import location_autocomplete, lscc_day_autocomplete
 from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from app.utils.checks import feature_flag_enabled
-from app.utils.time_helpers import get_next_date_obj
 
 
 class NonDiscordRidesCog(commands.Cog):
+    """Cog for handling pickups for users without Discord."""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.service = NonDiscordRidesService()
 
     @app_commands.command(
         name="add-pickup",
@@ -31,25 +32,31 @@ class NonDiscordRidesCog(commands.Cog):
     async def add_pickup(
         self, interaction: discord.Interaction, name: str, day: str, location: str
     ):
+        """Adds a pickup for a non-Discord user.
+
+        Args:
+            interaction: The Discord interaction.
+            name: The name of the person.
+            day: The day of the pickup.
+            location: The pickup location.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
 
         try:
-            async with AsyncSessionLocal() as session:
-                session.add(
-                    NonDiscordRides(name=name, date=get_next_date_obj(day), location=location)
-                )
-                await session.commit()
-        except IntegrityError:
+            await self.service.add_pickup(name, day, location)
+            await interaction.response.send_message(
+                f"Added {name} for pickup at {location} on {day}."
+            )
+        except DuplicateRideError:
             await interaction.response.send_message(
                 f"Pickup for {name} on {day} already exists.", ephemeral=True
             )
             return
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}")
-        await interaction.response.send_message(f"Added {name} for pickup at {location} on {day}.")
 
     @app_commands.command(
         name="remove-pickup",
@@ -59,54 +66,38 @@ class NonDiscordRidesCog(commands.Cog):
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def remove_pickup(self, interaction: discord.Interaction, name: str, day: str):
-        """
-        Removes a non-Discord user's pickup entry.
+        """Removes a non-Discord user's pickup entry.
+
+        Args:
+            interaction: The Discord interaction.
+            name: The name of the person.
+            day: The day of the pickup.
         """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
 
-        date_to_remove = get_next_date_obj(day)
+        try:
+            success = await self.service.remove_pickup(name, day)
 
-        async with AsyncSessionLocal() as session:
-            try:
-                # Check if the entry exists before attempting to delete
-                stmt = select(NonDiscordRides).where(
-                    NonDiscordRides.name == name, NonDiscordRides.date == date_to_remove
-                )
-                result = await session.execute(stmt)
-                ride_to_remove = result.scalar_one_or_none()
-
-                if ride_to_remove:
-                    # If the entry exists, delete it
-                    await session.delete(ride_to_remove)
-                    await session.commit()
-                    await interaction.response.send_message(
-                        f"Successfully removed the pickup entry for **{name}** on **{day}**."
-                    )
-                else:
-                    # If the entry does not exist
-                    await interaction.response.send_message(
-                        f"Could not find a pickup entry for **{name}** on **{day}**.",
-                        ephemeral=True,
-                    )
-
-            except SQLAlchemyError:
-                # Handle any potential database errors gracefully
-                await session.rollback()
-                logger.exception("Database error")
+            if success:
                 await interaction.response.send_message(
-                    "An error occurred while trying to remove the pickup entry. "
-                    "Please try again later.",
+                    f"Successfully removed the pickup entry for **{name}** on **{day}**."
+                )
+            else:
+                # If the entry does not exist
+                await interaction.response.send_message(
+                    f"Could not find a pickup entry for **{name}** on **{day}**.",
                     ephemeral=True,
                 )
-            except Exception:
-                # Handle other potential errors
-                logger.exception("An unexpected error occurred")
-                await interaction.response.send_message(
-                    "An unexpected error occurred. Please try again later.", ephemeral=True
-                )
+
+        except Exception:
+            # Handle other potential errors
+            logger.exception("An unexpected error occurred")
+            await interaction.response.send_message(
+                "An unexpected error occurred. Please try again later.", ephemeral=True
+            )
 
     @app_commands.command(
         name="list-added-pickups",
@@ -116,42 +107,41 @@ class NonDiscordRidesCog(commands.Cog):
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def list_added_pickups(self, interaction: discord.Interaction, day: str):
-        """
-        Lists all non-Discord user pickups for a given day.
+        """Lists all non-Discord user pickups for a given day.
+
+        Args:
+            interaction: The Discord interaction.
+            day: The day to list pickups for.
         """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
 
-        date_to_list = get_next_date_obj(day)
+        try:
+            pickups = await self.service.list_pickups(day)
 
-        async with AsyncSessionLocal() as session:
-            try:
-                stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
-                result = await session.execute(stmt)
-                pickups = result.scalars().all()
+            if pickups:
+                # Format the list of pickups
+                message = f"**Pickups for {day}:**\n"
+                for pickup in pickups:
+                    message += f"- {pickup.name} at {pickup.location}\n"
 
-                if pickups:
-                    # Format the list of pickups
-                    message = f"**Pickups for {day}:**\n"
-                    for pickup in pickups:
-                        message += f"- {pickup.name} at {pickup.location}\n"
-
-                    await interaction.response.send_message(message)
-                else:
-                    # If no pickups are found
-                    await interaction.response.send_message(
-                        f"No pickups found for **{day}**.", ephemeral=True
-                    )
-
-            except Exception:
-                logger.exception("An error occurred while listing pickups:")
+                await interaction.response.send_message(message)
+            else:
+                # If no pickups are found
                 await interaction.response.send_message(
-                    "An error occurred while trying to list the pickups. Please try again later.",
-                    ephemeral=True,
+                    f"No pickups found for **{day}**.", ephemeral=True
                 )
+
+        except Exception:
+            logger.exception("An error occurred while listing pickups:")
+            await interaction.response.send_message(
+                "An error occurred while trying to list the pickups. Please try again later.",
+                ephemeral=True,
+            )
 
 
 async def setup(bot: commands.Bot):
+    """Sets up the NonDiscordRidesCog."""
     await bot.add_cog(NonDiscordRidesCog(bot))

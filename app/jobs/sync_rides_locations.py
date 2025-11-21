@@ -1,8 +1,9 @@
 from app.core.enums import FeatureFlagNames
+from app.services.locations_service import LocationsService
 from app.utils.checks import feature_flag_enabled
-from app.utils.lookups import sync
 
 
 @feature_flag_enabled(FeatureFlagNames.RIDES_LOCATIONS_SYNC_JOB)
 async def sync_rides_locations():
-    await sync()
+    service = LocationsService(bot=None)
+    await service.sync_locations()

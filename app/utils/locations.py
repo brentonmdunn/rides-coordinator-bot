@@ -1,3 +1,5 @@
+"""utils/locations.py"""
+
 import heapq
 
 from app.core.enums import PickupLocations

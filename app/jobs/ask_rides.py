@@ -10,12 +10,12 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from app.cogs.feature_flags import feature_flag_status
 from app.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, RoleIds
 from app.core.logger import logger
+from app.repositories.calendar_repository import CalendarRepository
+from app.repositories.feature_flags_repository import FeatureFlagsRepository
 from app.utils.checks import feature_flag_enabled
 from app.utils.format_message import ping_role_with_message, ping_user
-from app.utils.gcal import get_event_summaries
 from app.utils.time_helpers import get_next_date, get_next_date_obj
 
 WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
@@ -156,7 +156,8 @@ async def run_ask_rides_sun(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday service rides message."""
-    gcal_event_summaries = get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    repo = CalendarRepository()
+    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
     for event in gcal_event_summaries:
         if "wildcard" in event.lower():
             logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
@@ -179,7 +180,8 @@ async def run_ask_rides_sun_class(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday class rides message."""
-    gcal_event_summaries = get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    repo = CalendarRepository()
+    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
     for event in gcal_event_summaries:
         if "sunday school" in event.lower():
             sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
@@ -198,9 +200,13 @@ async def run_ask_rides_header(
         return
 
     if (
-        await feature_flag_status(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
-        or await feature_flag_status(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
-        or await feature_flag_status(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
+        await FeatureFlagsRepository.get_feature_flag_status(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
+        or await FeatureFlagsRepository.get_feature_flag_status(
+            FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+        )
+        or await FeatureFlagsRepository.get_feature_flag_status(
+            FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+        )
     ):
         await channel.send(
             _format_message("for this week!"),
