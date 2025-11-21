@@ -3,6 +3,8 @@
 import discord
 from discord.ext import commands
 
+from app.core.logger import logger
+
 
 class EventsRepository:
     """Handles all data access related to Discord objects like roles, messages, and members."""
@@ -106,8 +108,8 @@ class EventsRepository:
             await member.add_roles(role, reason=reason)
             return True
         except discord.Forbidden:
-            print(f"Failed to add role {role.name} to {member.name}: Forbidden.")
+            logger.error(f"Failed to add role {role.name} to {member.name}: Forbidden.")
             return False
         except discord.HTTPException as e:
-            print(f"Failed to add role {role.name} to {member.name}: {e}")
+            logger.error(f"Failed to add role {role.name} to {member.name}: {e}")
             return False

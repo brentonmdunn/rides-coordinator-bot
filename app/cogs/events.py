@@ -5,7 +5,7 @@ from discord.ext import commands
 
 # Your original imports
 from app.core.enums import FeatureFlagNames
-from app.core.logger import log_cmd
+from app.core.logger import log_cmd, logger
 from app.repositories.events_repository import EventsRepository
 
 # New imports for DI
@@ -100,13 +100,13 @@ class EventsCog(commands.Cog):
             await interaction.followup.send("Role not found.", ephemeral=True)
         except RoleServiceError as e:
             # Catch other potential service errors
-            print(f"A service error occurred: {e}")
+            logger.error(f"A service error occurred: {e}")
             await interaction.followup.send(
                 "An error occurred while processing the command.", ephemeral=True
             )
         except Exception as e:
             # Catch any unexpected errors
-            print(f"An unexpected error occurred: {e}")
+            logger.error(f"An unexpected error occurred: {e}")
             await interaction.followup.send("An unexpected error occurred.", ephemeral=True)
 
 
