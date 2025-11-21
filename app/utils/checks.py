@@ -5,11 +5,9 @@ from typing import Any
 
 import discord
 from discord import app_commands
-from sqlalchemy import select
 
-from app.core.database import AsyncSessionLocal
 from app.core.logger import logger
-from app.core.models import FeatureFlags
+from app.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
 def is_admin():
@@ -55,13 +53,9 @@ def feature_flag_enabled(feature: str, enable_logs: bool = True):
 
             feature_is_enabled = False  # Default to false
             try:
-                async with AsyncSessionLocal() as session:
-                    result = await session.execute(
-                        select(FeatureFlags).where(FeatureFlags.feature == feature)
-                    )
-                    feature_flag = result.scalars().first()
-                    if feature_flag:
-                        feature_is_enabled = feature_flag.enabled
+                feature_flag = await FeatureFlagsRepository.get_feature_flag_status(feature)
+                if feature_flag is not None:
+                    feature_is_enabled = feature_flag
             except Exception as e:
                 if enable_logs:
                     logger.error("Error fetching feature flag '%s': %s", feature, e)

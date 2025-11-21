@@ -15,7 +15,6 @@ from app.services.reaction_logging_service import ReactionLoggingService
 from app.services.ride_request_service import RideRequestService
 from app.services.thread_service import ThreadService
 from app.utils.checks import feature_flag_enabled
-from app.utils.lookups import get_location
 from app.utils.parsing import get_message_and_embed_content
 from app.utils.time_helpers import is_during_target_window
 
@@ -240,7 +239,7 @@ class Reactions(commands.Cog):
                 )
             )
             and user is not None
-            and not await get_location(user.name, discord_only=True)
+            and (self.locations_cog and not await self.locations_cog.service.get_location(user.name, discord_only=True))
         ):
             return
 

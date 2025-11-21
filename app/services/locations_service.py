@@ -1,17 +1,29 @@
 # app/features/locations/locations_service.py
 
+import csv
+import gc
+import io
+import os
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Literal
 
 import discord
+import requests
+from dotenv import load_dotenv
 
-from app.core.enums import AskRidesMessage, ChannelIds
+from app.core.database import AsyncSessionLocal
+from app.core.enums import AskRidesMessage, CanBeDriver, ChannelIds, ClassYear
 from app.core.logger import logger
+from app.core.models import Locations as LocationsModel
 from app.repositories.locations_repository import LocationsRepository
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
-from app.utils.lookups import get_location, get_name_location_no_sync, sync
 from app.utils.parsing import get_message_and_embed_content
+
+load_dotenv()
+
+LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 RideOptionsSchema = Literal[
     "Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"
@@ -35,10 +47,94 @@ class LocationsService:
         self.repo = LocationsRepository()
 
     async def sync_locations(self):
-        await sync()
+        """
+        Syncs the Google Sheet with databas table `locations`.
+        """
+        logger.info("Syncing locations...")
+        if not LSCC_PPL_CSV_URL:
+            raise Exception("LSCC_PPL_CSV_URL environment variable not set.")
+
+        response = requests.get(LSCC_PPL_CSV_URL)
+
+        if response.status_code != 200:
+            raise Exception("Failed to retrieve data.")
+
+        csv_data = response.content.decode("utf-8")
+        csv_file = io.StringIO(csv_data)
+        reader = csv.DictReader(csv_file)
+
+        locations_to_add = []
+        for row in reader:
+            name = self._get_info(row, "Name")
+            if not name:
+                # The 'name' column is not nullable, so we skip rows without a valid name.
+                continue
+
+            locations_to_add.append(
+                LocationsModel(
+                    name=name.title(),
+                    discord_username=self._get_info(row, "Discord Username"),
+                    year=self._get_info(row, "Year", self._verify_year),
+                    location=self._get_info(row, "Location"),
+                    driver=self._get_info(row, "Driver", self._verify_driver),
+                )
+            )
+
+        async with AsyncSessionLocal() as session:
+            await self.repo.sync_locations(session, locations_to_add)
+
+        reader = None
+        locations_to_add = None
+        gc.collect()
+        logger.info("Finished syncing locations csv with table.")
+
+    def _verify_year(self, year: str) -> bool:
+        return year in [year.value for year in ClassYear]
+
+    def _verify_driver(self, driver: str) -> bool:
+        return driver in [driver.value for driver in CanBeDriver]
+
+    def _get_info(
+        self, data: dict, key: str, verify_schema: Callable | None = None
+    ) -> str | None:
+        value = data.get(key)
+        # Ensure value is a string and not just whitespace
+        if not isinstance(value, str) or not value.strip():
+            return None
+
+        info = value.strip().lower()
+        if verify_schema is not None and not verify_schema(info):
+            return None
+        return info
+
+    async def get_location(self, name: str, discord_only: bool = False) -> list[tuple[str, str]] | None:
+        async with AsyncSessionLocal() as session:
+            possible_people = (
+                await self.repo.get_location_check_discord(session, name)
+                if discord_only
+                else await self.repo.get_location_check_name_and_discord(session, name)
+            )
+        if possible_people:
+            return possible_people
+        
+        logger.info(f"Cache miss in get_location. Triggering sync and retrying.")
+        await self.sync_locations()
+        
+        async with AsyncSessionLocal() as session:
+            possible_people = (
+                await self.repo.get_location_check_discord(session, name)
+                if discord_only
+                else await self.repo.get_location_check_name_and_discord(session, name)
+            )
+        return possible_people if possible_people else None
+
+    async def get_name_location_no_sync(self, discord_username: str) -> tuple[str, str] | None:
+        async with AsyncSessionLocal() as session:
+            person = await self.repo.get_name_location(session, discord_username)
+        return person
 
     async def pickup_location(self, name: str) -> str:
-        possible_people = await get_location(name)
+        possible_people = await self.get_location(name)
         if not possible_people:
             return "No people found."
         return "\n".join(f"{n}: {loc}" for n, loc in possible_people)
@@ -164,16 +260,16 @@ class LocationsService:
         location_found = set()
         cache_miss = []
         for username in usernames_reacted:
-            person = await get_name_location_no_sync(username)
+            person = await self.get_name_location_no_sync(username)
             if person is None or person.location is None:
                 cache_miss.append(username)
                 continue
             locations_people[person.location].append((person.name, username))
             location_found.add(username)
         if cache_miss:
-            await sync()
+            await self.sync_locations()
             for username in cache_miss:
-                person = await get_name_location_no_sync(username)
+                person = await self.get_name_location_no_sync(username)
                 if person and person.location:
                     locations_people[person.location].append((person.name, username))
                     location_found.add(username)
