@@ -1,3 +1,4 @@
+"""Service for event thread management."""
 import asyncio
 
 import discord
@@ -31,8 +32,10 @@ class ThreadService:
         self.repository = repository
 
     async def end_event_thread(self, thread_id: str) -> None:
-        """
-        Stops tracking an event thread.
+        """Stops tracking an event thread.
+
+        Args:
+            thread_id: The ID of the thread to stop tracking.
 
         Raises:
             EventThreadNotFoundError: If no matching thread is found in the DB.
@@ -50,8 +53,13 @@ class ThreadService:
     async def create_event_thread(
         self, thread: discord.Thread
     ) -> tuple[list[discord.Member], list[str]]:
-        """
-        Creates and registers a new event thread, then bulk-adds reactors.
+        """Creates and registers a new event thread, then bulk-adds reactors.
+
+        Args:
+            thread: The Discord thread object.
+
+        Returns:
+            A tuple containing a list of added members and a list of failed usernames.
 
         Raises:
             EventThreadAlreadyExistsError: If the thread is already tracked.
@@ -76,8 +84,10 @@ class ThreadService:
     async def bulk_add_reactors_to_thread(
         self, thread: discord.Thread
     ) -> tuple[list[discord.Member], list[str]]:
-        """
-        Adds all users who reacted to the thread's starter message.
+        """Adds all users who reacted to the thread's starter message.
+
+        Args:
+            thread: The Discord thread object.
 
         Returns:
             A tuple of (added_users_list, failed_users_list).

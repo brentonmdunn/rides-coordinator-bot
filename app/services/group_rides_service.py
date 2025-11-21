@@ -1,3 +1,4 @@
+"""Service for group rides logic."""
 import asyncio
 import json
 import os
@@ -57,6 +58,11 @@ PassengersByLocation = dict[PickupLocations, list[Passenger]]
 
 # Define the callback function to print to the console
 def log_retry_attempt(retry_state):
+    """Logs a warning when a retry attempt is made.
+
+    Args:
+        retry_state (tenacity.RetryCallState): The current state of the retry call.
+    """
     global prev_response
     logger.warning(
         f"Failed to process request, attempting retry {retry_state.attempt_number}..."
@@ -66,8 +72,7 @@ def log_retry_attempt(retry_state):
 
 
 def parse_numbers(s: str) -> list[int]:
-    """
-    Parses a string of single-digit numbers and returns a list of integers.
+    """Parses a string of single-digit numbers and returns a list of integers.
 
     The input string can have numbers separated by spaces or no spaces at all.
     Each number in the input string must be a single digit from 0 to 9.
@@ -75,10 +80,10 @@ def parse_numbers(s: str) -> list[int]:
     Example input: "4 4 4" or "444"
 
     Args:
-        s: The input string.
+        s (str): The input string.
 
     Returns:
-        A list of integers.
+        list[int]: A list of integers.
     """
     # Remove all spaces from the string
     cleaned_string = s.replace(" ", "")
@@ -87,6 +92,16 @@ def parse_numbers(s: str) -> list[int]:
 
 
 def find_passenger(locations_people: PassengersByLocation, person: str, location: str) -> Passenger:
+    """Finds a passenger object by name and location.
+
+    Args:
+        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
+        person (str): The name of the person to find.
+        location (str): The location key to search in.
+
+    Returns:
+        Passenger: The Passenger object if found, otherwise None.
+    """
     if location in locations_people:
         for p in locations_people[location]:
             if p.identity.name == person:
@@ -96,8 +111,13 @@ def find_passenger(locations_people: PassengersByLocation, person: str, location
 
 
 def count_tuples(data_dict: PassengersByLocation) -> int:
-    """
-    Counts the total number of passengers across all locations.
+    """Counts the total number of passengers across all locations.
+
+    Args:
+        data_dict (PassengersByLocation): Dictionary of passengers grouped by location.
+
+    Returns:
+        int: The total count of passengers.
     """
     return sum(len(people_list) for people_list in data_dict.values())
 
@@ -105,7 +125,15 @@ def count_tuples(data_dict: PassengersByLocation) -> int:
 def is_enough_capacity(
     driver_capacity_list: list[int], locations_people: PassengersByLocation
 ) -> bool:
-    """True if enough driver capacity, false otherwise"""
+    """Checks if there is enough driver capacity for all passengers.
+
+    Args:
+        driver_capacity_list (list[int]): List of capacities for each driver.
+        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
+
+    Returns:
+        bool: True if total capacity is greater than or equal to passenger count, False otherwise.
+    """
     rider_count = count_tuples(locations_people)
     return sum(driver_capacity_list) >= rider_count
 
@@ -113,6 +141,17 @@ def is_enough_capacity(
 def calculate_pickup_time(
     curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int
 ) -> datetime.time:
+    """Calculates the pickup time based on the previous location and travel time.
+
+    Args:
+        curr_leave_time (datetime.time): The leave time from the previous location.
+        grouped_by_location (list): List of passenger groups.
+        location (str): The current pickup location.
+        offset (int): The offset index for the previous location.
+
+    Returns:
+        datetime.time: The calculated pickup time.
+    """
     time_between = PICKUP_ADJUSTMENT + lookup_time(
         LocationQuery(
             start_location=grouped_by_location[len(grouped_by_location) - offset][
@@ -127,14 +166,28 @@ def calculate_pickup_time(
 
 
 def llm_input_drivers(driver_capacity: list[int]) -> str:
-    """Data on driver capacities to send to LLM"""
+    """Formats driver capacity data for LLM input.
+
+    Args:
+        driver_capacity (list[int]): List of driver capacities.
+
+    Returns:
+        str: A formatted string describing driver capacities.
+    """
     return ", ".join(
         f"Driver{i} has capacity {capacity}" for i, capacity in enumerate(driver_capacity)
     )
 
 
 def llm_input_pickups(locations_people: PassengersByLocation) -> str:
-    """Data on pickup locations to send to LLM"""
+    """Formats pickup location data for LLM input.
+
+    Args:
+        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
+
+    Returns:
+        str: A formatted string describing pickup locations and passengers.
+    """
     return "\n".join(
         f"{location}: {', '.join(person.identity.name for person in locations_people[location])}"
         for location in locations_people
@@ -146,7 +199,18 @@ def create_output(
     locations_people: PassengersByLocation,
     end_leave_time: datetime.time,
     off_campus: LocationsPeopleType,
-):
+) -> list[str]:
+    """Creates the final output messages based on the LLM result.
+
+    Args:
+        llm_result (dict[str, list[dict[str, str]]]): The result from the LLM.
+        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
+        end_leave_time (datetime.time): The target arrival time.
+        off_campus (LocationsPeopleType): Dictionary of off-campus passengers.
+
+    Returns:
+        list[str]: A list of formatted output strings.
+    """
     overall_summary = "==== summary ====\n"
 
     # Create O(1) lookup map for passengers by name to avoid repeated O(N) searches
@@ -237,6 +301,7 @@ def create_output(
 
 
 class GroupRidesService:
+    """Service for handling group rides logic and LLM interaction."""
     def __init__(self, bot):
         self.bot = bot
         self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
@@ -245,7 +310,14 @@ class GroupRidesService:
 
     @staticmethod
     def _get_living_location(location: str) -> CampusLivingLocations:
-        """Convert location string to CampusLivingLocations enum."""
+        """Convert location string to CampusLivingLocations enum.
+
+        Args:
+            location (str): The location string.
+
+        Returns:
+            CampusLivingLocations: The corresponding CampusLivingLocations enum member.
+        """
         # Workaround since capitalization is not the same between services
         # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
         if location.lower() == "erc":
@@ -254,7 +326,14 @@ class GroupRidesService:
 
     @staticmethod
     def _get_pickup_location(living_location: CampusLivingLocations) -> PickupLocations:
-        """Get pickup location from living location."""
+        """Get pickup location from living location.
+
+        Args:
+            living_location (CampusLivingLocations): The living location enum.
+
+        Returns:
+            PickupLocations: The corresponding PickupLocations enum member.
+        """
         return living_to_pickup[living_location]
 
     # Helper function to invoke the LLM with a fixed retry wait
@@ -265,7 +344,17 @@ class GroupRidesService:
         before_sleep=log_retry_attempt,
     )
     def _invoke_llm(self, pickups_str, drivers_str, locations_matrix, legacy_prompt=False):
-        """A blocking helper function to invoke the LLM with a retry policy."""
+        """A blocking helper function to invoke the LLM with a retry policy.
+
+        Args:
+            pickups_str (str): Formatted string of pickups.
+            drivers_str (str): Formatted string of drivers.
+            locations_matrix (dict): The locations distance matrix.
+            legacy_prompt (bool, optional): Whether to use the legacy prompt. Defaults to False.
+
+        Returns:
+            dict: The parsed LLM result.
+        """
 
         prompt = GROUP_RIDES_PROMPT_LEGACY if legacy_prompt else GROUP_RIDES_PROMPT
 
@@ -336,6 +425,15 @@ class GroupRidesService:
         day: str | None = None,
         legacy_prompt: bool = False,
     ):
+        """Orchestrates the group rides process.
+
+        Args:
+            interaction (discord.Interaction): The Discord interaction.
+            driver_capacity (str): String representing driver capacities.
+            message_id (str | None, optional): Optional message ID to fetch pickups from.
+            day (str | None, optional): Optional day to fetch pickups for.
+            legacy_prompt (bool, optional): Whether to use the legacy prompt. Defaults to False.
+        """
         await interaction.response.defer()
 
         if day:

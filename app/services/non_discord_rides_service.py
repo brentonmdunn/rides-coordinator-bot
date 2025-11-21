@@ -1,3 +1,4 @@
+"""Service for managing non-Discord rides."""
 from datetime import date
 from sqlalchemy.exc import IntegrityError
 
@@ -14,11 +15,25 @@ class DuplicateRideError(Exception):
 
 
 class NonDiscordRidesService:
+    """Service for handling non-Discord ride logic."""
     def __init__(self):
         # No dependencies needed in init for now, as we create session per method
         pass
 
     async def add_pickup(self, name: str, day: str, location: str) -> NonDiscordRides:
+        """Adds a pickup for a non-Discord user.
+
+        Args:
+            name: Name of the person.
+            day: Day of the pickup (e.g., "Friday", "Sunday").
+            location: Pickup location.
+
+        Returns:
+            The created NonDiscordRides object.
+
+        Raises:
+            DuplicateRideError: If a ride for the person on that day already exists.
+        """
         ride_date = get_next_date_obj(day)
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)
@@ -29,6 +44,15 @@ class NonDiscordRidesService:
                 raise DuplicateRideError(f"Pickup for {name} on {day} already exists.")  # noqa B904
 
     async def remove_pickup(self, name: str, day: str) -> bool:
+        """Removes a pickup for a non-Discord user.
+
+        Args:
+            name: Name of the person.
+            day: Day of the pickup.
+
+        Returns:
+            True if the pickup was removed, False if not found.
+        """
         ride_date = get_next_date_obj(day)
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)
@@ -39,12 +63,25 @@ class NonDiscordRidesService:
             return False
 
     async def list_pickups(self, day: str) -> list[NonDiscordRides]:
+        """Lists all pickups for a specific day.
+
+        Args:
+            day: The day to list pickups for.
+
+        Returns:
+            A list of NonDiscordRides objects.
+        """
         ride_date = get_next_date_obj(day)
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)
             return await repo.get_rides_by_date(ride_date)
 
     async def delete_past_pickups(self) -> int:
+        """Deletes all pickups from past dates.
+
+        Returns:
+            The number of deleted pickups.
+        """
         today = date.today()
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)

@@ -14,7 +14,15 @@ from app.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_all
 async def feature_name_autocomplete(
     interaction: discord.Interaction, current: str
 ) -> list[app_commands.Choice[str]]:
-    """Autocompletes feature flag names based on current user input."""
+    """Autocompletes feature flag names based on current user input.
+
+    Args:
+        interaction: The Discord interaction.
+        current: The current input string.
+
+    Returns:
+        A list of matching feature flag choices.
+    """
     flags = [flag.value for flag in FeatureFlagNames]
     return [
         app_commands.Choice(name=flag, value=flag)
@@ -36,7 +44,13 @@ class FeatureFlagsCog(commands.Cog):
     async def modify_feature_flag(
         self, interaction: discord.Interaction, feature_name: str, enabled: bool
     ) -> None:
-        """Slash command for enabling/disabling a feature flag."""
+        """Slash command for enabling/disabling a feature flag.
+
+        Args:
+            interaction: The Discord interaction.
+            feature_name: The name of the feature flag.
+            enabled: Whether to enable or disable the flag.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -61,7 +75,11 @@ class FeatureFlagsCog(commands.Cog):
     )
     @log_cmd
     async def list_feature_flags(self, interaction: discord.Interaction) -> None:
-        """Slash command to list all feature flags in an embed."""
+        """Slash command to list all feature flags in an embed.
+
+        Args:
+            interaction: The Discord interaction.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -72,7 +90,11 @@ class FeatureFlagsCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    """Add the FeatureFlagsCog to the Discord bot."""
+    """Add the FeatureFlagsCog to the Discord bot.
+
+    Args:
+        bot: The Discord bot instance.
+    """
     repo = FeatureFlagsRepository()
     service = FeatureFlagsService(repository=repo)
     await bot.add_cog(FeatureFlagsCog(bot, feature_flags_service=service))

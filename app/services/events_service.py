@@ -1,4 +1,4 @@
-# app/services/events_service.py
+"""Service for event-related operations."""
 
 from app.repositories.events_repository import EventsRepository
 from app.utils.custom_exceptions import (

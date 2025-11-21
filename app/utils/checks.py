@@ -1,4 +1,4 @@
-# utils/checks.py
+"""utils/checks.py"""
 import functools
 from collections.abc import Callable
 from typing import Any
@@ -11,6 +11,11 @@ from app.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
 def is_admin():
+    """A decorator that checks if the user has administrator permissions.
+
+    Returns:
+        Callable: The decorated command.
+    """
     async def predicate(interaction: discord.Interaction) -> bool:
         # Ensure this is used in a guild (not a DM)
         if not interaction.guild or not interaction.user:
@@ -32,6 +37,13 @@ def feature_flag_enabled(feature: str, enable_logs: bool = True):
 
     If the feature is disabled, it sends an ephemeral message to the user for commands,
     or simply logs a message and returns for jobs.
+
+    Args:
+        feature (str): The name of the feature flag to check.
+        enable_logs (bool, optional): Whether to log when a feature is disabled. Defaults to True.
+
+    Returns:
+        Callable: The decorated function.
     """
 
     def decorator(func: Callable) -> Callable:

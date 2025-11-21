@@ -1,5 +1,4 @@
-# app/cogs/events_cog.py
-
+"""Cog for event-related commands."""
 import discord
 from discord.ext import commands
 
@@ -20,6 +19,7 @@ from app.utils.custom_exceptions import (
 
 
 class EventsCog(commands.Cog):
+    """Cog for managing event-related tasks, such as role assignment based on reactions."""
     def __init__(self, bot: commands.Bot, events_service: EventsService):
         self.bot = bot
         self.events_service = events_service
@@ -43,6 +43,14 @@ class EventsCog(commands.Cog):
         channel_id: str,
         role_name: str,
     ):
+        """Assigns a role to everyone who reacted to a specific message.
+
+        Args:
+            interaction: The Discord interaction.
+            message_id: The ID of the message to check reactions on.
+            channel_id: The ID of the channel the message is in.
+            role_name: The name of the role to assign.
+        """
         if not interaction.guild:
             await interaction.response.send_message(
                 "This command must be used in a server.",
@@ -101,9 +109,9 @@ class EventsCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    """
-    This is the entry point for loading the cog.
-    It performs the Dependency Injection.
+    """Sets up the EventsCog.
+
+    Performs dependency injection for the repository and service.
     """
     repository = EventsRepository(bot)
     service = EventsService(repository)

@@ -1,3 +1,4 @@
+"""Service for handling ride requests."""
 import discord
 
 from app.core.enums import CategoryIds, ChannelIds, RoleIds

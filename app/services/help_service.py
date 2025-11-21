@@ -1,10 +1,19 @@
+"""Service for help command generation."""
 import discord
 from discord import app_commands
 
 
 class HelpService:
+    """Service for generating help embeds."""
     def build_help_embed(self, bot) -> discord.Embed:
-        """Generate an embed showing all slash commands and their parameters."""
+        """Generate an embed showing all slash commands and their parameters.
+
+        Args:
+            bot: The Discord bot instance.
+
+        Returns:
+            A Discord Embed object containing the help information.
+        """
         embed = discord.Embed(
             title="Available Slash Commands",
             description="Here are the commands and their parameters:",

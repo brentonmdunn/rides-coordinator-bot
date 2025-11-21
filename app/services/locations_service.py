@@ -1,4 +1,4 @@
-# app/features/locations/locations_service.py
+"""Service for location-related operations."""
 
 import csv
 import gc
@@ -42,13 +42,16 @@ SCHOLARS_LOCATIONS = [
 
 
 class LocationsService:
+    """Service for handling location data and synchronization."""
     def __init__(self, bot):
         self.bot = bot
         self.repo = LocationsRepository()
 
     async def sync_locations(self):
-        """
-        Syncs the Google Sheet with databas table `locations`.
+        """Syncs the Google Sheet with database table `locations`.
+
+        Raises:
+            Exception: If LSCC_PPL_CSV_URL is not set or data retrieval fails.
         """
         logger.info("Syncing locations...")
         if not LSCC_PPL_CSV_URL:
@@ -89,12 +92,38 @@ class LocationsService:
         logger.info("Finished syncing locations csv with table.")
 
     def _verify_year(self, year: str) -> bool:
+        """Verifies if the year is valid.
+
+        Args:
+            year: The year string to verify.
+
+        Returns:
+            True if valid, False otherwise.
+        """
         return year in [year.value for year in ClassYear]
 
     def _verify_driver(self, driver: str) -> bool:
+        """Verifies if the driver status is valid.
+
+        Args:
+            driver: The driver status string.
+
+        Returns:
+            True if valid, False otherwise.
+        """
         return driver in [driver.value for driver in CanBeDriver]
 
     def _get_info(self, data: dict, key: str, verify_schema: Callable | None = None) -> str | None:
+        """Extracts and verifies information from a dictionary.
+
+        Args:
+            data: The dictionary containing data.
+            key: The key to extract.
+            verify_schema: Optional callback to verify the extracted value.
+
+        Returns:
+            The extracted string if valid, otherwise None.
+        """
         value = data.get(key)
         # Ensure value is a string and not just whitespace
         if not isinstance(value, str) or not value.strip():
@@ -108,6 +137,15 @@ class LocationsService:
     async def get_location(
         self, name: str, discord_only: bool = False
     ) -> list[tuple[str, str]] | None:
+        """Retrieves location information for a given name.
+
+        Args:
+            name: The name to search for.
+            discord_only: If True, only search for Discord username matches.
+
+        Returns:
+            A list of tuples containing (name, location) if found, otherwise None.
+        """
         async with AsyncSessionLocal() as session:
             possible_people = (
                 await self.repo.get_location_check_discord(session, name)
@@ -129,11 +167,27 @@ class LocationsService:
         return possible_people if possible_people else None
 
     async def get_name_location_no_sync(self, discord_username: str) -> tuple[str, str] | None:
+        """Retrieves name and location for a Discord username without syncing.
+
+        Args:
+            discord_username: The Discord username to search for.
+
+        Returns:
+            A tuple containing (name, location) if found, otherwise None.
+        """
         async with AsyncSessionLocal() as session:
             person = await self.repo.get_name_location(session, discord_username)
         return person
 
     async def pickup_location(self, name: str) -> str:
+        """Formats pickup location information for a given name.
+
+        Args:
+            name: The name to search for.
+
+        Returns:
+            A formatted string with name and location.
+        """
         possible_people = await self.get_location(name)
         if not possible_people:
             return "No people found."
@@ -147,6 +201,15 @@ class LocationsService:
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
         option=None,
     ):
+        """Wrapper for listing locations, handling interaction responses and errors.
+
+        Args:
+            interaction: The Discord interaction.
+            day: The day to list locations for.
+            message_id: The message ID to check reactions on.
+            channel_id: The channel ID where the message is located.
+            option: Additional filtering options.
+        """
         try:
             args = await self.list_locations(day, message_id, channel_id, option)
             embed = self._build_embed(*args, option=option)
@@ -184,6 +247,17 @@ class LocationsService:
         channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
         option=None,
     ):
+        """Lists locations based on reactions to a message.
+
+        Args:
+            day: The day to list locations for.
+            message_id: The message ID to check reactions on.
+            channel_id: The channel ID where the message is located.
+            option: Additional filtering options.
+
+        Returns:
+            A tuple containing (locations_people, usernames_reacted, location_found).
+        """
         if day:
             if day.lower() == "sunday":
                 ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
@@ -223,6 +297,11 @@ class LocationsService:
         return locations_people, usernames_reacted, location_found
 
     def _get_last_sunday(self):
+        """Calculates the date of the last Sunday.
+
+        Returns:
+            The datetime object for the last Sunday.
+        """
         now = datetime.now()
         days_to_subtract = (now.weekday() + 1) % 7
         if days_to_subtract == 0:
@@ -230,6 +309,15 @@ class LocationsService:
         return now - timedelta(days=days_to_subtract)
 
     async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
+        """Finds the most recent message matching the criteria.
+
+        Args:
+            ask_rides_message: The message content to search for.
+            channel_id: The channel ID to search in.
+
+        Returns:
+            The message ID if found, otherwise None.
+        """
         last_sunday = self._get_last_sunday()
         channel = self.bot.get_channel(channel_id)
         most_recent_message = None
@@ -242,6 +330,16 @@ class LocationsService:
         return most_recent_message.id if most_recent_message else None
 
     async def _get_usernames_who_reacted(self, channel_id, message_id, option=None):
+        """Retrieves a set of usernames who reacted to a message.
+
+        Args:
+            channel_id: The channel ID.
+            message_id: The message ID.
+            option: Optional filtering based on reaction emoji.
+
+        Returns:
+            A set of usernames who reacted.
+        """
         usernames_reacted = set()
         channel = self.bot.get_channel(int(channel_id))
         message = await channel.fetch_message(int(message_id))
@@ -256,6 +354,14 @@ class LocationsService:
         return usernames_reacted
 
     async def _sort_locations(self, usernames_reacted):
+        """Sorts users into locations based on their database records.
+
+        Args:
+            usernames_reacted: A set of usernames to sort.
+
+        Returns:
+            A tuple containing (locations_people, location_found).
+        """
         locations_people = defaultdict(list)
         location_found = set()
         cache_miss = []
@@ -278,6 +384,18 @@ class LocationsService:
     def _build_embed(
         self, locations_people, usernames_reacted, location_found, option=None, custom_title=None
     ):
+        """Builds a Discord embed displaying location breakdowns.
+
+        Args:
+            locations_people: Dictionary mapping locations to people.
+            usernames_reacted: Set of all usernames who reacted.
+            location_found: Set of usernames whose location was found.
+            option: Optional filter option string.
+            custom_title: Optional custom title for the embed.
+
+        Returns:
+            A Discord Embed object.
+        """
         title = "Housing Breakdown"
         if option:
             title += f" ({option})"

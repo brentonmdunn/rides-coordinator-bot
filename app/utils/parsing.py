@@ -9,11 +9,10 @@ def parse_name(text: str) -> tuple[str, str | None]:
     """Parse the input string to extract the name and username in the form "name (username)".
 
     Args:
-        input_string (str): The input string to parse.
+        text (str): The input string to parse.
 
     Returns:
-        tuple: A tuple containing the name and username.
-
+        tuple[str, str | None]: A tuple containing the name and username (if found).
     """
     match = re.match(r"^(.*?)\s*\((.*?)\)$", text)
     if match:
@@ -22,7 +21,14 @@ def parse_name(text: str) -> tuple[str, str | None]:
 
 
 def parse_discord_username(username: str) -> str:
-    """Returns username without @ symbol."""
+    """Returns username without @ symbol.
+
+    Args:
+        username (str): The username to parse.
+
+    Returns:
+        str: The username without the leading @ symbol.
+    """
     username = username.lower().strip()
     return username if "@" not in username else username[1:]
 
@@ -59,9 +65,17 @@ def get_last_name(name: str) -> str | None:
 
 def get_message_and_embed_content(
     message: discord.Message, message_content: bool = True, embed_content: bool = True
-):
+) -> str:
     """
     Combines the text in message.content and of any embeds.
+
+    Args:
+        message (discord.Message): The message to extract content from.
+        message_content (bool, optional): Whether to include the message content. Defaults to True.
+        embed_content (bool, optional): Whether to include the embed content. Defaults to True.
+
+    Returns:
+        str: The combined text content.
     """
     # Gather lowercase text from content and embeds
     text_blobs = []

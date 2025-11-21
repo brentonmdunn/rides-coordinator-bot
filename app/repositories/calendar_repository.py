@@ -1,3 +1,4 @@
+"""Repository for calendar data access."""
 import datetime
 from os import getenv
 
@@ -11,13 +12,16 @@ ICAL_URL = getenv("ICAL_URL")
 
 
 class CalendarRepository:
-    """
-    Repository for accessing calendar events.
-    """
+    """Repository for accessing calendar events."""
 
     def get_events_on_date(self, target_date: datetime.date) -> list:
-        """
-        Downloads iCal data from a URL and extracts all events on a specific date.
+        """Downloads iCal data from a URL and extracts all events on a specific date.
+
+        Args:
+            target_date: The date to fetch events for.
+
+        Returns:
+            A list of recurring_ical_events objects.
         """
         if not ICAL_URL:
             logger.error("ICAL_URL environment variable not set.")
@@ -45,8 +49,13 @@ class CalendarRepository:
             return []
 
     def get_event_summaries(self, target_date: datetime.date) -> list[str]:
-        """
-        Get a list of event summaries for a specific date.
+        """Get a list of event summaries for a specific date.
+
+        Args:
+            target_date: The date to fetch event summaries for.
+
+        Returns:
+            A list of event summary strings.
         """
         events_for_day = self.get_events_on_date(target_date)
 

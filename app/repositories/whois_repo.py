@@ -1,3 +1,4 @@
+"""Repository for whois data access."""
 from sqlalchemy import func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,10 +7,10 @@ from app.core.models import Locations as LocationsModel
 
 
 class WhoisRepo:
+    """Handles database operations for whois lookups."""
     @staticmethod
     async def fetch_data_by_name(session: AsyncSession, name: str) -> list[Row]:
-        """
-        Fetches 'name' and 'discord_username' from the database based on a partial match.
+        """Fetches 'name' and 'discord_username' from the database based on a partial match.
 
         The search is case-insensitive and checks against both the 'name' and
         'discord_username' columns in the Locations model.

@@ -20,6 +20,7 @@ from app.utils.checks import feature_flag_enabled
 
 
 class AskDrivers(commands.Cog):
+    """Cog for asking drivers for availability."""
     def __init__(self, bot: commands.Bot, driver_service):
         self.bot = bot
         self.driver_service = driver_service
@@ -32,7 +33,13 @@ class AskDrivers(commands.Cog):
     @log_cmd
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def ask_drivers(self, interaction: discord.Interaction, day: str, message: str) -> None:
-        """Pings the driver role with a custom message."""
+        """Pings the driver role with a custom message.
+
+        Args:
+            interaction: The Discord interaction.
+            day: The day to ask for (e.g., 'Friday', 'Sunday').
+            message: The custom message to send.
+        """
         if not await cmd_is_allowed(
             interaction,
             interaction.channel_id,
@@ -54,5 +61,6 @@ class AskDrivers(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    """Sets up the AskDrivers cog."""
     service = DriverService()
     await bot.add_cog(AskDrivers(bot, driver_service=service))

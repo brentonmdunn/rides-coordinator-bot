@@ -1,3 +1,4 @@
+"""Cog for handling reactions."""
 import discord
 from discord.ext import commands
 

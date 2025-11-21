@@ -1,4 +1,4 @@
-# cogs/job_scheduler.py
+"""Cog for scheduling background jobs."""
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -14,6 +14,7 @@ from app.jobs.sync_rides_locations import sync_rides_locations
 
 
 class JobScheduler(commands.Cog):
+    """Cog that manages scheduled tasks using APScheduler."""
     def __init__(self, bot):
         self.bot = bot
         self.scheduler = AsyncIOScheduler()
@@ -76,8 +77,10 @@ class JobScheduler(commands.Cog):
         self.scheduler.start()
 
     def cog_unload(self):
+        """Shuts down the scheduler when the cog is unloaded."""
         self.scheduler.shutdown()
 
 
 async def setup(bot):
+    """Sets up the JobScheduler cog."""
     await bot.add_cog(JobScheduler(bot))

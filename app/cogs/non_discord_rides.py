@@ -1,3 +1,4 @@
+"""Cog for managing non-Discord rides."""
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -13,6 +14,7 @@ from app.utils.checks import feature_flag_enabled
 
 
 class NonDiscordRidesCog(commands.Cog):
+    """Cog for handling pickups for users without Discord."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.service = NonDiscordRidesService()
@@ -28,6 +30,14 @@ class NonDiscordRidesCog(commands.Cog):
     async def add_pickup(
         self, interaction: discord.Interaction, name: str, day: str, location: str
     ):
+        """Adds a pickup for a non-Discord user.
+
+        Args:
+            interaction: The Discord interaction.
+            name: The name of the person.
+            day: The day of the pickup.
+            location: The pickup location.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -54,8 +64,12 @@ class NonDiscordRidesCog(commands.Cog):
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def remove_pickup(self, interaction: discord.Interaction, name: str, day: str):
-        """
-        Removes a non-Discord user's pickup entry.
+        """Removes a non-Discord user's pickup entry.
+
+        Args:
+            interaction: The Discord interaction.
+            name: The name of the person.
+            day: The day of the pickup.
         """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
@@ -91,8 +105,11 @@ class NonDiscordRidesCog(commands.Cog):
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def list_added_pickups(self, interaction: discord.Interaction, day: str):
-        """
-        Lists all non-Discord user pickups for a given day.
+        """Lists all non-Discord user pickups for a given day.
+
+        Args:
+            interaction: The Discord interaction.
+            day: The day to list pickups for.
         """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
@@ -124,4 +141,5 @@ class NonDiscordRidesCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    """Sets up the NonDiscordRidesCog."""
     await bot.add_cog(NonDiscordRidesCog(bot))

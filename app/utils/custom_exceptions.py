@@ -1,3 +1,5 @@
+"""utils/custom_exceptions.py"""
+
 from discord.ext import commands
 
 

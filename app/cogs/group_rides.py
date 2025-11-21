@@ -1,3 +1,4 @@
+"""Cog for grouping rides."""
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -10,6 +11,7 @@ from app.utils.checks import feature_flag_enabled
 
 
 class GroupRides(commands.Cog):
+    """Cog for handling group rides logic."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.service = GroupRidesService(bot)
@@ -29,6 +31,13 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         legacy_prompt: bool = False,
     ):
+        """Groups riders with drivers for Friday fellowship.
+
+        Args:
+            interaction: The Discord interaction.
+            driver_capacity: A string representing driver capacities (e.g., "44444").
+            legacy_prompt: Whether to use the legacy prompt.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -52,6 +61,13 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         legacy_prompt: bool = False,
     ):
+        """Groups riders with drivers for Sunday service.
+
+        Args:
+            interaction: The Discord interaction.
+            driver_capacity: A string representing driver capacities (e.g., "44444").
+            legacy_prompt: Whether to use the legacy prompt.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -77,6 +93,14 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         legacy_prompt: bool = False,
     ):
+        """Groups riders with drivers based on a specific message ID.
+
+        Args:
+            interaction: The Discord interaction.
+            message_id: The ID of the message to fetch pickups from.
+            driver_capacity: A string representing driver capacities (e.g., "44444").
+            legacy_prompt: Whether to use the legacy prompt.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -87,4 +111,5 @@ class GroupRides(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    """Sets up the GroupRides cog."""
     await bot.add_cog(GroupRides(bot))

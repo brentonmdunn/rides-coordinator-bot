@@ -1,3 +1,4 @@
+"""Repository for event thread data access."""
 import discord
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,24 +11,53 @@ class EventThreadRepository:
     """Handles database operations for EventThreads."""
 
     async def get_by_id(self, session: AsyncSession, thread_id: str) -> EventThreads | None:
-        """Fetches an EventThread by its ID (which is the message_id)."""
+        """Fetches an EventThread by its ID (which is the message_id).
+
+        Args:
+            session: The database session.
+            thread_id: The ID of the thread.
+
+        Returns:
+            The EventThreads object if found, otherwise None.
+        """
         return await session.get(EventThreads, thread_id)
 
     async def get_by_message_id(
         self, session: AsyncSession, message_id: str
     ) -> EventThreads | None:
-        """Fetches an EventThread by its message_id."""
+        """Fetches an EventThread by its message_id.
+
+        Args:
+            session: The database session.
+            message_id: The message ID.
+
+        Returns:
+            The EventThreads object if found, otherwise None.
+        """
         result = await session.execute(select(EventThreads).filter_by(message_id=message_id))
         return result.scalar_one_or_none()
 
     async def create(self, session: AsyncSession, thread_id: str) -> EventThreads:
-        """Creates and adds a new EventThread to the session."""
+        """Creates and adds a new EventThread to the session.
+
+        Args:
+            session: The database session.
+            thread_id: The ID of the thread.
+
+        Returns:
+            The created EventThreads object.
+        """
         new_thread = EventThreads(message_id=thread_id)
         session.add(new_thread)
         return new_thread
 
     async def delete(self, session: AsyncSession, event_thread: EventThreads) -> None:
-        """Deletes an EventThread from the session."""
+        """Deletes an EventThread from the session.
+
+        Args:
+            session: The database session.
+            event_thread: The EventThreads object to delete.
+        """
         await session.delete(event_thread)
 
     async def is_event_thread(self, session: AsyncSession, message_id: str) -> bool:

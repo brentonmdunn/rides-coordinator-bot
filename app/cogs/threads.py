@@ -1,3 +1,4 @@
+"""Cog for managing Discord threads."""
 import discord
 from discord.ext import commands
 
@@ -14,12 +15,20 @@ from app.utils.checks import feature_flag_enabled
 
 
 class Threads(commands.Cog):
+    """Cog for managing event-based threads."""
     def __init__(self, bot: commands.Bot, thread_service: ThreadService):
         self.bot = bot
         self.thread_service = thread_service
 
     def _is_thread(self, interaction: discord.Interaction) -> bool:
-        """Helper to check if the interaction is in a thread."""
+        """Helper to check if the interaction is in a thread.
+
+        Args:
+            interaction: The Discord interaction.
+
+        Returns:
+            True if the interaction channel is a thread, False otherwise.
+        """
         return isinstance(interaction.channel, discord.Thread)
 
     def _format_bulk_add_response(
@@ -27,7 +36,15 @@ class Threads(commands.Cog):
         added_users: list[discord.Member],
         failed_users: list[str],
     ) -> str:
-        """Formats the response message for a bulk-add operation."""
+        """Formats the response message for a bulk-add operation.
+
+        Args:
+            added_users: List of users successfully added.
+            failed_users: List of names of users who couldn't be added.
+
+        Returns:
+            A formatted string summarizing the operation results.
+        """
         response_message = ""
         if added_users:
             mentions = [user.mention for user in added_users]
@@ -52,6 +69,11 @@ class Threads(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def end_event_thread(self, interaction: discord.Interaction) -> None:
+        """Stops adding everyone who reacts to the thread.
+
+        Args:
+            interaction: The Discord interaction.
+        """
         if not self._is_thread(interaction):
             await interaction.response.send_message(
                 "This command can only be used inside a thread.", ephemeral=True
@@ -75,7 +97,11 @@ class Threads(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def create_event_thread(self, interaction: discord.Interaction) -> None:
-        """Automatically adds anyone new who reacts"""
+        """Automatically adds anyone new who reacts to the parent message.
+
+        Args:
+            interaction: The Discord interaction.
+        """
         await interaction.response.defer(ephemeral=False, thinking=True)
 
         if not self._is_thread(interaction):
@@ -124,6 +150,11 @@ class Threads(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def add_reacts_to_thread(self, interaction: discord.Interaction) -> None:
+        """Adds everyone who reacted to the parent message to the thread.
+
+        Args:
+            interaction: The Discord interaction.
+        """
         await interaction.response.defer(ephemeral=True, thinking=True)
 
         if not self._is_thread(interaction):
@@ -148,6 +179,7 @@ class Threads(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    """Sets up the Threads cog."""
     # This is where Dependency Injection happens
     repo = EventThreadRepository()
     service = ThreadService(repository=repo)

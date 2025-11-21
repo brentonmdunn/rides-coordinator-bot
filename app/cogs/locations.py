@@ -1,4 +1,4 @@
-# app/features/locations/locations_cog.py
+"""Cog for location-related commands."""
 
 import discord
 from discord.ext import commands
@@ -12,6 +12,7 @@ from app.utils.constants import MAP_LINKS
 
 
 class Locations(commands.Cog):
+    """Cog for managing user locations and pickups."""
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.service = LocationsService(bot)
@@ -23,6 +24,11 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def sync_locations(self, interaction: discord.Interaction):
+        """Syncs Google Sheets data with the database.
+
+        Args:
+            interaction: The Discord interaction.
+        """
         await self.service.sync_locations()
         await interaction.response.send_message("Sync complete")
 
@@ -33,6 +39,12 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def pickup_location(self, interaction: discord.Interaction, name: str):
+        """Gets the pickup location for a person.
+
+        Args:
+            interaction: The Discord interaction.
+            name: The name or Discord username to look up.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -47,6 +59,11 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_pickups_sunday(self, interaction: discord.Interaction):
+        """Lists pickups for Sunday service.
+
+        Args:
+            interaction: The Discord interaction.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -60,6 +77,11 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_dropoffs_sunday_back(self, interaction: discord.Interaction):
+        """Lists dropoffs after Sunday service (no lunch).
+
+        Args:
+            interaction: The Discord interaction.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -75,6 +97,11 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_dropoffs_sunday_lunch(self, interaction: discord.Interaction):
+        """Lists dropoffs after Sunday service (with lunch).
+
+        Args:
+            interaction: The Discord interaction.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -90,6 +117,11 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_locations_friday(self, interaction: discord.Interaction):
+        """Lists pickups for Friday fellowship.
+
+        Args:
+            interaction: The Discord interaction.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -112,6 +144,13 @@ class Locations(commands.Cog):
         message_id: str,
         channel_id: str | None = str(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS),
     ):
+        """Lists pickups based on a specific message ID.
+
+        Args:
+            interaction: The Discord interaction.
+            message_id: The message ID to fetch pickups from.
+            channel_id: The channel ID where the message is located.
+        """
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
@@ -127,6 +166,12 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def map_links(self, interaction: discord.Interaction, location: str | None):
+        """Provides Google Maps links for pickup locations.
+
+        Args:
+            interaction: The Discord interaction.
+            location: Optional specific location to filter by.
+        """
         search_term = location.lower() if location else None
         header = (
             f"**{location}**"
@@ -142,4 +187,5 @@ class Locations(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    """Sets up the Locations cog."""
     await bot.add_cog(Locations(bot))
