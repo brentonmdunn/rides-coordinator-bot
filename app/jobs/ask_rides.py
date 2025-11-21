@@ -61,8 +61,9 @@ def _make_sunday_msg_class() -> str | None:
     """Create message for Sunday class rides."""
     formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
     return (
-        f"React to this message if you need a ride to Bible Theology Class on Sunday {formatted_date} "  # noqa
-        "(leave between 8:30 and 8:40am)"
+        f"React to this message if you need a ride to Bible Theology Class on Sunday "
+        f"{formatted_date} (leave between 8:30 and 8:40am). "
+        "Make sure to also react to the message below for 🍔, 🏠, or ✳️."
     )
 
 
