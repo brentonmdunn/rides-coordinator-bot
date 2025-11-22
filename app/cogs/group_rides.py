@@ -111,6 +111,36 @@ class GroupRides(commands.Cog):
             interaction, driver_capacity, message_id=message_id, legacy_prompt=legacy_prompt
         )
 
+    @app_commands.command(
+        name="make-route",
+        description="Makes route based on specified locations",
+    )
+    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @discord.app_commands.describe(
+        locations="The locations to make a route for, separate each location with a space",
+        leave_time="The leave time for the route",
+    )
+    @log_cmd
+    async def make_route(
+        self,
+        interaction: discord.Interaction,
+        locations: str,
+        leave_time: str,
+    ):
+        """Makes route based on specified locations.
+
+        Args:
+            interaction: The Discord interaction.
+            locations: The locations to make a route for.
+            leave_time: The leave time for the route.
+        """
+        try:
+            drive_formatted = self.service.make_route(locations, leave_time)
+            await interaction.response.send_message(drive_formatted)
+            await interaction.channel.send("```\n" + drive_formatted + "\n```")
+        except ValueError as e:
+            await interaction.response.send_message(str(e))
+
 
 async def setup(bot: commands.Bot):
     """Sets up the GroupRides cog."""
