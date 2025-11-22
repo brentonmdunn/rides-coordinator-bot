@@ -1,6 +1,7 @@
 """utils/parsing.py"""
 
 import re
+from datetime import datetime, time
 
 import discord
 
@@ -96,3 +97,48 @@ def get_message_and_embed_content(
                 text_blobs.append(field.value.lower())
 
     return " ".join(text_blobs)
+
+
+def parse_time(time_str: str) -> time:
+    """Parses a flexible string into a datetime.time object.
+
+    Handles weird spacing, capitalization, and both 12-hour (AM/PM/A/P)
+    and 24-hour formats. If AM/PM (or A/P) is missing, 24-hour time is assumed.
+
+    Args:
+        time_str: A string representing the time (e.g., "14:30", " 1 : 30 p ", "9a").
+
+    Returns:
+        datetime.time: The parsed time object.
+
+    Raises:
+        ValueError: If the string cannot be parsed into a valid time.
+    """
+    # 1. Normalize: Convert to lowercase and remove ALL spaces
+    #    Example: " 1 : 30  P " -> "1:30p"
+    cleaned_str = time_str.strip().lower().replace(" ", "")
+
+    # 2. Normalize suffixes: Handle 'a' -> 'am' and 'p' -> 'pm'
+    #    We check if it ends with just 'a' or 'p' to support shorthand.
+    if cleaned_str.endswith("a") and not cleaned_str.endswith("ea"):
+        # Note: "ea" check is just a safety against words, though unlikely in time strings.
+        # If it ends in 'a' (like '10a'), make it '10am'
+        cleaned_str += "m"
+    elif cleaned_str.endswith("p"):
+        # If it ends in 'p' (like '10p'), make it '10pm'
+        cleaned_str += "m"
+
+    # 3. Determine if we are looking for AM/PM format or 24-hour format
+    is_12_hour = "am" in cleaned_str or "pm" in cleaned_str
+
+    # 4. Define allowed formats based on the presence of am/pm
+    formats = ["%I:%M%p", "%I%p"] if is_12_hour else ["%H:%M", "%H"]
+
+    # 5. Attempt to parse
+    for fmt in formats:
+        try:
+            return datetime.strptime(cleaned_str, fmt).time()
+        except ValueError:
+            continue
+
+    raise ValueError(f"Could not parse time string: '{time_str}'")

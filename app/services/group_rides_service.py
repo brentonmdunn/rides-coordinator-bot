@@ -8,6 +8,7 @@ from datetime import datetime, time, timedelta
 import discord
 import tenacity
 from langchain_google_genai import ChatGoogleGenerativeAI
+from rapidfuzz import fuzz, process
 
 from app.core.enums import (
     AskRidesMessage,
@@ -28,7 +29,7 @@ from app.services.locations_service import LocationsService
 from app.utils.constants import MAP_LINKS
 from app.utils.genai.prompt import GROUP_RIDES_PROMPT, GROUP_RIDES_PROMPT_LEGACY
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
-from app.utils.parsing import get_message_and_embed_content
+from app.utils.parsing import get_message_and_embed_content, parse_time
 
 prev_response = None
 
@@ -580,3 +581,87 @@ class GroupRidesService:
         # Followups reply to the initial response and it looks bad
         for message in output[1:]:
             await interaction.channel.send(message)
+
+    def get_pickup_location_fuzzy(self, input_loc: str) -> PickupLocations | None:
+        choices = {e.value: e for e in PickupLocations}
+
+        # --- PASS 1: High Precision ---
+        # Checks for whole words, handles reordering ("bamboo erc" -> "ERC... bamboo")
+        result = process.extractOne(
+            input_loc,
+            choices.keys(),
+            scorer=fuzz.token_sort_ratio,
+            score_cutoff=65,  # Keep this relatively high to avoid bad guesses
+        )
+
+        if result:
+            return choices[result[0]]
+
+        # --- PASS 2: Fallback (Partial Matching) ---
+        # "If a match cannot be found then try to find best match"
+        # This handles substrings and typos ("seveneth" -> "Seventh mail room")
+        result = process.extractOne(
+            input_loc,
+            choices.keys(),
+            scorer=fuzz.partial_ratio,
+            score_cutoff=60,  # Slightly lower cutoff for the fallback
+        )
+
+        if result:
+            logger.debug(f"{result=}")
+            logger.debug(f"Fallback match: '{input_loc}' -> '{result[0]}' (Score: {result[1]})")
+            return choices[result[0]]
+
+        return None
+
+    def make_route(self, locations: str, leave_time: str) -> str:
+        """Makes route based on specified locations.
+
+        Args:
+            locations: The locations to make a route for.
+            leave_time: The leave time for the route.
+
+        Returns:
+            The route as a string.
+        """
+
+        curr_leave_time = parse_time(leave_time)
+        locations_list = locations.split()
+        locations_list_actual = []
+        for location in locations_list:
+            if (actual_location := self.get_pickup_location_fuzzy(location)) is not None:
+                locations_list_actual.append(actual_location)
+            else:
+                raise ValueError(f"Invalid location: {location}")
+
+        drive_formatted: list[str] = []
+        logger.debug(f"{locations_list_actual=}")
+
+        reversed_locations = list(reversed(locations_list_actual))
+        for idx, location in enumerate(reversed_locations):
+            if idx != 0:
+                time_between = PICKUP_ADJUSTMENT + lookup_time(
+                    LocationQuery(start_location=location, end_location=reversed_locations[idx - 1])
+                )
+                logger.debug(f"{time_between=}")
+                dummy_datetime = datetime.combine(datetime.today(), curr_leave_time)
+                new_datetime = dummy_datetime - timedelta(minutes=time_between)
+                curr_leave_time = new_datetime.time()
+
+            logger.debug(f"{curr_leave_time=}")
+            logger.debug(f"{location=}")
+            base_string = (
+                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} {location.value}"
+            )
+
+            # Add google maps link if we have it
+            if location in MAP_LINKS:
+                formatted_string = f"{base_string} ([Google Maps]({MAP_LINKS[location]}))"
+            else:
+                formatted_string = base_string
+
+            drive_formatted.append(formatted_string)
+
+        logger.debug(f"{drive_formatted=}")
+
+        return ", ".join(reversed(drive_formatted))
