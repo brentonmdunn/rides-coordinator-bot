@@ -274,7 +274,7 @@ class LocationsService:
 
         tmp_content = ""
         if not day:
-            tmp_channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+            tmp_channel = self.bot.get_channel(int(channel_id))
             tmp_message = await tmp_channel.fetch_message(int(message_id))
             tmp_content = get_message_and_embed_content(tmp_message).lower()
 
