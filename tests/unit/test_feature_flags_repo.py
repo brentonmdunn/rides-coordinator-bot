@@ -8,6 +8,14 @@ from app.core.enums import FeatureFlagNames
 from app.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    FeatureFlagsRepository._cache.clear()
+    yield
+    FeatureFlagsRepository._cache.clear()
+
+
 @pytest.mark.asyncio
 @patch("app.repositories.feature_flags_repository.AsyncSessionLocal")
 async def test_get_feature_flag_status_found(mock_session_local):
