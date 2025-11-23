@@ -22,7 +22,7 @@ from app.utils.custom_exceptions import (
 class EventsCog(commands.Cog):
     """Cog for managing event-related tasks, such as role assignment based on reactions."""
 
-    def __init__(self, bot: commands.Bot, events_service: EventsService):
+    def __init__(self, bot: commands.Bot, events_service: EventsService) -> None:
         self.bot = bot
         self.events_service = events_service
 

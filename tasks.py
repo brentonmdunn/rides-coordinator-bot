@@ -4,37 +4,37 @@ from invoke import task
 
 
 @task
-def run(c):
+def run(c) -> None:
     """Run the bot."""
     c.run("python main.py")
 
 
 @task
-def venv(c):
+def venv(c) -> None:
     """Activate virtual environment."""
     c.run("source .venv/bin/activate")
 
 
 @task
-def lint(c):
+def lint(c) -> None:
     """Run Ruff to lint the code."""
     c.run("ruff check .")
 
 
 @task
-def format(c):
+def format(c) -> None:
     """Format code using Ruff."""
     c.run("ruff format .")
 
 
 @task
-def fix(c):
+def fix(c) -> None:
     """Autofix lint errors with Ruff."""
     c.run("ruff check . --fix")
 
 
 @task
-def all(c):
+def all(c) -> None:
     """Run all code quality tools."""
     lint(c)
     fix(c)
@@ -42,10 +42,10 @@ def all(c):
 
 
 @task
-def test(c):
+def test(c) -> None:
     c.run("python -m pytest --color=yes -v")
 
 
 @task
-def clean(c):
+def clean(c) -> None:
     c.run("python scripts/remove_dev_commands.py")

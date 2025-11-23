@@ -19,7 +19,7 @@ class DuplicateRideError(Exception):
 class NonDiscordRidesService:
     """Service for handling non-Discord ride logic."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # No dependencies needed in init for now, as we create session per method
         pass
 

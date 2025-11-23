@@ -7,7 +7,7 @@ from app.services.whois_service import WhoisService
 
 
 # Helper setup for Mocking Rows with attribute access
-def create_mock_row(name, discord_username):
+def create_mock_row(name: str, discord_username: str) -> Mock:
     mock_row = Mock(spec=Row)
     # Patch the attributes used in the service layer
     mock_row.name = name

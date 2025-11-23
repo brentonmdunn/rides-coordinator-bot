@@ -22,7 +22,7 @@ from app.utils.checks import feature_flag_enabled
 class AskDrivers(commands.Cog):
     """Cog for asking drivers for availability."""
 
-    def __init__(self, bot: commands.Bot, driver_service):
+    def __init__(self, bot: commands.Bot, driver_service) -> None:
         self.bot = bot
         self.driver_service = driver_service
 

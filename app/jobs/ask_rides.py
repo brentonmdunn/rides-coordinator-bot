@@ -215,7 +215,7 @@ async def run_ask_rides_header(
 
 
 async def run_ask_rides_all(
-    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    bot: Bot, channel_id: ChannelIds=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     await run_ask_rides_header(bot, channel_id)
     await run_ask_rides_fri(bot, channel_id)

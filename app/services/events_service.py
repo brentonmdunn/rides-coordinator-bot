@@ -14,7 +14,7 @@ class EventsService:
     Handles the business logic for assigning roles based on reactions.
     """
 
-    def __init__(self, repository: EventsRepository):
+    def __init__(self, repository: EventsRepository) -> None:
         self.repository = repository
 
     async def assign_role_to_reactors(

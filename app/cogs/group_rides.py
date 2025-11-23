@@ -14,7 +14,7 @@ from app.utils.checks import feature_flag_enabled
 class GroupRides(commands.Cog):
     """Cog for handling group rides logic."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.service = GroupRidesService(bot)
 

@@ -9,7 +9,7 @@ from app.core.logger import logger
 class EventsRepository:
     """Handles all data access related to Discord objects like roles, messages, and members."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     def get_guild(self, guild_id: int) -> discord.Guild | None:

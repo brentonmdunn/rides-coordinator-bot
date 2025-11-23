@@ -13,7 +13,7 @@ from app.utils.checks import feature_flag_enabled
 class HelpCog(commands.Cog):
     """Cog for displaying help information."""
 
-    def __init__(self, bot: commands.Bot, help_service: HelpService):
+    def __init__(self, bot: commands.Bot, help_service: HelpService) -> None:
         self.bot = bot
         self.help_service = help_service
 

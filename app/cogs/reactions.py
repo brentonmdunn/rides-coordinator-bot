@@ -42,7 +42,7 @@ class Reactions(commands.Cog):
         thread_service: ThreadService,
         logging_service: ReactionLoggingService,
         ride_request_service: RideRequestService,
-    ):
+    ) -> None:
         """Initialize the Reactions cog.
 
         Args:

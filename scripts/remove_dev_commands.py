@@ -12,7 +12,7 @@ MAIN_PATH = Path(__file__).parent.parent / "main.py"
 TARGET_LINE = "await load_extensions()"
 
 
-def comment_out_line(path: Path, target: str):
+def comment_out_line(path: Path, target: str) -> bool:
     lines = path.read_text().splitlines(keepends=True)
 
     for i, line in enumerate(lines):
@@ -23,7 +23,7 @@ def comment_out_line(path: Path, target: str):
     return False
 
 
-def uncomment_line(path: Path, target: str):
+def uncomment_line(path: Path, target: str) -> None:
     lines = path.read_text().splitlines(keepends=True)
 
     for i, line in enumerate(lines):

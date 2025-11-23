@@ -9,7 +9,7 @@ from app.core.logger import logger
 class RideRequestService:
     """Business logic for handling ride request channel creation."""
 
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         """Initialize the service with a bot instance.
 
         Args:

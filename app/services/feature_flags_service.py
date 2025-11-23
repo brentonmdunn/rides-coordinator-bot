@@ -9,7 +9,7 @@ from app.repositories.feature_flags_repository import FeatureFlagsRepository
 class FeatureFlagsService:
     """Handles feature flag business logic between the Cog and Repository."""
 
-    def __init__(self, repository: FeatureFlagsRepository):
+    def __init__(self, repository: FeatureFlagsRepository) -> None:
         self.repository = repository
 
     async def validate_feature_name(self, feature_name: str) -> FeatureFlagNames | None:

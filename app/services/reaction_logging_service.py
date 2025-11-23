@@ -12,7 +12,7 @@ from app.utils.parsing import get_message_and_embed_content
 class ReactionLoggingService:
     """Business logic for logging reaction events."""
 
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         """Initialize the service with a bot instance.
 
         Args:

@@ -1,5 +1,10 @@
 # jobs/csv_runner.py
 
+from typing_extensions import Reader
+from _csv import Reader
+from dotenv.parser import Reader
+from yaml.reader import Reader
+from invoke.vendor.yaml.reader import Reader
 import csv
 import io
 import os
@@ -14,7 +19,7 @@ from app.utils.constants import GUILD_ID
 from app.utils.parsing import parse_discord_username
 
 
-async def logic(reader, bot):
+async def logic(reader: Reader, bot):
     guild = bot.get_guild(GUILD_ID)
     for row in reader:
         if "no" in row[Col.NEED_RIDE].lower():

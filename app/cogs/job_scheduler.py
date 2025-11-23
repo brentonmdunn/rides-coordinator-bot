@@ -16,7 +16,7 @@ from app.jobs.sync_rides_locations import sync_rides_locations
 class JobScheduler(commands.Cog):
     """Cog that manages scheduled tasks using APScheduler."""
 
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
         self.scheduler = AsyncIOScheduler()
 
@@ -77,7 +77,7 @@ class JobScheduler(commands.Cog):
 
         self.scheduler.start()
 
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         """Shuts down the scheduler when the cog is unloaded."""
         self.scheduler.shutdown()
 

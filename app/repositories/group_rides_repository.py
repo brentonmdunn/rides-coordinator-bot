@@ -7,7 +7,7 @@ from discord.ext import commands
 class GroupRidesRepository:
     """Handles data access for group rides."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     async def fetch_message(self, channel_id: int, message_id: int) -> discord.Message:

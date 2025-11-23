@@ -1,5 +1,6 @@
 """Service for group rides logic."""
 
+from langchain_core.messages.base import BaseMessage
 import asyncio
 import json
 import os
@@ -59,7 +60,7 @@ PassengersByLocation = dict[PickupLocations, list[Passenger]]
 
 
 # Define the callback function to print to the console
-def log_retry_attempt(retry_state):
+def log_retry_attempt(retry_state) -> None:
     """Logs a warning when a retry attempt is made.
 
     Args:
@@ -141,7 +142,7 @@ def is_enough_capacity(
 
 
 def calculate_pickup_time(
-    curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int
+    curr_leave_time: datetime.time, grouped_by_location: list[list[Passenger]], location: str, offset: int
 ) -> datetime.time:
     """Calculates the pickup time based on the previous location and travel time.
 
@@ -305,7 +306,7 @@ def create_output(
 class GroupRidesService:
     """Service for handling group rides logic and LLM interaction."""
 
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
         self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
         self.locations_service = LocationsService(bot)
@@ -346,7 +347,7 @@ class GroupRidesService:
         retry=tenacity.retry_if_exception_type(Exception),
         before_sleep=log_retry_attempt,
     )
-    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix, legacy_prompt=False):
+    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix, legacy_prompt: bool=False):
         """A blocking helper function to invoke the LLM with a retry policy.
 
         Args:
@@ -388,7 +389,7 @@ class GroupRidesService:
 
         logger.debug(f"Raw LLM output={ai_response}")
 
-        def preprocess_llm_result(ai_response):
+        def preprocess_llm_result(ai_response: BaseMessage):
             if "json" in ai_response.content:
                 codebox_beginning_idx = 8
                 codebox_ending_idx = -3
@@ -399,7 +400,7 @@ class GroupRidesService:
                 llm_result = json.loads(ai_response.content)
             return llm_result
 
-        def validate_llm_result(llm_result):
+        def validate_llm_result(llm_result) -> None:
             if "error" in {key.lower() for key in llm_result}:
                 LLMOutputError.model_validate(llm_result)
             else:

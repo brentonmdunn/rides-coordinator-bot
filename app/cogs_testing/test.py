@@ -10,7 +10,7 @@ from app.utils.checks import feature_flag_enabled
 
 
 class TestCog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     @app_commands.command(

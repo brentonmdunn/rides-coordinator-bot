@@ -29,7 +29,7 @@ class StarterMessageError(EventThreadError):
 class ThreadService:
     """Manages the business logic for event threads."""
 
-    def __init__(self, repository: EventThreadRepository):
+    def __init__(self, repository: EventThreadRepository) -> None:
         self.repository = repository
 
     async def end_event_thread(self, thread_id: str) -> None:

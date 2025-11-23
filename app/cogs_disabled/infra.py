@@ -8,7 +8,7 @@ from app.utils.checks import feature_flag_enabled, is_admin
 
 
 class Infra(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     @discord.app_commands.command(

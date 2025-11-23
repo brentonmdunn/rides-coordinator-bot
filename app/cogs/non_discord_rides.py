@@ -17,7 +17,7 @@ from app.utils.checks import feature_flag_enabled
 class NonDiscordRidesCog(commands.Cog):
     """Cog for handling pickups for users without Discord."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.service = NonDiscordRidesService()
 
