@@ -198,8 +198,8 @@ class LocationsService:
         self,
         interaction,
         day=None,
-        message_id=None,
-        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+        message_id: int | None = None,
+        channel_id: int = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
         option=None,
     ):
         """Wrapper for listing locations, handling interaction responses and errors.
@@ -244,8 +244,8 @@ class LocationsService:
     async def list_locations(
         self,
         day=None,
-        message_id=None,
-        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+        message_id: int | None = None,
+        channel_id: int = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
         option=None,
     ):
         """Lists locations based on reactions to a message.
@@ -274,8 +274,8 @@ class LocationsService:
 
         tmp_content = ""
         if not day:
-            tmp_channel = self.bot.get_channel(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
-            tmp_message = await tmp_channel.fetch_message(int(message_id))
+            tmp_channel = self.bot.get_channel(channel_id)
+            tmp_message = await tmp_channel.fetch_message(message_id)
             tmp_content = get_message_and_embed_content(tmp_message).lower()
 
         if (
@@ -330,7 +330,7 @@ class LocationsService:
                 most_recent_message = message
         return most_recent_message.id if most_recent_message else None
 
-    async def _get_usernames_who_reacted(self, channel_id, message_id, option=None):
+    async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Retrieves a set of usernames who reacted to a message.
 
         Args:
@@ -342,8 +342,8 @@ class LocationsService:
             A set of usernames who reacted.
         """
         usernames_reacted = set()
-        channel = self.bot.get_channel(int(channel_id))
-        message = await channel.fetch_message(int(message_id))
+        channel = self.bot.get_channel(channel_id)
+        message = await channel.fetch_message(message_id)
         for reaction in message.reactions:
             if option and option == "Sunday dropoff back" and (str(reaction.emoji) in ["🍔", "✳️"]):
                 continue

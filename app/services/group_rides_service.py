@@ -424,7 +424,7 @@ class GroupRidesService:
         self,
         interaction: discord.Interaction,
         driver_capacity: str,
-        message_id: str | None = None,
+        message_id: int | None = None,
         day: str | None = None,
         legacy_prompt: bool = False,
     ):
@@ -433,7 +433,7 @@ class GroupRidesService:
         Args:
             interaction (discord.Interaction): The Discord interaction.
             driver_capacity (str): String representing driver capacities.
-            message_id (str | None, optional): Optional message ID to fetch pickups from.
+            message_id (int | None, optional): Optional message ID to fetch pickups from.
             day (str | None, optional): Optional day to fetch pickups for.
             legacy_prompt (bool, optional): Whether to use the legacy prompt. Defaults to False.
         """
@@ -463,7 +463,7 @@ class GroupRidesService:
         ) = await self.locations_service.list_locations(message_id=message_id)
 
         channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        message = await self.repo.fetch_message(channel_id, int(message_id))
+        message = await self.repo.fetch_message(channel_id, message_id)
 
         if not message:
             # Fallback or error
