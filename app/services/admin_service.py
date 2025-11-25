@@ -39,14 +39,14 @@ class AdminService:
         reader = csv.reader(csv_file)
 
         column_index = column_letter_to_index(column_letter)
-        
+
         success_count = 0
         failed_users = []
 
         for row in reader:
             if not row:
                 continue
-            
+
             if len(row) <= column_index:
                 continue
 
@@ -73,8 +73,8 @@ class AdminService:
                     await member.add_roles(role)
                     success_count += 1
             except discord.Forbidden:
-                raise Exception("I do not have permission to assign this role.")
+                raise Exception("I do not have permission to assign this role.")  # noqa: B904
             except discord.HTTPException as e:
                 failed_users.append(f"{username} (HTTP Error: {e})")
-        
+
         return success_count, failed_users

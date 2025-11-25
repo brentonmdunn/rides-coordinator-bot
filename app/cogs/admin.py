@@ -45,17 +45,17 @@ class Admin(commands.Cog):
                 description=f"Assigned {role.mention} to {success_count} users.",
                 color=discord.Color.green(),
             )
-            
+
             if failed_users:
                 # Truncate if too long
                 failed_list = ", ".join(failed_users)
                 if len(failed_list) > 1000:
                     failed_list = failed_list[:1000] + "..."
-                
+
                 embed.add_field(
                     name=f"Failed to find/assign ({len(failed_users)})",
                     value=failed_list,
-                    inline=False
+                    inline=False,
                 )
 
             await interaction.followup.send(embed=embed)

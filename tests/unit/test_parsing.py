@@ -1,5 +1,7 @@
 import pytest
+
 from app.utils.parsing import column_letter_to_index
+
 
 @pytest.mark.parametrize(
     "letter,expected",
