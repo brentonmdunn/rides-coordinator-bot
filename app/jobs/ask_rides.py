@@ -167,7 +167,10 @@ async def run_ask_rides_sun(
             if not channel:
                 logger.info("Error channel not found")
                 return
-            await channel.send("Widlcard detected on <https://www.lsccsd.com/calendar> so sunday rides were not sent.")
+            await channel.send(
+                "Widlcard detected on <https://www.lsccsd.com/calendar> so sunday rides "
+                "were not sent."
+            )
             return
     sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
     reactions = ["🍔", "🏠", "✳️"]
