@@ -142,3 +142,18 @@ def parse_time(time_str: str) -> time:
             continue
 
     raise ValueError(f"Could not parse time string: '{time_str}'")
+
+
+def column_letter_to_index(letter: str) -> int:
+    """Converts a column letter (e.g., "A", "AB") to a 0-based index.
+
+    Args:
+        letter: The column letter(s).
+
+    Returns:
+        The 0-based index (e.g., "A" -> 0, "B" -> 1, "AA" -> 26).
+    """
+    index = 0
+    for char in letter.upper():
+        index = index * 26 + (ord(char) - ord("A") + 1)
+    return index - 1
