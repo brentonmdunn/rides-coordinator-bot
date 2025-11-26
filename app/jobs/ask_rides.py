@@ -151,31 +151,48 @@ async def run_ask_rides_fri(
     await sent_message.add_reaction("🪨")
 
 
+def _should_send_ask_rides_sun() -> bool:
+    """Helper method to determine if we should send the Sunday rides message."""
+    repo = CalendarRepository()
+    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    for event in gcal_event_summaries:
+        if "wildcard" in event.lower():
+            return False
+    return True
+
+
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
 async def run_ask_rides_sun(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday service rides message."""
-    repo = CalendarRepository()
-    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
-    for event in gcal_event_summaries:
-        if "wildcard" in event.lower():
-            logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
-            channel: Messageable | None = bot.get_channel(
-                ChannelIds.SERVING__DRIVER_BOT_SPAM,
-            )
-            if not channel:
-                logger.info("Error channel not found")
-                return
-            await channel.send(
-                "Widlcard detected on <https://www.lsccsd.com/calendar> so sunday rides "
-                "were not sent."
-            )
+    if not _should_send_ask_rides_sun():
+        logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
+        channel: Messageable | None = bot.get_channel(
+            ChannelIds.SERVING__DRIVER_BOT_SPAM,
+        )
+        if not channel:
+            logger.info("Error channel not found")
             return
+        await channel.send(
+            "Widlcard detected on <https://www.lsccsd.com/calendar> so sunday rides were not sent."
+        )
+        return
+
     sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
     reactions = ["🍔", "🏠", "✳️"]
     for emoji in reactions:
         await sent_message.add_reaction(emoji)
+
+
+def _should_send_ask_rides_sun_class() -> bool:
+    """Helper method to determine if we should send the Sunday class rides message."""
+    repo = CalendarRepository()
+    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    for event in gcal_event_summaries:
+        if "sunday school" in event.lower():
+            return True
+    return False
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB)
@@ -183,15 +200,11 @@ async def run_ask_rides_sun_class(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday class rides message."""
-    repo = CalendarRepository()
-    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
-    for event in gcal_event_summaries:
-        if "sunday school" in event.lower():
-            sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
-            await sent_message.add_reaction("📖")
-            return
-    logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
-    return
+    if not _should_send_ask_rides_sun_class():
+        logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
+        return
+    sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
+    await sent_message.add_reaction("📖")
 
 
 async def run_ask_rides_header(
@@ -203,7 +216,18 @@ async def run_ask_rides_header(
         return
 
     if (
-        await FeatureFlagsRepository.get_feature_flag_status(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
+        (
+            await FeatureFlagsRepository.get_feature_flag_status(
+                FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
+            )
+            and _should_send_ask_rides_sun()
+        )
+        or (
+            await FeatureFlagsRepository.get_feature_flag_status(
+                FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
+            )
+            and _should_send_ask_rides_sun_class()
+        )
         or await FeatureFlagsRepository.get_feature_flag_status(
             FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
         )
