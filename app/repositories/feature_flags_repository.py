@@ -1,5 +1,7 @@
 """Data access layer for feature flag operations."""
 
+from typing import ClassVar
+
 from sqlalchemy import case, select, update
 
 from app.core.database import AsyncSessionLocal
@@ -11,7 +13,7 @@ from app.core.models import FeatureFlags as FeatureFlagsModel
 class FeatureFlagsRepository:
     """Handles database operations for feature flags."""
 
-    _cache: dict[str, bool] = {}
+    _cache: ClassVar[dict[str, bool]] = {}
 
     @classmethod
     async def initialize_cache(cls) -> None:
@@ -46,7 +48,7 @@ class FeatureFlagsRepository:
             )
             result = await session.execute(stmt)
             feature_flag_model = result.one_or_none()
-            
+
             if feature_flag_model:
                 # Update cache if found
                 cls._cache[feature_flag.value] = feature_flag_model[0]
@@ -84,7 +86,7 @@ class FeatureFlagsRepository:
             )
             await session.execute(stmt)
             await session.commit()
-        
+
         # Update cache
         cls._cache[feature_name] = enabled
 

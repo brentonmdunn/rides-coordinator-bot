@@ -21,12 +21,12 @@ async def test_initialize_cache(mock_session_local):
     """It should populate the cache from the database."""
     mock_session = AsyncMock()
     mock_result = Mock()
-    
+
     # Mock DB returning two flags
     flag1 = Mock(feature="TEST_FLAG_1", enabled=True)
     flag2 = Mock(feature="TEST_FLAG_2", enabled=False)
     mock_result.scalars.return_value.all.return_value = [flag1, flag2]
-    
+
     mock_session.execute.return_value = mock_result
     mock_session_local.return_value.__aenter__.return_value = mock_session
 
@@ -91,6 +91,6 @@ async def test_update_feature_flag_updates_cache(mock_session_local):
     # Verify DB update was called
     mock_session.execute.assert_called_once()
     mock_session.commit.assert_awaited_once()
-    
+
     # Verify cache was updated
     assert FeatureFlagsRepository._cache["TEST_FLAG"] is True

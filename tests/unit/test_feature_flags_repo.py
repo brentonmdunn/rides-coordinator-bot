@@ -8,7 +8,6 @@ from app.core.enums import FeatureFlagNames
 from app.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
-
 @pytest.fixture(autouse=True)
 def clear_cache():
     FeatureFlagsRepository._cache.clear()
