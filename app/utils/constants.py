@@ -1,10 +1,24 @@
 """Contains constants"""
 
-from app.core.enums import DaysOfWeek, PickupLocations
+from app.core.enums import CampusLivingLocations, DaysOfWeek, PickupLocations
 
 GUILD_ID = 916817752918982716
 
 LSCC_DAYS = [DaysOfWeek.FRIDAY, DaysOfWeek.SUNDAY]
+
+LIVING_TO_PICKUP = {
+    CampusLivingLocations.SIXTH: PickupLocations.SIXTH,
+    CampusLivingLocations.SEVENTH: PickupLocations.SEVENTH,
+    CampusLivingLocations.MARSHALL: PickupLocations.MARSHALL,
+    CampusLivingLocations.ERC: PickupLocations.ERC,
+    CampusLivingLocations.MUIR: PickupLocations.MUIR,
+    CampusLivingLocations.EIGHTH: PickupLocations.EIGHTH,
+    CampusLivingLocations.REVELLE: PickupLocations.EIGHTH,
+    CampusLivingLocations.PCE: PickupLocations.INNOVATION,
+    CampusLivingLocations.PCW: PickupLocations.INNOVATION,
+    CampusLivingLocations.RITA: PickupLocations.RITA,
+    CampusLivingLocations.WARREN: PickupLocations.WARREN_EQL,
+}
 
 MAP_LINKS = {
     PickupLocations.SIXTH: "https://maps.app.goo.gl/z8cffnYwLi1sgYcf8",
