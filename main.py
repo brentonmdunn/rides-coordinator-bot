@@ -13,6 +13,7 @@ from sqlalchemy import or_, update
 from app.core.database import AsyncSessionLocal, init_db, seed_feature_flags
 from app.core.logger import logger
 from app.core.models import FeatureFlags
+from app.repositories.feature_flags_repository import FeatureFlagsRepository
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
@@ -133,6 +134,7 @@ async def main() -> None:
         await init_db()
         async with AsyncSessionLocal() as session:
             await seed_feature_flags(session)
+        await FeatureFlagsRepository.initialize_cache()
         await disable_features_for_local_env()
         await load_extensions()
         await bot.start(TOKEN)
