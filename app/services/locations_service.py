@@ -18,6 +18,7 @@ from app.core.enums import AskRidesMessage, CanBeDriver, ChannelIds, ClassYear
 from app.core.logger import logger
 from app.core.models import Locations as LocationsModel
 from app.repositories.locations_repository import LocationsRepository
+from app.utils.constants import HOUSING_GROUPS
 from app.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from app.utils.parsing import get_message_and_embed_content
 
@@ -27,17 +28,6 @@ LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
 RideOptionsSchema = Literal[
     "Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"
-]
-
-SCHOLARS_LOCATIONS = [
-    "revelle",
-    "muir",
-    "sixth",
-    "marshall",
-    "erc",
-    "seventh",
-    "new marshall",
-    "eighth",
 ]
 
 
@@ -266,7 +256,7 @@ class LocationsService:
                 ask_rides_message = AskRidesMessage.FRIDAY_FELLOWSHIP
             else:
                 raise ValueError(f"Invalid day: {day}")
-            message_id = await self._find_correct_message(ask_rides_message, channel_id)
+            message_id = await self.find_correct_message(ask_rides_message, channel_id)
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
@@ -282,7 +272,7 @@ class LocationsService:
             (day and day.lower() == "sunday")
             or ("service" in tmp_content and "sunday" in tmp_content)
         ) and (
-            class_message_id := await self._find_correct_message(
+            class_message_id := await self.find_correct_message(
                 AskRidesMessage.SUNDAY_CLASS, channel_id
             )
         ) is not None:
@@ -309,7 +299,9 @@ class LocationsService:
             days_to_subtract = 7
         return now - timedelta(days=days_to_subtract)
 
-    async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
+    async def find_correct_message(
+        self, ask_rides_message: AskRidesMessage, channel_id
+    ) -> int | None:
         """Finds the most recent message matching the criteria.
 
         Args:
@@ -404,24 +396,10 @@ class LocationsService:
             title=title if custom_title is None else custom_title, color=discord.Color.blue()
         )
 
-        groups = {
-            "Scholars": {"count": 0, "people": "", "filter": SCHOLARS_LOCATIONS, "emoji": "🏫"},
-            "Warren + Pepper Canyon": {
-                "count": 0,
-                "people": "",
-                "filter": [
-                    "warren",
-                    "pcyn",
-                    "pce",
-                    "pcw",
-                    "pepper canyon east",
-                    "pepper canyon west",
-                ],
-                "emoji": "🏠",
-            },
-            "Rita": {"count": 0, "people": "", "filter": ["rita"], "emoji": "🏡"},
-            "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
-        }
+        # Deep copy to avoid mutating the constant
+        import copy
+
+        groups = copy.deepcopy(HOUSING_GROUPS)
 
         for location, people_username_list in locations_people.items():
             people = [person[0] for person in people_username_list]

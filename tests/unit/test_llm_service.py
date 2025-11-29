@@ -1,9 +1,9 @@
 """Tests for LLM service."""
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from app.services.llm_service import LLMService
 
 
@@ -13,7 +13,7 @@ class TestLLMService:
     @pytest.fixture
     def llm_service(self):
         """Fixture to create an LLMService instance with a mocked LLM."""
-        with patch("app.services.llm_service.ChatGoogleGenerativeAI") as mock_llm_cls:
+        with patch("app.services.llm_service.ChatGoogleGenerativeAI"):
             service = LLMService()
             service.llm = MagicMock()
             yield service
@@ -22,11 +22,13 @@ class TestLLMService:
         """Should correctly parse a JSON block response."""
         # Mock response with markdown code block
         mock_response = MagicMock()
-        mock_response.content = '```json\n{"Driver1": [{"name": "Alice", "location": "Sixth loop"}]}\n```'
+        mock_response.content = (
+            '```json\n{"Driver1": [{"name": "Alice", "location": "Sixth loop"}]}\n```'
+        )
         llm_service.llm.invoke.return_value = mock_response
 
         result = llm_service.invoke_llm("pickups", "drivers", {})
-        
+
         assert result == {"Driver1": [{"name": "Alice", "location": "Sixth loop"}]}
 
     def test_invoke_llm_success_raw_json(self, llm_service):
@@ -37,7 +39,7 @@ class TestLLMService:
         llm_service.llm.invoke.return_value = mock_response
 
         result = llm_service.invoke_llm("pickups", "drivers", {})
-        
+
         assert result == {"Driver1": [{"name": "Alice", "location": "Sixth loop"}]}
 
     def test_invoke_llm_validation_error(self, llm_service):
@@ -46,11 +48,12 @@ class TestLLMService:
         mock_response.content = '{"error": "Some error message"}'
         llm_service.llm.invoke.return_value = mock_response
 
-        # Depending on how validation is implemented, it might raise validation error or return the dict
+        # Depending on how validation is implemented, it might raise validation error
+        # or return the dict
         # In the code: LLMOutputError.model_validate(llm_result)
         # If it validates successfully as an error, it returns the dict (but logs it? or raises?)
         # The code returns llm_result.
-        
+
         result = llm_service.invoke_llm("pickups", "drivers", {})
         assert "error" in result
 
@@ -62,9 +65,10 @@ class TestLLMService:
         mock_response.content = '{"Driver1": [{"name": "Alice, Bob", "location": "Sixth loop"}]}'
         llm_service.llm.invoke.return_value = mock_response
 
-        # Since the method is decorated with retry, it will retry until it gives up and raises RetryError
+        # Since the method is decorated with retry, it will retry until it gives up
+        # and raises RetryError
         with pytest.raises(tenacity.RetryError) as exc_info:
             llm_service.invoke_llm("pickups", "drivers", {})
-        
+
         # Verify the underlying exception
         assert "Names cannot contain commas" in str(exc_info.value.last_attempt.exception())

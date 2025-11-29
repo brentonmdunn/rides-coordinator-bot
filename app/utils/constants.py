@@ -33,3 +33,34 @@ MAP_LINKS = {
     PickupLocations.WARREN_JST: "https://maps.app.goo.gl/h5LJCGhvBUbpmkmL7",
     PickupLocations.GEISEL_LOOP: "https://maps.app.goo.gl/nEtXGDLwGeAArNtPA",
 }
+
+SCHOLARS_LOCATIONS = [
+    "revelle",
+    "muir",
+    "sixth",
+    "marshall",
+    "erc",
+    "seventh",
+    "new marshall",
+    "eighth",
+]
+
+# Configuration for housing groups used in location breakdown embeds
+HOUSING_GROUPS = {
+    "Scholars": {"count": 0, "people": "", "filter": SCHOLARS_LOCATIONS, "emoji": "🏫"},
+    "Warren + Pepper Canyon": {
+        "count": 0,
+        "people": "",
+        "filter": [
+            "warren",
+            "pcyn",
+            "pce",
+            "pcw",
+            "pepper canyon east",
+            "pepper canyon west",
+        ],
+        "emoji": "🏠",
+    },
+    "Rita": {"count": 0, "people": "", "filter": ["rita"], "emoji": "🏡"},
+    "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
+}

@@ -33,36 +33,6 @@ class Threads(commands.Cog):
         """
         return isinstance(interaction.channel, discord.Thread)
 
-    def _format_bulk_add_response(
-        self,
-        added_users: list[discord.Member],
-        failed_users: list[str],
-    ) -> str:
-        """Formats the response message for a bulk-add operation.
-
-        Args:
-            added_users: List of users successfully added.
-            failed_users: List of names of users who couldn't be added.
-
-        Returns:
-            A formatted string summarizing the operation results.
-        """
-        response_message = ""
-        if added_users:
-            mentions = [user.mention for user in added_users]
-            response_message += f"✅ Successfully added {len(added_users)} users:\n" + ", ".join(
-                mentions
-            )
-        if failed_users:
-            if added_users:
-                response_message += "\n"
-            response_message += f"❌ Failed to add {len(failed_users)} users: " + ", ".join(
-                failed_users
-            )
-
-        if not response_message:
-            response_message = "All users who reacted are already in the thread."
-        return response_message
 
     @discord.app_commands.command(
         name="end-event-thread",
@@ -124,7 +94,7 @@ class Threads(commands.Cog):
             )
 
             # Send the bulk add report
-            response = self._format_bulk_add_response(added, failed)
+            response = self.thread_service.format_bulk_add_response(added, failed)
             if response != "All users who reacted are already in the thread.":
                 await interaction.followup.send(response, ephemeral=True)
 
@@ -169,7 +139,7 @@ class Threads(commands.Cog):
 
         try:
             added, failed = await self.thread_service.bulk_add_reactors_to_thread(thread)
-            response = self._format_bulk_add_response(added, failed)
+            response = self.thread_service.format_bulk_add_response(added, failed)
             await interaction.followup.send(response, ephemeral=True)
 
         except StarterMessageError as e:

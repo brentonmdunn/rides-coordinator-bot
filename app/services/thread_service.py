@@ -32,6 +32,37 @@ class ThreadService:
     def __init__(self, repository: EventThreadRepository):
         self.repository = repository
 
+    @staticmethod
+    def format_bulk_add_response(
+        added_users: list[discord.Member],
+        failed_users: list[str],
+    ) -> str:
+        """Formats the response message for a bulk-add operation.
+
+        Args:
+            added_users: List of users successfully added.
+            failed_users: List of names of users who couldn't be added.
+
+        Returns:
+            A formatted string summarizing the operation results.
+        """
+        response_message = ""
+        if added_users:
+            mentions = [user.mention for user in added_users]
+            response_message += f"✅ Successfully added {len(added_users)} users:\n" + ", ".join(
+                mentions
+            )
+        if failed_users:
+            if added_users:
+                response_message += "\n"
+            response_message += f"❌ Failed to add {len(failed_users)} users: " + ", ".join(
+                failed_users
+            )
+
+        if not response_message:
+            response_message = "All users who reacted are already in the thread."
+        return response_message
+
     async def end_event_thread(self, thread_id: str) -> None:
         """Stops tracking an event thread.
 

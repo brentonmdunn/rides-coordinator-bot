@@ -9,13 +9,15 @@ from app.core.logger import logger
 class RideRequestService:
     """Business logic for handling ride request channel creation."""
 
-    def __init__(self, bot):
+    def __init__(self, bot, locations_service=None):
         """Initialize the service with a bot instance.
 
         Args:
             bot: The Discord bot instance.
+            locations_service: Optional LocationsService for checking ride announcements.
         """
         self.bot = bot
+        self.locations_service = locations_service
 
     async def handle_new_rider_reaction(
         self,
@@ -123,3 +125,47 @@ class RideRequestService:
                 )
 
         return overwrites
+
+    async def is_ride_announcement_message(self, message_id: int) -> bool:
+        """Check if a message is a ride announcement message.
+
+        Args:
+            message_id: The message ID to check.
+
+        Returns:
+            True if the message is a ride announcement, False otherwise.
+        """
+        if not self.locations_service:
+            return False
+
+        from app.core.enums import AskRidesMessage, ChannelIds
+
+        friday_msg_id = await self.locations_service.find_correct_message(
+            AskRidesMessage.FRIDAY_FELLOWSHIP, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        )
+        sunday_msg_id = await self.locations_service.find_correct_message(
+            AskRidesMessage.SUNDAY_SERVICE, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        )
+
+        return message_id in (friday_msg_id, sunday_msg_id)
+
+    async def should_create_ride_channel(self, user: discord.Member, message_id: int) -> bool:
+        """Determine if a ride channel should be created for a user.
+
+        Args:
+            user: The user who reacted.
+            message_id: The message ID that was reacted to.
+
+        Returns:
+            True if a channel should be created, False otherwise.
+        """
+        if not self.locations_service or user is None:
+            return False
+
+        # Check if it's a ride announcement
+        if not await self.is_ride_announcement_message(message_id):
+            return False
+
+        # Check if user has location registered
+        user_location = await self.locations_service.get_location(user.name, discord_only=True)
+        return not user_location

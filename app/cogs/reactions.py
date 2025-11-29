@@ -3,9 +3,7 @@
 import discord
 from discord.ext import commands
 
-from app.cogs.locations import Locations
 from app.core.enums import (
-    AskRidesMessage,
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
@@ -52,14 +50,9 @@ class Reactions(commands.Cog):
             ride_request_service: Service for ride request handling.
         """
         self.bot = bot
-        self.locations_cog: Locations | None = None
         self.thread_service = thread_service
         self.logging_service = logging_service
         self.ride_request_service = ride_request_service
-
-    async def cog_load(self):
-        """Wait until the bot is ready to get the cog."""
-        self.locations_cog = self.bot.get_cog("Locations")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -226,30 +219,8 @@ class Reactions(commands.Cog):
             to Friday Fellowship or Sunday Service ride announcements.
         """
         # Check if this is a valid ride announcement reaction
-        if not (
-            (
-                self.locations_cog
-                and (
-                    message_id
-                    == await self.locations_cog._find_correct_message(
-                        AskRidesMessage.FRIDAY_FELLOWSHIP
-                    )
-                    or message_id
-                    == await self.locations_cog._find_correct_message(
-                        AskRidesMessage.SUNDAY_SERVICE
-                    )
-                )
-            )
-            and user is not None
-            and (
-                self.locations_cog
-                and not await self.locations_cog.service.get_location(user.name, discord_only=True)
-            )
-        ):
-            return
-
-        # Delegate to service
-        await self.ride_request_service.handle_new_rider_reaction(user, guild)
+        if await self.ride_request_service.should_create_ride_channel(user, message_id):
+            await self.ride_request_service.handle_new_rider_reaction(user, guild)
 
 
 async def setup(bot: commands.Bot):
@@ -262,9 +233,12 @@ async def setup(bot: commands.Bot):
     thread_repository = EventThreadRepository()
 
     # Initialize services
+    from app.services.locations_service import LocationsService
+
+    locations_service = LocationsService(bot)
     thread_service = ThreadService(thread_repository)
     logging_service = ReactionLoggingService(bot)
-    ride_request_service = RideRequestService(bot)
+    ride_request_service = RideRequestService(bot, locations_service)
 
     # Add cog with dependency injection
     await bot.add_cog(Reactions(bot, thread_service, logging_service, ride_request_service))

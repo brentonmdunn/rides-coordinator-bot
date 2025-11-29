@@ -12,15 +12,14 @@ from app.core.enums import (
     PickupLocations,
 )
 from app.core.logger import logger
-from app.core.schemas import Identity, Passenger
+from app.core.schemas import Identity, LocationQuery, Passenger
 from app.repositories.group_rides_repository import GroupRidesRepository
-from app.services.locations_service import LocationsService
 from app.services.llm_service import LLMService
+from app.services.locations_service import LocationsService
 from app.utils.constants import LIVING_TO_PICKUP, MAP_LINKS
 from app.utils.group_rides_helpers import (
     PICKUP_ADJUSTMENT,
     PassengersByLocation,
-    calculate_pickup_time,
     count_tuples,
     create_output,
     is_enough_capacity,
@@ -98,7 +97,7 @@ class GroupRidesService:
                 # This shouldn't happen if called correctly
                 raise ValueError("Invalid day")
 
-            message_id = await self.locations_service._find_correct_message(
+            message_id = await self.locations_service.find_correct_message(
                 ask_message, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             )
 
@@ -124,7 +123,7 @@ class GroupRidesService:
 
         if "sunday" in combined_text:
             end_leave_time = time(hour=10, minute=10)
-            class_message_id = await self.locations_service._find_correct_message(
+            class_message_id = await self.locations_service.find_correct_message(
                 AskRidesMessage.SUNDAY_CLASS, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             )
             if class_message_id is not None:

@@ -2,9 +2,9 @@
 
 from datetime import datetime, timedelta
 
+from app.core.enums import PickupLocations
 from app.core.logger import logger
 from app.core.schemas import LocationQuery, Passenger
-from app.core.enums import PickupLocations
 from app.utils.constants import MAP_LINKS
 from app.utils.locations import lookup_time
 
@@ -33,7 +33,9 @@ def parse_numbers(s: str) -> list[int]:
     return [int(char) for char in cleaned_string]
 
 
-def find_passenger(locations_people: PassengersByLocation, person: str, location: str) -> Passenger | None:
+def find_passenger(
+    locations_people: PassengersByLocation, person: str, location: str
+) -> Passenger | None:
     """Finds a passenger object by name and location.
 
     Args:
@@ -81,7 +83,10 @@ def is_enough_capacity(
 
 
 def calculate_pickup_time(
-    curr_leave_time: datetime.time, grouped_by_location: list[list[Passenger]], location: str, offset: int
+    curr_leave_time: datetime.time,
+    grouped_by_location: list[list[Passenger]],
+    location: str,
+    offset: int,
 ) -> datetime.time:
     """Calculates the pickup time based on the previous location and travel time.
 
