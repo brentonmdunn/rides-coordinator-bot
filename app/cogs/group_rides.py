@@ -107,8 +107,17 @@ class GroupRides(commands.Cog):
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
+
+        try:
+            message_id_int = int(message_id)
+        except ValueError:
+            await interaction.response.send_message(
+                "Message ID must be an integer.", ephemeral=True
+            )
+            return
+
         await self.service.group_rides(
-            interaction, driver_capacity, message_id=message_id, legacy_prompt=legacy_prompt
+            interaction, driver_capacity, message_id=message_id_int, legacy_prompt=legacy_prompt
         )
 
     @app_commands.command(

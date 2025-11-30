@@ -152,12 +152,21 @@ class Locations(commands.Cog):
             message_id: The message ID to fetch pickups from.
             channel_id: The channel ID where the message is located.
         """
+        try:
+            message_id_int = int(message_id)
+            channel_id_int = int(channel_id) if channel_id else None
+        except ValueError:
+            await interaction.response.send_message(
+                "Message ID and Channel ID must be integers.", ephemeral=True
+            )
+            return
+
         if not await cmd_is_allowed(
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
         await self.service.list_locations_wrapper(
-            interaction, message_id=message_id, channel_id=channel_id
+            interaction, message_id=message_id_int, channel_id=channel_id_int
         )
 
     @discord.app_commands.command(
