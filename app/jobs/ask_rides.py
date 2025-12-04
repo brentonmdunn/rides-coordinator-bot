@@ -155,10 +155,7 @@ def _should_send_ask_rides_sun() -> bool:
     """Helper method to determine if we should send the Sunday rides message."""
     repo = CalendarRepository()
     gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
-    for event in gcal_event_summaries:
-        if "wildcard" in event.lower():
-            return False
-    return True
+    return all("wildcard" not in event.lower() for event in gcal_event_summaries)
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_RIDES_JOB)
@@ -189,10 +186,7 @@ def _should_send_ask_rides_sun_class() -> bool:
     """Helper method to determine if we should send the Sunday class rides message."""
     repo = CalendarRepository()
     gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
-    for event in gcal_event_summaries:
-        if "sunday school" in event.lower():
-            return True
-    return False
+    return any("sunday school" in event.lower() for event in gcal_event_summaries)
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB)
