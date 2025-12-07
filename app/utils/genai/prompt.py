@@ -57,8 +57,16 @@ Example of a correct final output:
     }}
   ]
 }}
+"""
 
+CUSTOM_INSTRUCTIONS = """
+<custom_instructions>
+Follow these instructions. If it conflicts with the instructions above, use these instructions.
+{custom_instructions}
+</custom_instructions>
+"""
 
+PROMPT_EPILOGUE = """
 Begin.
 """
 
