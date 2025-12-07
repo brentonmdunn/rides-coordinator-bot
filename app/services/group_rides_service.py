@@ -27,7 +27,12 @@ from app.core.schemas import (
 from app.repositories.group_rides_repository import GroupRidesRepository
 from app.services.locations_service import LocationsService
 from app.utils.constants import MAP_LINKS
-from app.utils.genai.prompt import GROUP_RIDES_PROMPT, GROUP_RIDES_PROMPT_LEGACY
+from app.utils.genai.prompt import (
+    CUSTOM_INSTRUCTIONS,
+    GROUP_RIDES_PROMPT,
+    GROUP_RIDES_PROMPT_LEGACY,
+    PROMPT_EPILOGUE,
+)
 from app.utils.locations import LOCATIONS_MATRIX, lookup_time
 from app.utils.parsing import get_message_and_embed_content, parse_time
 
@@ -346,7 +351,9 @@ class GroupRidesService:
         retry=tenacity.retry_if_exception_type(Exception),
         before_sleep=log_retry_attempt,
     )
-    def _invoke_llm(self, pickups_str, drivers_str, locations_matrix, legacy_prompt=False):
+    def _invoke_llm(
+        self, pickups_str, drivers_str, locations_matrix, legacy_prompt=False, custom_prompt=None
+    ):
         """A blocking helper function to invoke the LLM with a retry policy.
 
         Args:
@@ -359,7 +366,13 @@ class GroupRidesService:
             dict: The parsed LLM result.
         """
 
-        prompt = GROUP_RIDES_PROMPT_LEGACY if legacy_prompt else GROUP_RIDES_PROMPT
+        if legacy_prompt:
+            prompt = GROUP_RIDES_PROMPT_LEGACY
+        else:
+            prompt = GROUP_RIDES_PROMPT
+            if custom_prompt:
+                prompt += CUSTOM_INSTRUCTIONS.format(custom_instructions=custom_prompt)
+            prompt += PROMPT_EPILOGUE
 
         if os.getenv("APP_ENV", "local") == "local":
             logger.debug(
@@ -427,6 +440,7 @@ class GroupRidesService:
         message_id: int | None = None,
         day: str | None = None,
         legacy_prompt: bool = False,
+        custom_prompt: str | None = None,
     ):
         """Orchestrates the group rides process.
 
@@ -436,6 +450,7 @@ class GroupRidesService:
             message_id (int | None, optional): Optional message ID to fetch pickups from.
             day (str | None, optional): Optional day to fetch pickups for.
             legacy_prompt (bool, optional): Whether to use the legacy prompt. Defaults to False.
+            custom_prompt (str | None, optional): Optional custom prompt to use. Defaults to None.
         """
         await interaction.response.defer()
 
@@ -557,7 +572,7 @@ class GroupRidesService:
 
         try:
             llm_result = await asyncio.to_thread(
-                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX, legacy_prompt
+                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX, legacy_prompt, custom_prompt
             )
 
         except Exception as e:

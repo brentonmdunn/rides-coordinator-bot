@@ -31,6 +31,7 @@ class GroupRides(commands.Cog):
         self,
         interaction: discord.Interaction,
         driver_capacity: str = "44444",
+        custom_prompt: str | None = None,
         legacy_prompt: bool = False,
     ):
         """Groups riders with drivers for Friday fellowship.
@@ -38,6 +39,7 @@ class GroupRides(commands.Cog):
         Args:
             interaction: The Discord interaction.
             driver_capacity: A string representing driver capacities (e.g., "44444").
+            custom_prompt: A custom prompt to use for the LLM.
             legacy_prompt: Whether to use the legacy prompt.
         """
         if not await cmd_is_allowed(
@@ -45,7 +47,11 @@ class GroupRides(commands.Cog):
         ):
             return
         await self.service.group_rides(
-            interaction, driver_capacity, day="friday", legacy_prompt=legacy_prompt
+            interaction,
+            driver_capacity,
+            day="friday",
+            legacy_prompt=legacy_prompt,
+            custom_prompt=custom_prompt,
         )
 
     @app_commands.command(
@@ -61,6 +67,7 @@ class GroupRides(commands.Cog):
         self,
         interaction: discord.Interaction,
         driver_capacity: str = "44444",
+        custom_prompt: str | None = None,
         legacy_prompt: bool = False,
     ):
         """Groups riders with drivers for Sunday service.
@@ -75,7 +82,11 @@ class GroupRides(commands.Cog):
         ):
             return
         await self.service.group_rides(
-            interaction, driver_capacity, day="sunday", legacy_prompt=legacy_prompt
+            interaction,
+            driver_capacity,
+            day="sunday",
+            legacy_prompt=legacy_prompt,
+            custom_prompt=custom_prompt,
         )
 
     @app_commands.command(
