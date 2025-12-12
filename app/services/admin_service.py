@@ -1,6 +1,5 @@
 """Service for admin-related operations."""
 
-
 import discord
 
 from app.utils.parsing import parse_discord_username
