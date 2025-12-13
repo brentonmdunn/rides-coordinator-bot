@@ -1,12 +1,8 @@
 """Service for admin-related operations."""
 
-import csv
-import io
-
 import discord
-import requests
 
-from app.utils.parsing import column_letter_to_index, parse_discord_username
+from app.utils.parsing import parse_discord_username
 
 
 class AdminService:
@@ -14,14 +10,13 @@ class AdminService:
 
     @staticmethod
     async def assign_roles_from_csv(
-        role: discord.Role, column_letter: str, csv_url: str, guild: discord.Guild
+        role: discord.Role, discord_usernames: str, guild: discord.Guild
     ) -> tuple[int, list[str]]:
         """Assigns a role to users listed in a CSV column.
 
         Args:
             role: The role to assign.
-            column_letter: The column letter containing usernames.
-            csv_url: The URL of the CSV file.
+            discord_usernames: The Discord usernames to assign the role to.
             guild: The guild to find members in.
 
         Returns:
@@ -30,34 +25,11 @@ class AdminService:
         Raises:
             Exception: If CSV retrieval fails or other errors occur.
         """
-        response = requests.get(csv_url)
-        if response.status_code != 200:
-            raise Exception(f"Failed to retrieve CSV data. Status code: {response.status_code}")
-
-        csv_data = response.content.decode("utf-8")
-        csv_file = io.StringIO(csv_data)
-        reader = csv.reader(csv_file)
-
-        column_index = column_letter_to_index(column_letter)
 
         success_count = 0
         failed_users = []
 
-        for row in reader:
-            if not row:
-                continue
-
-            if len(row) <= column_index:
-                continue
-
-            username = row[column_index].strip()
-            if not username:
-                continue
-
-            # Handle potential header or empty cells
-            if "discord" in username.lower():
-                continue
-
+        for username in discord_usernames.split():
             # Clean username (remove @ if present)
             username = parse_discord_username(username)
 
