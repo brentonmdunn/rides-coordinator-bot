@@ -17,27 +17,25 @@ class Admin(commands.Cog):
     @app_commands.command(name="give-role", description="Assign a role to users from a CSV file.")
     @app_commands.describe(
         role="The role to assign.",
-        column_letter="The column letter containing Discord usernames (e.g., 'A', 'AB').",
-        csv_url="The URL of the CSV file.",
+        discord_usernames="The Discord usernames to assign the role to.",
     )
     @app_commands.checks.has_permissions(manage_roles=True)
     @log_cmd
     async def give_role(
-        self, interaction: discord.Interaction, role: discord.Role, column_letter: str, csv_url: str
+        self, interaction: discord.Interaction, role: discord.Role, discord_usernames: str
     ) -> None:
         """Assigns a role to users listed in a CSV column.
 
         Args:
             interaction: The Discord interaction.
             role: The role to assign.
-            column_letter: The column letter containing usernames.
-            csv_url: The URL of the CSV file.
+            discord_usernames: The Discord usernames to assign the role to.
         """
         await interaction.response.defer()
 
         try:
             success_count, failed_users = await AdminService.assign_roles_from_csv(
-                role, column_letter, csv_url, interaction.guild
+                role, discord_usernames, interaction.guild
             )
 
             embed = discord.Embed(
