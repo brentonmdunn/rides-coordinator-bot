@@ -9,6 +9,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -57,6 +58,17 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(lifespan=lifespan)
+
+# Add CORS middleware for development (allows frontend on different port)
+if APP_ENV == "local":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://localhost:5174"],  # Vite dev server
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    logger.info("CORS enabled for local development")
 
 # Add Cloudflare authentication middleware
 app.middleware("http")(cloudflare_access_middleware)
