@@ -1,0 +1,102 @@
+"""
+FastAPI Application
+
+Main FastAPI application with Discord bot integration and Cloudflare authentication.
+"""
+
+import logging
+import os
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from api.auth import cloudflare_access_middleware
+from api.routes.example import router as example_router
+from api.routes.health import router as health_router
+from bot.api import bot_lifespan
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Environment configuration
+CLOUDFLARE_TEAM_DOMAIN = os.getenv("CLOUDFLARE_TEAM_DOMAIN")
+CLOUDFLARE_AUD = os.getenv("CLOUDFLARE_AUD")
+APP_ENV = os.getenv("APP_ENV", "local")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Manage application and Discord bot lifecycle.
+    
+    Args:
+        app: The FastAPI application instance
+        
+    Yields:
+        Control back to the application during runtime
+    """
+    # Startup
+    if APP_ENV != "local":
+        if not CLOUDFLARE_TEAM_DOMAIN or not CLOUDFLARE_AUD:
+            logger.error("CRITICAL: Cloudflare Access environment variables are not set. Authentication will fail.")
+        else:
+            logger.info("Cloudflare Access configured for production.")
+    else:
+        logger.info("Running in LOCAL mode: Authentication is bypassed.")
+    
+    # Start Discord bot
+    async with bot_lifespan():
+        yield
+    
+    # Shutdown (cleanup handled by bot_lifespan context manager)
+    logger.info("Application shutdown complete")
+
+
+# Create FastAPI application
+app = FastAPI(lifespan=lifespan)
+
+# Add Cloudflare authentication middleware
+app.middleware("http")(cloudflare_access_middleware)
+
+# Include routers
+app.include_router(health_router)
+app.include_router(example_router)
+
+# Mount static files for React SPA (if directory exists)
+admin_ui_path = "admin_ui"
+if os.path.isdir(admin_ui_path):
+    # Mount assets directory
+    assets_path = os.path.join(admin_ui_path, "assets")
+    if os.path.isdir(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+        logger.info(f"Mounted static assets from {assets_path}")
+    
+    # SPA fallback route - must be last
+    @app.get("/{file_path:path}")
+    def serve_spa(file_path: str):
+        """
+        Serve React SPA files with fallback to index.html.
+        
+        Args:
+            file_path: Requested file path
+            
+        Returns:
+            File response for requested file or index.html
+        """
+        # Check if the requested path corresponds to a file in admin_ui
+        full_path = os.path.join(admin_ui_path, file_path)
+        if file_path and os.path.isfile(full_path):
+            return FileResponse(full_path)
+        # Otherwise, serve the SPA index.html
+        index_path = os.path.join(admin_ui_path, "index.html")
+        if os.path.isfile(index_path):
+            return FileResponse(index_path)
+        # If no index.html, return 404
+        return {"error": "SPA not found"}
+    
+    logger.info("Configured SPA serving from admin_ui/")
+else:
+    logger.warning(f"Admin UI directory '{admin_ui_path}' not found. Static file serving disabled.")
