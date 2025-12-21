@@ -259,6 +259,7 @@ class LocationsService:
         Returns:
             A tuple containing (locations_people, usernames_reacted, location_found).
         """
+        logger.info(f"Calling list_locations with day={day}, message_id={message_id}, channel_id={channel_id}, option={option}")
         if day:
             if day.lower() == "sunday":
                 ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
@@ -382,6 +383,68 @@ class LocationsService:
                     location_found.add(username)
         return locations_people, location_found
 
+    def _group_locations_by_housing(self, locations_people, usernames_reacted, location_found):
+        """Groups locations into housing categories.
+
+        Args:
+            locations_people: Dictionary mapping locations to people.
+            usernames_reacted: Set of all usernames who reacted.
+            location_found: Set of usernames whose location was found.
+
+        Returns:
+            A dictionary with housing groups and unknown users:
+            {
+                "groups": {
+                    "Scholars": {"count": int, "locations": {location: [people]}, "emoji": str},
+                    ...
+                },
+                "unknown_users": [str]
+            }
+        """
+        housing_groups = {
+            "Scholars": {"count": 0, "locations": {}, "filter": SCHOLARS_LOCATIONS, "emoji": "🏫"},
+            "Warren + Pepper Canyon": {
+                "count": 0,
+                "locations": {},
+                "filter": [
+                    "warren",
+                    "pcyn",
+                    "pce",
+                    "pcw",
+                    "pepper canyon east",
+                    "pepper canyon west",
+                ],
+                "emoji": "🏠",
+            },
+            "Rita": {"count": 0, "locations": {}, "filter": ["rita"], "emoji": "🏡"},
+            "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": "🌍"},
+        }
+
+        # Group locations into housing categories
+        for location, people_username_list in locations_people.items():
+            people = [person[0] for person in people_username_list]
+            matched = False
+            
+            for group_name, group_data in housing_groups.items():
+                if any(keyword in location.lower() for keyword in group_data["filter"]):
+                    group_data["count"] += len(people)
+                    group_data["locations"][location] = people
+                    matched = True
+                    break
+            
+            if not matched:
+                housing_groups["Off Campus"]["count"] += len(people)
+                housing_groups["Off Campus"]["locations"][location] = people
+
+        # Get unknown users
+        unknown_location = set(usernames_reacted) - location_found
+        unknown_users = [str(user) for user in unknown_location] if unknown_location else []
+
+        return {
+            "groups": housing_groups,
+            "unknown_users": unknown_users
+        }
+
     def _build_embed(
         self, locations_people, usernames_reacted, location_found, option=None, custom_title=None
     ):
@@ -404,55 +467,30 @@ class LocationsService:
             title=title if custom_title is None else custom_title, color=discord.Color.blue()
         )
 
-        groups = {
-            "Scholars": {"count": 0, "people": "", "filter": SCHOLARS_LOCATIONS, "emoji": "🏫"},
-            "Warren + Pepper Canyon": {
-                "count": 0,
-                "people": "",
-                "filter": [
-                    "warren",
-                    "pcyn",
-                    "pce",
-                    "pcw",
-                    "pepper canyon east",
-                    "pepper canyon west",
-                ],
-                "emoji": "🏠",
-            },
-            "Rita": {"count": 0, "people": "", "filter": ["rita"], "emoji": "🏡"},
-            "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
-        }
+        # Use the helper function to group locations
+        grouped_data = self._group_locations_by_housing(locations_people, usernames_reacted, location_found)
 
-        for location, people_username_list in locations_people.items():
-            people = [person[0] for person in people_username_list]
-            matched = False
-            for _, group_data in groups.items():
-                if any(keyword in location.lower() for keyword in group_data["filter"]):
-                    group_data["count"] += len(people)
-                    group_data["people"] += f"**({len(people)}) {location}:** {', '.join(people)}\n"
-                    matched = True
-                    break
-            if not matched:
-                groups["Off Campus"]["count"] += len(people)
-                groups["Off Campus"]["people"] += (
-                    f"**({len(people)}) {location}:** {', '.join(people)}\n"
-                )
-
-        for group_name, group_data in groups.items():
+        # Build embed fields from grouped data
+        for group_name, group_data in grouped_data["groups"].items():
             if group_data["count"] > 0:
+                # Format the people string for this group
+                people_str = ""
+                for location, people in group_data["locations"].items():
+                    people_str += f"**({len(people)}) {location}:** {', '.join(people)}\n"
+                
                 embed.add_field(
                     name=f"{group_data['emoji']} [{group_data['count']}] {group_name}",
-                    value=group_data["people"],
+                    value=people_str,
                     inline=False,
                 )
 
-        unknown_location = set(usernames_reacted) - location_found
-        if unknown_location:
-            unknown_names = [str(user) for user in unknown_location]
+        # Add unknown users if any
+        if grouped_data["unknown_users"]:
             embed.add_field(
-                name=f"❓ [{len(unknown_names)}] Unknown Location",
-                value=", ".join(unknown_names)
+                name=f"❓ [{len(grouped_data['unknown_users'])}] Unknown Location",
+                value=", ".join(grouped_data["unknown_users"])
                 + "\n(Make sure their Discord username is correct in the sheet!)",
                 inline=False,
             )
+        
         return embed

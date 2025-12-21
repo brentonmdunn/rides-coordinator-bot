@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from api.auth import cloudflare_access_middleware
 from api.routes.example import router as example_router
 from api.routes.health import router as health_router
+from api.routes.locations import router as locations_router
 from bot.api import bot_lifespan
 
 # Configure logging
@@ -76,6 +77,7 @@ app.middleware("http")(cloudflare_access_middleware)
 # Include routers
 app.include_router(health_router)
 app.include_router(example_router)
+app.include_router(locations_router)
 
 # Mount static files for React SPA (if directory exists)
 admin_ui_path = "admin_ui"
@@ -91,6 +93,7 @@ if os.path.isdir(admin_ui_path):
     def serve_spa(file_path: str):
         """
         Serve React SPA files with fallback to index.html.
+        Excludes API routes.
         
         Args:
             file_path: Requested file path
@@ -98,6 +101,11 @@ if os.path.isdir(admin_ui_path):
         Returns:
             File response for requested file or index.html
         """
+        logger.error("HERERERERERERE")
+        # Don't intercept API routes
+        if file_path.startswith("api/"):
+            return {"error": "Not found"}
+        
         # Check if the requested path corresponds to a file in admin_ui
         full_path = os.path.join(admin_ui_path, file_path)
         if file_path and os.path.isfile(full_path):

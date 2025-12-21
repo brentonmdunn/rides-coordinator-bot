@@ -19,3 +19,6 @@ logs/*.log
 *.sqlite3
 
 *.pyc
+*.tar
+admin_ui/*
+!admin_ui/.gitkeep
