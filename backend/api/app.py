@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api.auth import cloudflare_access_middleware
 from api.routes.example import router as example_router
+from api.routes.feature_flags import router as feature_flags_router
 from api.routes.health import router as health_router
 from api.routes.locations import router as locations_router
 from bot.api import bot_lifespan
@@ -78,6 +79,7 @@ app.middleware("http")(cloudflare_access_middleware)
 app.include_router(health_router)
 app.include_router(example_router)
 app.include_router(locations_router)
+app.include_router(feature_flags_router)
 
 # Mount static files for React SPA (if directory exists)
 admin_ui_path = "admin_ui"
