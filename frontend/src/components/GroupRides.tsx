@@ -13,6 +13,7 @@ function GroupRides() {
     const [channelId] = useState('939950319721406464')
     const [groupRidesSummary, setGroupRidesSummary] = useState<string | null>(null)
     const [groupRidesData, setGroupRidesData] = useState<string[] | null>(null)
+    const [originalGroupRidesData, setOriginalGroupRidesData] = useState<string[] | null>(null)
     const [groupRidesError, setGroupRidesError] = useState<string>('')
     const [groupRidesLoading, setGroupRidesLoading] = useState(false)
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
@@ -23,6 +24,7 @@ function GroupRides() {
         setGroupRidesError('')
         setGroupRidesSummary(null)
         setGroupRidesData(null)
+        setOriginalGroupRidesData(null)
 
         try {
             const response = await apiFetch('/api/group-rides', {
@@ -41,6 +43,7 @@ function GroupRides() {
             if (data.success && data.groupings) {
                 setGroupRidesSummary(data.summary)
                 setGroupRidesData(data.groupings)
+                setOriginalGroupRidesData(data.groupings)
             } else {
                 setGroupRidesError(data.error || 'Failed to group rides')
             }
@@ -62,6 +65,20 @@ function GroupRides() {
             console.error('Failed to copy:', error)
             alert('Failed to copy to clipboard')
         }
+    }
+
+    const handleGroupingChange = (index: number, newValue: string) => {
+        if (!groupRidesData) return
+        const newData = [...groupRidesData]
+        newData[index] = newValue
+        setGroupRidesData(newData)
+    }
+
+    const revertGrouping = (index: number) => {
+        if (!originalGroupRidesData || !groupRidesData) return
+        const newData = [...groupRidesData]
+        newData[index] = originalGroupRidesData[index]
+        setGroupRidesData(newData)
     }
 
     return (
@@ -159,41 +176,68 @@ function GroupRides() {
                     {groupRidesData && (
                         <>
                             <h3>Ride Groupings:</h3>
-                            {groupRidesData.map((grouping, index) => (
-                                <div
-                                    key={index}
-                                    style={{
-                                        marginBottom: '1em',
-                                        padding: '1em',
-                                        background: '#f5f5f5',
-                                        borderRadius: '4px',
-                                        position: 'relative'
-                                    }}
-                                >
-                                    <Button
-                                        onClick={() => copyToClipboard(grouping, index)}
+                            {groupRidesData.map((grouping, index) => {
+                                const isModified = originalGroupRidesData && originalGroupRidesData[index] !== grouping;
+                                return (
+                                    <div
+                                        key={index}
                                         style={{
-                                            position: 'absolute',
-                                            top: '0.5em',
-                                            right: '0.5em',
-                                            padding: '0.25em 0.5em',
-                                            fontSize: '0.85em'
+                                            marginBottom: '1em',
+                                            padding: '1em',
+                                            background: '#f5f5f5',
+                                            borderRadius: '4px',
+                                            position: 'relative'
                                         }}
                                     >
-                                        {copiedIndex === index ? '✓ Copied!' : '📋 Copy'}
-                                    </Button>
-                                    <pre style={{
-                                        whiteSpace: 'pre-wrap',
-                                        wordWrap: 'break-word',
-                                        margin: 0,
-                                        paddingRight: '5em',
-                                        fontSize: '0.9em',
-                                        fontFamily: 'monospace'
-                                    }}>
-                                        {grouping}
-                                    </pre>
-                                </div>
-                            ))}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'flex-end',
+                                            gap: '0.5em',
+                                            marginBottom: '0.5em'
+                                        }}>
+                                            {isModified && (
+                                                <Button
+                                                    onClick={() => revertGrouping(index)}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    style={{
+                                                        fontSize: '0.85em',
+                                                        borderColor: '#f59e0b',
+                                                        color: '#d97706'
+                                                    }}
+                                                >
+                                                    ↩ Revert
+                                                </Button>
+                                            )}
+                                            <Button
+                                                onClick={() => copyToClipboard(grouping, index)}
+                                                size="sm"
+                                                style={{
+                                                    fontSize: '0.85em'
+                                                }}
+                                            >
+                                                {copiedIndex === index ? '✓ Copied!' : '📋 Copy'}
+                                            </Button>
+                                        </div>
+                                        <textarea
+                                            value={grouping}
+                                            onChange={(e) => handleGroupingChange(index, e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                minHeight: '60px',
+                                                padding: '0.5em',
+                                                fontSize: '0.9em',
+                                                fontFamily: 'monospace',
+                                                border: '1px solid #ddd',
+                                                borderRadius: '4px',
+                                                resize: 'vertical',
+                                                whiteSpace: 'pre',
+                                                overflowX: 'auto'
+                                            }}
+                                        />
+                                    </div>
+                                )
+                            })}
                         </>
                     )}
                 </div>
