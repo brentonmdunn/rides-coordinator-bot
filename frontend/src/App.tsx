@@ -31,6 +31,23 @@ interface FeatureFlag {
   enabled: boolean
 }
 
+interface AskRidesJobStatus {
+  enabled: boolean
+  will_send: boolean
+  reason: string | null
+  next_run: string
+  last_message?: {
+    message_id: string
+    reactions: { [emoji: string]: number }
+  } | null
+}
+
+interface AskRidesStatus {
+  friday: AskRidesJobStatus
+  sunday: AskRidesJobStatus
+  sunday_class: AskRidesJobStatus
+}
+
 function App() {
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -46,6 +63,11 @@ function App() {
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([])
   const [flagsLoading, setFlagsLoading] = useState(false)
   const [flagsError, setFlagsError] = useState<string>('')
+
+  // Ask Rides status state
+  const [askRidesStatus, setAskRidesStatus] = useState<AskRidesStatus | null>(null)
+  const [askRidesLoading, setAskRidesLoading] = useState(false)
+  const [askRidesError, setAskRidesError] = useState<string>('')
 
   // Fetch pickups by message ID
   const fetchPickups = async (e: React.FormEvent) => {
@@ -109,6 +131,11 @@ function App() {
     fetchFeatureFlags()
   }, [])
 
+  // Fetch ask rides status on component mount
+  useEffect(() => {
+    fetchAskRidesStatus()
+  }, [])
+
   const fetchFeatureFlags = async () => {
     setFlagsLoading(true)
     setFlagsError('')
@@ -140,6 +167,8 @@ function App() {
             flag.feature === flagName ? { ...flag, enabled } : flag
           )
         )
+        // Refresh ask rides status since feature flags changed
+        fetchAskRidesStatus()
       } else {
         console.warn(data.message)
       }
@@ -147,6 +176,46 @@ function App() {
       console.error('Feature flag toggle error:', error)
       alert('Failed to toggle feature flag')
     }
+  }
+
+  const fetchAskRidesStatus = async () => {
+    setAskRidesLoading(true)
+    setAskRidesError('')
+    try {
+      const response = await apiFetch('/api/ask-rides/status')
+      const data = await response.json()
+      setAskRidesStatus(data)
+    } catch (error) {
+      setAskRidesError(error instanceof Error ? error.message : 'Failed to load ask rides status')
+      console.error('Ask rides status fetch error:', error)
+    } finally {
+      setAskRidesLoading(false)
+    }
+  }
+
+  const formatDateTime = (isoString: string): string => {
+    const date = new Date(isoString)
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
+  const getStatusBadge = (job: AskRidesJobStatus) => {
+    if (!job.enabled) {
+      return { color: '#ef4444', text: '🔴 Feature flag disabled' }
+    }
+    if (!job.will_send) {
+      const reasonText = job.reason === 'wildcard_detected'
+        ? 'Wildcard event detected'
+        : 'No class scheduled'
+      return { color: '#eab308', text: `🟡 Will not send - ${reasonText}` }
+    }
+    return { color: '#22c55e', text: `🟢 Will send at ${formatDateTime(job.next_run)}` }
   }
 
   return (
@@ -238,6 +307,119 @@ function App() {
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
+      </div>
+
+      {/* Ask Rides Status Dashboard */}
+      <div className="card" style={{ marginTop: '2em', textAlign: 'left' }}>
+        <h2>📅 Ask Rides Status Dashboard</h2>
+
+        {askRidesLoading && <p>Loading ask rides status...</p>}
+
+        {askRidesError && (
+          <div style={{ color: 'red', marginBottom: '1em' }}>
+            <strong>Error:</strong> {askRidesError}
+          </div>
+        )}
+
+        {!askRidesLoading && !askRidesError && askRidesStatus && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1em', marginTop: '1em' }}>
+            {/* Friday Fellowship */}
+            <div style={{
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '1em',
+              background: '#f9f9f9'
+            }}>
+              <h3 style={{ marginTop: 0, marginBottom: '0.5em' }}>🎉 Friday Fellowship</h3>
+              <div style={{
+                padding: '0.5em',
+                borderRadius: '4px',
+                background: getStatusBadge(askRidesStatus.friday).color + '22',
+                color: getStatusBadge(askRidesStatus.friday).color,
+                fontWeight: 'bold',
+                marginBottom: '0.5em'
+              }}>
+                {getStatusBadge(askRidesStatus.friday).text}
+              </div>
+              {askRidesStatus.friday.last_message && (
+                <div style={{ marginTop: '0.5em', fontSize: '0.9em' }}>
+                  <strong>Last message reactions:</strong>
+                  <div style={{ marginTop: '0.25em' }}>
+                    {Object.entries(askRidesStatus.friday.last_message.reactions).map(([emoji, count]) => (
+                      <span key={emoji} style={{ marginRight: '0.75em' }}>
+                        {emoji} {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sunday Service */}
+            <div style={{
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '1em',
+              background: '#f9f9f9'
+            }}>
+              <h3 style={{ marginTop: 0, marginBottom: '0.5em' }}>⛪ Sunday Service</h3>
+              <div style={{
+                padding: '0.5em',
+                borderRadius: '4px',
+                background: getStatusBadge(askRidesStatus.sunday).color + '22',
+                color: getStatusBadge(askRidesStatus.sunday).color,
+                fontWeight: 'bold',
+                marginBottom: '0.5em'
+              }}>
+                {getStatusBadge(askRidesStatus.sunday).text}
+              </div>
+              {askRidesStatus.sunday.last_message && (
+                <div style={{ marginTop: '0.5em', fontSize: '0.9em' }}>
+                  <strong>Last message reactions:</strong>
+                  <div style={{ marginTop: '0.25em' }}>
+                    {Object.entries(askRidesStatus.sunday.last_message.reactions).map(([emoji, count]) => (
+                      <span key={emoji} style={{ marginRight: '0.75em' }}>
+                        {emoji} {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sunday Class */}
+            <div style={{
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '1em',
+              background: '#f9f9f9'
+            }}>
+              <h3 style={{ marginTop: 0, marginBottom: '0.5em' }}>📖 Sunday Class</h3>
+              <div style={{
+                padding: '0.5em',
+                borderRadius: '4px',
+                background: getStatusBadge(askRidesStatus.sunday_class).color + '22',
+                color: getStatusBadge(askRidesStatus.sunday_class).color,
+                fontWeight: 'bold',
+                marginBottom: '0.5em'
+              }}>
+                {getStatusBadge(askRidesStatus.sunday_class).text}
+              </div>
+              {askRidesStatus.sunday_class.last_message && (
+                <div style={{ marginTop: '0.5em', fontSize: '0.9em' }}>
+                  <strong>Last message reactions:</strong>
+                  <div style={{ marginTop: '0.25em' }}>
+                    {Object.entries(askRidesStatus.sunday_class.last_message.reactions).map(([emoji, count]) => (
+                      <span key={emoji} style={{ marginRight: '0.75em' }}>
+                        {emoji} {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Feature Flags Management */}

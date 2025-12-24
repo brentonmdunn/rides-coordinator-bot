@@ -243,3 +243,150 @@ async def run_ask_rides_all(
     logger.debug("here3")
     await run_ask_rides_sun_class(bot, channel_id)
     await run_ask_rides_sun(bot, channel_id)
+
+
+# ============================================================================
+# API Helper Functions (for dashboard status)
+# ============================================================================
+
+
+def get_next_run_time(job_name: str) -> str:
+    """
+    Calculate the next scheduled run time for a job.
+    
+    Args:
+        job_name: Name of the job ("friday", "sunday", or "sunday_class")
+        
+    Returns:
+        ISO format datetime string of next run time
+    """
+    from datetime import datetime, timedelta
+    
+    # All jobs currently run Wednesday at 12:00 PM (from job_scheduler.py)
+    now = datetime.now()
+    
+    # Find next Wednesday
+    days_until_wednesday = (2 - now.weekday()) % 7  # 2 = Wednesday (0=Monday)
+    if days_until_wednesday == 0 and now.hour >= 12:
+        # If it's Wednesday but past 12 PM, go to next Wednesday
+        days_until_wednesday = 7
+    
+    next_run = now + timedelta(days=days_until_wednesday)
+    next_run = next_run.replace(hour=12, minute=0, second=0, microsecond=0)
+    
+    return next_run.isoformat()
+
+
+async def get_last_message_reactions(bot: Bot, job_type: str) -> dict | None:
+    """
+    Fetch reaction summary from the most recent message for a job type.
+    Only returns messages from the current week (since last Wednesday when jobs run).
+    
+    Args:
+        bot: Discord bot instance
+        job_type: Type of job ("friday", "sunday", or "sunday_class")
+        
+    Returns:
+        Dictionary with message_id and reactions, or None if not found or not from current week
+    """
+    from datetime import datetime, timedelta
+    
+    try:
+        channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        if not channel:
+            return None
+        
+        # Calculate the start of current week (last Wednesday at noon when jobs run)
+        now = datetime.now()
+        days_since_wednesday = (now.weekday() - 2) % 7  # 2 = Wednesday
+        if now.weekday() < 2:  # Monday or Tuesday
+            days_since_wednesday += 7  # Go back to previous week's Wednesday
+        
+        current_week_start = now - timedelta(days=days_since_wednesday)
+        current_week_start = current_week_start.replace(hour=12, minute=0, second=0, microsecond=0)
+        
+        # Search keywords for each job type
+        keywords = {
+            "friday": "friday",
+            "sunday": "sunday service",
+            "sunday_class": "theology class"
+        }
+        
+        keyword = keywords.get(job_type, "")
+        
+        # Fetch recent messages (last 20)
+        async for message in channel.history(limit=20):
+            # Check if message is from current week
+            if message.created_at.replace(tzinfo=None) < current_week_start:
+                continue
+                
+            if message.embeds and keyword.lower() in message.embeds[0].description.lower():
+                # Found a matching message from current week
+                reactions_dict = {}
+                for reaction in message.reactions:
+                    reactions_dict[str(reaction.emoji)] = reaction.count
+                
+                return {
+                    "message_id": str(message.id),
+                    "reactions": reactions_dict
+                }
+        
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching message reactions for {job_type}: {e}")
+        return None
+
+
+async def get_ask_rides_status(bot: Bot) -> dict:
+    """
+    Get status for all ask rides jobs.
+    
+    Args:
+        bot: Discord bot instance
+        
+    Returns:
+        Dictionary with status for friday, sunday, and sunday_class jobs
+    """
+    # Check feature flags
+    friday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+        FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+    )
+    sunday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+        FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
+    )
+    sunday_class_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+        FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
+    )
+    
+    # Check conditions
+    sunday_will_send = _should_send_ask_rides_sun() if sunday_enabled else False
+    sunday_class_will_send = _should_send_ask_rides_sun_class() if sunday_class_enabled else False
+    
+    # Build status response
+    status = {
+        "friday": {
+            "enabled": friday_enabled,
+            "will_send": friday_enabled,
+            "reason": None if friday_enabled else "feature_flag_disabled",
+            "next_run": get_next_run_time("friday"),
+            "last_message": await get_last_message_reactions(bot, "friday")
+        },
+        "sunday": {
+            "enabled": sunday_enabled,
+            "will_send": sunday_will_send,
+            "reason": None if sunday_enabled and sunday_will_send 
+                     else ("feature_flag_disabled" if not sunday_enabled else "wildcard_detected"),
+            "next_run": get_next_run_time("sunday"),
+            "last_message": await get_last_message_reactions(bot, "sunday")
+        },
+        "sunday_class": {
+            "enabled": sunday_class_enabled,
+            "will_send": sunday_class_will_send,
+            "reason": None if sunday_class_enabled and sunday_class_will_send 
+                     else ("feature_flag_disabled" if not sunday_class_enabled else "no_class_scheduled"),
+            "next_run": get_next_run_time("sunday_class"),
+            "last_message": await get_last_message_reactions(bot, "sunday_class")
+        }
+    }
+    
+    return status
