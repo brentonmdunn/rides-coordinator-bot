@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bot.api import get_bot
+import discord
 from bot.services.locations_service import LocationsService
 from bot.core.enums import AskRidesMessage, ChannelIds
 
@@ -139,6 +140,16 @@ async def list_pickups(request: ListPickupsRequest):
         return ListPickupsResponse(
             success=False,
             error=str(e)
+        )
+    except discord.NotFound:
+        return ListPickupsResponse(
+            success=False,
+            error="Message not found. Please check the Message ID and try again."
+        )
+    except discord.Forbidden:
+        return ListPickupsResponse(
+            success=False,
+            error="Bot does not have permission to access this message or channel."
         )
     except Exception as e:
         return ListPickupsResponse(
