@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
 import ErrorMessage from "./ErrorMessage"
 import type { FeatureFlag } from '../types'
 
@@ -14,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 
 function FeatureFlagsManager() {
     const queryClient = useQueryClient()
+    const [isEditMode, setIsEditMode] = useState(false)
 
     // 1. Fetch flags using useQuery
     // ... (unchanged logic)
@@ -68,7 +71,16 @@ function FeatureFlagsManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle><span>⚙️</span> Feature Flags</CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle><span>⚙️</span> Feature Flags</CardTitle>
+                    <Button
+                        variant={isEditMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsEditMode(!isEditMode)}
+                    >
+                        {isEditMode ? "Done" : "Edit"}
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 {flagsLoading && (
@@ -103,7 +115,7 @@ function FeatureFlagsManager() {
                                             <Switch
                                                 checked={flag.enabled}
                                                 onCheckedChange={(checked) => handleToggle(flag.feature, checked)}
-                                                disabled={toggleMutation.isPending}
+                                                disabled={!isEditMode || toggleMutation.isPending}
                                             />
                                         </td>
                                     </tr>
