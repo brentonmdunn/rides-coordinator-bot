@@ -1,31 +1,49 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS builder
 
-# Install system dependencies
-RUN apt update && apt install -y sqlite3 vim curl tzdata && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+# Install system dependencies needed for building
+RUN apt update && apt install -y curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Set the working directory in the container
-WORKDIR /app
-
-# Install uv globally and make it available in the PATH for all users
+# Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
 
-# Copy only the dependency files first to leverage Docker's layer caching
+WORKDIR /app
+
+# Copy only dependency files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies using uv sync for reproducible builds
-# Note: we use --no-dev for production
+# Install dependencies into a virtual environment
 RUN uv sync --no-cache --no-dev
 
-# Copy the rest of your application code (including admin_ui)
+# Final stage - much smaller
+FROM python:3.13-slim
+
+# Install only runtime dependencies
+RUN apt update && apt install -y sqlite3 tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code
 COPY . .
 
-# Set the timezone
+# Set timezone
 ENV TZ="America/Los_Angeles"
+ENV PATH="/app/.venv/bin:$PATH"
+ENV APP_ENV="preprod"
 
-# Expose the API port
-EXPOSE 8000
+# Expose ports
+EXPOSE 8000 7999
 
-# Command to run the application using uv run and uvicorn
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application
+CMD ["sh", "-c", "\
+  case \"$APP_ENV\" in \
+    prod) PORT=8000 ;; \
+    preprod) PORT=7999 ;; \
+    *) echo \"Invalid APP_ENV=$APP_ENV\" && exit 1 ;; \
+  esac && \
+  python -m uvicorn api.app:app --host 0.0.0.0 --port $PORT \
+"]
