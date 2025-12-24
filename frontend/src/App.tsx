@@ -48,6 +48,13 @@ interface AskRidesStatus {
   sunday_class: AskRidesJobStatus
 }
 
+interface GroupRidesResponse {
+  success: boolean
+  summary: string | null
+  groupings: string[] | null
+  error: string | null
+}
+
 function App() {
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -68,6 +75,16 @@ function App() {
   const [askRidesStatus, setAskRidesStatus] = useState<AskRidesStatus | null>(null)
   const [askRidesLoading, setAskRidesLoading] = useState(false)
   const [askRidesError, setAskRidesError] = useState<string>('')
+
+  // Group Rides state
+  const [rideType, setRideType] = useState<'friday' | 'sunday' | 'message_id'>('friday')
+  const [groupMessageId, setGroupMessageId] = useState('')
+  const [groupDriverCapacity, setGroupDriverCapacity] = useState('44444')
+  const [groupRidesSummary, setGroupRidesSummary] = useState<string | null>(null)
+  const [groupRidesData, setGroupRidesData] = useState<string[] | null>(null)
+  const [groupRidesError, setGroupRidesError] = useState<string>('')
+  const [groupRidesLoading, setGroupRidesLoading] = useState(false)
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
   // Fetch pickups by message ID
   const fetchPickups = async (e: React.FormEvent) => {
@@ -218,6 +235,53 @@ function App() {
     return { color: '#22c55e', text: `🟢 Will send at ${formatDateTime(job.next_run)}` }
   }
 
+  const groupRides = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setGroupRidesLoading(true)
+    setGroupRidesError('')
+    setGroupRidesSummary(null)
+    setGroupRidesData(null)
+
+    try {
+      const response = await apiFetch('/api/group-rides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ride_type: rideType,
+          message_id: rideType === 'message_id' ? groupMessageId : null,
+          driver_capacity: groupDriverCapacity,
+          channel_id: channelId
+        })
+      })
+
+      const data: GroupRidesResponse = await response.json()
+
+      if (data.success && data.groupings) {
+        setGroupRidesSummary(data.summary)
+        setGroupRidesData(data.groupings)
+      } else {
+        setGroupRidesError(data.error || 'Failed to group rides')
+      }
+    } catch (error) {
+      setGroupRidesError(error instanceof Error ? error.message : 'Unknown error')
+      console.error('Group rides error:', error)
+    } finally {
+      setGroupRidesLoading(false)
+    }
+  }
+
+  const copyToClipboard = async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedIndex(index)
+      // Reset after 5 seconds
+      setTimeout(() => setCopiedIndex(null), 5000)
+    } catch (error) {
+      console.error('Failed to copy:', error)
+      alert('Failed to copy to clipboard')
+    }
+  }
+
   return (
     <>
       <div>
@@ -286,6 +350,226 @@ function App() {
             }}>
               {JSON.stringify(pickupData, null, 2)}
             </pre>
+          </div>
+        )}
+      </div>
+
+      {/* Group Rides Form */}
+      <div className="card" style={{ marginBottom: '2em', textAlign: 'left' }}>
+        <h2>🚗 Group Rides</h2>
+        <form onSubmit={groupRides} style={{ marginBottom: '1em' }}>
+          {/* Ride Type Selection */}
+          <div style={{ marginBottom: '1.5em' }}>
+            <label style={{ display: 'block', marginBottom: '0.75em', fontWeight: 'bold', fontSize: '1.05em' }}>
+              Select Ride Type:
+            </label>
+            <div style={{ display: 'flex', gap: '1.5em', flexWrap: 'wrap' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5em',
+                cursor: 'pointer',
+                padding: '0.75em 1.25em',
+                border: rideType === 'friday' ? '2px solid #2563eb' : '2px solid #d1d5db',
+                borderRadius: '8px',
+                background: rideType === 'friday' ? '#eff6ff' : 'transparent',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="radio"
+                  value="friday"
+                  checked={rideType === 'friday'}
+                  onChange={(e) => setRideType(e.target.value as 'friday' | 'sunday' | 'message_id')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>
+                  🎉 Friday Fellowship
+                </span>
+              </label>
+
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5em',
+                cursor: 'pointer',
+                padding: '0.75em 1.25em',
+                border: rideType === 'sunday' ? '2px solid #2563eb' : '2px solid #d1d5db',
+                borderRadius: '8px',
+                background: rideType === 'sunday' ? '#eff6ff' : 'transparent',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="radio"
+                  value="sunday"
+                  checked={rideType === 'sunday'}
+                  onChange={(e) => setRideType(e.target.value as 'friday' | 'sunday' | 'message_id')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>
+                  ⛪ Sunday Service
+                </span>
+              </label>
+
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5em',
+                cursor: 'pointer',
+                padding: '0.75em 1.25em',
+                border: rideType === 'message_id' ? '2px solid #2563eb' : '2px solid #d1d5db',
+                borderRadius: '8px',
+                background: rideType === 'message_id' ? '#eff6ff' : 'transparent',
+                transition: 'all 0.2s'
+              }}>
+                <input
+                  type="radio"
+                  value="message_id"
+                  checked={rideType === 'message_id'}
+                  onChange={(e) => setRideType(e.target.value as 'friday' | 'sunday' | 'message_id')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>
+                  🔢 Custom Message ID
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Message ID Input (only shown when message_id is selected) */}
+          {rideType === 'message_id' && (
+            <div style={{ marginBottom: '1em', padding: '1em', background: '#f9fafb', borderRadius: '8px' }}>
+              <label>
+                Message ID:
+                <Input
+                  type="text"
+                  value={groupMessageId}
+                  onChange={(e) => setGroupMessageId(e.target.value)}
+                  placeholder="Enter Discord message ID"
+                  required
+                  style={{ marginLeft: '0.5em', padding: '0.5em', width: '300px' }}
+                />
+              </label>
+            </div>
+          )}
+
+          {/* Driver Capacity */}
+          <div style={{ marginBottom: '1.5em' }}>
+            <label>
+              Driver Capacity:
+              <Input
+                type="text"
+                value={groupDriverCapacity}
+                onChange={(e) => setGroupDriverCapacity(e.target.value)}
+                placeholder="e.g., 44444"
+                style={{ marginLeft: '0.5em', padding: '0.5em', width: '150px' }}
+              />
+              <span style={{ marginLeft: '0.5em', fontSize: '0.9em', color: '#6b7280' }}>
+                (One digit per driver, e.g., "44444" = 5 drivers with 4 seats each)
+              </span>
+            </label>
+          </div>
+
+          <Button type="submit" disabled={groupRidesLoading} style={{
+            padding: '0.75em 1.5em',
+            fontSize: '1em',
+            fontWeight: 'bold'
+          }}>
+            {groupRidesLoading ? 'Grouping Rides...' : 'Group Rides'}
+          </Button>
+        </form>
+
+        {/* Loading Indicator */}
+        {groupRidesLoading && (
+          <div style={{
+            padding: '1em',
+            background: '#e3f2fd',
+            borderRadius: '4px',
+            marginBottom: '1em',
+            color: '#1976d2'
+          }}>
+            <strong>⏳ Grouping rides...</strong>
+            <p style={{ margin: '0.5em 0 0 0', fontSize: '0.9em' }}>
+              This may take 15-30 seconds. Please wait...
+            </p>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {groupRidesError && (
+          <div style={{
+            color: 'red',
+            marginBottom: '1em',
+            padding: '1em',
+            background: '#ffebee',
+            borderRadius: '4px'
+          }}>
+            <strong>Error:</strong> {groupRidesError}
+          </div>
+        )}
+
+        {/* Results Display */}
+        {(groupRidesSummary || groupRidesData) && (
+          <div style={{ marginTop: '1em' }}>
+            {/* Summary Section */}
+            {groupRidesSummary && (
+              <div style={{ marginBottom: '1.5em' }}>
+                <h3>Summary:</h3>
+                <pre style={{
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word',
+                  padding: '1em',
+                  background: '#e8f5e9',
+                  borderRadius: '4px',
+                  fontSize: '0.9em',
+                  fontFamily: 'monospace',
+                  border: '1px solid #4caf50'
+                }}>
+                  {groupRidesSummary}
+                </pre>
+              </div>
+            )}
+
+            {/* Individual Ride Groupings */}
+            {groupRidesData && (
+              <>
+                <h3>Ride Groupings:</h3>
+                {groupRidesData.map((grouping, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      marginBottom: '1em',
+                      padding: '1em',
+                      background: '#f5f5f5',
+                      borderRadius: '4px',
+                      position: 'relative'
+                    }}
+                  >
+                    <Button
+                      onClick={() => copyToClipboard(grouping, index)}
+                      style={{
+                        position: 'absolute',
+                        top: '0.5em',
+                        right: '0.5em',
+                        padding: '0.25em 0.5em',
+                        fontSize: '0.85em'
+                      }}
+                    >
+                      {copiedIndex === index ? '✓ Copied!' : '📋 Copy'}
+                    </Button>
+                    <pre style={{
+                      whiteSpace: 'pre-wrap',
+                      wordWrap: 'break-word',
+                      margin: 0,
+                      paddingRight: '5em',
+                      fontSize: '0.9em',
+                      fontFamily: 'monospace'
+                    }}>
+                      {grouping}
+                    </pre>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>

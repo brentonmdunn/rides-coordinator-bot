@@ -433,6 +433,136 @@ class GroupRidesService:
 
         return llm_result
 
+    async def _process_ride_grouping(
+        self,
+        message_id: int,
+        driver_capacity: str,
+        channel_id: int,
+        legacy_prompt: bool = False,
+        custom_prompt: str | None = None,
+    ) -> list[str]:
+        """
+        Core ride grouping logic shared by both Discord and API methods.
+        
+        Args:
+            message_id: The message ID to fetch pickups from
+            driver_capacity: String representing driver capacities
+            channel_id: Channel ID where the message is located
+            legacy_prompt: Whether to use the legacy prompt
+            custom_prompt: Optional custom prompt to use
+            
+        Returns:
+            List of formatted ride grouping strings
+            
+        Raises:
+            ValueError: If invalid parameters or insufficient capacity
+        """
+        # Fetch locations and reactions
+        (
+            locations_people,
+            usernames_reacted,
+            location_found,
+        ) = await self.locations_service.list_locations(message_id=message_id)
+
+        message = await self.repo.fetch_message(channel_id, message_id)
+
+        if not message:
+            raise ValueError("Could not fetch the message content")
+
+        combined_text = get_message_and_embed_content(message)
+
+        # Determine service type and set end leave time
+        if "sunday" in combined_text:
+            end_leave_time = time(hour=10, minute=10)
+            # Filter out people going to class
+            class_message_id = await self.locations_service._find_correct_message(
+                AskRidesMessage.SUNDAY_CLASS, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+            )
+            if class_message_id is not None:
+                (
+                    _,
+                    class_usernames_reacted,
+                    _,
+                ) = await self.locations_service.list_locations(message_id=class_message_id)
+                usernames_reacted = usernames_reacted - class_usernames_reacted
+
+        elif "friday" in combined_text:
+            end_leave_time = time(hour=19, minute=10)
+        else:
+            raise ValueError('Message must contain "friday" or "sunday"')
+
+        # Check for unknown locations
+        unknown_location = usernames_reacted - location_found
+        if unknown_location:
+            unknown_names = [str(user) for user in unknown_location]
+            raise ValueError(
+                f"Unknown location for user(s): {', '.join(unknown_names)}. "
+                "Please ensure usernames and locations are on the spreadsheet."
+            )
+
+        off_campus = {}
+        passengers_by_location: PassengersByLocation = {}
+
+        # Pre-compute valid campus locations for faster lookup
+        valid_campus_locations = {location.value.lower() for location in CampusLivingLocations}
+
+        for living_location in locations_people:
+            if living_location.lower() not in valid_campus_locations:
+                off_campus[living_location] = locations_people[living_location]
+                continue
+
+            living_loc_enum = self._get_living_location(living_location)
+            pickup_key = self._get_pickup_location(living_loc_enum)
+
+            # Get the existing list or create a new one, then extend it
+            passengers_by_location.setdefault(pickup_key, []).extend(
+                Passenger(
+                    identity=Identity(
+                        name=person[0], username=person[1].name if person[1] else None
+                    ),
+                    living_location=living_loc_enum,
+                    pickup_location=pickup_key,
+                )
+                for person in locations_people[living_location]
+            )
+
+        # Parse driver capacity
+        try:
+            driver_capacity_list = parse_numbers(driver_capacity)
+        except ValueError:
+            raise ValueError("driver_capacity must only contain integers")
+
+        if not is_enough_capacity(driver_capacity_list, passengers_by_location):
+            raise ValueError(
+                f"Insufficient driver capacity. "
+                f"Riders: {count_tuples(passengers_by_location)}, "
+                f"Drivers: {len(driver_capacity_list)}, "
+                f"Capacity: {sum(driver_capacity_list)}"
+            )
+
+        # Data on driver capacities and pickup locations to send to LLM
+        drivers = llm_input_drivers(driver_capacity_list)
+        pickups = llm_input_pickups(passengers_by_location)
+
+        try:
+            llm_result = await asyncio.to_thread(
+                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX, legacy_prompt, custom_prompt
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Failed to get a successful LLM response after {NUM_RETRY_ATTEMPTS} attempts: {e}"
+            )
+            raise ValueError(
+                "Could not process ride grouping request. Please try again later."
+            )
+
+        if "error" in {key.lower() for key in llm_result}:
+            raise ValueError(f"LLM returned with error: {llm_result}")
+
+        output = create_output(llm_result, passengers_by_location, end_leave_time, off_campus)
+        return output
+
     async def group_rides(
         self,
         interaction: discord.Interaction,
@@ -471,126 +601,16 @@ class GroupRidesService:
                 await interaction.followup.send("Could not find the rides message.")
                 return
 
-        (
-            locations_people,
-            usernames_reacted,
-            location_found,
-        ) = await self.locations_service.list_locations(message_id=message_id)
-
         channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        message = await self.repo.fetch_message(channel_id, message_id)
-
-        if not message:
-            # Fallback or error
-            await interaction.followup.send("Could not fetch the message content.")
-            return
-
-        combined_text = get_message_and_embed_content(message)
-
-        if "sunday" in combined_text:
-            end_leave_time = time(hour=10, minute=10)
-            class_message_id = await self.locations_service._find_correct_message(
-                AskRidesMessage.SUNDAY_CLASS, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-            )
-            if class_message_id is not None:
-                (
-                    _,
-                    class_usernames_reacted,
-                    _,
-                ) = await self.locations_service.list_locations(message_id=class_message_id)
-                usernames_reacted = usernames_reacted - class_usernames_reacted
-
-        elif "friday" in combined_text:
-            end_leave_time = time(hour=19, minute=10)
-        else:
-            # If day was passed, we expect it to match.
-            # But if message_id was passed manually, we check content.
-            # The original code raises ValueError if neither is found.
-            # We can just warn.
-            await interaction.followup.send(
-                """Error: Please ensure that "friday" or "sunday" is written in message.""",
-            )
-            return
-
-        unknown_location = usernames_reacted - location_found
-        if unknown_location:
-            unknown_names = [str(user) for user in unknown_location]
-            await interaction.followup.send(
-                f"Error: Please ensure that {', '.join(unknown_names)} username(s) and location(s) are on the "  # noqa
-                f"[spreadsheet](https://docs.google.com/spreadsheets/d/1uQNUy57ea23PagKhPEmNeQPsP2BUTVvParRrE9CF_Tk/edit?gid=0#gid=0)."
-            )
-            return
-
-        off_campus = {}
-        passengers_by_location: PassengersByLocation = {}
-
-        # Pre-compute valid campus locations for faster lookup
-        valid_campus_locations = {location.value.lower() for location in CampusLivingLocations}
-
-        for living_location in locations_people:
-            if living_location.lower() not in valid_campus_locations:
-                off_campus[living_location] = locations_people[living_location]
-                continue
-
-            living_loc_enum = self._get_living_location(living_location)
-            pickup_key = self._get_pickup_location(living_loc_enum)
-
-            # Get the existing list or create a new one, then extend it
-            passengers_by_location.setdefault(pickup_key, []).extend(
-                Passenger(
-                    identity=Identity(
-                        name=person[0], username=person[1].name if person[1] else None
-                    ),
-                    living_location=living_loc_enum,
-                    pickup_location=pickup_key,
-                )
-                for person in locations_people[living_location]
-            )
-
-        # Parse driver capacity once and reuse
+        
         try:
-            driver_capacity_list = parse_numbers(driver_capacity)
-        except ValueError:
-            await interaction.followup.send(
-                "Error: `driver_capacity` must only contain integers.",
-                ephemeral=True,
+            output = await self._process_ride_grouping(
+                message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
             )
+        except ValueError as e:
+            await interaction.followup.send(f"Error: {str(e)}")
             return
 
-        if not is_enough_capacity(driver_capacity_list, passengers_by_location):
-            await interaction.followup.send(
-                f"Error: More people need a ride than we have drivers.\n"
-                f"Num need rides: {count_tuples(passengers_by_location)}\n"
-                f"Num drivers: {len(driver_capacity_list)}\n"
-                f"Driver capacity: {sum(driver_capacity_list)}"
-            )
-            return
-
-        # Data on driver capacities and pickup locations to send to LLM
-        drivers = llm_input_drivers(driver_capacity_list)
-        pickups = llm_input_pickups(passengers_by_location)
-
-        try:
-            llm_result = await asyncio.to_thread(
-                self._invoke_llm, pickups, drivers, LOCATIONS_MATRIX, legacy_prompt, custom_prompt
-            )
-
-        except Exception as e:
-            logger.error(
-                f"Failed to get a successful LLM response after {NUM_RETRY_ATTEMPTS} attempts: {e}"
-            )
-            await interaction.followup.send(
-                "Sorry, I couldn't process your request right now. Please try again later.",
-                ephemeral=True,
-            )
-            return
-
-        if "error" in {key.lower() for key in llm_result}:
-            await interaction.followup.send(
-                f"LLM returned with error: {llm_result}.",
-            )
-
-        output = create_output(llm_result, passengers_by_location, end_leave_time, off_campus)
         await interaction.followup.send(output[0])  # Need one message to respond to previous defer
         # Individual messages allow for easy copy paste
         # Followups reply to the initial response and it looks bad
@@ -680,3 +700,74 @@ class GroupRidesService:
         logger.debug(f"{drive_formatted=}")
 
         return ", ".join(reversed(drive_formatted))
+
+    async def group_rides_api(
+        self,
+        message_id: int | None = None,
+        day: str | None = None,
+        driver_capacity: str = "44444",
+        channel_id: int | None = None,
+        legacy_prompt: bool = False,
+        custom_prompt: str | None = None,
+    ) -> dict[str, str | list[str]]:
+        """
+        Group rides and return structured data (for API use).
+        
+        This method is similar to group_rides() but returns data instead of 
+        sending Discord messages, making it suitable for API endpoints.
+        
+        Args:
+            message_id: Optional message ID to fetch pickups from
+            day: Optional day ("friday" or "sunday") to auto-find message
+            driver_capacity: String representing driver capacities
+            channel_id: Optional channel ID, defaults to rides announcements
+            legacy_prompt: Whether to use the legacy prompt
+            custom_prompt: Optional custom prompt to use
+            
+        Returns:
+            Dictionary with 'summary' and 'groupings' keys
+            
+        Raises:
+            ValueError: If invalid parameters or insufficient capacity
+        """
+        if channel_id is None:
+            channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        
+        # If day is provided, find the corresponding message
+        if day:
+            if day.lower() == "friday":
+                ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
+            elif day.lower() == "sunday":
+                ask_message = AskRidesMessage.SUNDAY_SERVICE
+            else:
+                raise ValueError("day must be 'friday' or 'sunday'")
+            
+            message_id = await self.locations_service._find_correct_message(
+                ask_message, channel_id
+            )
+            
+            if message_id is None:
+                raise ValueError(f"Could not find the {day} rides message. It may not exist yet.")
+        
+        # Ensure we have a message_id at this point
+        if message_id is None:
+            raise ValueError("Either message_id or day must be provided")
+        
+        output = await self._process_ride_grouping(
+            message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
+        )
+        
+        # Separate summary and groupings for web app:
+        # - First item is the summary
+        # - Skip markdown code blocks (items starting with ```)
+        # - Return plain formatted groupings
+        summary = output[0] if output else ""
+        groupings = [
+            item for item in output[1:]
+            if not item.startswith("```")  # Skip markdown code blocks
+        ]
+        
+        return {
+            "summary": summary,
+            "groupings": groupings
+        }
