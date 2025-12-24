@@ -33,17 +33,10 @@ COPY . .
 # Set timezone
 ENV TZ="America/Los_Angeles"
 ENV PATH="/app/.venv/bin:$PATH"
-ENV APP_ENV="preprod"
+ENV APP_ENV="prod"
 
-# Expose ports
-EXPOSE 8000 7999
+# Expose port
+EXPOSE 8000
 
-# Run the application
-CMD ["sh", "-c", "\
-  case \"$APP_ENV\" in \
-    prod) PORT=8000 ;; \
-    preprod) PORT=7999 ;; \
-    *) echo \"Invalid APP_ENV=$APP_ENV\" && exit 1 ;; \
-  esac && \
-  python -m uvicorn api.app:app --host 0.0.0.0 --port $PORT \
-"]
+#    Run the application
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
