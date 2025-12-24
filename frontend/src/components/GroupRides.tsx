@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import ErrorMessage from "./ErrorMessage"
 import type { GroupRidesResponse } from '../types'
@@ -21,6 +22,7 @@ function GroupRides() {
     const [groupRidesError, setGroupRidesError] = useState<string>('')
     const [groupRidesLoading, setGroupRidesLoading] = useState(false)
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+    const [showInfo, setShowInfo] = useState(false)
 
     const groupRides = async (e: React.FormEvent) => {
         // ... implementation unchanged
@@ -90,10 +92,27 @@ function GroupRides() {
 
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle><span>🚗</span> Group Rides</CardTitle>
+                <InfoToggleButton
+                    isOpen={showInfo}
+                    onClick={() => setShowInfo(!showInfo)}
+                    title="How to use Group Rides"
+                />
             </CardHeader>
             <CardContent>
+                <InfoPanel
+                    isOpen={showInfo}
+                    onClose={() => setShowInfo(false)}
+                    title="How to use Group Rides"
+                >
+                    <ol className="list-decimal list-inside space-y-1.5">
+                        <li>Select a <span className="font-medium">Ride Type</span>.</li>
+                        <li>Enter <span className="font-medium">Driver Capacity</span> using digits (e.g., "44444" means 5 drivers with 4 seats each).</li>
+                        <li>Click <span className="font-medium">Group Rides</span> to generate assignments.</li>
+                        <li>Use the text areas to manually adjust groupings if needed.</li>
+                    </ol>
+                </InfoPanel>
                 <form onSubmit={groupRides} className="space-y-6">
                     {/* Ride Type Selection */}
                     <RideTypeSelector value={rideType} onChange={setRideType} />

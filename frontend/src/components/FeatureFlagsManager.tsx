@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { FeatureFlag } from '../types'
 
@@ -17,6 +18,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 function FeatureFlagsManager() {
     const queryClient = useQueryClient()
     const [isEditMode, setIsEditMode] = useState(false)
+    const [showInfo, setShowInfo] = useState(false)
 
     // 1. Fetch flags using useQuery
     // ... (unchanged logic)
@@ -72,17 +74,41 @@ function FeatureFlagsManager() {
         <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
-                    <CardTitle><span>⚙️</span> Feature Flags</CardTitle>
-                    <Button
-                        variant={isEditMode ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setIsEditMode(!isEditMode)}
-                    >
-                        {isEditMode ? "Done" : "Edit"}
-                    </Button>
+                    <CardTitle className="flex items-center gap-2">
+                        <span>⚙️</span>
+                        <span>Feature Flags</span>
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <InfoToggleButton
+                            isOpen={showInfo}
+                            onClick={() => setShowInfo(!showInfo)}
+                            title="About Feature Flags"
+                        />
+                        <Button
+                            variant={isEditMode ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIsEditMode(!isEditMode)}
+                        >
+                            {isEditMode ? "Done" : "Edit"}
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
+                <InfoPanel
+                    isOpen={showInfo}
+                    onClose={() => setShowInfo(false)}
+                    title="About Feature Flags"
+                >
+                    <p className="mb-2">
+                        Feature flags control global functionality of the bot.
+                        Toggling these switches will immediately enable or disable features for all users.
+                    </p>
+                    <ul className="list-disc list-inside space-y-1">
+                        <li><span className="font-medium">Edit Mode</span> is required to make changes.</li>
+                        <li>Disabling a flag will stop all associated automated jobs.</li>
+                    </ul>
+                </InfoPanel>
                 {flagsLoading && (
                     <div className="p-8 text-center text-slate-500 animate-pulse">
                         Loading feature flags...

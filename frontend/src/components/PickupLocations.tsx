@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { Info, X } from 'lucide-react'
+import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import PickupGroup from './PickupGroup'
 import ErrorMessage from "./ErrorMessage"
@@ -71,39 +71,25 @@ function PickupLocations() {
                     <span>📍</span>
                     <span>List Pickups</span>
                 </CardTitle>
-                <Button
-                    variant="ghost"
-                    size="icon"
+                <InfoToggleButton
+                    isOpen={showInfo}
                     onClick={() => setShowInfo(!showInfo)}
-                    className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                    title="How to use"
-                >
-                    <Info className="h-5 w-5" />
-                    <span className="sr-only">How to use</span>
-                </Button>
+                    title="How to use List Pickups"
+                />
             </CardHeader>
             <CardContent>
-                {showInfo && (
-                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg relative">
-                        <button
-                            onClick={() => setShowInfo(false)}
-                            className="absolute top-2 right-2 text-blue-400 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                        >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Close info</span>
-                        </button>
-                        <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2 text-sm flex items-center gap-2">
-                            <Info className="h-4 w-4" />
-                            How to use List Pickups
-                        </h4>
-                        <ol className="list-decimal list-inside space-y-1.5 text-sm text-blue-800 dark:text-blue-200 ml-1">
-                            <li>Select a <span className="font-medium">Ride Type</span> (e.g., Friday Service).</li>
-                            <li>If "By Message ID" is selected, copy & paste the Discord message ID.</li>
-                            <li>Click <span className="font-medium">Fetch Pickups</span> to load the list.</li>
-                            <li>Click on any person's name to copy their Discord username to your clipboard.</li>
-                        </ol>
-                    </div>
-                )}
+                <InfoPanel
+                    isOpen={showInfo}
+                    onClose={() => setShowInfo(false)}
+                    title="How to use List Pickups"
+                >
+                    <ol className="list-decimal list-inside space-y-1.5">
+                        <li>Select a <span className="font-medium">Ride Type</span> (e.g., Friday Service).</li>
+                        <li>If "By Message ID" is selected, copy & paste the Discord message ID.</li>
+                        <li>Click <span className="font-medium">Fetch Pickups</span> to load the list.</li>
+                        <li>Click on any person's name to copy their Discord username to your clipboard.</li>
+                    </ol>
+                </InfoPanel>
 
                 <form onSubmit={fetchPickups} className="space-y-6">
                     {/* Ride Type Selection */}
