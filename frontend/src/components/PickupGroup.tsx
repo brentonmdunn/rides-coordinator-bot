@@ -1,5 +1,5 @@
 import type { HousingGroup } from '../types'
-import { Card, CardHeader, CardContent } from './ui/card'
+import { Card } from './ui/card'
 
 interface PickupGroupProps {
     groupName: string
@@ -12,7 +12,7 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
     return (
         <Card className="rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 shadow-none">
             {/* Group Header */}
-            <CardHeader className="bg-slate-100 dark:bg-zinc-800 px-4 py-3 border-b border-slate-200 dark:border-zinc-700">
+            <div className="bg-slate-100 dark:bg-zinc-800 px-4 py-3 border-b border-slate-200 dark:border-zinc-700">
                 <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2 m-0 text-base">
                     <span>{groupData.emoji}</span>
                     <span className="capitalize">{groupName}</span>
@@ -20,10 +20,10 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                         ({groupData.count} {groupData.count === 1 ? 'person' : 'people'})
                     </span>
                 </h4>
-            </CardHeader>
+            </div>
 
             {/* Locations within this group */}
-            <CardContent className="p-0 divide-y divide-slate-200 dark:divide-zinc-700">
+            <div className="divide-y divide-slate-200 dark:divide-zinc-700">
                 {Object.entries(groupData.locations).map(([locationName, people]) => (
                     <div key={locationName} className="p-4 bg-white dark:bg-zinc-900">
                         <div className="capitalize font-medium text-slate-800 dark:text-slate-200 mb-2">
@@ -56,7 +56,7 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                         </div>
                     </div>
                 ))}
-            </CardContent>
+            </div>
         </Card>
     )
 }
