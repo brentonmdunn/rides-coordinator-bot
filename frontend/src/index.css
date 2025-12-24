@@ -121,4 +121,22 @@
   body {
     @apply bg-background text-foreground antialiased overflow-x-hidden;
   }
+
+  /* Global cursor customization */
+  button,
+  [role="button"],
+  a,
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"],
+  summary {
+    @apply cursor-pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  input:disabled,
+  fieldset:disabled * {
+    @apply cursor-not-allowed;
+  }
 }
