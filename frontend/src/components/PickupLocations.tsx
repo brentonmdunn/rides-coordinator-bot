@@ -168,6 +168,7 @@ function PickupLocations() {
                                         <span className="text-sm font-normal text-amber-700 dark:text-amber-400">
                                             ({pickupData.unknown_users.length})
                                         </span>
+                                        <span className="text-sm font-normal text-amber-700 dark:text-amber-400"><em>Make sure their Discord username is correct in the Google sheet.</em></span>
                                     </h4>
                                 </div>
                                 <div className="p-4">
