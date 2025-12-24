@@ -4,6 +4,8 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import { apiFetch } from './lib/api'
 import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 interface HousingGroup {
   emoji: string
@@ -167,7 +169,7 @@ function App() {
           <div style={{ marginBottom: '0.5em' }}>
             <label>
               Message ID:
-              <input
+              <Input
                 type="text"
                 value={messageId}
                 onChange={(e) => setMessageId(e.target.value)}
@@ -180,18 +182,17 @@ function App() {
           <div style={{ marginBottom: '0.5em' }}>
             <label>
               Channel ID (optional):
-              <input
+              <Input
                 type="text"
                 value={channelId}
                 onChange={(e) => setChannelId(e.target.value)}
                 placeholder="Enter Discord channel ID"
-                style={{ marginLeft: '0.5em', padding: '0.5em', width: '300px' }}
               />
             </label>
           </div>
-          <button type="submit" disabled={pickupLoading}>
+          <Button type="submit" disabled={pickupLoading}>
             {pickupLoading ? 'Loading...' : 'Fetch Pickups'}
-          </button>
+          </Button>
         </form>
 
         {/* Error Display */}
@@ -222,17 +223,17 @@ function App() {
 
       {/* Demo buttons */}
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
+        <Button onClick={() => setCount((count) => count + 1)}>
           count is {count}
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={sendDiscordMessage}
           disabled={loading}
           style={{ marginLeft: '1em' }}
         >
           {loading ? 'Sending...' : 'Send Discord Message'}
-        </button>
+        </Button>
 
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
