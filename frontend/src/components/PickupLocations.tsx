@@ -133,7 +133,17 @@ function PickupLocations() {
                 {/* Pickup Locations Display */}
                 {pickupData && (
                     <div className="mt-8 space-y-6">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Pickup Locations</h3>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                                Pickup Locations
+                            </h3>
+                            <span className="px-3 py-1 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-full border border-slate-200 dark:border-zinc-700">
+                                Total: {
+                                    Object.values(pickupData.housing_groups).reduce((acc, group) => acc + group.count, 0) +
+                                    (pickupData.unknown_users?.length || 0)
+                                }
+                            </span>
+                        </div>
 
                         {/* Housing Groups */}
                         <div className="space-y-6">
