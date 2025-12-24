@@ -9,15 +9,12 @@ import FeatureFlagsManager from './components/FeatureFlagsManager'
 function App() {
   return (
     <>
-      <Header />
+      {/* <Header /> */}
+      <AskRidesDashboard />
       <PickupLocations />
       <GroupRides />
-      <DemoControls />
-      <AskRidesDashboard />
+      {/* <DemoControls /> */}
       <FeatureFlagsManager />
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   )
 }
