@@ -383,7 +383,7 @@ class LocationsService:
                     location_found.add(username)
         return locations_people, location_found
 
-    def _group_locations_by_housing(self, locations_people, usernames_reacted, location_found):
+    def group_locations_by_housing(self, locations_people, usernames_reacted, location_found):
         """Groups locations into housing categories.
 
         Args:
@@ -422,7 +422,8 @@ class LocationsService:
 
         # Group locations into housing categories
         for location, people_username_list in locations_people.items():
-            people = [person[0] for person in people_username_list]
+            # Don't flatten to just names yet, keep the full tuple
+            people = people_username_list
             matched = False
             
             for group_name, group_data in housing_groups.items():
@@ -468,7 +469,7 @@ class LocationsService:
         )
 
         # Use the helper function to group locations
-        grouped_data = self._group_locations_by_housing(locations_people, usernames_reacted, location_found)
+        grouped_data = self.group_locations_by_housing(locations_people, usernames_reacted, location_found)
 
         # Build embed fields from grouped data
         for group_name, group_data in grouped_data["groups"].items():
@@ -476,7 +477,9 @@ class LocationsService:
                 # Format the people string for this group
                 people_str = ""
                 for location, people in group_data["locations"].items():
-                    people_str += f"**({len(people)}) {location}:** {', '.join(people)}\n"
+                    # Extract just the names for the Discord embed
+                    people_names = [p[0] for p in people]
+                    people_str += f"**({len(people)}) {location}:** {', '.join(people_names)}\n"
                 
                 embed.add_field(
                     name=f"{group_data['emoji']} [{group_data['count']}] {group_name}",

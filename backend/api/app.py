@@ -20,6 +20,7 @@ from api.routes.feature_flags import router as feature_flags_router
 from api.routes.group_rides import router as group_rides_router
 from api.routes.health import router as health_router
 from api.routes.locations import router as locations_router
+from api.routes.list_pickups import router as list_pickups_router
 from bot.api import bot_lifespan
 
 # Configure logging
@@ -84,6 +85,7 @@ app.include_router(locations_router)
 app.include_router(feature_flags_router)
 app.include_router(ask_rides_router)
 app.include_router(group_rides_router)
+app.include_router(list_pickups_router)
 
 # Mount static files for React SPA (if directory exists)
 admin_ui_path = "admin_ui"

@@ -4,8 +4,10 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import { apiFetch } from './lib/api'
 import { Switch } from '@/components/ui/switch'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from './components/ui/button'
+import { Input } from './components/ui/input'
+import RideTypeSelector, { type RideType } from './components/RideTypeSelector'
+import ErrorMessage from "./components/ErrorMessage"
 
 interface HousingGroup {
   emoji: string
@@ -60,6 +62,7 @@ function App() {
   const [loading, setLoading] = useState(false)
 
   // Pickup locations form state
+  const [pickupRideType, setPickupRideType] = useState<RideType>('friday')
   const [messageId, setMessageId] = useState('')
   const [channelId, setChannelId] = useState('939950319721406464')
   const [pickupData, setPickupData] = useState<LocationData | null>(null)
@@ -77,7 +80,7 @@ function App() {
   const [askRidesError, setAskRidesError] = useState<string>('')
 
   // Group Rides state
-  const [rideType, setRideType] = useState<'friday' | 'sunday' | 'message_id'>('friday')
+  const [rideType, setRideType] = useState<RideType>('friday')
   const [groupMessageId, setGroupMessageId] = useState('')
   const [groupDriverCapacity, setGroupDriverCapacity] = useState('44444')
   const [groupRidesSummary, setGroupRidesSummary] = useState<string | null>(null)
@@ -94,31 +97,23 @@ function App() {
     setPickupData(null)
 
     try {
-      console.log(await apiFetch(
-        `/api/locations/pickups-by-message?message_id=${messageId}&channel_id=${channelId}`
-      ))
-      const response = await apiFetch(
-        `/api/locations/pickups-by-message?message_id=${messageId}&channel_id=${channelId}`
-      )
+      const response = await apiFetch('/api/list-pickups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ride_type: pickupRideType,
+          message_id: pickupRideType === 'message_id' ? messageId : null,
+          channel_id: channelId
+        })
+      })
 
-      console.log(response)
+      const result = await response.json()
 
-      // Check response content type
-      const contentType = response.headers.get('content-type')
-      console.log('Content-Type:', contentType)
-
-      // Get text first to see what we're actually receiving
-      const text = await response.text()
-      console.log('Response text:', text.substring(0, 200))
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${text}`)
+      if (result.success && result.data) {
+        setPickupData(result.data)
+      } else {
+        setPickupError(result.error || 'Failed to fetch pickups')
       }
-
-      // Try to parse as JSON
-      const data = JSON.parse(text)
-
-      setPickupData(data)
     } catch (error) {
       setPickupError(error instanceof Error ? error.message : 'Unknown error')
       console.error('Pickup fetch error:', error)
@@ -134,7 +129,7 @@ function App() {
         method: 'POST'
       })
       const data = await response.json()
-      alert(`Success! Message sent by ${data.user_email}`)
+      alert(`Success! Message sent by ${data.user_email} `)
     } catch (error) {
       alert('Failed to send Discord message')
       console.error('Discord API Error:', error)
@@ -170,7 +165,7 @@ function App() {
 
   const toggleFeatureFlag = async (flagName: string, enabled: boolean) => {
     try {
-      const response = await apiFetch(`/api/feature-flags/${flagName}`, {
+      const response = await apiFetch(`/ api / feature - flags / ${flagName} `, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled })
@@ -230,9 +225,9 @@ function App() {
       const reasonText = job.reason === 'wildcard_detected'
         ? 'Wildcard event detected'
         : 'No class scheduled'
-      return { color: '#eab308', text: `🟡 Will not send - ${reasonText}` }
+      return { color: '#eab308', text: `🟡 Will not send - ${reasonText} ` }
     }
-    return { color: '#22c55e', text: `🟢 Will send at ${formatDateTime(job.next_run)}` }
+    return { color: '#22c55e', text: `🟢 Will send at ${formatDateTime(job.next_run)} ` }
   }
 
   const groupRides = async (e: React.FormEvent) => {
@@ -297,43 +292,39 @@ function App() {
       {/* Pickup Locations Form */}
 
       <div className="card" style={{ marginBottom: '2em', textAlign: 'left' }}>
-        <h2>List Pickups by Message ID</h2>
+        <h2>📍 List Pickups</h2>
         <form onSubmit={fetchPickups} style={{ marginBottom: '1em' }}>
-          <div style={{ marginBottom: '0.5em' }}>
-            <label>
-              Message ID:
-              <Input
-                type="text"
-                value={messageId}
-                onChange={(e) => setMessageId(e.target.value)}
-                placeholder="Enter Discord message ID"
-                required
-                style={{ marginLeft: '0.5em', padding: '0.5em', width: '300px' }}
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '0.5em' }}>
-            <label>
-              Channel ID (optional):
-              <Input
-                type="text"
-                value={channelId}
-                onChange={(e) => setChannelId(e.target.value)}
-                placeholder="Enter Discord channel ID"
-              />
-            </label>
-          </div>
-          <Button type="submit" disabled={pickupLoading}>
+          {/* Ride Type Selection */}
+          <RideTypeSelector value={pickupRideType} onChange={setPickupRideType} />
+
+          {/* Message ID Input (only shown when message_id is selected) */}
+          {pickupRideType === 'message_id' && (
+            <div style={{ marginBottom: '1em', padding: '1em', background: '#f9fafb', borderRadius: '8px' }}>
+              <label>
+                Message ID:
+                <Input
+                  type="text"
+                  value={messageId}
+                  onChange={(e) => setMessageId(e.target.value)}
+                  placeholder="Enter Discord message ID"
+                  required
+                  style={{ marginLeft: '0.5em', padding: '0.5em', width: '300px' }}
+                />
+              </label>
+            </div>
+          )}
+
+          <Button type="submit" disabled={pickupLoading} style={{
+            padding: '0.75em 1.5em',
+            fontSize: '1em',
+            fontWeight: 'bold'
+          }}>
             {pickupLoading ? 'Loading...' : 'Fetch Pickups'}
           </Button>
         </form>
 
         {/* Error Display */}
-        {pickupError && (
-          <div style={{ color: 'red', marginBottom: '1em' }}>
-            <strong>Error:</strong> {pickupError}
-          </div>
-        )}
+        <ErrorMessage message={pickupError} />
 
         {/* Raw Data Display */}
         {pickupData && (
@@ -359,81 +350,7 @@ function App() {
         <h2>🚗 Group Rides</h2>
         <form onSubmit={groupRides} style={{ marginBottom: '1em' }}>
           {/* Ride Type Selection */}
-          <div style={{ marginBottom: '1.5em' }}>
-            <label style={{ display: 'block', marginBottom: '0.75em', fontWeight: 'bold', fontSize: '1.05em' }}>
-              Select Ride Type:
-            </label>
-            <div style={{ display: 'flex', gap: '1.5em', flexWrap: 'wrap' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5em',
-                cursor: 'pointer',
-                padding: '0.75em 1.25em',
-                border: rideType === 'friday' ? '2px solid #2563eb' : '2px solid #d1d5db',
-                borderRadius: '8px',
-                background: rideType === 'friday' ? '#eff6ff' : 'transparent',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  value="friday"
-                  checked={rideType === 'friday'}
-                  onChange={(e) => setRideType(e.target.value as 'friday' | 'sunday' | 'message_id')}
-                  style={{ cursor: 'pointer' }}
-                />
-                <span>
-                  🎉 Friday Fellowship
-                </span>
-              </label>
-
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5em',
-                cursor: 'pointer',
-                padding: '0.75em 1.25em',
-                border: rideType === 'sunday' ? '2px solid #2563eb' : '2px solid #d1d5db',
-                borderRadius: '8px',
-                background: rideType === 'sunday' ? '#eff6ff' : 'transparent',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  value="sunday"
-                  checked={rideType === 'sunday'}
-                  onChange={(e) => setRideType(e.target.value as 'friday' | 'sunday' | 'message_id')}
-                  style={{ cursor: 'pointer' }}
-                />
-                <span>
-                  ⛪ Sunday Service
-                </span>
-              </label>
-
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5em',
-                cursor: 'pointer',
-                padding: '0.75em 1.25em',
-                border: rideType === 'message_id' ? '2px solid #2563eb' : '2px solid #d1d5db',
-                borderRadius: '8px',
-                background: rideType === 'message_id' ? '#eff6ff' : 'transparent',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  value="message_id"
-                  checked={rideType === 'message_id'}
-                  onChange={(e) => setRideType(e.target.value as 'friday' | 'sunday' | 'message_id')}
-                  style={{ cursor: 'pointer' }}
-                />
-                <span>
-                  🔢 Custom Message ID
-                </span>
-              </label>
-            </div>
-          </div>
+          <RideTypeSelector value={rideType} onChange={setRideType} />
 
           {/* Message ID Input (only shown when message_id is selected) */}
           {rideType === 'message_id' && (
@@ -495,17 +412,7 @@ function App() {
         )}
 
         {/* Error Display */}
-        {groupRidesError && (
-          <div style={{
-            color: 'red',
-            marginBottom: '1em',
-            padding: '1em',
-            background: '#ffebee',
-            borderRadius: '4px'
-          }}>
-            <strong>Error:</strong> {groupRidesError}
-          </div>
-        )}
+        <ErrorMessage message={groupRidesError} />
 
         {/* Results Display */}
         {(groupRidesSummary || groupRidesData) && (
@@ -599,11 +506,7 @@ function App() {
 
         {askRidesLoading && <p>Loading ask rides status...</p>}
 
-        {askRidesError && (
-          <div style={{ color: 'red', marginBottom: '1em' }}>
-            <strong>Error:</strong> {askRidesError}
-          </div>
-        )}
+        <ErrorMessage message={askRidesError} />
 
         {!askRidesLoading && !askRidesError && askRidesStatus && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1em', marginTop: '1em' }}>
@@ -712,11 +615,7 @@ function App() {
 
         {flagsLoading && <p>Loading feature flags...</p>}
 
-        {flagsError && (
-          <div style={{ color: 'red', marginBottom: '1em' }}>
-            <strong>Error:</strong> {flagsError}
-          </div>
-        )}
+        <ErrorMessage message={flagsError} />
 
         {!flagsLoading && !flagsError && featureFlags.length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1em' }}>
