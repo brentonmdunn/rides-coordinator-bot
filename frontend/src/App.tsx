@@ -165,7 +165,7 @@ function App() {
 
   const toggleFeatureFlag = async (flagName: string, enabled: boolean) => {
     try {
-      const response = await apiFetch(`/ api / feature - flags / ${flagName} `, {
+      const response = await apiFetch(`/api/feature-flags/${flagName}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled })
