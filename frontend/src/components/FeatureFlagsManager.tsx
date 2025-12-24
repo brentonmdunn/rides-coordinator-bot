@@ -8,10 +8,15 @@ interface FeatureFlagsResponse {
     flags: FeatureFlag[]
 }
 
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
+
+// ... existing imports
+
 function FeatureFlagsManager() {
     const queryClient = useQueryClient()
 
     // 1. Fetch flags using useQuery
+    // ... (unchanged logic)
     const {
         data,
         isLoading: flagsLoading,
@@ -61,44 +66,60 @@ function FeatureFlagsManager() {
     }
 
     return (
-        <div className="card" style={{ marginTop: '2em', textAlign: 'left' }}>
-            <h2>⚙️ Feature Flags</h2>
+        <Card>
+            <CardHeader>
+                <CardTitle><span>⚙️</span> Feature Flags</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {flagsLoading && (
+                    <div className="p-8 text-center text-slate-500 animate-pulse">
+                        Loading feature flags...
+                    </div>
+                )}
 
-            {flagsLoading && <p>Loading feature flags...</p>}
+                <div className="mb-6">
+                    <ErrorMessage message={flagsError} />
+                </div>
 
-            <ErrorMessage message={flagsError} />
+                {!flagsLoading && !flagsError && featureFlags.length > 0 && (
+                    <div className="rounded-lg border border-slate-200 dark:border-zinc-800 overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 dark:bg-zinc-800/50 text-slate-900 dark:text-slate-100 font-semibold border-b border-slate-200 dark:border-zinc-800">
+                                <tr>
+                                    <th className="px-6 py-4">Feature Flag</th>
+                                    <th className="px-6 py-4 text-center w-[120px]">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                {featureFlags.map((flag) => (
+                                    <tr
+                                        key={flag.id}
+                                        className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors"
+                                    >
+                                        <td className="px-6 py-4 font-mono text-slate-700 dark:text-slate-300">
+                                            {flag.feature}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <Switch
+                                                checked={flag.enabled}
+                                                onCheckedChange={(checked) => handleToggle(flag.feature, checked)}
+                                                disabled={toggleMutation.isPending}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
-            {!flagsLoading && !flagsError && featureFlags.length > 0 && (
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1em' }}>
-                    <thead>
-                        <tr style={{ borderBottom: '2px solid #ccc' }}>
-                            <th style={{ textAlign: 'left', padding: '0.75em' }}>Feature Flag</th>
-                            <th style={{ textAlign: 'center', padding: '0.75em', width: '100px' }}>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {featureFlags.map((flag) => (
-                            <tr key={flag.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '0.75em', fontFamily: 'monospace' }}>
-                                    {flag.feature}
-                                </td>
-                                <td style={{ padding: '0.75em', textAlign: 'center' }}>
-                                    <Switch
-                                        checked={flag.enabled}
-                                        onCheckedChange={(checked) => handleToggle(flag.feature, checked)}
-                                        disabled={toggleMutation.isPending}
-                                    />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-
-            {!flagsLoading && !flagsError && featureFlags.length === 0 && (
-                <p style={{ color: '#666', marginTop: '1em' }}>No feature flags found.</p>
-            )}
-        </div>
+                {!flagsLoading && !flagsError && featureFlags.length === 0 && (
+                    <p className="text-slate-500 italic p-4 text-center bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                        No feature flags found.
+                    </p>
+                )}
+            </CardContent>
+        </Card>
     )
 }
 

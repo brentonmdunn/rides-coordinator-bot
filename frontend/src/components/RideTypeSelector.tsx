@@ -7,79 +7,55 @@ interface RideTypeSelectorProps {
 
 export default function RideTypeSelector({ value, onChange }: RideTypeSelectorProps) {
     return (
-        <div style={{ marginBottom: '1.5em' }}>
-            <label style={{ display: 'block', marginBottom: '0.75em', fontWeight: 'bold', fontSize: '1.05em' }}>
-                Select Ride Type:
+        <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Select Ride Type
             </label>
-            <div style={{ display: 'flex', gap: '1.5em', flexWrap: 'wrap' }}>
-                <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5em',
-                    cursor: 'pointer',
-                    padding: '0.75em 1.25em',
-                    border: value === 'friday' ? '2px solid #2563eb' : '2px solid #d1d5db',
-                    borderRadius: '8px',
-                    background: value === 'friday' ? '#eff6ff' : 'transparent',
-                    transition: 'all 0.2s'
-                }}>
-                    <input
-                        type="radio"
-                        value="friday"
-                        checked={value === 'friday'}
-                        onChange={(e) => onChange(e.target.value as RideType)}
-                        style={{ cursor: 'pointer' }}
-                    />
-                    <span>
-                        🎉 Friday Fellowship
-                    </span>
-                </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                    type="button"
+                    onClick={() => onChange('friday')}
+                    className={`
+                        flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all
+                        ${value === 'friday'
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/30 dark:border-blue-500 dark:text-blue-300 ring-1 ring-blue-500'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-300 dark:hover:bg-zinc-800'
+                        }
+                    `}
+                >
+                    <span className="text-lg">🎉</span>
+                    <span>Friday Fellowship</span>
+                </button>
 
-                <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5em',
-                    cursor: 'pointer',
-                    padding: '0.75em 1.25em',
-                    border: value === 'sunday' ? '2px solid #2563eb' : '2px solid #d1d5db',
-                    borderRadius: '8px',
-                    background: value === 'sunday' ? '#eff6ff' : 'transparent',
-                    transition: 'all 0.2s'
-                }}>
-                    <input
-                        type="radio"
-                        value="sunday"
-                        checked={value === 'sunday'}
-                        onChange={(e) => onChange(e.target.value as RideType)}
-                        style={{ cursor: 'pointer' }}
-                    />
-                    <span>
-                        ⛪ Sunday Service
-                    </span>
-                </label>
+                <button
+                    type="button"
+                    onClick={() => onChange('sunday')}
+                    className={`
+                        flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all
+                        ${value === 'sunday'
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/30 dark:border-blue-500 dark:text-blue-300 ring-1 ring-blue-500'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-300 dark:hover:bg-zinc-800'
+                        }
+                    `}
+                >
+                    <span className="text-lg">⛪</span>
+                    <span>Sunday Service</span>
+                </button>
 
-                <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5em',
-                    cursor: 'pointer',
-                    padding: '0.75em 1.25em',
-                    border: value === 'message_id' ? '2px solid #2563eb' : '2px solid #d1d5db',
-                    borderRadius: '8px',
-                    background: value === 'message_id' ? '#eff6ff' : 'transparent',
-                    transition: 'all 0.2s'
-                }}>
-                    <input
-                        type="radio"
-                        value="message_id"
-                        checked={value === 'message_id'}
-                        onChange={(e) => onChange(e.target.value as RideType)}
-                        style={{ cursor: 'pointer' }}
-                    />
-                    <span>
-                        🔢 Custom Message ID
-                    </span>
-                </label>
+                <button
+                    type="button"
+                    onClick={() => onChange('message_id')}
+                    className={`
+                        flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all
+                        ${value === 'message_id'
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/30 dark:border-blue-500 dark:text-blue-300 ring-1 ring-blue-500'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-300 dark:hover:bg-zinc-800'
+                        }
+                    `}
+                >
+                    <span className="text-lg">🔢</span>
+                    <span>Custom Message ID</span>
+                </button>
             </div>
         </div>
     )

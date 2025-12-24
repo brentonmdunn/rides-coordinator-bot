@@ -33,31 +33,29 @@ const getStatusBadge = (job: AskRidesJobStatus) => {
 function StatusCard({ title, job }: StatusCardProps) {
     const status = getStatusBadge(job)
 
+    // Helper map for better color handling in Tailwind
+    const getStatusColors = (color: string) => {
+        if (color === '#ef4444') return 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+        if (color === '#eab308') return 'bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800'
+        return 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
+    }
+
     return (
-        <div style={{
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            padding: '1em',
-            background: '#f9f9f9'
-        }}>
-            <h3 style={{ marginTop: 0, marginBottom: '0.5em' }}>{title}</h3>
-            <div style={{
-                padding: '0.5em',
-                borderRadius: '4px',
-                background: status.color + '22',
-                color: status.color,
-                fontWeight: 'bold',
-                marginBottom: '0.5em'
-            }}>
+        <div className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">{title}</h3>
+
+            <div className={`px-3 py-2 rounded-md border text-sm font-medium mb-4 ${getStatusColors(status.color)}`}>
                 {status.text}
             </div>
+
             {job.last_message && (
-                <div style={{ marginTop: '0.5em', fontSize: '0.9em' }}>
-                    <strong>Last message reactions:</strong>
-                    <div style={{ marginTop: '0.25em' }}>
+                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 text-sm">
+                    <strong className="block text-slate-700 dark:text-slate-300 mb-2">Last message reactions</strong>
+                    <div className="flex flex-wrap gap-3">
                         {Object.entries(job.last_message.reactions).map(([emoji, count]) => (
-                            <span key={emoji} style={{ marginRight: '0.75em' }}>
-                                {emoji} {count}
+                            <span key={emoji} className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded text-slate-700 dark:text-slate-300">
+                                <span className="text-base">{emoji}</span>
+                                <span className="font-mono font-medium">{count}</span>
                             </span>
                         ))}
                     </div>

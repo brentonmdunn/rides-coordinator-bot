@@ -5,17 +5,34 @@ import GroupRides from './components/GroupRides'
 import DemoControls from './components/DemoControls'
 import AskRidesDashboard from './components/AskRidesDashboard/AskRidesDashboard'
 import FeatureFlagsManager from './components/FeatureFlagsManager'
+import { ModeToggle } from './components/mode-toggle'
 
 function App() {
   return (
-    <>
-      {/* <Header /> */}
-      <AskRidesDashboard />
-      <PickupLocations />
-      <GroupRides />
-      {/* <DemoControls /> */}
-      <FeatureFlagsManager />
-    </>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-12">
+          <div className="flex-1 text-center md:text-left">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl mb-4">
+              🚗 Admin Dashboard
+            </h1>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto md:mx-0">
+              Manage rides, view pickups, and configure bot settings all in one place.
+            </p>
+          </div>
+          <div className="flex justify-center md:justify-end">
+            <ModeToggle />
+          </div>
+        </header>
+
+        <div className="grid gap-8">
+          <AskRidesDashboard />
+          <PickupLocations />
+          <GroupRides />
+          <FeatureFlagsManager />
+        </div>
+      </div>
+    </div>
   )
 }
 

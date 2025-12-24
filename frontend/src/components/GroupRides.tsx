@@ -6,7 +6,11 @@ import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import ErrorMessage from "./ErrorMessage"
 import type { GroupRidesResponse } from '../types'
 
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
+
 function GroupRides() {
+    // ... state hooks (unchanged)
+
     const [rideType, setRideType] = useState<RideType>('friday')
     const [groupMessageId, setGroupMessageId] = useState('')
     const [groupDriverCapacity, setGroupDriverCapacity] = useState('44444')
@@ -19,6 +23,7 @@ function GroupRides() {
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
     const groupRides = async (e: React.FormEvent) => {
+        // ... implementation unchanged
         e.preventDefault()
         setGroupRidesLoading(true)
         setGroupRidesError('')
@@ -56,10 +61,10 @@ function GroupRides() {
     }
 
     const copyToClipboard = async (text: string, index: number) => {
+        // ... unchanged
         try {
             await navigator.clipboard.writeText(text)
             setCopiedIndex(index)
-            // Reset after 5 seconds
             setTimeout(() => setCopiedIndex(null), 5000)
         } catch (error) {
             console.error('Failed to copy:', error)
@@ -68,6 +73,7 @@ function GroupRides() {
     }
 
     const handleGroupingChange = (index: number, newValue: string) => {
+        // ... unchanged
         if (!groupRidesData) return
         const newData = [...groupRidesData]
         newData[index] = newValue
@@ -75,6 +81,7 @@ function GroupRides() {
     }
 
     const revertGrouping = (index: number) => {
+        // ... unchanged
         if (!originalGroupRidesData || !groupRidesData) return
         const newData = [...groupRidesData]
         newData[index] = originalGroupRidesData[index]
@@ -82,167 +89,145 @@ function GroupRides() {
     }
 
     return (
-        <div className="card" style={{ marginBottom: '2em', textAlign: 'left' }}>
-            <h2>🚗 Group Rides</h2>
-            <form onSubmit={groupRides} style={{ marginBottom: '1em' }}>
-                {/* Ride Type Selection */}
-                <RideTypeSelector value={rideType} onChange={setRideType} />
+        <Card>
+            <CardHeader>
+                <CardTitle><span>🚗</span> Group Rides</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={groupRides} className="space-y-6">
+                    {/* Ride Type Selection */}
+                    <RideTypeSelector value={rideType} onChange={setRideType} />
 
-                {/* Message ID Input (only shown when message_id is selected) */}
-                {rideType === 'message_id' && (
-                    <div style={{ marginBottom: '1em', padding: '1em', background: '#f9fafb', borderRadius: '8px' }}>
-                        <label>
-                            Message ID:
-                            <Input
-                                type="text"
-                                value={groupMessageId}
-                                onChange={(e) => setGroupMessageId(e.target.value)}
-                                placeholder="Enter Discord message ID"
-                                required
-                                style={{ marginLeft: '0.5em', padding: '0.5em', width: '300px' }}
-                            />
-                        </label>
-                    </div>
-                )}
-
-                {/* Driver Capacity */}
-                <div style={{ marginBottom: '1.5em' }}>
-                    <label>
-                        Driver Capacity:
-                        <Input
-                            type="text"
-                            value={groupDriverCapacity}
-                            onChange={(e) => setGroupDriverCapacity(e.target.value)}
-                            placeholder="e.g., 44444"
-                            style={{ marginLeft: '0.5em', padding: '0.5em', width: '150px' }}
-                        />
-                        <span style={{ marginLeft: '0.5em', fontSize: '0.9em', color: '#6b7280' }}>
-                            (One digit per driver, e.g., "44444" = 5 drivers with 4 seats each)
-                        </span>
-                    </label>
-                </div>
-
-                <Button type="submit" disabled={groupRidesLoading} style={{
-                    padding: '0.75em 1.5em',
-                    fontSize: '1em',
-                    fontWeight: 'bold'
-                }}>
-                    {groupRidesLoading ? 'Grouping Rides...' : 'Group Rides'}
-                </Button>
-            </form>
-
-            {/* Loading Indicator */}
-            {groupRidesLoading && (
-                <div style={{
-                    padding: '1em',
-                    background: '#e3f2fd',
-                    borderRadius: '4px',
-                    marginBottom: '1em',
-                    color: '#1976d2'
-                }}>
-                    <strong>⏳ Grouping rides...</strong>
-                    <p style={{ margin: '0.5em 0 0 0', fontSize: '0.9em' }}>
-                        This may take 15-30 seconds. Please wait...
-                    </p>
-                </div>
-            )}
-
-            {/* Error Display */}
-            <ErrorMessage message={groupRidesError} />
-
-            {/* Results Display */}
-            {(groupRidesSummary || groupRidesData) && (
-                <div style={{ marginTop: '1em' }}>
-                    {/* Summary Section */}
-                    {groupRidesSummary && (
-                        <div style={{ marginBottom: '1.5em' }}>
-                            <h3>Summary:</h3>
-                            <pre style={{
-                                whiteSpace: 'pre-wrap',
-                                wordWrap: 'break-word',
-                                padding: '1em',
-                                background: '#e8f5e9',
-                                borderRadius: '4px',
-                                fontSize: '0.9em',
-                                fontFamily: 'monospace',
-                                border: '1px solid #4caf50'
-                            }}>
-                                {groupRidesSummary}
-                            </pre>
+                    {/* Message ID Input (only shown when message_id is selected) */}
+                    {rideType === 'message_id' && (
+                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
+                            <label className="block">
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                    Message ID
+                                </span>
+                                <Input
+                                    type="text"
+                                    value={groupMessageId}
+                                    onChange={(e) => setGroupMessageId(e.target.value)}
+                                    placeholder="Enter Discord message ID"
+                                    required
+                                    className="w-full max-w-md"
+                                />
+                            </label>
                         </div>
                     )}
 
-                    {/* Individual Ride Groupings */}
-                    {groupRidesData && (
-                        <>
-                            <h3>Ride Groupings:</h3>
-                            {groupRidesData.map((grouping, index) => {
-                                const isModified = originalGroupRidesData && originalGroupRidesData[index] !== grouping;
-                                return (
-                                    <div
-                                        key={index}
-                                        style={{
-                                            marginBottom: '1em',
-                                            padding: '1em',
-                                            background: '#f5f5f5',
-                                            borderRadius: '4px',
-                                            position: 'relative'
-                                        }}
-                                    >
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'flex-end',
-                                            gap: '0.5em',
-                                            marginBottom: '0.5em'
-                                        }}>
-                                            {isModified && (
-                                                <Button
-                                                    onClick={() => revertGrouping(index)}
-                                                    variant="outline"
-                                                    size="sm"
-                                                    style={{
-                                                        fontSize: '0.85em',
-                                                        borderColor: '#f59e0b',
-                                                        color: '#d97706'
-                                                    }}
-                                                >
-                                                    ↩ Revert
-                                                </Button>
-                                            )}
-                                            <Button
-                                                onClick={() => copyToClipboard(grouping, index)}
-                                                size="sm"
-                                                style={{
-                                                    fontSize: '0.85em'
-                                                }}
-                                            >
-                                                {copiedIndex === index ? '✓ Copied!' : '📋 Copy'}
-                                            </Button>
-                                        </div>
-                                        <textarea
-                                            value={grouping}
-                                            onChange={(e) => handleGroupingChange(index, e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                minHeight: '60px',
-                                                padding: '0.5em',
-                                                fontSize: '0.9em',
-                                                fontFamily: 'monospace',
-                                                border: '1px solid #ddd',
-                                                borderRadius: '4px',
-                                                resize: 'vertical',
-                                                whiteSpace: 'pre',
-                                                overflowX: 'auto'
-                                            }}
-                                        />
-                                    </div>
-                                )
-                            })}
-                        </>
-                    )}
+                    {/* Driver Capacity */}
+                    <div>
+                        <label className="block">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                Driver Capacity
+                            </span>
+                            <div className="flex items-center gap-3">
+                                <Input
+                                    type="text"
+                                    value={groupDriverCapacity}
+                                    onChange={(e) => setGroupDriverCapacity(e.target.value)}
+                                    placeholder="e.g., 44444"
+                                    className="w-32 font-mono"
+                                />
+                                <span className="text-sm text-slate-500 dark:text-slate-400">
+                                    (One digit per driver, e.g., "4" = 4 seats)
+                                </span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div className="pt-2">
+                        <Button
+                            type="submit"
+                            disabled={groupRidesLoading}
+                            className="w-full sm:w-auto px-8 py-2.5 text-base font-semibold"
+                        >
+                            {groupRidesLoading ? 'Grouping Rides...' : 'Group Rides'}
+                        </Button>
+                    </div>
+                </form>
+
+                {/* Loading Indicator */}
+                {groupRidesLoading && (
+                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-lg flex items-start gap-3">
+                        <div className="animate-spin text-xl">⏳</div>
+                        <div>
+                            <strong className="block font-semibold">Grouping rides...</strong>
+                            <p className="text-sm mt-1 opacity-90">
+                                This may take 15-30 seconds. Please wait...
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Error Display */}
+                <div className="mt-6">
+                    <ErrorMessage message={groupRidesError} />
                 </div>
-            )}
-        </div>
+
+                {/* Results Display */}
+                {(groupRidesSummary || groupRidesData) && (
+                    <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Summary Section */}
+                        {groupRidesSummary && (
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Summary</h3>
+                                <pre className="whitespace-pre-wrap p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-100 rounded-lg text-sm font-mono border border-emerald-100 dark:border-emerald-900/50">
+                                    {groupRidesSummary}
+                                </pre>
+                            </div>
+                        )}
+
+                        {/* Individual Ride Groupings */}
+                        {groupRidesData && (
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Ride Groupings</h3>
+                                <div className="space-y-4">
+                                    {groupRidesData.map((grouping, index) => {
+                                        const isModified = originalGroupRidesData && originalGroupRidesData[index] !== grouping;
+                                        return (
+                                            <div
+                                                key={index}
+                                                className="group relative bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700 p-1 transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-600"
+                                            >
+                                                <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                    {isModified && (
+                                                        <Button
+                                                            onClick={() => revertGrouping(index)}
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 px-2 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 bg-white"
+                                                        >
+                                                            ↩ Revert
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        onClick={() => copyToClipboard(grouping, index)}
+                                                        size="sm"
+                                                        variant={copiedIndex === index ? "default" : "outline"}
+                                                        className={`h-8 px-2 text-xs bg-white hover:bg-slate-100 ${copiedIndex === index ? "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent" : "text-slate-700"}`}
+                                                    >
+                                                        {copiedIndex === index ? '✓ Copied' : '📋 Copy'}
+                                                    </Button>
+                                                </div>
+                                                <textarea
+                                                    value={grouping}
+                                                    onChange={(e) => handleGroupingChange(index, e.target.value)}
+                                                    className="w-full min-h-[60px] p-4 text-sm font-mono bg-transparent border-0 resize-y focus:ring-0 focus:outline-none text-slate-800 dark:text-slate-200 rounded-md"
+                                                    spellCheck={false}
+                                                />
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     )
 }
 
