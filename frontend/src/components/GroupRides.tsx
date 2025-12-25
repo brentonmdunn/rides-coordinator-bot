@@ -110,7 +110,8 @@ function GroupRides() {
                         <li>Select a <span className="font-medium">Ride Type</span>.</li>
                         <li>Enter <span className="font-medium">Driver Capacity</span> using digits (e.g., "44444" means 5 drivers with 4 seats each).</li>
                         <li>Click <span className="font-medium">Group Rides</span> to generate assignments.</li>
-                        <li>Use the text areas to manually adjust groupings if needed.</li>
+                        <li>Use the text areas to manually adjust groupings if needed. <span className="font-medium">Revert</span> to revert to the original groupings.</li>
+                        <li>Click <span className="font-medium">Copy</span> to copy the groupings to your clipboard.</li>
                     </ol>
                 </InfoPanel>
                 <form onSubmit={groupRides} className="space-y-6">
@@ -175,7 +176,7 @@ function GroupRides() {
                         <div>
                             <strong className="block font-semibold">Grouping rides...</strong>
                             <p className="text-sm mt-1 opacity-90">
-                                This may take 15-30 seconds. Please wait...
+                                This may take up to 60 seconds. Please wait...
                             </p>
                         </div>
                     </div>
