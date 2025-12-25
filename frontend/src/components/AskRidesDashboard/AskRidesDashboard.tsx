@@ -53,6 +53,10 @@ function AskRidesDashboard() {
                             <span><span className="font-medium">Will Send:</span> The job is scheduled and will run at the shown time.</span>
                         </li>
                         <li className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <span><span className="font-medium">Message Sent:</span> A message has been sent for this week's ride requests.</span>
+                        </li>
+                        <li className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
                             <span><span className="font-medium">Will Not Send:</span> Feature is enabled, but no action is needed (e.g., no class scheduled).</span>
                         </li>

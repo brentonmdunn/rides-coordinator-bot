@@ -347,6 +347,13 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     Returns:
         Dictionary with status for friday, sunday, and sunday_class jobs
     """
+    from datetime import datetime
+    now = datetime.now()
+    
+    # Sent status is active from Wednesday 12:00 PM to Sunday 11:59 PM
+    # weekday(): 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+    is_sent_window = (now.weekday() == 2 and now.hour >= 12) or (3 <= now.weekday() <= 6)
+
     # Check feature flags
     friday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
         FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
@@ -362,30 +369,38 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     sunday_will_send = _should_send_ask_rides_sun() if sunday_enabled else False
     sunday_class_will_send = _should_send_ask_rides_sun_class() if sunday_class_enabled else False
     
+    # Fetch last messages
+    friday_last_msg = await get_last_message_reactions(bot, "friday")
+    sunday_last_msg = await get_last_message_reactions(bot, "sunday")
+    sunday_class_last_msg = await get_last_message_reactions(bot, "sunday_class")
+
     # Build status response
     status = {
         "friday": {
             "enabled": friday_enabled,
             "will_send": friday_enabled,
+            "sent_this_week": is_sent_window and friday_last_msg is not None,
             "reason": None if friday_enabled else "feature_flag_disabled",
             "next_run": get_next_run_time("friday"),
-            "last_message": await get_last_message_reactions(bot, "friday")
+            "last_message": friday_last_msg
         },
         "sunday": {
             "enabled": sunday_enabled,
             "will_send": sunday_will_send,
+            "sent_this_week": is_sent_window and sunday_last_msg is not None,
             "reason": None if sunday_enabled and sunday_will_send 
                      else ("feature_flag_disabled" if not sunday_enabled else "wildcard_detected"),
             "next_run": get_next_run_time("sunday"),
-            "last_message": await get_last_message_reactions(bot, "sunday")
+            "last_message": sunday_last_msg
         },
         "sunday_class": {
             "enabled": sunday_class_enabled,
             "will_send": sunday_class_will_send,
+            "sent_this_week": is_sent_window and sunday_class_last_msg is not None,
             "reason": None if sunday_class_enabled and sunday_class_will_send 
                      else ("feature_flag_disabled" if not sunday_class_enabled else "no_class_scheduled"),
             "next_run": get_next_run_time("sunday_class"),
-            "last_message": await get_last_message_reactions(bot, "sunday_class")
+            "last_message": sunday_class_last_msg
         }
     }
     

@@ -25,6 +25,7 @@ export interface FeatureFlag {
 export interface AskRidesJobStatus {
     enabled: boolean
     will_send: boolean
+    sent_this_week?: boolean
     reason: string | null
     next_run: string
     last_message?: {

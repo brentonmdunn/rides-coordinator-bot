@@ -21,6 +21,9 @@ const getStatusBadge = (job: AskRidesJobStatus) => {
     if (!job.enabled) {
         return { color: '#ef4444', text: '🔴 Feature flag disabled' }
     }
+    if (job.sent_this_week) {
+        return { color: '#3b82f6', text: '🔵 Message sent for this week' }
+    }
     if (!job.will_send) {
         const reasonText = job.reason === 'wildcard_detected'
             ? 'Wildcard event detected'
@@ -37,6 +40,7 @@ function StatusCard({ title, job }: StatusCardProps) {
     const getStatusColors = (color: string) => {
         if (color === '#ef4444') return 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
         if (color === '#eab308') return 'bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800'
+        if (color === '#3b82f6') return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
         return 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800'
     }
 
