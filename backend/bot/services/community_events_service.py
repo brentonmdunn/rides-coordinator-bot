@@ -1,6 +1,6 @@
 """Service for event-related operations."""
 
-from bot.repositories.events_repository import EventsRepository
+from bot.repositories.community_events_repository import EventsRepository as CommunityEventsRepository
 from bot.utils.custom_exceptions import (
     ChannelNotFoundError,
     GuildNotFoundError,
@@ -14,7 +14,7 @@ class EventsService:
     Handles the business logic for assigning roles based on reactions.
     """
 
-    def __init__(self, repository: EventsRepository):
+    def __init__(self, repository: CommunityEventsRepository):
         self.repository = repository
 
     async def assign_role_to_reactors(

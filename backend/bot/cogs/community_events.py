@@ -6,10 +6,10 @@ from discord.ext import commands
 # Your original imports
 from bot.core.enums import FeatureFlagNames
 from bot.core.logger import log_cmd, logger
-from bot.repositories.events_repository import EventsRepository
+from bot.repositories.community_events_repository import EventsRepository as CommunityEventsRepository
 
 # New imports for DI
-from bot.services.events_service import EventsService
+from bot.services.community_events_service import EventsService as CommunityEventsService
 from bot.utils.checks import feature_flag_enabled, is_admin
 from bot.utils.custom_exceptions import (
     ChannelNotFoundError,
@@ -19,10 +19,10 @@ from bot.utils.custom_exceptions import (
 )
 
 
-class EventsCog(commands.Cog):
+class CommunityEventsCog(commands.Cog):
     """Cog for managing event-related tasks, such as role assignment based on reactions."""
 
-    def __init__(self, bot: commands.Bot, events_service: EventsService):
+    def __init__(self, bot: commands.Bot, events_service: CommunityEventsService):
         self.bot = bot
         self.events_service = events_service
 
@@ -111,10 +111,10 @@ class EventsCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    """Sets up the EventsCog.
+    """Sets up the CommunityEventsCog.
 
     Performs dependency injection for the repository and service.
     """
-    repository = EventsRepository(bot)
-    service = EventsService(repository)
-    await bot.add_cog(EventsCog(bot, service))
+    repository = CommunityEventsRepository(bot)
+    service = CommunityEventsService(repository)
+    await bot.add_cog(CommunityEventsCog(bot, service))
