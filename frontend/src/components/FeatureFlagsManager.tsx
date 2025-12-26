@@ -79,11 +79,6 @@ function FeatureFlagsManager() {
                         <span>Feature Flags</span>
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                        <InfoToggleButton
-                            isOpen={showInfo}
-                            onClick={() => setShowInfo(!showInfo)}
-                            title="About Feature Flags"
-                        />
                         <Button
                             variant={isEditMode ? "default" : "outline"}
                             size="sm"
@@ -91,6 +86,12 @@ function FeatureFlagsManager() {
                         >
                             {isEditMode ? "Done" : "Edit"}
                         </Button>
+                        <InfoToggleButton
+                            isOpen={showInfo}
+                            onClick={() => setShowInfo(!showInfo)}
+                            title="About Feature Flags"
+                        />
+
                     </div>
                 </div>
             </CardHeader>
