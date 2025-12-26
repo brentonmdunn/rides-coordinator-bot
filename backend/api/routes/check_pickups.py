@@ -4,23 +4,11 @@ from fastapi import APIRouter, HTTPException
 
 from bot.api import get_bot
 from bot.core.enums import AskRidesMessage, ChannelIds
+from bot.core.logger import logger
 from bot.services.locations_service import LocationsService
+from bot.repositories.ride_coverage_repository import RideCoverageRepository
 
 router = APIRouter(prefix="/api/check-pickups", tags=["check-pickups"])
-
-def get_pickup_status(discord_username: str):
-    """
-    Check if ride grouping has been sent out for this user.
-
-    Returns:
-        bool: True if ride grouping has been sent out, False otherwise
-    """
-    bot = get_bot()
-    if not bot:
-        return {"error": "Bot not initialized"}
-    
-    # TODO: Implement logic to check if ride grouping has been sent out for this user
-    return False
 
 
 @router.get("/{ride_type}")
@@ -50,6 +38,7 @@ async def get_pickup_coverage(ride_type: str):
     
     try:
         locations_service = LocationsService(bot)
+        ride_coverage_repo = RideCoverageRepository()
         
         # Determine which message to check based on ride type
         if ride_type.lower() == "friday":
@@ -91,18 +80,21 @@ async def get_pickup_coverage(ride_type: str):
                 )
                 usernames_reacted -= class_usernames
         
-        # Build user list with assignment status using the helper function
+        # Build user list with assignment status using the repository
+        # Use bulk check for performance
+        usernames_list = [str(u) for u in usernames_reacted]
+        covered_usernames = await ride_coverage_repo.get_bulk_coverage_status(usernames_list)
+        
         users = []
         assigned_count = 0
         
-        for user in usernames_reacted:
-            # Use the helper function to check if user has a ride
-            has_ride = get_pickup_status(str(user))
+        for username in usernames_list:
+            has_ride = username in covered_usernames
             if has_ride:
                 assigned_count += 1
             
             users.append({
-                "discord_username": str(user),
+                "discord_username": username,
                 "has_ride": has_ride
             })
         
@@ -120,4 +112,40 @@ async def get_pickup_coverage(ride_type: str):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch ride coverage: {str(e)}"
+        )
+
+
+@router.post("/sync")
+async def sync_ride_coverage():
+    """
+    Force sync ride coverage by scanning recent messages.
+    
+    Returns:
+        Dictionary with sync results.
+    """
+    bot = get_bot()
+    if not bot:
+        raise HTTPException(status_code=503, detail="Bot not initialized")
+    
+    try:
+        # Get the RideCoverage cog
+        ride_coverage_cog = bot.get_cog("RideCoverage")
+        if not ride_coverage_cog:
+            raise HTTPException(status_code=503, detail="RideCoverage cog not loaded")
+        
+        logger.info("API: Force sync ride coverage requested")
+        result = await ride_coverage_cog.sync_ride_coverage()
+        logger.info(f"API: Force sync completed: {result}")
+        
+        return {
+            "success": True,
+            "message": "Ride coverage sync completed",
+            **result
+        }
+        
+    except Exception as e:
+        logger.error(f"API: Failed to sync ride coverage: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to sync ride coverage: {str(e)}"
         )

@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import ErrorMessage from "./ErrorMessage"
 import type { RideCoverage, RideCoverageUser } from '../types'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
+import { Button } from './ui/button'
+import { RefreshCw, MoreVertical, CloudDownload, Check } from 'lucide-react'
 
 interface RideDayProps {
     rideType: 'friday' | 'sunday'
@@ -125,6 +127,29 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
 
 function RideCoverageCheck() {
     const [showInfo, setShowInfo] = useState(false)
+    const [showMenu, setShowMenu] = useState(false)
+    const queryClient = useQueryClient()
+
+    const syncMutation = useMutation({
+        mutationFn: async () => {
+            const response = await apiFetch('/api/check-pickups/sync', {
+                method: 'POST'
+            })
+            if (!response.ok) {
+                throw new Error('Failed to sync ride coverage')
+            }
+            return response.json()
+        },
+        onSuccess: () => {
+            // Invalidate and refetch ride coverage data
+            queryClient.invalidateQueries({ queryKey: ['rideCoverage'] })
+            setShowMenu(false)
+        }
+    })
+
+    const handleRefresh = () => {
+        queryClient.invalidateQueries({ queryKey: ['rideCoverage'] })
+    }
 
     const now = new Date()
     const day = now.getDay()
@@ -140,13 +165,76 @@ function RideCoverageCheck() {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle><span>🎯</span> Ride Coverage Check</CardTitle>
-                <InfoToggleButton
-                    isOpen={showInfo}
-                    onClick={() => setShowInfo(!showInfo)}
-                    title="About Ride Coverage"
-                />
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRefresh}
+                        title="Refresh data"
+                        className="h-8 w-8 p-0"
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <div className="relative">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowMenu(!showMenu)}
+                            title="More options"
+                            className="h-8 w-8 p-0"
+                        >
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                        {showMenu && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setShowMenu(false)}
+                                />
+                                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-lg py-1 min-w-[180px]">
+                                    <button
+                                        onClick={() => syncMutation.mutate()}
+                                        disabled={syncMutation.isPending}
+                                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
+                                    >
+                                        {syncMutation.isPending ? (
+                                            <>
+                                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                                <span>Syncing...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CloudDownload className="h-4 w-4" />
+                                                <span>Force Sync from Discord</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <InfoToggleButton
+                        isOpen={showInfo}
+                        onClick={() => setShowInfo(!showInfo)}
+                        title="About Ride Coverage"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
+                {syncMutation.isSuccess && (
+                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-md text-sm flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        <span>
+                            Sync completed: {syncMutation.data?.entries_added || 0} added, {syncMutation.data?.entries_removed || 0} removed
+                        </span>
+                    </div>
+                )}
+                {syncMutation.isError && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md text-sm">
+                        ✗ Sync failed. Please try again.
+                    </div>
+                )}
+
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}

@@ -3,10 +3,10 @@
 This module defines the SQLAlchemy models for the application's database tables.
 """
 
-from sqlalchemy import Boolean, Column, Date, Integer, PrimaryKeyConstraint, String
+from sqlalchemy import Boolean, Column, Date, Integer, PrimaryKeyConstraint, String, DateTime
 
 from bot.core.base import Base
-
+import datetime
 
 class DiscordUsers(Base):
     """Model representing a Discord user in the system."""
@@ -57,3 +57,14 @@ class NonDiscordRides(Base):
     name = Column(String, nullable=False)
     date = Column(Date, nullable=False)
     location = Column(String)
+    
+
+
+class RideCoverage(Base):
+    """Model representing a ride coverage entry."""
+
+    __tablename__ = "ride_coverage"
+    __table_args__ = (PrimaryKeyConstraint("discord_username", "message_id"),)
+    discord_username = Column(String, nullable=False)
+    datetime_detected = Column(DateTime, nullable=False, default=datetime.datetime.now())
+    message_id = Column(String, nullable=False)
