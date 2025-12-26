@@ -46,3 +46,15 @@ export interface GroupRidesResponse {
     groupings: string[] | null
     error: string | null
 }
+
+export interface RideCoverageUser {
+    discord_username: string
+    has_ride: boolean
+}
+
+export interface RideCoverage {
+    users: RideCoverageUser[]
+    total: number
+    assigned: number
+    message_found: boolean
+}
