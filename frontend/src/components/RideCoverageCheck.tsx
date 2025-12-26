@@ -241,27 +241,51 @@ function RideCoverageCheck() {
                     title="About Ride Coverage"
                 >
                     <p className="mb-2">
-                        This dashboard shows which users who reacted to ride request messages have been assigned to ride groups.
+                        This dashboard tracks which users who reacted to ride posts have been assigned to a driver.
                     </p>
-                    <ul className="space-y-1">
+                    <ul className="space-y-1 mb-3">
                         <li className="flex items-center gap-2">
                             <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
-                            <span>User has a ride assignment (location found in database)</span>
+                            <span>User is covered (assigned to a driver)</span>
                         </li>
                         <li className="flex items-center gap-2">
                             <span className="text-red-600 dark:text-red-400 font-bold">✗</span>
-                            <span>User does not have a ride assignment (needs attention!)</span>
+                            <span>User not covered (needs a ride!)</span>
                         </li>
                     </ul>
-                    <div className="mt-3 border-t border-slate-100 dark:border-slate-800 pt-2">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Schedule</p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Updates automatically:
-                            <br />
-                            • <strong>Friday Fellowship</strong>: Mon - Fri 10pm
-                            <br />
-                            • <strong>Sunday Service</strong>: Fri 10pm - Sun
-                        </p>
+
+                    <div className="space-y-3">
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Live Updates</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                The dashboard updates in real-time as drivers post "drive:" messages in Discord.
+                                <br />
+                                Deleting a message will automatically remove coverage.
+                            </p>
+                        </div>
+
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Tools</p>
+                            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                                <li className="flex items-center gap-2">
+                                    <RefreshCw className="h-3 w-3" />
+                                    <span><strong>Refresh:</strong> Reloads data from database</span>
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <CloudDownload className="h-3 w-3" />
+                                    <span><strong>Force Sync:</strong> Rescans Discord messages (use if data seems out of sync)</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Schedule</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                • <strong>Friday Fellowship</strong>: Mon - Fri 10pm
+                                <br />
+                                • <strong>Sunday Service</strong>: Fri 10pm - Sun
+                            </p>
+                        </div>
                     </div>
                 </InfoPanel>
 
