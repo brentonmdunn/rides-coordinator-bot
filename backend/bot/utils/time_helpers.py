@@ -96,5 +96,19 @@ def get_next_date_obj(day: DaysOfWeek) -> date:
     if days_ahead == 0:
         days_ahead = 7  # Skip to next day if `day` is current day
 
+
     # The key change is here: we convert the final datetime object to a date object
     return (today + timedelta(days=days_ahead)).date()
+
+
+def get_last_sunday() -> datetime:
+    """Calculates the date of the last Sunday.
+
+    Returns:
+        datetime: The datetime object for the last Sunday.
+    """
+    now = datetime.now()
+    days_to_subtract = (now.weekday() + 1) % 7
+    if days_to_subtract == 0:
+        days_to_subtract = 7
+    return now - timedelta(days=days_to_subtract)

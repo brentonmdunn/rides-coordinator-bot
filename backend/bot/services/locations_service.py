@@ -20,6 +20,7 @@ from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
 from bot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from bot.utils.parsing import get_message_and_embed_content
+from bot.utils.time_helpers import get_last_sunday
 
 load_dotenv()
 
@@ -298,17 +299,6 @@ class LocationsService:
 
         return locations_people, usernames_reacted, location_found
 
-    def _get_last_sunday(self):
-        """Calculates the date of the last Sunday.
-
-        Returns:
-            The datetime object for the last Sunday.
-        """
-        now = datetime.now()
-        days_to_subtract = (now.weekday() + 1) % 7
-        if days_to_subtract == 0:
-            days_to_subtract = 7
-        return now - timedelta(days=days_to_subtract)
 
     async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
         """Finds the most recent message matching the criteria.
@@ -320,7 +310,7 @@ class LocationsService:
         Returns:
             The message ID if found, otherwise None.
         """
-        last_sunday = self._get_last_sunday()
+        last_sunday = get_last_sunday()
         channel = self.bot.get_channel(channel_id)
         most_recent_message = None
         if not channel:
