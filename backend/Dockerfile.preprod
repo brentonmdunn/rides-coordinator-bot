@@ -34,9 +34,17 @@ COPY . .
 ENV TZ="America/Los_Angeles"
 ENV PATH="/app/.venv/bin:$PATH"
 ENV APP_ENV="preprod"
+ENV MAIN_RIDES_COORD_USER_ID=""
+ENV ICAL_URL=""
+ENV LSCC_PPL_CSV_URL=""
+ENV RIDES_LOCATIONS_CSV_URL=""
+ENV CLOUDFLARE_TEAM_DOMAIN=""
+ENV TOKEN=""
+ENV CLOUDFLARE_AUD=""
+ENV GOOGLE_API_KEY=""
 
 # Expose port
 EXPOSE 7999
 
 # Run the application
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7999"]
+CMD ["python", "-m", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "7999"]
