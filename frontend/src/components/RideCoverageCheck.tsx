@@ -286,11 +286,8 @@ function RideCoverageCheck() {
 
                     <div className="space-y-3">
                         <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Live Updates</p>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                The dashboard updates in real-time as drivers post "drive:" messages in Discord.
-                                <br />
-                                Deleting a message will automatically remove coverage.
+                                This widget only appears once the first ride grouping message is posted in Discord.
                             </p>
                         </div>
 
@@ -306,15 +303,6 @@ function RideCoverageCheck() {
                                     <span><strong>Force Sync:</strong> Rescans Discord messages (use if data seems out of sync)</span>
                                 </li>
                             </ul>
-                        </div>
-
-                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Schedule</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                                • <strong>Friday Fellowship</strong>: Mon - Fri 10pm
-                                <br />
-                                • <strong>Sunday Service</strong>: Fri 10pm - Sun
-                            </p>
                         </div>
                     </div>
                 </InfoPanel>
