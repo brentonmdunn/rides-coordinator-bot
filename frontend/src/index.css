@@ -118,8 +118,11 @@
     @apply border-border outline-ring/50;
   }
 
-  html {
-    overflow-x-hidden: hidden;
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
   }
 
   @apply bg-background text-foreground antialiased overflow-x-hidden;
