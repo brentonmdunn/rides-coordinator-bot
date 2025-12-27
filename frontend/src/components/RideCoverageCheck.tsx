@@ -130,6 +130,37 @@ function RideCoverageCheck() {
     const [showMenu, setShowMenu] = useState(false)
     const queryClient = useQueryClient()
 
+    // Determine which ride type to check based on current time
+    const now = new Date()
+    const day = now.getDay()
+    const hour = now.getHours()
+
+    // Show Sunday coverage if:
+    // - Friday after 10pm (22:00)
+    // - Saturday (all day)
+    // - Sunday (all day)
+    const showSunday = (day === 5 && hour >= 22) || day === 6 || day === 0
+    const currentRideType = showSunday ? 'sunday' : 'friday'
+
+    // Check if a message exists for the current ride type
+    const {
+        data: messageCheck,
+        isLoading: isCheckingMessage
+    } = useQuery<RideCoverage>({
+        queryKey: ['rideCoverage', currentRideType],
+        queryFn: async () => {
+            const response = await apiFetch(`/api/check-pickups/${currentRideType}`)
+            if (!response.ok) {
+                throw new Error('Failed to check message')
+            }
+            return response.json()
+        },
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
+    })
+
     const syncMutation = useMutation({
         mutationFn: async () => {
             const response = await apiFetch('/api/check-pickups/sync', {
@@ -151,15 +182,14 @@ function RideCoverageCheck() {
         queryClient.invalidateQueries({ queryKey: ['rideCoverage'] })
     }
 
-    const now = new Date()
-    const day = now.getDay()
-    const hour = now.getHours()
+    // Hide the widget if we're still checking or if no coverage entries exist
+    if (isCheckingMessage) {
+        return null // Don't show anything while checking
+    }
 
-    // Show Sunday coverage if:
-    // - Friday after 10pm (22:00)
-    // - Saturday (all day)
-    // - Sunday (all day)
-    const showSunday = (day === 5 && hour >= 22) || day === 6 || day === 0
+    if (!messageCheck || !messageCheck.has_coverage_entries) {
+        return null // Hide widget when no drive messages have been posted yet
+    }
 
     return (
         <Card>

@@ -147,3 +147,24 @@ class RideCoverageRepository:
                 return set(result.scalars().all())
             except Exception:
                 return set()
+
+    async def has_coverage_entries(self, since: datetime.datetime) -> bool:
+        """
+        Checks if any ride coverage entries exist since the given datetime.
+        
+        Args:
+            since: Start datetime to check for entries.
+        
+        Returns:
+            bool: True if any entries exist, False otherwise.
+        """
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as session:
+            try:
+                stmt = select(RideCoverageModel).where(
+                    RideCoverageModel.datetime_detected >= since
+                ).limit(1)
+                result = await session.execute(stmt)
+                return result.scalars().first() is not None
+            except Exception:
+                return False

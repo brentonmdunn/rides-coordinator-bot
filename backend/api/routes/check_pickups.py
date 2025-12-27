@@ -7,6 +7,7 @@ from bot.core.enums import AskRidesMessage, ChannelIds
 from bot.core.logger import logger
 from bot.services.locations_service import LocationsService
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
+from bot.utils.time_helpers import get_last_sunday
 
 router = APIRouter(prefix="/api/check-pickups", tags=["check-pickups"])
 
@@ -58,7 +59,8 @@ async def get_pickup_coverage(ride_type: str):
                 "users": [],
                 "total": 0,
                 "assigned": 0,
-                "message_found": False
+                "message_found": False,
+                "has_coverage_entries": False
             }
         
         # Get all users who reacted to the message
@@ -101,11 +103,16 @@ async def get_pickup_coverage(ride_type: str):
         # Sort: unassigned first, then alphabetically
         users.sort(key=lambda x: (x["has_ride"], x["discord_username"]))
         
+        # Check if any coverage entries exist for the current week
+        last_sunday = get_last_sunday()
+        has_entries = await ride_coverage_repo.has_coverage_entries(last_sunday)
+        
         return {
             "users": users,
             "total": len(users),
             "assigned": assigned_count,
-            "message_found": True
+            "message_found": True,
+            "has_coverage_entries": has_entries
         }
         
     except Exception as e:

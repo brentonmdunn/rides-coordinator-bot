@@ -57,4 +57,5 @@ export interface RideCoverage {
     total: number
     assigned: number
     message_found: boolean
+    has_coverage_entries: boolean
 }
