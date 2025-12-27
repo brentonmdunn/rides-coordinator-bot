@@ -12,7 +12,7 @@ import { ModeToggle } from './components/mode-toggle'
 
 function App() {
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-gray-50 dark:bg-zinc-950 py-12 px-0 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50 dark:bg-zinc-950 py-12 px-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <div className="max-w-4xl mx-auto space-y-8 overflow-x-hidden">
         <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-12">
           <div className="flex-1 text-center md:text-left">

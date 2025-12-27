@@ -35,7 +35,7 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                                     {person.discord_username ? (
                                         <button
                                             onClick={() => onCopy(person.discord_username!)}
-                                            className={`hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors ${copiedUsername === person.discord_username
+                                            className={`hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors break-all text-left ${copiedUsername === person.discord_username
                                                 ? 'text-green-600 dark:text-green-400 font-medium'
                                                 : ''
                                                 }`}

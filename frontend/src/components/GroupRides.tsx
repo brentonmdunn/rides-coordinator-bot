@@ -234,7 +234,7 @@ function GroupRides() {
                         {groupRidesSummary && (
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Summary</h3>
-                                <pre className="whitespace-pre-wrap p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-100 rounded-lg text-sm font-mono border border-emerald-100 dark:border-emerald-900/50">
+                                <pre className="whitespace-pre-wrap break-all p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-100 rounded-lg text-sm font-mono border border-emerald-100 dark:border-emerald-900/50">
                                     {groupRidesSummary}
                                 </pre>
                             </div>

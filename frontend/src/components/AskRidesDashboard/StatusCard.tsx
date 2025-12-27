@@ -48,7 +48,7 @@ function StatusCard({ title, job }: StatusCardProps) {
         <div className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-shadow">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">{title}</h3>
 
-            <div className={`px-3 py-2 rounded-md border text-sm font-medium mb-4 ${getStatusColors(status.color)}`}>
+            <div className={`px-3 py-2 rounded-md border text-sm font-medium mb-4 whitespace-normal break-words ${getStatusColors(status.color)}`}>
                 {status.text}
             </div>
 

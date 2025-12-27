@@ -121,7 +121,7 @@ function FeatureFlagsManager() {
                 </div>
 
                 {!flagsLoading && !flagsError && featureFlags.length > 0 && (
-                    <div className="rounded-lg border border-slate-200 dark:border-zinc-800 overflow-x-auto">
+                    <div className="rounded-lg border border-slate-200 dark:border-zinc-800 overflow-x-auto w-full max-w-[calc(100vw-3rem)]">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-slate-50 dark:bg-zinc-800/50 text-slate-900 dark:text-slate-100 font-semibold border-b border-slate-200 dark:border-zinc-800">
                                 <tr>
