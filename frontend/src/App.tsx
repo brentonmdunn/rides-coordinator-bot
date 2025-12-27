@@ -5,6 +5,7 @@ import GroupRides from './components/GroupRides'
 // import DemoControls from './components/DemoControls'
 import AskRidesDashboard from './components/AskRidesDashboard/AskRidesDashboard'
 import RideCoverageCheck from './components/RideCoverageCheck'
+import RideCoverageWarning from './components/RideCoverageWarning'
 import FeatureFlagsManager from './components/FeatureFlagsManager'
 import { ModeToggle } from './components/mode-toggle'
 
@@ -27,6 +28,7 @@ function App() {
         </header>
 
         <div className="grid gap-8">
+          <RideCoverageWarning />
           <AskRidesDashboard />
           <RideCoverageCheck />
           <PickupLocations />
