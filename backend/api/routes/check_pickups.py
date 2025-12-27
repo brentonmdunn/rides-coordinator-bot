@@ -156,3 +156,27 @@ async def sync_ride_coverage():
             status_code=500,
             detail=f"Failed to sync ride coverage: {str(e)}"
         )
+
+@router.get("/driver-reactions/{day}")
+async def get_driver_reactions(day: str):
+    """
+    Get emoji reactions for driver messages.
+    
+    Args:
+        day: "friday" or "sunday"
+    """
+    bot = get_bot()
+    if not bot:
+        raise HTTPException(status_code=503, detail="Bot not initialized")
+        
+    locations_service = LocationsService(bot)
+    try:
+        reactions = await locations_service.get_driver_reactions(day)
+        return {
+            "day": day,
+            "reactions": reactions,
+            "message_found": reactions is not None
+        }
+    except Exception as e:
+        logger.error(f"Error fetching driver reactions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

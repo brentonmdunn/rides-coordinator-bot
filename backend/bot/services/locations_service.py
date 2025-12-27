@@ -321,6 +321,61 @@ class LocationsService:
                 most_recent_message = message
         return most_recent_message.id if most_recent_message else None
 
+    async def _find_driver_message(self, keyword: str, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO):
+        """Finds the most recent driver message matching the keyword.
+
+        Args:
+            keyword: The keyword to search for (e.g., "Friday", "Sunday").
+            channel_id: The channel ID to search in.
+
+        Returns:
+            The message ID if found, otherwise None.
+        """
+        last_sunday = get_last_sunday()
+        channel = self.bot.get_channel(channel_id)
+        most_recent_message = None
+        if not channel:
+            return None
+        async for message in channel.history(after=last_sunday):
+            combined_text = get_message_and_embed_content(message)
+            if keyword.lower() in combined_text.lower():
+                most_recent_message = message
+        return most_recent_message.id if most_recent_message else None
+
+    async def get_driver_reactions(self, day: str):
+        """Retrieves reaction breakdown for a driver message.
+
+        Args:
+            day: "Friday" or "Sunday"
+
+        Returns:
+            Dictionary mapping emojis to lists of usernames.
+        """
+        keyword = day
+        # For Sunday, we might need specific keywords if there are multiple types, 
+        # but user just said "friday drivers" and "switch to sunday". 
+        # Usually "Sunday" appears in the message for Sunday service.
+        
+
+        channel_id = ChannelIds.BOT_STUFF__BOTS
+        # channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
+
+        message_id = await self._find_driver_message(keyword, channel_id)
+        if not message_id:
+            return None
+
+
+        channel = self.bot.get_channel(channel_id)
+        message = await channel.fetch_message(message_id)
+
+        reactions_by_emoji = defaultdict(list)
+        for reaction in message.reactions:
+             async for user in reaction.users():
+                if not user.bot:
+                    reactions_by_emoji[str(reaction.emoji)].append(user.name) # or display_name or global_name
+        
+        return dict(reactions_by_emoji)
+
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Retrieves a set of usernames who reacted to a message.
 
