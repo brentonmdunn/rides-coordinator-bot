@@ -221,7 +221,7 @@ function RideCoverageCheck() {
                                     className="fixed inset-0 z-10"
                                     onClick={() => setShowMenu(false)}
                                 />
-                                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-lg py-1 min-w-[180px]">
+                                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-lg py-1 min-w-0 w-full max-w-xs">
                                     <button
                                         onClick={() => syncMutation.mutate()}
                                         disabled={syncMutation.isPending}
