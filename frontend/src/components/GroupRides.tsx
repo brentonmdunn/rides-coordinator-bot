@@ -8,14 +8,14 @@ import ErrorMessage from "./ErrorMessage"
 import type { GroupRidesResponse } from '../types'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
+import { Settings } from 'lucide-react'
 
 function GroupRides() {
-    // ... state hooks (unchanged)
-
     const [rideType, setRideType] = useState<RideType>('friday')
     const [groupMessageId, setGroupMessageId] = useState('')
     const [groupDriverCapacity, setGroupDriverCapacity] = useState('44444')
-    const [channelId] = useState('939950319721406464')
+    const [channelId, setChannelId] = useState('')
+    const [showSettings, setShowSettings] = useState(false)
     const [groupRidesSummary, setGroupRidesSummary] = useState<string | null>(null)
     const [groupRidesData, setGroupRidesData] = useState<string[] | null>(null)
     const [originalGroupRidesData, setOriginalGroupRidesData] = useState<string[] | null>(null)
@@ -34,15 +34,20 @@ function GroupRides() {
         setOriginalGroupRidesData(null)
 
         try {
+            const body: any = {
+                ride_type: rideType,
+                message_id: rideType === 'message_id' ? groupMessageId : null,
+                driver_capacity: groupDriverCapacity,
+            }
+
+            if (channelId) {
+                body.channel_id = channelId
+            }
+
             const response = await apiFetch('/api/group-rides', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ride_type: rideType,
-                    message_id: rideType === 'message_id' ? groupMessageId : null,
-                    driver_capacity: groupDriverCapacity,
-                    channel_id: channelId
-                })
+                body: JSON.stringify(body)
             })
 
             const data: GroupRidesResponse = await response.json()
@@ -94,11 +99,25 @@ function GroupRides() {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle><span>🚗</span> Group Rides</CardTitle>
-                <InfoToggleButton
-                    isOpen={showInfo}
-                    onClick={() => setShowInfo(!showInfo)}
-                    title="How to use Group Rides"
-                />
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowSettings(!showSettings)}
+                        className={`h-8 w-8 transition-colors ${showSettings
+                            ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                            }`}
+                        title="Advanced Settings"
+                    >
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                    <InfoToggleButton
+                        isOpen={showInfo}
+                        onClick={() => setShowInfo(!showInfo)}
+                        title="How to use Group Rides"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <InfoPanel
@@ -157,6 +176,27 @@ function GroupRides() {
                             </div>
                         </label>
                     </div>
+
+                    {/* Advanced Settings (Channel ID) */}
+                    {showSettings && (
+                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-top-2">
+                            <label className="block">
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                    Custom Channel ID (Optional)
+                                </span>
+                                <Input
+                                    type="text"
+                                    value={channelId}
+                                    onChange={(e) => setChannelId(e.target.value)}
+                                    placeholder="Default: Rides Announcements Channel"
+                                    className="w-full max-w-md font-mono text-sm"
+                                />
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Leave blank to use the default channel.
+                                </p>
+                            </label>
+                        </div>
+                    )}
 
                     <div className="pt-2">
                         <Button

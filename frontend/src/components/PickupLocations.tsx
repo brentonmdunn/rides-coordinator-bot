@@ -9,11 +9,13 @@ import ErrorMessage from "./ErrorMessage"
 import type { LocationData } from '../types'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
+import { Settings } from 'lucide-react'
 
 function PickupLocations() {
     const [pickupRideType, setPickupRideType] = useState<RideType>('friday')
     const [messageId, setMessageId] = useState('')
-    const [channelId] = useState('939950319721406464')
+    const [channelId, setChannelId] = useState('')
+    const [showSettings, setShowSettings] = useState(false)
     const [pickupData, setPickupData] = useState<LocationData | null>(null)
     const [pickupError, setPickupError] = useState<string>('')
     const [pickupLoading, setPickupLoading] = useState(false)
@@ -39,14 +41,19 @@ function PickupLocations() {
         setPickupData(null)
 
         try {
+            const body: any = {
+                ride_type: pickupRideType,
+                message_id: pickupRideType === 'message_id' ? messageId : null,
+            }
+
+            if (channelId) {
+                body.channel_id = channelId
+            }
+
             const response = await apiFetch('/api/list-pickups', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ride_type: pickupRideType,
-                    message_id: pickupRideType === 'message_id' ? messageId : null,
-                    channel_id: channelId
-                })
+                body: JSON.stringify(body)
             })
 
             const result = await response.json()
@@ -71,11 +78,25 @@ function PickupLocations() {
                     <span>📍</span>
                     <span>List Pickups</span>
                 </CardTitle>
-                <InfoToggleButton
-                    isOpen={showInfo}
-                    onClick={() => setShowInfo(!showInfo)}
-                    title="How to use List Pickups"
-                />
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowSettings(!showSettings)}
+                        className={`h-8 w-8 transition-colors ${showSettings
+                            ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                            }`}
+                        title="Advanced Settings"
+                    >
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                    <InfoToggleButton
+                        isOpen={showInfo}
+                        onClick={() => setShowInfo(!showInfo)}
+                        title="How to use List Pickups"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <InfoPanel
@@ -98,6 +119,7 @@ function PickupLocations() {
                     {/* Message ID Input (only shown when message_id is selected) */}
                     {pickupRideType === 'message_id' && (
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
+                            {/* ... Message ID input ... */}
                             <label className="block">
                                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
                                     Message ID
@@ -114,6 +136,27 @@ function PickupLocations() {
                         </div>
                     )}
 
+                    {/* Advanced Settings (Channel ID) */}
+                    {showSettings && (
+                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-top-2">
+                            <label className="block">
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                    Custom Channel ID (Optional)
+                                </span>
+                                <Input
+                                    type="text"
+                                    value={channelId}
+                                    onChange={(e) => setChannelId(e.target.value)}
+                                    placeholder="Default: Rides Announcements Channel"
+                                    className="w-full max-w-md font-mono text-sm"
+                                />
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Leave blank to use the default channel.
+                                </p>
+                            </label>
+                        </div>
+                    )}
+
                     <div className="pt-2">
                         <Button
                             type="submit"
@@ -124,6 +167,7 @@ function PickupLocations() {
                         </Button>
                     </div>
                 </form>
+
 
                 {/* Error Display */}
                 <div className="mt-6">
