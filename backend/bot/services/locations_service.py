@@ -357,8 +357,7 @@ class LocationsService:
         # Usually "Sunday" appears in the message for Sunday service.
         
 
-        channel_id = ChannelIds.BOT_STUFF__BOTS
-        # channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
+        channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 
         message_id = await self._find_driver_message(keyword, channel_id)
         if not message_id:
