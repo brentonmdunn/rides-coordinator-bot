@@ -1,96 +1,72 @@
-# Rides Coordinator Bot
+# Rides Coordinator Bot - Backend
 
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
-[![Docker](https://img.shields.io/badge/Docker-RideBot-blue?logo=docker)](https://hub.docker.com/r/brentonmdunn/ride-bot)
 
-This is a Discord bot that helps coordinate ride pickups.
+The backend is built with **Python 3.13**, using **discord.py** for bot functionality and **FastAPI** for the API layer.
 
+## 🚀 Setup & Installation
 
-> ⚠️ **Warning:** `print()` is not working. Please see issue [#73](https://github.com/brentonmdunn/rides-coordinator-bot/issues/73) for more details.
----
+### Prerequisites
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) (Recommended for package management)
+- Docker (optional, for deployment)
 
-## 🚀 Installation
+### Installation
 
-Clone the repository and move into the folder:
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
 
-```bash
-git clone https://github.com/brentonmdunn/rides-coordinator-bot
-cd rides-coordinator-bot
-```
+2. Install dependencies using `uv`:
+   ```bash
+   uv sync
+   ```
 
-If not already installed, download `uv` [here](https://docs.astral.sh/uv/getting-started/installation/).
+3. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Discord tokens and other secrets
+   ```
 
-Install dependencies:
+## 🛠️ Development
 
-```bash
-uv sync
-```
-
-Set up environment variables:
-
-1. Copy the example file:
-    ```bash
-    cp .env.example .env
-    ```
-2. Edit `.env` and populate the required values.
-
----
-
-## 🛠️ Development Commands (via `invoke`)
-
-These commands streamline local development. Run them using [`invoke`](https://www.pyinvoke.org/):
+### Running the Application
+To run the bot and API together:
 
 ```bash
-invoke <command>
+uv run python main.py
+```
+*Or if using virtualenv directly:*
+```bash
+python main.py
 ```
 
-| Command         | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| `invoke run`    | Run the bot (`main.py`)                                                     |
-| `invoke venv`   | Activate the virtual environment (assumes `.venv/bin/activate`)             |
-| `invoke lint`   | Lint the codebase using Ruff                                                |
-| `invoke fix`    | Automatically fix lint issues with Ruff                                     |
-| `invoke format` | Format the code using Ruff’s formatter                                      |
-| `invoke all`    | Run `lint`, `fix`, and `format` in sequence (for full code quality check)   |
-| `invoke test`   | Runs pytest test suite                                                      |
+### Code Quality (Linting & Formatting)
+We use `invoke` to manage development tasks.
 
-> **Note:** Ensure `ruff` and `invoke` are installed:
-> ```bash
-> pip install ruff invoke
-> ```
+| Command | Description |
+|---------|-------------|
+| `uv run invoke lint` | Check code for linting errors (Ruff) |
+| `uv run invoke format` | Format code (Ruff) |
+| `uv run invoke fix` | Auto-fix linting errors |
+| `uv run invoke test` | Run tests (pytest) |
+| `uv run invoke all` | Run lint, fix, and format |
 
----
+## 🧪 Testing
 
-## 🐳 Building and Pushing Docker Image
-
-To build and push a multi-platform Docker image:
+Run the test suite using pytest:
 
 ```bash
-docker buildx create --use --name multi-platform-builder --driver docker-container
-docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot --push .
+uv run pytest
 ```
 
----
+## 🐳 Docker Deployment
 
-## 📦 Deploying to Synology NAS (via Container Manager)
+The backend can be deployed via the root Docker configuration.
 
-1. Pull the Docker image from [Docker Hub](https://hub.docker.com/r/brentonmdunn/ride-bot)
-2. Enable auto-restart
-3. Map volume:  
-   `/volume1/docker/lscc-discord-bot` → `/app/db:rw`
-4. Load environment variables from your `.env` file
-
----
-
-## 🧪 GitHub Workflows
-
-- **Pull Requests**
-  - Each PR to main and staging runs **lint** and **format** checks via GitHub Actions
-  - PRs that fail these checks will be blocked from merging
-
-- **Main Branch Merges**
-  - After merging to `main`, a workflow builds and pushes the Docker image to Docker Hub
-
-- **Branch Protection**
-  - Direct commits to `main` are prohibited. All changes must go through a PR and pass required checks
+```bash
+# From root directory
+docker build -t ride-bot .
+```
 
