@@ -1,19 +1,2 @@
-*.env*
-!.env.example
 .DS_Store
-.venv
-keys.txt
-*.pem
-info.json
-distances.json
-colleges.txt
-logs/*.log
-.ruff_cache
-*.old
-*.pyc
-*__pycache__*
-
-# SQLite database
-*.db
-*.db-journal
-*.sqlite3
+.env*

@@ -1,96 +1,34 @@
 # Rides Coordinator Bot
 
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
-[![Docker](https://img.shields.io/badge/Docker-RideBot-blue?logo=docker)](https://hub.docker.com/r/brentonmdunn/ride-bot)
+[![React](https://img.shields.io/badge/react-18-blue.svg)](https://react.dev/)
+[![Docker](https://img.shields.io/badge/docker-build-blue.svg)](https://www.docker.com/)
 
-This is a Discord bot that helps coordinate ride pickups.
+A comprehensive Discord bot and web dashboard for coordinating ride pickups, managing events, and tracking driver availability.
 
+## 🏗️ Architecture
 
-> ⚠️ **Warning:** `print()` is not working. Please see issue [#73](https://github.com/brentonmdunn/rides-coordinator-bot/issues/73) for more details.
----
+This project is a monorepo consisting of:
 
-## 🚀 Installation
+- **Backened (`backend/`)**: A Python application using `discord.py` for the bot and `FastAPI` for the web API and admin interface.
+- **Frontend (`frontend/`)**: A React SPA built with Vite and TailwindCSS for the user dashboard.
 
-Clone the repository and move into the folder:
+## 🚀 Quick Start
 
-```bash
-git clone https://github.com/brentonmdunn/rides-coordinator-bot
-cd rides-coordinator-bot
-```
+### 1. Backend Setup
+Navigate to the `backend` directory to set up the Python environment, install dependencies, and run the bot/API.
 
-If not already installed, download `uv` [here](https://docs.astral.sh/uv/getting-started/installation/).
+[👉 Go to Backend Documentation](backend/README.md)
 
-Install dependencies:
+### 2. Frontend Setup
+Navigate to the `frontend` directory to install Node.js dependencies and start the development server.
 
-```bash
-uv sync
-```
+[👉 Go to Frontend Documentation](frontend/README.md)
 
-Set up environment variables:
+## 🐳 Docker Support
 
-1. Copy the example file:
-    ```bash
-    cp .env.example .env
-    ```
-2. Edit `.env` and populate the required values.
-
----
-
-## 🛠️ Development Commands (via `invoke`)
-
-These commands streamline local development. Run them using [`invoke`](https://www.pyinvoke.org/):
+The entire application can be containerized. CI/CD pipelines are configured to build multi-platform images on merge to main.
 
 ```bash
-invoke <command>
+docker pull brentonmdunn/ride-bot
 ```
-
-| Command         | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| `invoke run`    | Run the bot (`main.py`)                                                     |
-| `invoke venv`   | Activate the virtual environment (assumes `.venv/bin/activate`)             |
-| `invoke lint`   | Lint the codebase using Ruff                                                |
-| `invoke fix`    | Automatically fix lint issues with Ruff                                     |
-| `invoke format` | Format the code using Ruff’s formatter                                      |
-| `invoke all`    | Run `lint`, `fix`, and `format` in sequence (for full code quality check)   |
-| `invoke test`   | Runs pytest test suite                                                      |
-
-> **Note:** Ensure `ruff` and `invoke` are installed:
-> ```bash
-> pip install ruff invoke
-> ```
-
----
-
-## 🐳 Building and Pushing Docker Image
-
-To build and push a multi-platform Docker image:
-
-```bash
-docker buildx create --use --name multi-platform-builder --driver docker-container
-docker buildx build --platform linux/amd64,linux/arm64 -t brentonmdunn/ride-bot --push .
-```
-
----
-
-## 📦 Deploying to Synology NAS (via Container Manager)
-
-1. Pull the Docker image from [Docker Hub](https://hub.docker.com/r/brentonmdunn/ride-bot)
-2. Enable auto-restart
-3. Map volume:  
-   `/volume1/docker/lscc-discord-bot` → `/app/db:rw`
-4. Load environment variables from your `.env` file
-
----
-
-## 🧪 GitHub Workflows
-
-- **Pull Requests**
-  - Each PR to main and staging runs **lint** and **format** checks via GitHub Actions
-  - PRs that fail these checks will be blocked from merging
-
-- **Main Branch Merges**
-  - After merging to `main`, a workflow builds and pushes the Docker image to Docker Hub
-
-- **Branch Protection**
-  - Direct commits to `main` are prohibited. All changes must go through a PR and pass required checks
-

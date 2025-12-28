@@ -25,7 +25,7 @@ jobs:
         # 2. `&& (...)`: This part only runs if grep SUCCEEDS (finds a print statement). It prints an error and exits with 1, failing the step.
         # 3. `|| echo ...`: This part only runs if grep FAILS (finds no print statements). It prints a success message, and the step succeeds.
         run: |
-          if grep --exclude-dir=scripts --include=\*.py -r "print(" app/; then
+          if grep --exclude-dir=scripts --exclude-dir=.venv --include=\*.py -r "print(" backend/; then
             echo "Error: Found print() statements. Please use the logging module instead."
             exit 1
           else
