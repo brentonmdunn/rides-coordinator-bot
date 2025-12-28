@@ -15,6 +15,8 @@ class Locations(commands.Cog):
     """Cog for managing user locations and pickups."""
 
     def __init__(self, bot: commands.Bot):
+        """Initialize the Locations cog."""
+
         self.bot = bot
         self.service = LocationsService(bot)
 

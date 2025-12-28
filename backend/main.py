@@ -1,3 +1,5 @@
+"""Main entry point for the bot."""
+
 import asyncio
 import os
 from pathlib import Path
@@ -31,6 +33,8 @@ bot: Bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready() -> None:
+    """Log when the bot is ready and synced."""
+
     logger.info(f"✅ Logged in as {bot.user}!")
     logger.info(f"🛠️  Synced {len(await bot.tree.sync())} slash commands.")
 
@@ -45,6 +49,8 @@ async def on_ready() -> None:
 
 
 async def load_extensions() -> None:
+    """Load all cogs from the bot/cogs directory."""
+
     cogs_path = Path.cwd() / "bot" / "cogs"
     priority_filename = "job_scheduler.py"
 
@@ -89,6 +95,8 @@ async def on_app_command_error(
     interaction: Interaction,
     error: AppCommandError,
 ) -> None:
+    """Handle errors for app commands."""
+
     if isinstance(error, CheckFailure):
         await interaction.response.send_message(
             "❌ You must be a server admin to use this command.",
@@ -130,6 +138,8 @@ async def disable_features_for_local_env():
 
 
 async def main() -> None:
+    """Run the bot."""
+
     async with bot:
         await init_db()
         async with AsyncSessionLocal() as session:

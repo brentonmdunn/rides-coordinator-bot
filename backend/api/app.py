@@ -7,21 +7,22 @@ Main FastAPI application with Discord bot integration and Cloudflare authenticat
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.auth import cloudflare_access_middleware
 from api.routes.ask_rides import router as ask_rides_router
+from api.routes.check_pickups import router as check_pickups_router
 from api.routes.example import router as example_router
 from api.routes.feature_flags import router as feature_flags_router
 from api.routes.group_rides import router as group_rides_router
 from api.routes.health import router as health_router
-from api.routes.locations import router as locations_router
 from api.routes.list_pickups import router as list_pickups_router
-from api.routes.check_pickups import router as check_pickups_router
+from api.routes.locations import router as locations_router
 from bot.api import bot_lifespan
 
 # Configure logging
@@ -38,26 +39,30 @@ APP_ENV = os.getenv("APP_ENV", "local")
 async def lifespan(app: FastAPI):
     """
     Manage application and Discord bot lifecycle.
-    
+
     Args:
         app: The FastAPI application instance
-        
+
     Yields:
         Control back to the application during runtime
     """
     # Startup
     if APP_ENV != "local":
         if not CLOUDFLARE_TEAM_DOMAIN or not CLOUDFLARE_AUD:
-            logger.error("CRITICAL: Cloudflare Access environment variables are not set. Authentication will fail.")
+            logger.error(
+                "CRITICAL: Cloudflare Access environment variables are not set. "
+                "Authentication will fail."
+            )
+
         else:
             logger.info("Cloudflare Access configured for production.")
     else:
         logger.info("Running in LOCAL mode: Authentication is bypassed.")
-    
+
     # Start Discord bot
     async with bot_lifespan():
         yield
-    
+
     # Shutdown (cleanup handled by bot_lifespan context manager)
     logger.info("Application shutdown complete")
 
@@ -90,43 +95,46 @@ app.include_router(list_pickups_router)
 app.include_router(check_pickups_router)
 
 # Mount static files for React SPA (if directory exists)
-admin_ui_path = "admin_ui"
-if os.path.isdir(admin_ui_path):
+admin_ui_path = Path("admin_ui")
+if admin_ui_path.is_dir():
     # Mount assets directory
-    assets_path = os.path.join(admin_ui_path, "assets")
-    if os.path.isdir(assets_path):
+    assets_path = admin_ui_path / "assets"
+    if assets_path.is_dir():
         app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
         logger.info(f"Mounted static assets from {assets_path}")
-    
-    # SPA fallback route - must be last
+
+    # Catch-all route for SPA
     @app.get("/{file_path:path}")
-    def serve_spa(file_path: str):
+    async def serve_spa(file_path: str):
         """
         Serve React SPA files with fallback to index.html.
         Excludes API routes.
-        
+
         Args:
             file_path: Requested file path
-            
+
         Returns:
             File response for requested file or index.html
         """
-        logger.error("HERERERERERERE")
-        # Don't intercept API routes
-        if file_path.startswith("api/"):
-            return {"error": "Not found"}
-        
+        # Allow API routes to pass through (though they should be caught by routers above)
+        if (
+            file_path.startswith("api/")
+            or file_path.startswith("docs")
+            or file_path.startswith("openapi.json")
+        ):
+            return None
+
         # Check if the requested path corresponds to a file in admin_ui
-        full_path = os.path.join(admin_ui_path, file_path)
-        if file_path and os.path.isfile(full_path):
+        full_path = admin_ui_path / file_path
+        if file_path and full_path.is_file():
             return FileResponse(full_path)
         # Otherwise, serve the SPA index.html
-        index_path = os.path.join(admin_ui_path, "index.html")
-        if os.path.isfile(index_path):
+        index_path = admin_ui_path / "index.html"
+        if index_path.is_file():
             return FileResponse(index_path)
         # If no index.html, return 404
-        return {"error": "SPA not found"}
-    
+        raise HTTPException(status_code=404, detail="Not Found")
+
     logger.info("Configured SPA serving from admin_ui/")
 else:
-    logger.warning(f"Admin UI directory '{admin_ui_path}' not found. Static file serving disabled.")
+    logger.warning("Admin UI directory not found. SPA will not be served.")

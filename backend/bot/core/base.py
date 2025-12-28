@@ -1,3 +1,5 @@
+"""Base configurations and constants."""
+
 from sqlalchemy.orm import declarative_base
 
 # This is the single source of truth for the SQLAlchemy declarative base.

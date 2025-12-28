@@ -14,6 +14,8 @@ class HelpCog(commands.Cog):
     """Cog for displaying help information."""
 
     def __init__(self, bot: commands.Bot, help_service: HelpService):
+        """Initialize the Help cog."""
+
         self.bot = bot
         self.help_service = help_service
 

@@ -10,6 +10,8 @@ class EventsRepository:
     """Handles all data access related to Discord objects like roles, messages, and members."""
 
     def __init__(self, bot: commands.Bot):
+        """Initialize the CommunityEventsRepository."""
+
         self.bot = bot
 
     def get_guild(self, guild_id: int) -> discord.Guild | None:

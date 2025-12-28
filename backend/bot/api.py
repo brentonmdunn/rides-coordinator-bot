@@ -32,7 +32,7 @@ _bot_instance: Bot | None = None
 def get_bot() -> Bot | None:
     """
     Get the running Discord bot instance.
-    
+
     Returns:
         The bot instance if running and ready, None otherwise.
     """
@@ -114,10 +114,10 @@ async def _disable_features_for_local_env():
 async def bot_lifespan():
     """
     Async context manager for Discord bot lifecycle.
-    
+
     Handles bot initialization, startup, and shutdown.
     Sets the global _bot_instance for API access.
-    
+
     Usage:
         async with bot_lifespan():
             # Bot is running
@@ -125,7 +125,7 @@ async def bot_lifespan():
         # Bot is shutdown
     """
     global _bot_instance
-    
+
     # Setup bot intents
     intents: discord.Intents = discord.Intents.default()
     intents.message_content = True
@@ -135,7 +135,7 @@ async def bot_lifespan():
 
     # Create bot instance
     bot: Bot = commands.Bot(command_prefix="!", intents=intents)
-    
+
     # Set up event handlers
     @bot.event
     async def on_ready() -> None:
@@ -157,22 +157,22 @@ async def bot_lifespan():
         await seed_feature_flags(session)
     await FeatureFlagsRepository.initialize_cache()
     await _disable_features_for_local_env()
-    
+
     # Load extensions
     await _load_extensions(bot)
-    
+
     # Start bot in background
     _bot_instance = bot
     bot_task = asyncio.create_task(bot.start(TOKEN))
-    
+
     try:
         # Wait for bot to be ready
         while not bot.is_ready():
             await asyncio.sleep(0.1)
-        
+
         logger.info("🤖 Discord bot is ready and connected!")
         yield bot
-        
+
     finally:
         # Cleanup
         logger.info("🛑 Shutting down Discord bot...")

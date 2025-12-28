@@ -6,7 +6,9 @@ from discord.ext import commands
 # Your original imports
 from bot.core.enums import FeatureFlagNames
 from bot.core.logger import log_cmd, logger
-from bot.repositories.community_events_repository import EventsRepository as CommunityEventsRepository
+from bot.repositories.community_events_repository import (
+    EventsRepository as CommunityEventsRepository,
+)
 
 # New imports for DI
 from bot.services.community_events_service import EventsService as CommunityEventsService
@@ -23,6 +25,8 @@ class CommunityEventsCog(commands.Cog):
     """Cog for managing event-related tasks, such as role assignment based on reactions."""
 
     def __init__(self, bot: commands.Bot, events_service: CommunityEventsService):
+        """Initialize the CommunityEvents cog."""
+
         self.bot = bot
         self.events_service = events_service
 

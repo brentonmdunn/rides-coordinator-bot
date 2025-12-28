@@ -35,6 +35,8 @@ class FeatureFlagsCog(commands.Cog):
     """Cog that exposes commands for listing and modifying feature flags."""
 
     def __init__(self, bot: commands.Bot, feature_flags_service: FeatureFlagsService):
+        """Initialize the FeatureFlags cog."""
+
         self.bot = bot
         self.feature_flags_service = feature_flags_service
 

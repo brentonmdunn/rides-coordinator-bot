@@ -1,3 +1,5 @@
+"""Job for synchronizing non-Discord rides."""
+
 from bot.core.logger import logger
 from bot.services.non_discord_rides_service import NonDiscordRidesService
 

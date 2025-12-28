@@ -13,6 +13,8 @@ class Whois(commands.Cog):
     """Cog for looking up user information."""
 
     def __init__(self, bot: commands.Bot):
+        """Initialize the WhoIs cog."""
+
         self.bot = bot
 
     @discord.app_commands.command(

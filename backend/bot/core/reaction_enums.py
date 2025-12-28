@@ -1,3 +1,5 @@
+"""Enumerations for reaction emojis."""
+
 from enum import StrEnum
 
 

@@ -20,6 +20,8 @@ class NonDiscordRidesService:
     """Service for handling non-Discord ride logic."""
 
     def __init__(self):
+        """Initialize the NonDiscordRidesService."""
+
         # No dependencies needed in init for now, as we create session per method
         pass
 

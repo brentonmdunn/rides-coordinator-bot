@@ -17,6 +17,8 @@ class JobScheduler(commands.Cog):
     """Cog that manages scheduled tasks using APScheduler."""
 
     def __init__(self, bot):
+        """Initialize the JobScheduler cog."""
+
         self.bot = bot
         self.scheduler = AsyncIOScheduler()
 

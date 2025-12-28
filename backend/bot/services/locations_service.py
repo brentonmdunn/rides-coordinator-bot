@@ -6,7 +6,6 @@ import io
 import os
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import datetime, timedelta
 from typing import Literal
 
 import discord
@@ -46,6 +45,8 @@ class LocationsService:
     """Service for handling location data and synchronization."""
 
     def __init__(self, bot):
+        """Initialize the LocationsService."""
+
         self.bot = bot
         self.repo = LocationsRepository()
 
@@ -260,7 +261,6 @@ class LocationsService:
         Returns:
             A tuple containing (locations_people, usernames_reacted, location_found).
         """
-        logger.info(f"Calling list_locations with day={day}, message_id={message_id}, channel_id={channel_id}, option={option}")
         if day:
             if day.lower() == "sunday":
                 ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
@@ -299,7 +299,6 @@ class LocationsService:
 
         return locations_people, usernames_reacted, location_found
 
-
     async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
         """Finds the most recent message matching the criteria.
 
@@ -321,7 +320,9 @@ class LocationsService:
                 most_recent_message = message
         return most_recent_message.id if most_recent_message else None
 
-    async def _find_driver_message(self, keyword: str, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO):
+    async def _find_driver_message(
+        self, keyword: str, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
+    ):
         """Finds the most recent driver message matching the keyword.
 
         Args:
@@ -352,10 +353,9 @@ class LocationsService:
             Dictionary mapping emojis to lists of usernames.
         """
         keyword = day
-        # For Sunday, we might need specific keywords if there are multiple types, 
-        # but user just said "friday drivers" and "switch to sunday". 
+        # For Sunday, we might need specific keywords if there are multiple types,
+        # but user just said "friday drivers" and "switch to sunday".
         # Usually "Sunday" appears in the message for Sunday service.
-        
 
         channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 
@@ -363,16 +363,17 @@ class LocationsService:
         if not message_id:
             return None
 
-
         channel = self.bot.get_channel(channel_id)
         message = await channel.fetch_message(message_id)
 
         reactions_by_emoji = defaultdict(list)
         for reaction in message.reactions:
-             async for user in reaction.users():
+            async for user in reaction.users():
                 if not user.bot:
-                    reactions_by_emoji[str(reaction.emoji)].append(user.name) # or display_name or global_name
-        
+                    reactions_by_emoji[str(reaction.emoji)].append(
+                        user.name
+                    )  # or display_name or global_name
+
         return dict(reactions_by_emoji)
 
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
@@ -469,14 +470,14 @@ class LocationsService:
             # Don't flatten to just names yet, keep the full tuple
             people = people_username_list
             matched = False
-            
-            for group_name, group_data in housing_groups.items():
+
+            for _, group_data in housing_groups.items():
                 if any(keyword in location.lower() for keyword in group_data["filter"]):
                     group_data["count"] += len(people)
                     group_data["locations"][location] = people
                     matched = True
                     break
-            
+
             if not matched:
                 housing_groups["Off Campus"]["count"] += len(people)
                 housing_groups["Off Campus"]["locations"][location] = people
@@ -485,10 +486,7 @@ class LocationsService:
         unknown_location = set(usernames_reacted) - location_found
         unknown_users = [str(user) for user in unknown_location] if unknown_location else []
 
-        return {
-            "groups": housing_groups,
-            "unknown_users": unknown_users
-        }
+        return {"groups": housing_groups, "unknown_users": unknown_users}
 
     def _build_embed(
         self, locations_people, usernames_reacted, location_found, option=None, custom_title=None
@@ -513,7 +511,9 @@ class LocationsService:
         )
 
         # Use the helper function to group locations
-        grouped_data = self.group_locations_by_housing(locations_people, usernames_reacted, location_found)
+        grouped_data = self.group_locations_by_housing(
+            locations_people, usernames_reacted, location_found
+        )
 
         # Build embed fields from grouped data
         for group_name, group_data in grouped_data["groups"].items():
@@ -524,7 +524,7 @@ class LocationsService:
                     # Extract just the names for the Discord embed
                     people_names = [p[0] for p in people]
                     people_str += f"**({len(people)}) {location}:** {', '.join(people_names)}\n"
-                
+
                 embed.add_field(
                     name=f"{group_data['emoji']} [{group_data['count']}] {group_name}",
                     value=people_str,
@@ -539,5 +539,5 @@ class LocationsService:
                 + "\n(Make sure their Discord username is correct in the sheet!)",
                 inline=False,
             )
-        
+
         return embed

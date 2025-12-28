@@ -18,6 +18,8 @@ class NonDiscordRidesCog(commands.Cog):
     """Cog for handling pickups for users without Discord."""
 
     def __init__(self, bot: commands.Bot):
+        """Initialize the NonDiscordRides cog."""
+
         self.bot = bot
         self.service = NonDiscordRidesService()
 

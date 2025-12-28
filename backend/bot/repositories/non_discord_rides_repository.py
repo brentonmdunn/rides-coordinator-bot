@@ -12,6 +12,8 @@ class NonDiscordRidesRepository:
     """Handles database operations for non-Discord rides."""
 
     def __init__(self, session: AsyncSession):
+        """Initialize the NonDiscordRidesRepository."""
+
         self.session = session
 
     async def create_ride(self, ride: NonDiscordRides) -> NonDiscordRides:

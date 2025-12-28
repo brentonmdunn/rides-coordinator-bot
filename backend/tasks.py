@@ -43,9 +43,13 @@ def all(c):
 
 @task
 def test(c):
+    """Run tests using pytest."""
+
     c.run("python -m pytest --color=yes -v")
 
 
 @task
 def clean(c):
+    """Clean up dev commands."""
+
     c.run("python scripts/remove_dev_commands.py")

@@ -23,6 +23,8 @@ class AskDrivers(commands.Cog):
     """Cog for asking drivers for availability."""
 
     def __init__(self, bot: commands.Bot, driver_service):
+        """Initialize the AskDrivers cog."""
+
         self.bot = bot
         self.driver_service = driver_service
 

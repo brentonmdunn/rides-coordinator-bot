@@ -12,13 +12,13 @@ router = APIRouter(prefix="/api/ask-rides", tags=["ask-rides"])
 async def get_status():
     """
     Get status for all ask rides jobs.
-    
+
     Returns:
         Dictionary with status for friday, sunday, and sunday_class jobs
     """
     bot = get_bot()
     if not bot:
         return {"error": "Bot not initialized"}
-    
+
     status = await get_ask_rides_status(bot)
     return status

@@ -25,7 +25,7 @@ _cloudflare_keys = None
 async def get_cloudflare_keys():
     """
     Fetch and cache public keys from Cloudflare.
-    
+
     Returns:
         List of public keys or empty list if fetch fails.
     """
@@ -50,10 +50,10 @@ async def get_cloudflare_keys():
 async def verify_cloudflare_token(request: Request):
     """
     Verifies the Cloudflare Access JWT and extracts user information.
-    
+
     Args:
         request: The FastAPI request object
-        
+
     Returns:
         User info dict or None if verification fails.
     """
@@ -62,7 +62,9 @@ async def verify_cloudflare_token(request: Request):
         return {"email": "dev@example.com", "sub": "dev-user"}
 
     if not CLOUDFLARE_AUD or not CLOUDFLARE_TEAM_DOMAIN:
-        logger.error("Cloudflare Access configuration is missing (CLOUDFLARE_AUD or CLOUDFLARE_TEAM_DOMAIN)")
+        logger.error(
+            "Cloudflare Access configuration is missing (CLOUDFLARE_AUD or CLOUDFLARE_TEAM_DOMAIN)"
+        )
         return None
 
     # Allow health check to bypass auth
@@ -73,26 +75,26 @@ async def verify_cloudflare_token(request: Request):
     if not token:
         logger.error(f"Missing Cf-Access-Jwt-Assertion header for path: {request.url.path}")
         return None
-    
+
     keys = await get_cloudflare_keys()
-    
+
     try:
         header = jwt.get_unverified_header(token)
         key = next(k for k in keys if k["kid"] == header["kid"])
-        
+
         payload = jwt.decode(
             token,
             key,
             algorithms=["RS256"],
             audience=CLOUDFLARE_AUD,
-            issuer=f"https://{CLOUDFLARE_TEAM_DOMAIN}"
+            issuer=f"https://{CLOUDFLARE_TEAM_DOMAIN}",
         )
-        
+
         # Extract user information from JWT payload
         return {
             "email": payload.get("email"),
             "sub": payload.get("sub"),
-            "name": payload.get("name")
+            "name": payload.get("name"),
         }
     except Exception as e:
         # Debug logging for troubleshooting 'Invalid audience' or 'Invalid issuer'
@@ -104,18 +106,22 @@ async def verify_cloudflare_token(request: Request):
                 f"iss: {unverified_payload.get('iss')}"
             )
         except Exception:
-            logger.error(f"Token verification failed for {request.url.path}: {e} (could not parse unverified claims)")
+            logger.error(
+                f"Token verification failed for {request.url.path}: {e} "
+                "(could not parse unverified claims)"
+            )
+
         return None
 
 
 async def cloudflare_access_middleware(request: Request, call_next):
     """
     HTTP middleware to verify Cloudflare Access JWT on all requests.
-    
+
     Args:
         request: The FastAPI request object
         call_next: The next middleware/handler in the chain
-        
+
     Returns:
         Response from next handler or 401 Unauthorized
     """

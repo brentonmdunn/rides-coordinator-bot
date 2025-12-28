@@ -96,7 +96,6 @@ def get_next_date_obj(day: DaysOfWeek) -> date:
     if days_ahead == 0:
         days_ahead = 7  # Skip to next day if `day` is current day
 
-
     # The key change is here: we convert the final datetime object to a date object
     return (today + timedelta(days=days_ahead)).date()
 

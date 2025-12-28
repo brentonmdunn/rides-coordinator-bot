@@ -15,6 +15,8 @@ class GroupRides(commands.Cog):
     """Cog for handling group rides logic."""
 
     def __init__(self, bot: commands.Bot):
+        """Initialize the GroupRides cog."""
+
         self.bot = bot
         self.service = GroupRidesService(bot)
 

@@ -311,6 +311,8 @@ class GroupRidesService:
     """Service for handling group rides logic and LLM interaction."""
 
     def __init__(self, bot):
+        """Initialize the GroupRidesService."""
+
         self.bot = bot
         self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
         self.locations_service = LocationsService(bot)
@@ -443,17 +445,17 @@ class GroupRidesService:
     ) -> list[str]:
         """
         Core ride grouping logic shared by both Discord and API methods.
-        
+
         Args:
             message_id: The message ID to fetch pickups from
             driver_capacity: String representing driver capacities
             channel_id: Channel ID where the message is located
             legacy_prompt: Whether to use the legacy prompt
             custom_prompt: Optional custom prompt to use
-            
+
         Returns:
             List of formatted ride grouping strings
-            
+
         Raises:
             ValueError: If invalid parameters or insufficient capacity
         """
@@ -530,7 +532,7 @@ class GroupRidesService:
         try:
             driver_capacity_list = parse_numbers(driver_capacity)
         except ValueError:
-            raise ValueError("driver_capacity must only contain integers")
+            raise ValueError("driver_capacity must only contain integers") from None
 
         if not is_enough_capacity(driver_capacity_list, passengers_by_location):
             raise ValueError(
@@ -555,7 +557,7 @@ class GroupRidesService:
             )
             raise ValueError(
                 "Could not process ride grouping request. Please try again later."
-            )
+            ) from e
 
         if "error" in {key.lower() for key in llm_result}:
             raise ValueError(f"LLM returned with error: {llm_result}")
@@ -602,13 +604,13 @@ class GroupRidesService:
                 return
 
         channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        
+
         try:
             output = await self._process_ride_grouping(
                 message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
             )
         except ValueError as e:
-            await interaction.followup.send(f"Error: {str(e)}")
+            await interaction.followup.send(f"Error: {e!s}")
             return
 
         await interaction.followup.send(output[0])  # Need one message to respond to previous defer
@@ -618,6 +620,15 @@ class GroupRidesService:
             await interaction.channel.send(message)
 
     def get_pickup_location_fuzzy(self, input_loc: str) -> PickupLocations | None:
+        """Get the fuzzy matched pickup location from an input string.
+
+        Args:
+            input_loc (str): The input location string.
+
+        Returns:
+            PickupLocations | None: The matched pickup location or None if no match is found.
+        """
+
         choices = {e.value: e for e in PickupLocations}
 
         # --- PASS 1: High Precision ---
@@ -712,10 +723,10 @@ class GroupRidesService:
     ) -> dict[str, str | list[str]]:
         """
         Group rides and return structured data (for API use).
-        
-        This method is similar to group_rides() but returns data instead of 
+
+        This method is similar to group_rides() but returns data instead of
         sending Discord messages, making it suitable for API endpoints.
-        
+
         Args:
             message_id: Optional message ID to fetch pickups from
             day: Optional day ("friday" or "sunday") to auto-find message
@@ -723,16 +734,16 @@ class GroupRidesService:
             channel_id: Optional channel ID, defaults to rides announcements
             legacy_prompt: Whether to use the legacy prompt
             custom_prompt: Optional custom prompt to use
-            
+
         Returns:
             Dictionary with 'summary' and 'groupings' keys
-            
+
         Raises:
             ValueError: If invalid parameters or insufficient capacity
         """
         if channel_id is None:
             channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        
+
         # If day is provided, find the corresponding message
         if day:
             if day.lower() == "friday":
@@ -741,33 +752,29 @@ class GroupRidesService:
                 ask_message = AskRidesMessage.SUNDAY_SERVICE
             else:
                 raise ValueError("day must be 'friday' or 'sunday'")
-            
-            message_id = await self.locations_service._find_correct_message(
-                ask_message, channel_id
-            )
-            
+
+            message_id = await self.locations_service._find_correct_message(ask_message, channel_id)
+
             if message_id is None:
                 raise ValueError(f"Could not find the {day} rides message. It may not exist yet.")
-        
+
         # Ensure we have a message_id at this point
         if message_id is None:
             raise ValueError("Either message_id or day must be provided")
-        
+
         output = await self._process_ride_grouping(
             message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
         )
-        
+
         # Separate summary and groupings for web app:
         # - First item is the summary
         # - Skip markdown code blocks (items starting with ```)
         # - Return plain formatted groupings
         summary = output[0] if output else ""
         groupings = [
-            item for item in output[1:]
+            item
+            for item in output[1:]
             if not item.startswith("```")  # Skip markdown code blocks
         ]
-        
-        return {
-            "summary": summary,
-            "groupings": groupings
-        }
+
+        return {"summary": summary, "groupings": groupings}

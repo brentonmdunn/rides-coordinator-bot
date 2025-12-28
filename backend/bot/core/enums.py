@@ -1,3 +1,5 @@
+"""Enumerations used throughout the bot."""
+
 from enum import IntEnum, StrEnum
 
 
@@ -43,6 +45,8 @@ class DaysOfWeekNumber(IntEnum):
 
 
 class RoleIds(IntEnum):
+    """Discord Role IDs."""
+
     DRIVER = 1286924999730663454
     RIDES = 940467850261450752
     RIDE_COORDINATOR = 1336966439323832381
@@ -64,6 +68,8 @@ class FeatureFlagNames(StrEnum):
 
 
 class ClassYear(StrEnum):
+    """Class years for users."""
+
     FIRST = "1st"
     SECOND = "2nd"
     THIRD = "3rd"
@@ -72,16 +78,22 @@ class ClassYear(StrEnum):
 
 
 class CanBeDriver(StrEnum):
+    """Driver availability statuses."""
+
     YES = "Yes"
     IF_NECESSARY = "If necessary"
     NO = "No"
 
 
 class CategoryIds(StrEnum):
+    """Discord Category IDs."""
+
     NEW_RIDES = "1380694503391887410"
 
 
 class CampusLivingLocations(StrEnum):
+    """Campus living locations."""
+
     SEVENTH = "Seventh"
     ERC = "ERC"
     MARSHALL = "Marshall"
@@ -97,6 +109,8 @@ class CampusLivingLocations(StrEnum):
 
 
 class PickupLocations(StrEnum):
+    """Ride pickup locations."""
+
     SEVENTH = "Seventh mail room"
     ERC = "ERC across from bamboo"
     MARSHALL = "Marshall uppers"
@@ -114,12 +128,16 @@ class PickupLocations(StrEnum):
 
 
 class AskRidesMessage(StrEnum):
+    """Messages for asking for rides."""
+
     FRIDAY_FELLOWSHIP = "Friday"
     SUNDAY_SERVICE = "Sunday service"
     SUNDAY_CLASS = "class"
 
 
 class RideType(StrEnum):
+    """Types of rides."""
+
     FRI_PICKUP = "Friday pickup"
     FRI_DROPOFF = "Friday dropoff"
     SUN_SERVICE_PICKUP = "Sunday service pickup"

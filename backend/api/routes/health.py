@@ -13,7 +13,7 @@ router = APIRouter()
 def health_check():
     """
     Health check endpoint.
-    
+
     Returns:
         Status dictionary indicating service is running.
     """

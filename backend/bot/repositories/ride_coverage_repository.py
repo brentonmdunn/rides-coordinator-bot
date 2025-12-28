@@ -1,9 +1,12 @@
 """Repository for ride coverage data access."""
 
+import datetime
+
 from sqlalchemy import delete
+
 from bot.core.database import AsyncSessionLocal
 from bot.core.models import RideCoverage as RideCoverageModel
-import datetime
+
 
 class RideCoverageRepository:
     """Handles database operations for ride coverage."""
@@ -22,7 +25,9 @@ class RideCoverageRepository:
             try:
                 now = datetime.datetime.now()
                 entries = [
-                    RideCoverageModel(discord_username=username, datetime_detected=now, message_id=message_id)
+                    RideCoverageModel(
+                        discord_username=username, datetime_detected=now, message_id=message_id
+                    )
                     for username in usernames
                 ]
                 session.add_all(entries)
@@ -43,19 +48,22 @@ class RideCoverageRepository:
             bool: True if an entry exists, False otherwise.
         """
         from sqlalchemy import select
+
         async with AsyncSessionLocal() as session:
             try:
                 since = datetime.datetime.now() - datetime.timedelta(hours=hours)
                 stmt = select(RideCoverageModel).where(
                     RideCoverageModel.discord_username == discord_username,
-                    RideCoverageModel.datetime_detected >= since
+                    RideCoverageModel.datetime_detected >= since,
                 )
                 result = await session.execute(stmt)
                 return result.scalars().first() is not None
             except Exception:
                 return False
 
-    async def get_bulk_coverage_status(self, discord_usernames: list[str], hours: int = 24) -> set[str]:
+    async def get_bulk_coverage_status(
+        self, discord_usernames: list[str], hours: int = 24
+    ) -> set[str]:
         """
         Checks which of the given users have a ride coverage entry within the last X hours.
 
@@ -67,6 +75,7 @@ class RideCoverageRepository:
             set[str]: A set of usernames that have ride coverage entries.
         """
         from sqlalchemy import select
+
         if not discord_usernames:
             return set()
 
@@ -75,7 +84,7 @@ class RideCoverageRepository:
                 since = datetime.datetime.now() - datetime.timedelta(hours=hours)
                 stmt = select(RideCoverageModel.discord_username).where(
                     RideCoverageModel.discord_username.in_(discord_usernames),
-                    RideCoverageModel.datetime_detected >= since
+                    RideCoverageModel.datetime_detected >= since,
                 )
                 result = await session.execute(stmt)
                 return set(result.scalars().all())
@@ -97,7 +106,7 @@ class RideCoverageRepository:
             try:
                 stmt = delete(RideCoverageModel).where(
                     RideCoverageModel.discord_username.in_(usernames),
-                    RideCoverageModel.message_id == str(message_id)
+                    RideCoverageModel.message_id == str(message_id),
                 )
                 await session.execute(stmt)
                 await session.commit()
@@ -111,7 +120,7 @@ class RideCoverageRepository:
 
         Args:
             message_id: The message ID associated with the entries.
-            
+
         Returns:
             int: Number of entries deleted.
         """
@@ -137,7 +146,8 @@ class RideCoverageRepository:
         Returns:
             set[str]: Set of unique message IDs.
         """
-        from sqlalchemy import select, distinct
+        from sqlalchemy import distinct, select
+
         async with AsyncSessionLocal() as session:
             try:
                 stmt = select(distinct(RideCoverageModel.message_id)).where(
@@ -151,19 +161,22 @@ class RideCoverageRepository:
     async def has_coverage_entries(self, since: datetime.datetime) -> bool:
         """
         Checks if any ride coverage entries exist since the given datetime.
-        
+
         Args:
             since: Start datetime to check for entries.
-        
+
         Returns:
             bool: True if any entries exist, False otherwise.
         """
         from sqlalchemy import select
+
         async with AsyncSessionLocal() as session:
             try:
-                stmt = select(RideCoverageModel).where(
-                    RideCoverageModel.datetime_detected >= since
-                ).limit(1)
+                stmt = (
+                    select(RideCoverageModel)
+                    .where(RideCoverageModel.datetime_detected >= since)
+                    .limit(1)
+                )
                 result = await session.execute(stmt)
                 return result.scalars().first() is not None
             except Exception:

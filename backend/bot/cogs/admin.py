@@ -12,6 +12,8 @@ class Admin(commands.Cog):
     """Cog for administrative commands."""
 
     def __init__(self, bot: commands.Bot):
+        """Initialize the Admin cog."""
+
         self.bot = bot
 
     @app_commands.command(name="give-role", description="Assign a role to users from a CSV file.")

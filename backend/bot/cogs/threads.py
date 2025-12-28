@@ -19,6 +19,8 @@ class Threads(commands.Cog):
     """Cog for managing event-based threads."""
 
     def __init__(self, bot: commands.Bot, thread_service: ThreadService):
+        """Initialize the Threads cog."""
+
         self.bot = bot
         self.thread_service = thread_service
 
