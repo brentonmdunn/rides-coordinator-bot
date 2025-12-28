@@ -18,44 +18,55 @@ function DriverReactions() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [activeDay, setActiveDay] = useState<'Friday' | 'Sunday'>('Friday')
+    const [manualOverride, setManualOverride] = useState(false)
     const [showInfo, setShowInfo] = useState(false)
 
-    const updateDayAndFetch = async () => {
-        // Determine day
+    const getAutomaticDay = (): 'Friday' | 'Sunday' => {
         const now = new Date()
         const day = now.getDay()
         const hour = now.getHours()
 
-        let currentDay: 'Friday' | 'Sunday' = 'Friday'
-
         if (day === 6) {
             // Saturday
-            currentDay = 'Sunday'
+            return 'Sunday'
         } else if (day === 5 && hour >= 22) {
             // Friday after 10pm
-            currentDay = 'Sunday'
+            return 'Sunday'
         } else {
             // Sunday, Mon, Tue, Wed, Thu, Fri (before 10pm)
-            currentDay = 'Friday'
+            return 'Friday'
         }
+    }
 
-        setActiveDay(currentDay)
-
-        // Fetch data
+    const fetchDataForDay = async (day: 'Friday' | 'Sunday') => {
         setLoading(true)
         setError('')
         try {
-            const response = await apiFetch(`/api/check-pickups/driver-reactions/${currentDay.toLowerCase()}`)
+            const response = await apiFetch(`/api/check-pickups/driver-reactions/${day.toLowerCase()}`)
             if (!response.ok) {
                 throw new Error('Failed to fetch driver reactions')
             }
             const result = await response.json()
             setData(result)
+            setActiveDay(day)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unknown error')
         } finally {
             setLoading(false)
         }
+    }
+
+    const updateDayAndFetch = async () => {
+        const currentDay = getAutomaticDay()
+        setManualOverride(false)
+        await fetchDataForDay(currentDay)
+    }
+
+    const handleDayToggle = async (day: 'Friday' | 'Sunday') => {
+        // Set state immediately for instant visual feedback
+        setManualOverride(true)
+        setActiveDay(day)
+        await fetchDataForDay(day)
     }
 
     useEffect(() => {
@@ -98,10 +109,32 @@ function DriverReactions() {
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-sm text-slate-600 dark:text-slate-400">
                         <li>Automatically switches between <strong>Friday</strong> and <strong>Sunday</strong> based on the current time.</li>
-                        <li>Click the refresh button to force an update.</li>
+                        <li>Use the day toggle buttons to manually switch between Friday and Sunday views.</li>
+                        <li>Click the refresh button to return to automatic mode and update data.</li>
                         <li>Expand the dropdown to see who reacted with each emoji.</li>
                     </ul>
                 </InfoPanel>
+
+                <div className="mb-4 flex gap-2 -mx-2">
+                    <Button
+                        variant={activeDay === 'Friday' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleDayToggle('Friday')}
+                        disabled={loading}
+                        className="flex-1"
+                    >
+                        Friday {activeDay === 'Friday' && !manualOverride && '(Auto)'}
+                    </Button>
+                    <Button
+                        variant={activeDay === 'Sunday' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleDayToggle('Sunday')}
+                        disabled={loading}
+                        className="flex-1"
+                    >
+                        Sunday {activeDay === 'Sunday' && !manualOverride && '(Auto)'}
+                    </Button>
+                </div>
 
                 {loading && <div className="text-center py-4 text-slate-500">Loading reactions...</div>}
 
