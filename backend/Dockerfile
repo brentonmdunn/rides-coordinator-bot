@@ -30,13 +30,10 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application code
 COPY . .
 
-# Set timezone
-ENV TZ="America/Los_Angeles"
 ENV PATH="/app/.venv/bin:$PATH"
-ENV APP_ENV="prod"
 
 # Expose port
 EXPOSE 8000
 
 #    Run the application
-CMD ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
