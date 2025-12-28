@@ -104,6 +104,14 @@ function DriverReactions() {
                     onClose={() => setShowInfo(false)}
                     title="About Driver Reactions"
                 >
+                    <div className="mb-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700">
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Currently viewing: <strong>{activeDay}</strong> {!manualOverride && <span className="text-slate-500 dark:text-slate-400">(Auto)</span>}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            {manualOverride ? 'Manual mode - click refresh to return to auto' : 'Automatic mode - switches based on current time'}
+                        </p>
+                    </div>
                     <p className="mb-2">
                         This widget tracks emoji reactions from drivers in the driver chat channel.
                     </p>
