@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../lib/api'
+import { useCopyToClipboard } from '../lib/utils'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
@@ -20,6 +21,7 @@ function DriverReactions() {
     const [activeDay, setActiveDay] = useState<'Friday' | 'Sunday'>('Friday')
     const [manualOverride, setManualOverride] = useState(false)
     const [showInfo, setShowInfo] = useState(false)
+    const { copiedText: copiedUsername, copyToClipboard } = useCopyToClipboard()
 
     const getAutomaticDay = (): 'Friday' | 'Sunday' => {
         const now = new Date()
@@ -120,6 +122,7 @@ function DriverReactions() {
                         <li>Use the day toggle buttons to manually switch between Friday and Sunday views.</li>
                         <li>Click the refresh button to return to automatic mode and update data.</li>
                         <li>Expand the dropdown to see who reacted with each emoji.</li>
+                        <li>Click on any driver's username to copy it to your clipboard.</li>
                     </ul>
                 </InfoPanel>
 
@@ -189,7 +192,9 @@ function DriverReactions() {
                                                             {usernames.map((username) => (
                                                                 <span
                                                                     key={username}
-                                                                    className="px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded text-sm text-slate-700 dark:text-slate-300"
+                                                                    onClick={() => copyToClipboard(username)}
+                                                                    className="px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded text-sm text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
+                                                                    title={copiedUsername === username ? '✓ Copied!' : 'Click to copy username'}
                                                                 >
                                                                     {username}
                                                                 </span>

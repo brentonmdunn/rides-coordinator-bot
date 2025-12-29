@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiFetch } from '../lib/api'
+import { useCopyToClipboard } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
@@ -19,20 +20,8 @@ function PickupLocations() {
     const [pickupData, setPickupData] = useState<LocationData | null>(null)
     const [pickupError, setPickupError] = useState<string>('')
     const [pickupLoading, setPickupLoading] = useState(false)
-    const [copiedUsername, setCopiedUsername] = useState<string | null>(null)
+    const { copiedText: copiedUsername, copyToClipboard } = useCopyToClipboard()
     const [showInfo, setShowInfo] = useState(false)
-
-    const copyToClipboard = async (discordUsername: string | null) => {
-        if (!discordUsername) return
-
-        try {
-            await navigator.clipboard.writeText(discordUsername)
-            setCopiedUsername(discordUsername)
-            setTimeout(() => setCopiedUsername(null), 2000)
-        } catch (error) {
-            console.error('Failed to copy to clipboard:', error)
-        }
-    }
 
     const fetchPickups = async (e: React.FormEvent) => {
         e.preventDefault()
