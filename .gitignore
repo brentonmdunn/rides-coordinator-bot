@@ -1,2 +1,6 @@
 .DS_Store
 .env*
+*__pycache__*
+*.vite*
+*node_modules*
+dist
