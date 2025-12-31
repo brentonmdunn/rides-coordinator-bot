@@ -21,7 +21,8 @@ function DriverReactions() {
     const [activeDay, setActiveDay] = useState<'Friday' | 'Sunday'>('Friday')
     const [manualOverride, setManualOverride] = useState(false)
     const [showInfo, setShowInfo] = useState(false)
-    const { copiedText: copiedUsername, copyToClipboard } = useCopyToClipboard()
+    const { copyToClipboard } = useCopyToClipboard()
+    const [copiedKey, setCopiedKey] = useState<string>('')
 
     const getAutomaticDay = (): 'Friday' | 'Sunday' => {
         const now = new Date()
@@ -189,16 +190,29 @@ function DriverReactions() {
                                                             </span>
                                                         </div>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {usernames.map((username) => (
-                                                                <span
-                                                                    key={username}
-                                                                    onClick={() => copyToClipboard(username)}
-                                                                    className="px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded text-sm text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
-                                                                    title={copiedUsername === username ? '✓ Copied!' : 'Click to copy username'}
-                                                                >
-                                                                    {username}
-                                                                </span>
-                                                            ))}
+                                                            {usernames.map((username) => {
+                                                                const compositeKey = `${emoji}-${username}`
+                                                                return (
+                                                                    <span
+                                                                        key={username}
+                                                                        onClick={() => {
+                                                                            copyToClipboard(username)
+                                                                            setCopiedKey(compositeKey)
+                                                                            setTimeout(() => {
+                                                                                setCopiedKey('')
+                                                                            }, 5000)
+                                                                        }}
+                                                                        className={`px-2 py-1 rounded text-sm cursor-pointer transition-all duration-300 ${copiedKey === compositeKey
+                                                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700'
+                                                                            : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                                                                            }`}
+                                                                        title={copiedKey === compositeKey ? '✓ Copied!' : 'Click to copy username'}
+                                                                    >
+                                                                        {copiedKey === compositeKey && '✓ '}
+                                                                        {username}
+                                                                    </span>
+                                                                )
+                                                            })}
                                                         </div>
                                                     </div>
                                                 ))}
