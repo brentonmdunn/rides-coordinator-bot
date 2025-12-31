@@ -5,7 +5,7 @@ import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import PickupGroup from './PickupGroup'
-import ErrorMessage from "./ErrorMessage"
+import { Section, Label, StatusMessage, Badge } from './design-system'
 import type { LocationData } from '../types'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
@@ -118,43 +118,36 @@ function PickupLocations() {
 
                     {/* Message ID Input (only shown when message_id is selected) */}
                     {pickupRideType === 'message_id' && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
-                            {/* ... Message ID input ... */}
-                            <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                    Message ID
-                                </span>
-                                <Input
-                                    type="text"
-                                    value={messageId}
-                                    onChange={(e) => setMessageId(e.target.value)}
-                                    placeholder="Enter Discord message ID"
-                                    required
-                                    className="w-full max-w-md"
-                                />
-                            </label>
-                        </div>
+                        <Section variant="muted">
+                            <Label htmlFor="message-id">Message ID</Label>
+                            <Input
+                                id="message-id"
+                                type="text"
+                                value={messageId}
+                                onChange={(e) => setMessageId(e.target.value)}
+                                placeholder="Enter Discord message ID"
+                                required
+                                className="w-full max-w-md"
+                            />
+                        </Section>
                     )}
 
                     {/* Advanced Settings (Channel ID) */}
                     {showSettings && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-top-2">
-                            <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                    Custom Channel ID (Optional)
-                                </span>
-                                <Input
-                                    type="text"
-                                    value={channelId}
-                                    onChange={(e) => setChannelId(e.target.value)}
-                                    placeholder="Default: Rides Announcements Channel"
-                                    className="w-full max-w-md font-mono text-sm"
-                                />
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Leave blank to use the default channel.
-                                </p>
-                            </label>
-                        </div>
+                        <Section variant="muted" className="animate-in fade-in slide-in-from-top-2">
+                            <Label htmlFor="channel-id">Custom Channel ID (Optional)</Label>
+                            <Input
+                                id="channel-id"
+                                type="text"
+                                value={channelId}
+                                onChange={(e) => setChannelId(e.target.value)}
+                                placeholder="Default: Rides Announcements Channel"
+                                className="w-full max-w-md font-mono text-sm"
+                            />
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Leave blank to use the default channel.
+                            </p>
+                        </Section>
                     )}
 
                     <div className="pt-2">
@@ -170,9 +163,11 @@ function PickupLocations() {
 
 
                 {/* Error Display */}
-                <div className="mt-6">
-                    <ErrorMessage message={pickupError} />
-                </div>
+                {pickupError && (
+                    <div className="mt-6">
+                        <StatusMessage variant="error">{pickupError}</StatusMessage>
+                    </div>
+                )}
 
                 {/* Pickup Locations Display */}
                 {pickupData && (
@@ -181,12 +176,12 @@ function PickupLocations() {
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                                 Pickup Locations
                             </h3>
-                            <span className="px-3 py-1 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-full border border-slate-200 dark:border-zinc-700">
+                            <Badge rounded="full" size="lg">
                                 Total: {
                                     Object.values(pickupData.housing_groups).reduce((acc, group) => acc + group.count, 0) +
                                     (pickupData.unknown_users?.length || 0)
                                 }
-                            </span>
+                            </Badge>
                         </div>
 
                         {/* Housing Groups */}

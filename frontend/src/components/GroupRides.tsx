@@ -4,7 +4,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
-import ErrorMessage from "./ErrorMessage"
+import { Section, Label, StatusMessage } from './design-system'
 import type { GroupRidesResponse } from '../types'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
@@ -139,63 +139,54 @@ function GroupRides() {
 
                     {/* Message ID Input (only shown when message_id is selected) */}
                     {rideType === 'message_id' && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
-                            <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                    Message ID
-                                </span>
-                                <Input
-                                    type="text"
-                                    value={groupMessageId}
-                                    onChange={(e) => setGroupMessageId(e.target.value)}
-                                    placeholder="Enter Discord message ID"
-                                    required
-                                    className="w-full max-w-md"
-                                />
-                            </label>
-                        </div>
+                        <Section variant="muted">
+                            <Label htmlFor="group-message-id">Message ID</Label>
+                            <Input
+                                id="group-message-id"
+                                type="text"
+                                value={groupMessageId}
+                                onChange={(e) => setGroupMessageId(e.target.value)}
+                                placeholder="Enter Discord message ID"
+                                required
+                                className="w-full max-w-md"
+                            />
+                        </Section>
                     )}
 
                     {/* Driver Capacity */}
                     <div>
-                        <label className="block">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                Driver Capacity
+                        <Label htmlFor="driver-capacity">Driver Capacity</Label>
+                        <div className="flex items-center gap-3">
+                            <Input
+                                id="driver-capacity"
+                                type="text"
+                                value={groupDriverCapacity}
+                                onChange={(e) => setGroupDriverCapacity(e.target.value)}
+                                placeholder="e.g., 44444"
+                                className="w-32 font-mono"
+                            />
+                            <span className="text-sm text-slate-500 dark:text-slate-400">
+                                (One digit per driver, e.g., "4" = 4 seats)
                             </span>
-                            <div className="flex items-center gap-3">
-                                <Input
-                                    type="text"
-                                    value={groupDriverCapacity}
-                                    onChange={(e) => setGroupDriverCapacity(e.target.value)}
-                                    placeholder="e.g., 44444"
-                                    className="w-32 font-mono"
-                                />
-                                <span className="text-sm text-slate-500 dark:text-slate-400">
-                                    (One digit per driver, e.g., "4" = 4 seats)
-                                </span>
-                            </div>
-                        </label>
+                        </div>
                     </div>
 
                     {/* Advanced Settings (Channel ID) */}
                     {showSettings && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-top-2">
-                            <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                    Custom Channel ID (Optional)
-                                </span>
-                                <Input
-                                    type="text"
-                                    value={channelId}
-                                    onChange={(e) => setChannelId(e.target.value)}
-                                    placeholder="Default: Rides Announcements Channel"
-                                    className="w-full max-w-md font-mono text-sm"
-                                />
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Leave blank to use the default channel.
-                                </p>
-                            </label>
-                        </div>
+                        <Section variant="muted" className="animate-in fade-in slide-in-from-top-2">
+                            <Label htmlFor="group-channel-id">Custom Channel ID (Optional)</Label>
+                            <Input
+                                id="group-channel-id"
+                                type="text"
+                                value={channelId}
+                                onChange={(e) => setChannelId(e.target.value)}
+                                placeholder="Default: Rides Announcements Channel"
+                                className="w-full max-w-md font-mono text-sm"
+                            />
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Leave blank to use the default channel.
+                            </p>
+                        </Section>
                     )}
 
                     <div className="pt-2">
@@ -211,21 +202,19 @@ function GroupRides() {
 
                 {/* Loading Indicator */}
                 {groupRidesLoading && (
-                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-lg flex items-start gap-3">
-                        <div className="animate-spin text-xl">⏳</div>
-                        <div>
-                            <strong className="block font-semibold">Grouping rides...</strong>
-                            <p className="text-sm mt-1 opacity-90">
-                                This may take up to 60 seconds. Please wait...
-                            </p>
-                        </div>
+                    <div className="mt-6">
+                        <StatusMessage variant="loading" title="Grouping rides...">
+                            This may take up to 60 seconds. Please wait...
+                        </StatusMessage>
                     </div>
                 )}
 
                 {/* Error Display */}
-                <div className="mt-6">
-                    <ErrorMessage message={groupRidesError} />
-                </div>
+                {groupRidesError && (
+                    <div className="mt-6">
+                        <StatusMessage variant="error">{groupRidesError}</StatusMessage>
+                    </div>
+                )}
 
                 {/* Results Display */}
                 {(groupRidesSummary || groupRidesData) && (

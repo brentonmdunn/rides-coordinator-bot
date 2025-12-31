@@ -1,3 +1,5 @@
+import { Label } from './design-system'
+
 type RideType = 'friday' | 'sunday' | 'message_id'
 
 interface RideTypeSelectorProps {
@@ -8,9 +10,7 @@ interface RideTypeSelectorProps {
 export default function RideTypeSelector({ value, onChange }: RideTypeSelectorProps) {
     return (
         <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Select Ride Type
-            </label>
+            <Label>Select Ride Type</Label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button
                     type="button"

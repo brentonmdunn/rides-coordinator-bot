@@ -1,5 +1,6 @@
 import type { HousingGroup } from '../types'
 import { Card } from './ui/card'
+import { Badge } from './design-system'
 
 interface PickupGroupProps {
     groupName: string
@@ -33,17 +34,18 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                             {people.map((person, idx) => (
                                 <span key={idx}>
                                     {person.discord_username ? (
-                                        <button
+                                        <Badge
+                                            variant="user"
                                             onClick={() => onCopy(person.discord_username!)}
-                                            className={`hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors break-all text-left ${copiedUsername === person.discord_username
+                                            className={copiedUsername === person.discord_username
                                                 ? 'text-green-600 dark:text-green-400 font-medium'
                                                 : ''
-                                                }`}
+                                            }
                                             title={`Click to copy @${person.discord_username}`}
                                         >
                                             {person.name}
                                             {copiedUsername === person.discord_username && ' ✓'}
-                                        </button>
+                                        </Badge>
                                     ) : (
                                         <span>{person.name}</span>
                                     )}

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
-import ErrorMessage from "./ErrorMessage"
+import { StatusMessage } from './design-system'
 import type { RideCoverage, RideCoverageUser } from '../types'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
-import { RefreshCw, MoreVertical, CloudDownload, Check } from 'lucide-react'
+import { RefreshCw, MoreVertical, CloudDownload } from 'lucide-react'
 
 interface RideDayProps {
     rideType: 'friday' | 'sunday'
@@ -47,7 +47,7 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
     }
 
     if (error) {
-        return <ErrorMessage message={`Failed to load ${title.toLowerCase()} coverage`} />
+        return <StatusMessage variant="error">Failed to load {title.toLowerCase()} coverage</StatusMessage>
     }
 
     if (!coverage || !coverage.message_found) {
@@ -252,17 +252,14 @@ function RideCoverageCheck() {
             </CardHeader>
             <CardContent>
                 {syncMutation.isSuccess && (
-                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-md text-sm flex items-center gap-2">
-                        <Check className="h-4 w-4" />
-                        <span>
-                            Sync completed: {syncMutation.data?.entries_added || 0} added, {syncMutation.data?.entries_removed || 0} removed
-                        </span>
-                    </div>
+                    <StatusMessage variant="success" className="mb-4">
+                        Sync completed: {syncMutation.data?.entries_added || 0} added, {syncMutation.data?.entries_removed || 0} removed
+                    </StatusMessage>
                 )}
                 {syncMutation.isError && (
-                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md text-sm">
-                        ✗ Sync failed. Please try again.
-                    </div>
+                    <StatusMessage variant="error" className="mb-4">
+                        Sync failed. Please try again.
+                    </StatusMessage>
                 )}
 
                 <InfoPanel

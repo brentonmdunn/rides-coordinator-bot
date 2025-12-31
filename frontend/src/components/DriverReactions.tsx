@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
-import ErrorMessage from "./ErrorMessage"
+import { Section, ToggleGroup, ToggleGroupItem, StatusMessage, Badge } from './design-system'
 
 
 interface DriverReactionsData {
@@ -104,14 +104,14 @@ function DriverReactions() {
                     onClose={() => setShowInfo(false)}
                     title="About Driver Reactions"
                 >
-                    <div className="mb-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700">
+                    <Section variant="muted" className="mb-3">
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Currently viewing: <strong>{activeDay}</strong> {!manualOverride && <span className="text-slate-500 dark:text-slate-400">(Auto)</span>}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             {manualOverride ? 'Manual mode - click refresh to return to auto' : 'Automatic mode - switches based on current time'}
                         </p>
-                    </div>
+                    </Section>
                     <p className="mb-2">
                         This widget tracks emoji reactions from drivers in the driver chat channel.
                     </p>
@@ -123,30 +123,23 @@ function DriverReactions() {
                     </ul>
                 </InfoPanel>
 
-                <div className="mb-4 flex gap-2 -mx-2">
-                    <Button
-                        variant={activeDay === 'Friday' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDayToggle('Friday')}
-                        disabled={loading}
-                        className="flex-1"
-                    >
+                <ToggleGroup
+                    value={activeDay}
+                    onChange={(day) => handleDayToggle(day as 'Friday' | 'Sunday')}
+                    disabled={loading}
+                    className="mb-4 -mx-2"
+                >
+                    <ToggleGroupItem value="Friday">
                         Friday {activeDay === 'Friday' && !manualOverride && '(Auto)'}
-                    </Button>
-                    <Button
-                        variant={activeDay === 'Sunday' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDayToggle('Sunday')}
-                        disabled={loading}
-                        className="flex-1"
-                    >
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="Sunday">
                         Sunday {activeDay === 'Sunday' && !manualOverride && '(Auto)'}
-                    </Button>
-                </div>
+                    </ToggleGroupItem>
+                </ToggleGroup>
 
-                {loading && <div className="text-center py-4 text-slate-500">Loading reactions...</div>}
+                {loading && <StatusMessage variant="loading">Loading reactions...</StatusMessage>}
 
-                {error && <ErrorMessage message={error} />}
+                {error && <StatusMessage variant="error">{error}</StatusMessage>}
 
                 {!loading && !error && data && (
                     <>
@@ -187,12 +180,12 @@ function DriverReactions() {
                                                         </div>
                                                         <div className="flex flex-wrap gap-2">
                                                             {usernames.map((username) => (
-                                                                <span
+                                                                <Badge
                                                                     key={username}
-                                                                    className="px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded text-sm text-slate-700 dark:text-slate-300"
+                                                                    variant="user"
                                                                 >
                                                                     {username}
-                                                                </span>
+                                                                </Badge>
                                                             ))}
                                                         </div>
                                                     </div>
