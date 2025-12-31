@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../lib/api'
+import { useCopyToClipboard } from '../lib/utils'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
@@ -20,6 +21,8 @@ function DriverReactions() {
     const [activeDay, setActiveDay] = useState<'Friday' | 'Sunday'>('Friday')
     const [manualOverride, setManualOverride] = useState(false)
     const [showInfo, setShowInfo] = useState(false)
+    const { copyToClipboard } = useCopyToClipboard()
+    const [copiedKey, setCopiedKey] = useState<string>('')
 
     const getAutomaticDay = (): 'Friday' | 'Sunday' => {
         const now = new Date()
@@ -120,6 +123,7 @@ function DriverReactions() {
                         <li>Use the day toggle buttons to manually switch between Friday and Sunday views.</li>
                         <li>Click the refresh button to return to automatic mode and update data.</li>
                         <li>Expand the dropdown to see who reacted with each emoji.</li>
+                        <li>Click on any driver's username to copy it to your clipboard.</li>
                     </ul>
                 </InfoPanel>
 
@@ -179,14 +183,29 @@ function DriverReactions() {
                                                             </span>
                                                         </div>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {usernames.map((username) => (
-                                                                <Badge
-                                                                    key={username}
-                                                                    variant="user"
-                                                                >
-                                                                    {username}
-                                                                </Badge>
-                                                            ))}
+                                                            {usernames.map((username) => {
+                                                                const compositeKey = `${emoji}-${username}`
+                                                                return (
+                                                                    <span
+                                                                        key={username}
+                                                                        onClick={() => {
+                                                                            copyToClipboard(username)
+                                                                            setCopiedKey(compositeKey)
+                                                                            setTimeout(() => {
+                                                                                setCopiedKey('')
+                                                                            }, 5000)
+                                                                        }}
+                                                                        className={`px-2 py-1 rounded text-sm cursor-pointer transition-all duration-300 ${copiedKey === compositeKey
+                                                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700'
+                                                                            : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                                                                            }`}
+                                                                        title={copiedKey === compositeKey ? '✓ Copied!' : 'Click to copy username'}
+                                                                    >
+                                                                        {copiedKey === compositeKey && '✓ '}
+                                                                        {username}
+                                                                    </span>
+                                                                )
+                                                            })}
                                                         </div>
                                                     </div>
                                                 ))}
