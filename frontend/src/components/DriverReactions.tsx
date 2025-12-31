@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
-import { Section, ToggleGroup, ToggleGroupItem, StatusMessage, Badge } from './design-system'
+import { Section, ToggleGroup, ToggleGroupItem, StatusMessage } from './design-system'
 
 
 interface DriverReactionsData {
