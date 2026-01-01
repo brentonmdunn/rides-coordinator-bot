@@ -22,7 +22,7 @@ const getStatusBadge = (job: AskRidesJobStatus) => {
         return { color: '#ef4444', text: '🔴 Feature flag disabled' }
     }
     if (job.sent_this_week) {
-        return { color: '#3b82f6', text: '🔵 Message sent for this week' }
+        return { color: '#22c55e', text: '🟢 Message sent for this week' }
     }
     if (!job.will_send) {
         const reasonText = job.reason === 'wildcard_detected'
@@ -30,7 +30,7 @@ const getStatusBadge = (job: AskRidesJobStatus) => {
             : 'No class scheduled'
         return { color: '#eab308', text: `🟡 Will not send - ${reasonText} ` }
     }
-    return { color: '#22c55e', text: `🟢 Will send at ${formatDateTime(job.next_run)} ` }
+    return { color: '#3b82f6', text: `🔵 Will send at ${formatDateTime(job.next_run)} ` }
 }
 
 function StatusCard({ title, job }: StatusCardProps) {
