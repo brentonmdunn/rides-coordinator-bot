@@ -49,11 +49,11 @@ function AskRidesDashboard() {
                     </p>
                     <ul className="space-y-1">
                         <li className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                             <span><span className="font-medium">Will Send:</span> The job is scheduled and will run at the shown time.</span>
                         </li>
                         <li className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
                             <span><span className="font-medium">Message Sent:</span> A message has been sent for this week's ride requests.</span>
                         </li>
                         <li className="flex items-center gap-2">
