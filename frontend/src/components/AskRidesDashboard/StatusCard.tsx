@@ -54,7 +54,7 @@ function StatusCard({ title, job }: StatusCardProps) {
 
             {job.last_message && (
                 <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 text-sm">
-                    <strong className="block text-slate-700 dark:text-slate-300 mb-2">Last message reactions</strong>
+                    <strong className="block text-slate-700 dark:text-slate-300 mb-2">Message reactions</strong>
                     <div className="flex flex-wrap gap-3">
                         {Object.entries(job.last_message.reactions).map(([emoji, count]) => (
                             <span key={emoji} className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded text-slate-700 dark:text-slate-300">

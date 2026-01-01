@@ -90,6 +90,15 @@ RIDE_TYPES_CONFIG = {
 DEFAULT_RIDE_TITLE = "Rides Announcement"
 DEFAULT_RIDE_COLOR = discord.Color.default()
 
+# Emojis that the bot automatically adds to each message type
+# This is the single source of truth for bot reactions (used by both
+# job runners and API helpers to exclude bot reactions from user counts)
+BOT_REACTIONS = {
+    "friday": ["🪨"],
+    "sunday": ["🍔", "🏠", "✳️"],
+    "sunday_class": ["📖"],
+}
+
 
 async def _ask_rides_template(
     bot: Bot,
@@ -148,7 +157,8 @@ async def run_ask_rides_fri(
 ) -> None:
     """Runner for Friday rides message."""
     sent_message = await _ask_rides_template(bot, _make_friday_msg, channel_id)
-    await sent_message.add_reaction("🪨")
+    for emoji in BOT_REACTIONS["friday"]:
+        await sent_message.add_reaction(emoji)
 
 
 def _should_send_ask_rides_sun() -> bool:
@@ -177,8 +187,7 @@ async def run_ask_rides_sun(
         return
 
     sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
-    reactions = ["🍔", "🏠", "✳️"]
-    for emoji in reactions:
+    for emoji in BOT_REACTIONS["sunday"]:
         await sent_message.add_reaction(emoji)
 
 
@@ -198,7 +207,8 @@ async def run_ask_rides_sun_class(
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
     sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
-    await sent_message.add_reaction("📖")
+    for emoji in BOT_REACTIONS["sunday_class"]:
+        await sent_message.add_reaction(emoji)
 
 
 async def run_ask_rides_header(
@@ -317,6 +327,8 @@ async def get_last_message_reactions(bot: Bot, job_type: str) -> dict | None:
         }
 
         keyword = keywords.get(job_type, "")
+        # Get bot reactions from the single source of truth
+        bot_emojis = BOT_REACTIONS.get(job_type, [])
 
         # Fetch recent messages (last 20)
         async for message in channel.history(limit=20):
@@ -328,7 +340,13 @@ async def get_last_message_reactions(bot: Bot, job_type: str) -> dict | None:
                 # Found a matching message from current week
                 reactions_dict = {}
                 for reaction in message.reactions:
-                    reactions_dict[str(reaction.emoji)] = reaction.count
+                    # Start with total count, then subtract bot reactions
+                    # The bot auto-adds certain emojis (see bot_reactions mapping above)
+                    # so we subtract 1 if this emoji was added by the bot
+                    count = reaction.count
+                    if str(reaction.emoji) in bot_emojis:
+                        count -= 1
+                    reactions_dict[str(reaction.emoji)] = count
 
                 return {"message_id": str(message.id), "reactions": reactions_dict}
 
