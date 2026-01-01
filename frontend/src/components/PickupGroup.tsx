@@ -26,8 +26,11 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
             <div className="divide-y divide-slate-200 dark:divide-zinc-700">
                 {Object.entries(groupData.locations).map(([locationName, people]) => (
                     <div key={locationName} className="p-4 bg-white dark:bg-zinc-900">
-                        <div className="capitalize font-medium text-slate-800 dark:text-slate-200 mb-2">
-                            {locationName}:
+                        <div className="capitalize font-medium text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
+                            <span>{locationName}:</span>
+                            <span className="text-xs font-normal px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-full border border-slate-200 dark:border-zinc-700">
+                                {people.length}
+                            </span>
                         </div>
                         <div className="text-slate-600 dark:text-slate-400 ml-4">
                             {people.map((person, idx) => (
