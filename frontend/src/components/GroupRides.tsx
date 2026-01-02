@@ -34,7 +34,14 @@ function GroupRides() {
         setOriginalGroupRidesData(null)
 
         try {
-            const body: any = {
+            interface GroupRidesRequest {
+                ride_type: RideType;
+                message_id: string | null;
+                driver_capacity: string;
+                channel_id?: string;
+            }
+
+            const body: GroupRidesRequest = {
                 ride_type: rideType,
                 message_id: rideType === 'message_id' ? groupMessageId : null,
                 driver_capacity: groupDriverCapacity,

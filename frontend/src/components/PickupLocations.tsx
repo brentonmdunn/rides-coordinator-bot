@@ -30,7 +30,13 @@ function PickupLocations() {
         setPickupData(null)
 
         try {
-            const body: any = {
+            interface ListPickupsRequest {
+                ride_type: RideType;
+                message_id: string | null;
+                channel_id?: string;
+            }
+
+            const body: ListPickupsRequest = {
                 ride_type: pickupRideType,
                 message_id: pickupRideType === 'message_id' ? messageId : null,
             }

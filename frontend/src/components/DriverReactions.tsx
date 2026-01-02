@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiFetch } from '../lib/api'
 import { useCopyToClipboard } from '../lib/utils'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
@@ -24,7 +24,7 @@ function DriverReactions() {
     const { copyToClipboard } = useCopyToClipboard()
     const [copiedKey, setCopiedKey] = useState<string>('')
 
-    const getAutomaticDay = (): 'Friday' | 'Sunday' => {
+    const getAutomaticDay = useCallback((): 'Friday' | 'Sunday' => {
         const now = new Date()
         const day = now.getDay()
         const hour = now.getHours()
@@ -39,9 +39,9 @@ function DriverReactions() {
             // Sunday, Mon, Tue, Wed, Thu, Fri (before 10pm)
             return 'Friday'
         }
-    }
+    }, [])
 
-    const fetchDataForDay = async (day: 'Friday' | 'Sunday') => {
+    const fetchDataForDay = useCallback(async (day: 'Friday' | 'Sunday') => {
         setLoading(true)
         setError('')
         try {
@@ -57,13 +57,13 @@ function DriverReactions() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [])
 
-    const updateDayAndFetch = async () => {
+    const updateDayAndFetch = useCallback(async () => {
         const currentDay = getAutomaticDay()
         setManualOverride(false)
         await fetchDataForDay(currentDay)
-    }
+    }, [getAutomaticDay, fetchDataForDay])
 
     const handleDayToggle = async (day: 'Friday' | 'Sunday') => {
         // Set state immediately for instant visual feedback
@@ -74,7 +74,7 @@ function DriverReactions() {
 
     useEffect(() => {
         updateDayAndFetch()
-    }, [])
+    }, [updateDayAndFetch])
 
     return (
         <Card>
