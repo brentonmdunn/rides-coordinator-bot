@@ -192,8 +192,8 @@ function RideCoverageCheck() {
     }
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="!overflow-visible">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 !overflow-visible">
                 <CardTitle><span>🎯</span> Ride Coverage Check</CardTitle>
                 <div className="flex items-center gap-2">
                     <Button
@@ -221,7 +221,7 @@ function RideCoverageCheck() {
                                     className="fixed inset-0 z-10"
                                     onClick={() => setShowMenu(false)}
                                 />
-                                <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-lg py-1 min-w-0 w-full max-w-[90vw] mx-auto">
+                                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-xl py-1 w-48">
                                     <button
                                         onClick={() => syncMutation.mutate()}
                                         disabled={syncMutation.isPending}
