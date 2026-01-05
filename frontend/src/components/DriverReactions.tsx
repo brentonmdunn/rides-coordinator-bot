@@ -29,14 +29,14 @@ function DriverReactions() {
         const day = now.getDay()
         const hour = now.getHours()
 
-        if (day === 6) {
-            // Saturday
+        if (day === 6 || day === 0) {
+            // Saturday or Sunday
             return 'Sunday'
         } else if (day === 5 && hour >= 22) {
             // Friday after 10pm
             return 'Sunday'
         } else {
-            // Sunday, Mon, Tue, Wed, Thu, Fri (before 10pm)
+            // Mon, Tue, Wed, Thu, Fri (before 10pm)
             return 'Friday'
         }
     }
