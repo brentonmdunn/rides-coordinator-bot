@@ -196,7 +196,7 @@ function DriverReactions() {
                                                                     <span
                                                                         key={username}
                                                                         onClick={() => {
-                                                                            copyToClipboard(username)
+                                                                            copyToClipboard("@" + username)
                                                                             setCopiedKey(compositeKey)
                                                                             setTimeout(() => {
                                                                                 setCopiedKey('')

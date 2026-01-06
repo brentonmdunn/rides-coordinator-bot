@@ -37,15 +37,15 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                                 <span key={idx}>
                                     {person.discord_username ? (
                                         <button
-                                            onClick={() => onCopy(person.discord_username!)}
-                                            className={`hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors break-all text-left ${copiedUsername === person.discord_username
+                                            onClick={() => onCopy("@" + person.discord_username!)}
+                                            className={`hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors break-all text-left ${copiedUsername?.substring(1) === person.discord_username
                                                 ? 'text-green-600 dark:text-green-400 font-medium'
                                                 : ''
                                                 }`}
                                             title={`Click to copy @${person.discord_username}`}
                                         >
                                             {person.name}
-                                            {copiedUsername === person.discord_username && ' ✓'}
+                                            {copiedUsername?.substring(1) === person.discord_username && ' ✓'}
                                         </button>
                                     ) : (
                                         <span>{person.name}</span>
