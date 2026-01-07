@@ -18,6 +18,7 @@ function RouteBuilder() {
     // State for location search/autocomplete
     const [searchInput, setSearchInput] = useState('')
     const [showSuggestions, setShowSuggestions] = useState(false)
+    const [highlightedIndex, setHighlightedIndex] = useState<number>(-1)
 
     // State for selected locations - store keys (e.g., "SEVENTH") not full names
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
@@ -75,11 +76,41 @@ function RouteBuilder() {
         }
         setSearchInput('')
         setShowSuggestions(false)
+        setHighlightedIndex(-1)
     }
 
     // Remove location from selected list
     const removeLocation = (index: number) => {
         setSelectedLocationKeys(selectedLocationKeys.filter((_, i) => i !== index))
+    }
+
+    // Handle keyboard navigation in autocomplete
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!showSuggestions || filteredLocations.length === 0) return
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault()
+                setHighlightedIndex(prev =>
+                    prev < filteredLocations.length - 1 ? prev + 1 : prev
+                )
+                break
+            case 'ArrowUp':
+                e.preventDefault()
+                setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1)
+                break
+            case 'Enter':
+                e.preventDefault()
+                if (highlightedIndex >= 0 && highlightedIndex < filteredLocations.length) {
+                    addLocation(filteredLocations[highlightedIndex].key)
+                }
+                break
+            case 'Escape':
+                e.preventDefault()
+                setShowSuggestions(false)
+                setHighlightedIndex(-1)
+                break
+        }
     }
 
     // Drag and drop handlers
@@ -182,7 +213,9 @@ function RouteBuilder() {
                                     onChange={(e) => {
                                         setSearchInput(e.target.value)
                                         setShowSuggestions(true)
+                                        setHighlightedIndex(-1)
                                     }}
+                                    onKeyDown={handleKeyDown}
                                     onFocus={() => setShowSuggestions(true)}
                                     placeholder={locationsLoading ? "Loading locations..." : "Search for a location..."}
                                     disabled={locationsLoading}
@@ -192,12 +225,15 @@ function RouteBuilder() {
                                 {/* Suggestions dropdown */}
                                 {showSuggestions && searchInput && filteredLocations.length > 0 && (
                                     <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                        {filteredLocations.map((location) => (
+                                        {filteredLocations.map((location, index) => (
                                             <button
                                                 key={location.key}
                                                 type="button"
                                                 onClick={() => addLocation(location.key)}
-                                                className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors text-sm text-slate-900 dark:text-slate-100"
+                                                className={`w-full text-left px-4 py-2 transition-colors text-sm ${index === highlightedIndex
+                                                        ? 'bg-blue-100 dark:bg-blue-900/30 text-slate-900 dark:text-slate-100'
+                                                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                                                    }`}
                                             >
                                                 {location.value}
                                             </button>
