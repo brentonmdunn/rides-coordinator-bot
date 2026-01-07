@@ -675,10 +675,16 @@ class GroupRidesService:
         locations_list = locations.split()
         locations_list_actual = []
         for location in locations_list:
-            if (actual_location := self.get_pickup_location_fuzzy(location)) is not None:
+            # First, try to match by enum key (e.g., "SEVENTH", "MARSHALL")
+            try:
+                actual_location = PickupLocations[location.upper()]
                 locations_list_actual.append(actual_location)
-            else:
-                raise ValueError(f"Invalid location: {location}")
+            except KeyError:
+                # Fall back to fuzzy matching (e.g., "seventh", "marshall uppers")
+                if (actual_location := self.get_pickup_location_fuzzy(location)) is not None:
+                    locations_list_actual.append(actual_location)
+                else:
+                    raise ValueError(f"Invalid location: {location}")
 
         drive_formatted: list[str] = []
         logger.debug(f"{locations_list_actual=}")

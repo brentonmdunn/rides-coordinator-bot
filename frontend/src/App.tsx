@@ -3,6 +3,7 @@ import './App.css'
 import PickupLocations from './components/PickupLocations'
 import DriverReactions from './components/DriverReactions'
 import GroupRides from './components/GroupRides'
+import RouteBuilder from './components/RouteBuilder'
 // import DemoControls from './components/DemoControls'
 import AskRidesDashboard from './components/AskRidesDashboard/AskRidesDashboard'
 import RideCoverageCheck from './components/RideCoverageCheck'
@@ -38,6 +39,7 @@ function App() {
             <RideCoverageCheck />
             <PickupLocations />
             <GroupRides />
+            <RouteBuilder />
             <FeatureFlagsManager />
           </div>
         </div>
