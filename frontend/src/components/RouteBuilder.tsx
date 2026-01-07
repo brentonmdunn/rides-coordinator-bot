@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '../lib/api'
-import { useCopyToClipboard } from '../lib/utils'
+import { useCopyToClipboard, cn } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
@@ -224,16 +224,18 @@ function RouteBuilder() {
 
                                 {/* Suggestions dropdown */}
                                 {showSuggestions && searchInput && filteredLocations.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-y-auto p-1">
                                         {filteredLocations.map((location, index) => (
                                             <button
                                                 key={location.key}
                                                 type="button"
                                                 onClick={() => addLocation(location.key)}
-                                                className={`w-full text-left px-4 py-2 transition-colors text-sm ${index === highlightedIndex
-                                                        ? 'bg-blue-100 dark:bg-blue-900/30 text-slate-900 dark:text-slate-100'
-                                                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-zinc-800'
-                                                    }`}
+                                                className={cn(
+                                                    "w-full text-left px-3 py-2 transition-all text-sm rounded-md border",
+                                                    index === highlightedIndex
+                                                        ? "bg-accent text-accent-foreground border-white/70 shadow-sm"
+                                                        : "text-foreground border-transparent hover:bg-accent hover:text-accent-foreground"
+                                                )}
                                             >
                                                 {location.value}
                                             </button>
