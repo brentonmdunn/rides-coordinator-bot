@@ -106,9 +106,7 @@ async def make_route(request: MakeRouteRequest):
 
     # Validate inputs
     if not request.locations:
-        return MakeRouteResponse(
-            success=False, error="At least one location must be provided"
-        )
+        return MakeRouteResponse(success=False, error="At least one location must be provided")
 
     if not request.leave_time:
         return MakeRouteResponse(success=False, error="Leave time must be provided")
@@ -131,6 +129,4 @@ async def make_route(request: MakeRouteRequest):
 
     except Exception as e:
         logger.exception(f"Error generating route: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate route: {e!s}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to generate route: {e!s}") from e

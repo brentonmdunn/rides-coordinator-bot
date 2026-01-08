@@ -684,7 +684,7 @@ class GroupRidesService:
                 if (actual_location := self.get_pickup_location_fuzzy(location)) is not None:
                     locations_list_actual.append(actual_location)
                 else:
-                    raise ValueError(f"Invalid location: {location}")
+                    raise ValueError(f"Invalid location: {location}") from None
 
         drive_formatted: list[str] = []
         logger.debug(f"{locations_list_actual=}")
