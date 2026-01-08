@@ -11,6 +11,7 @@ import ErrorMessage from "./ErrorMessage"
 interface DriverReactionsData {
     day: string
     reactions: Record<string, string[]>
+    username_to_name: Record<string, string>
     message_found: boolean
 }
 
@@ -192,6 +193,7 @@ function DriverReactions() {
                                                         <div className="flex flex-wrap gap-2">
                                                             {usernames.map((username) => {
                                                                 const compositeKey = `${emoji}-${username}`
+                                                                const displayName = data.username_to_name[username] || username
                                                                 return (
                                                                     <span
                                                                         key={username}
@@ -209,7 +211,7 @@ function DriverReactions() {
                                                                         title={copiedKey === compositeKey ? '✓ Copied!' : 'Click to copy username'}
                                                                     >
                                                                         {copiedKey === compositeKey && '✓ '}
-                                                                        {username}
+                                                                        {displayName}
                                                                     </span>
                                                                 )
                                                             })}

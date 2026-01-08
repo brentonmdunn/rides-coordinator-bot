@@ -152,8 +152,15 @@ async def get_driver_reactions(day: str):
 
     locations_service = LocationsService(bot)
     try:
-        reactions = await locations_service.get_driver_reactions(day)
-        return {"day": day, "reactions": reactions, "message_found": reactions is not None}
+        result = await locations_service.get_driver_reactions(day)
+        if result is None:
+            return {"day": day, "reactions": {}, "username_to_name": {}, "message_found": False}
+        return {
+            "day": day,
+            "reactions": result["reactions"],
+            "username_to_name": result["username_to_name"],
+            "message_found": True,
+        }
     except Exception as e:
         logger.error(f"Error fetching driver reactions: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
