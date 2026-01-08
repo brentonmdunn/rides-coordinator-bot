@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '../lib/api'
-import { useCopyToClipboard, cn } from '../lib/utils'
+import { cn } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from './ErrorMessage'
+import EditableOutput from './EditableOutput'
 import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
-import { X, GripVertical, Check } from 'lucide-react'
+import { X, GripVertical } from 'lucide-react'
 
 function RouteBuilder() {
     // State for available locations from API
@@ -28,14 +29,13 @@ function RouteBuilder() {
 
     // State for route output
     const [routeOutput, setRouteOutput] = useState<string>('')
+    const [originalRouteOutput, setOriginalRouteOutput] = useState<string>('')
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
+    const [copiedRoute, setCopiedRoute] = useState(false)
 
     // UI State
     const [showInfo, setShowInfo] = useState(false)
-
-    // Copy functionality
-    const { copiedText, copyToClipboard } = useCopyToClipboard()
 
     // Drag and drop state
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -143,13 +143,14 @@ function RouteBuilder() {
         setRouteLoading(true)
         setRouteError('')
         setRouteOutput('')
+        setOriginalRouteOutput('')
 
         try {
             const response = await apiFetch('/api/make-route', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    locations: selectedLocationKeys, // Send keys like ["SEVENTH", "MARSHALL"]
+                    locations: selectedLocationKeys,
                     leave_time: leaveTime
                 })
             })
@@ -158,6 +159,7 @@ function RouteBuilder() {
 
             if (result.success && result.route) {
                 setRouteOutput(result.route)
+                setOriginalRouteOutput(result.route)
             } else {
                 setRouteError(result.error || 'Failed to generate route')
             }
@@ -167,6 +169,23 @@ function RouteBuilder() {
         } finally {
             setRouteLoading(false)
         }
+    }
+
+    // Copy route to clipboard
+    const copyRouteToClipboard = async () => {
+        try {
+            await navigator.clipboard.writeText(routeOutput)
+            setCopiedRoute(true)
+            setTimeout(() => setCopiedRoute(false), 5000)
+        } catch (error) {
+            console.error('Failed to copy:', error)
+            alert('Failed to copy to clipboard')
+        }
+    }
+
+    // Revert route to original
+    const revertRoute = () => {
+        setRouteOutput(originalRouteOutput)
     }
 
     return (
@@ -321,32 +340,18 @@ function RouteBuilder() {
 
                 {/* Route Output */}
                 {routeOutput && (
-                    <div className="mt-8 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                                Generated Route
-                            </h3>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => copyToClipboard(routeOutput)}
-                                className="gap-2"
-                            >
-                                {copiedText === routeOutput ? (
-                                    <>
-                                        <Check className="h-4 w-4" />
-                                        Copied!
-                                    </>
-                                ) : (
-                                    'Copy Route'
-                                )}
-                            </Button>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
-                            <p className="text-sm text-slate-900 dark:text-slate-100 font-mono whitespace-pre-wrap break-words">
-                                {routeOutput}
-                            </p>
-                        </div>
+                    <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                            Generated Route
+                        </h3>
+                        <EditableOutput
+                            value={routeOutput}
+                            originalValue={originalRouteOutput}
+                            onChange={setRouteOutput}
+                            onCopy={copyRouteToClipboard}
+                            onRevert={revertRoute}
+                            copied={copiedRoute}
+                        />
                     </div>
                 )}
             </CardContent>
