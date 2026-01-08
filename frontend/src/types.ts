@@ -59,3 +59,19 @@ export interface RideCoverage {
     message_found: boolean
     has_coverage_entries: boolean
 }
+
+export interface PickupLocation {
+    key: string
+    value: string
+}
+
+export interface PickupLocationsResponse {
+    locations: PickupLocation[]
+    map_links: { [location: string]: string }
+}
+
+export interface MakeRouteResponse {
+    success: boolean
+    route: string | null
+    error: string | null
+}

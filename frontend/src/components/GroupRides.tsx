@@ -5,6 +5,7 @@ import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import ErrorMessage from "./ErrorMessage"
+import EditableOutput from './EditableOutput'
 import type { GroupRidesResponse } from '../types'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
@@ -21,7 +22,7 @@ function GroupRides() {
     const [originalGroupRidesData, setOriginalGroupRidesData] = useState<string[] | null>(null)
     const [groupRidesError, setGroupRidesError] = useState<string>('')
     const [groupRidesLoading, setGroupRidesLoading] = useState(false)
-    const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+    const [copiedGrouping, setCopiedGrouping] = useState<number | null>(null)
     const [showInfo, setShowInfo] = useState(false)
 
     const groupRides = async (e: React.FormEvent) => {
@@ -68,11 +69,10 @@ function GroupRides() {
     }
 
     const copyToClipboard = async (text: string, index: number) => {
-        // ... unchanged
         try {
             await navigator.clipboard.writeText(text)
-            setCopiedIndex(index)
-            setTimeout(() => setCopiedIndex(null), 5000)
+            setCopiedGrouping(index)
+            setTimeout(() => setCopiedGrouping(null), 5000)
         } catch (error) {
             console.error('Failed to copy:', error)
             alert('Failed to copy to clipboard')
@@ -245,42 +245,18 @@ function GroupRides() {
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Ride Groupings</h3>
                                 <div className="space-y-4">
-                                    {groupRidesData.map((grouping, index) => {
-                                        const isModified = originalGroupRidesData && originalGroupRidesData[index] !== grouping;
-                                        return (
-                                            <div
-                                                key={index}
-                                                className="group relative bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700 p-1 transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-600"
-                                            >
-                                                <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                    {isModified && (
-                                                        <Button
-                                                            onClick={() => revertGrouping(index)}
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="h-8 px-2 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 bg-white"
-                                                        >
-                                                            ↩ Revert
-                                                        </Button>
-                                                    )}
-                                                    <Button
-                                                        onClick={() => copyToClipboard(grouping, index)}
-                                                        size="sm"
-                                                        variant={copiedIndex === index ? "default" : "outline"}
-                                                        className={`h-8 px-2 text-xs bg-white hover:bg-slate-100 ${copiedIndex === index ? "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent" : "text-slate-700"}`}
-                                                    >
-                                                        {copiedIndex === index ? '✓ Copied' : '📋 Copy'}
-                                                    </Button>
-                                                </div>
-                                                <textarea
-                                                    value={grouping}
-                                                    onChange={(e) => handleGroupingChange(index, e.target.value)}
-                                                    className="w-full min-h-[60px] p-4 text-sm font-mono bg-transparent border-0 resize-y focus:ring-0 focus:outline-none text-slate-800 dark:text-slate-200 rounded-md"
-                                                    spellCheck={false}
-                                                />
-                                            </div>
-                                        )
-                                    })}
+                                    {groupRidesData.map((grouping, index) => (
+                                        <EditableOutput
+                                            key={index}
+                                            value={grouping}
+                                            originalValue={originalGroupRidesData?.[index] || grouping}
+                                            onChange={(newValue) => handleGroupingChange(index, newValue)}
+                                            onCopy={() => copyToClipboard(grouping, index)}
+                                            onRevert={() => revertGrouping(index)}
+                                            copied={copiedGrouping === index}
+                                            minHeight="min-h-[60px]"
+                                        />
+                                    ))}
                                 </div>
                             </div>
                         )}
