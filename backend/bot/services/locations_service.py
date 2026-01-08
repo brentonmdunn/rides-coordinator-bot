@@ -350,7 +350,8 @@ class LocationsService:
             day: "Friday" or "Sunday"
 
         Returns:
-            Dictionary mapping emojis to lists of usernames.
+            Dictionary with reactions mapping emojis to lists of usernames,
+            and username_to_name mapping for display purposes.
         """
         keyword = day
         # For Sunday, we might need specific keywords if there are multiple types,
@@ -367,14 +368,22 @@ class LocationsService:
         message = await channel.fetch_message(message_id)
 
         reactions_by_emoji = defaultdict(list)
+        all_usernames = set()
         for reaction in message.reactions:
             async for user in reaction.users():
                 if not user.bot:
-                    reactions_by_emoji[str(reaction.emoji)].append(
-                        user.name
-                    )  # or display_name or global_name
+                    username = user.name
+                    reactions_by_emoji[str(reaction.emoji)].append(username)
+                    all_usernames.add(username)
 
-        return dict(reactions_by_emoji)
+        # Get name mappings for all usernames using repository
+        async with AsyncSessionLocal() as session:
+            username_to_name = await self.repo.get_names_for_usernames(session, all_usernames)
+
+        return {
+            "reactions": dict(reactions_by_emoji),
+            "username_to_name": username_to_name,
+        }
 
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Retrieves a set of usernames who reacted to a message.

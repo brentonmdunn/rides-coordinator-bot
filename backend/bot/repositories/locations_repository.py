@@ -105,6 +105,41 @@ class LocationsRepository:
         name = result.scalars().first()
         return name
 
+    async def get_names_for_usernames(self, session, discord_usernames: set[str]) -> dict[str, str]:
+        """Retrieves names for multiple Discord usernames in a batch.
+
+        Args:
+            session: The database session.
+            discord_usernames: Set of Discord usernames to look up.
+
+        Returns:
+            Dictionary mapping Discord usernames to their actual names.
+            Only includes usernames that have a matching record.
+        """
+        if not discord_usernames:
+            return {}
+
+        # Convert all usernames to lowercase for case-insensitive matching
+        lowercase_usernames = {username.lower() for username in discord_usernames}
+
+        stmt = select(LocationsModel.discord_username, LocationsModel.name).where(
+            func.lower(LocationsModel.discord_username).in_(lowercase_usernames)
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        # Build mapping from original usernames to names
+        # Need to match case-insensitively
+        username_to_name = {}
+        for db_username, name in rows:
+            # Find the original username with matching case-insensitive comparison
+            for original_username in discord_usernames:
+                if original_username.lower() == db_username.lower():
+                    username_to_name[original_username] = name
+                    break
+
+        return username_to_name
+
     async def get_name_location(self, session, discord_username: str) -> tuple[str, str] | None:
         """Retrieves name and location for a Discord username.
 
