@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -10,6 +10,82 @@ import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { X, GripVertical } from 'lucide-react'
+
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+// Sortable item component for drag-and-drop
+interface SortableLocationItemProps {
+    id: string
+    index: number
+    locationKey: string
+    locationValue: string
+    onRemove: () => void
+}
+
+function SortableLocationItem({
+    id,
+    index,
+    locationValue,
+    onRemove
+}: SortableLocationItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id })
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    }
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-md transition-all"
+        >
+            <div
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing touch-none"
+            >
+                <GripVertical className="h-4 w-4 text-slate-400" />
+            </div>
+            <span className="flex-1 text-sm text-slate-900 dark:text-slate-100">
+                {index + 1}. {locationValue}
+            </span>
+            <button
+                type="button"
+                onClick={onRemove}
+                className="text-slate-400 hover:text-red-500 transition-colors"
+                title="Remove location"
+            >
+                <X className="h-4 w-4" />
+            </button>
+        </div>
+    )
+}
 
 function RouteBuilder() {
     // State for available locations from API
@@ -35,10 +111,17 @@ function RouteBuilder() {
     // UI State
     const [showInfo, setShowInfo] = useState(false)
 
-    // Drag and drop state
-    const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
-    const dragItem = useRef<number | null>(null)
-    const dragOverItem = useRef<number | null>(null)
+    // Drag and drop sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // 8px of movement required before drag starts
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    )
 
     // Fetch available pickup locations on mount
     useEffect(() => {
@@ -75,28 +158,17 @@ function RouteBuilder() {
         setSelectedLocationKeys(selectedLocationKeys.filter((_, i) => i !== index))
     }
 
-    // Drag and drop handlers
-    const handleDragStart = (index: number) => {
-        dragItem.current = index
-        setDraggedIndex(index)
-    }
+    // Handle drag end event
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
 
-    const handleDragEnter = (index: number) => {
-        dragOverItem.current = index
-    }
-
-    const handleDragEnd = () => {
-        if (dragItem.current !== null && dragOverItem.current !== null) {
-            const newLocations = [...selectedLocationKeys]
-            const draggedItemContent = newLocations[dragItem.current]
-            newLocations.splice(dragItem.current, 1)
-            newLocations.splice(dragOverItem.current, 0, draggedItemContent)
-            setSelectedLocationKeys(newLocations)
+        if (over && active.id !== over.id) {
+            setSelectedLocationKeys((items) => {
+                const oldIndex = items.indexOf(active.id as string)
+                const newIndex = items.indexOf(over.id as string)
+                return arrayMove(items, oldIndex, newIndex)
+            })
         }
-
-        dragItem.current = null
-        dragOverItem.current = null
-        setDraggedIndex(null)
     }
 
     // Generate route
@@ -224,33 +296,29 @@ function RouteBuilder() {
                             <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
                                 Route Order ({selectedLocationKeys.length} location{selectedLocationKeys.length !== 1 ? 's' : ''})
                             </div>
-                            <div className="space-y-2">
-                                {selectedLocationKeys.map((locationKey, index) => (
-                                    <div
-                                        key={index}
-                                        draggable
-                                        onDragStart={() => handleDragStart(index)}
-                                        onDragEnter={() => handleDragEnter(index)}
-                                        onDragEnd={handleDragEnd}
-                                        onDragOver={(e) => e.preventDefault()}
-                                        className={`flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-md cursor-move transition-all ${draggedIndex === index ? 'opacity-50' : 'opacity-100'
-                                            }`}
-                                    >
-                                        <GripVertical className="h-4 w-4 text-slate-400" />
-                                        <span className="flex-1 text-sm text-slate-900 dark:text-slate-100">
-                                            {index + 1}. {getLocationValue(locationKey)}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeLocation(index)}
-                                            className="text-slate-400 hover:text-red-500 transition-colors"
-                                            title="Remove location"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </button>
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={selectedLocationKeys}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    <div className="space-y-2">
+                                        {selectedLocationKeys.map((locationKey, index) => (
+                                            <SortableLocationItem
+                                                key={locationKey}
+                                                id={locationKey}
+                                                index={index}
+                                                locationKey={locationKey}
+                                                locationValue={getLocationValue(locationKey)}
+                                                onRemove={() => removeLocation(index)}
+                                            />
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </SortableContext>
+                            </DndContext>
                         </div>
                     )}
 
