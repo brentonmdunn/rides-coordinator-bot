@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '../lib/api'
-import { cn } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { Select } from './ui/select'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from './ErrorMessage'
 import EditableOutput from './EditableOutput'
@@ -16,10 +16,8 @@ function RouteBuilder() {
     const [availableLocations, setAvailableLocations] = useState<PickupLocationsResponse | null>(null)
     const [locationsLoading, setLocationsLoading] = useState(true)
 
-    // State for location search/autocomplete
-    const [searchInput, setSearchInput] = useState('')
-    const [showSuggestions, setShowSuggestions] = useState(false)
-    const [highlightedIndex, setHighlightedIndex] = useState<number>(-1)
+    // State for location selection dropdown
+    const [selectedLocation, setSelectedLocation] = useState<string>('')
 
     // State for selected locations - store keys (e.g., "SEVENTH") not full names
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
@@ -59,58 +57,22 @@ function RouteBuilder() {
         fetchLocations()
     }, [])
 
-    // Filter locations based on search input
-    const filteredLocations = availableLocations?.locations.filter(loc =>
-        loc.value.toLowerCase().includes(searchInput.toLowerCase())
-    ) || []
-
     // Helper function to get location value from key
     const getLocationValue = (key: string): string => {
         return availableLocations?.locations.find(loc => loc.key === key)?.value || key
     }
 
-    // Add location to selected list - store the key
-    const addLocation = (locationKey: string) => {
-        if (!selectedLocationKeys.includes(locationKey)) {
-            setSelectedLocationKeys([...selectedLocationKeys, locationKey])
+    // Add location to selected list from dropdown
+    const addLocation = () => {
+        if (selectedLocation && !selectedLocationKeys.includes(selectedLocation)) {
+            setSelectedLocationKeys([...selectedLocationKeys, selectedLocation])
+            setSelectedLocation('') // Reset dropdown
         }
-        setSearchInput('')
-        setShowSuggestions(false)
-        setHighlightedIndex(-1)
     }
 
     // Remove location from selected list
     const removeLocation = (index: number) => {
         setSelectedLocationKeys(selectedLocationKeys.filter((_, i) => i !== index))
-    }
-
-    // Handle keyboard navigation in autocomplete
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!showSuggestions || filteredLocations.length === 0) return
-
-        switch (e.key) {
-            case 'ArrowDown':
-                e.preventDefault()
-                setHighlightedIndex(prev =>
-                    prev < filteredLocations.length - 1 ? prev + 1 : prev
-                )
-                break
-            case 'ArrowUp':
-                e.preventDefault()
-                setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1)
-                break
-            case 'Enter':
-                e.preventDefault()
-                if (highlightedIndex >= 0 && highlightedIndex < filteredLocations.length) {
-                    addLocation(filteredLocations[highlightedIndex].key)
-                }
-                break
-            case 'Escape':
-                e.preventDefault()
-                setShowSuggestions(false)
-                setHighlightedIndex(-1)
-                break
-        }
     }
 
     // Drag and drop handlers
@@ -210,7 +172,7 @@ function RouteBuilder() {
                     title="How to use Route Builder"
                 >
                     <ol className="list-decimal list-inside space-y-1.5">
-                        <li>Search and select pickup locations in the order you want to visit them.</li>
+                        <li>Select pickup locations from the dropdown in the order you want to visit them.</li>
                         <li>Drag locations to reorder them if needed.</li>
                         <li>Enter the final destination arrival time (e.g., "7:10pm").</li>
                         <li>Click <span className="font-medium">Generate Route</span> to calculate pickup times.</li>
@@ -219,48 +181,39 @@ function RouteBuilder() {
                 </InfoPanel>
 
                 <form onSubmit={generateRoute} className="space-y-6">
-                    {/* Location Search/Autocomplete */}
+                    {/* Location Selection Dropdown */}
                     <div>
                         <label className="block">
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
                                 Select Locations
                             </span>
-                            <div className="relative">
-                                <Input
-                                    type="text"
-                                    value={searchInput}
-                                    onChange={(e) => {
-                                        setSearchInput(e.target.value)
-                                        setShowSuggestions(true)
-                                        setHighlightedIndex(-1)
-                                    }}
-                                    onKeyDown={handleKeyDown}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    placeholder={locationsLoading ? "Loading locations..." : "Search for a location..."}
+                            <div className="flex gap-2">
+                                <Select
+                                    value={selectedLocation}
+                                    onChange={(e) => setSelectedLocation(e.target.value)}
                                     disabled={locationsLoading}
-                                    className="w-full"
-                                />
-
-                                {/* Suggestions dropdown */}
-                                {showSuggestions && searchInput && filteredLocations.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-y-auto p-1">
-                                        {filteredLocations.map((location, index) => (
-                                            <button
-                                                key={location.key}
-                                                type="button"
-                                                onClick={() => addLocation(location.key)}
-                                                className={cn(
-                                                    "w-full text-left px-3 py-2 transition-all text-sm rounded-md border",
-                                                    index === highlightedIndex
-                                                        ? "bg-accent text-accent-foreground border-white/70 shadow-sm"
-                                                        : "text-foreground border-transparent hover:bg-accent hover:text-accent-foreground"
-                                                )}
-                                            >
+                                    className="flex-1"
+                                >
+                                    <option value="">
+                                        {locationsLoading ? 'Loading locations...' : 'Choose a location...'}
+                                    </option>
+                                    {availableLocations?.locations
+                                        .filter(loc => !selectedLocationKeys.includes(loc.key))
+                                        .map((location) => (
+                                            <option key={location.key} value={location.key}>
                                                 {location.value}
-                                            </button>
+                                            </option>
                                         ))}
-                                    </div>
-                                )}
+                                </Select>
+                                <Button
+                                    type="button"
+                                    onClick={addLocation}
+                                    disabled={!selectedLocation || locationsLoading}
+                                    variant="outline"
+                                    className="shrink-0"
+                                >
+                                    Add Location
+                                </Button>
                             </div>
                         </label>
                     </div>
