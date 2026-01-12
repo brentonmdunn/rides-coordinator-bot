@@ -232,7 +232,8 @@ class Reactions(commands.Cog):
                 and (
                     message_id
                     == await self.locations_cog.service._find_correct_message(
-                        AskRidesMessage.FRIDAY_FELLOWSHIP, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+                        AskRidesMessage.FRIDAY_FELLOWSHIP,
+                        ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
                     )
                     or message_id
                     == await self.locations_cog.service._find_correct_message(
