@@ -338,7 +338,7 @@ class LocationsService:
         if not channel:
             return None
         async for message in channel.history(after=last_sunday):
-            if not message.interaction:
+            if not message.interaction_metadata:
                 continue
             combined_text = get_message_and_embed_content(message)
             # Ensure keyword is iterable for any()
