@@ -321,7 +321,7 @@ class LocationsService:
         return most_recent_message.id if most_recent_message else None
 
     async def _find_driver_message(
-        self, keyword: str, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
+        self, keyword: list[str], channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
     ):
         """Finds the most recent driver message matching the keyword.
 
@@ -338,8 +338,12 @@ class LocationsService:
         if not channel:
             return None
         async for message in channel.history(after=last_sunday):
+            if not message.interaction_metadata:
+                continue
             combined_text = get_message_and_embed_content(message)
-            if keyword.lower() in combined_text.lower():
+            # Ensure keyword is iterable for any()
+            keywords = [keyword] if isinstance(keyword, str) else keyword
+            if any(kw.lower() in combined_text.lower() for kw in keywords):
                 most_recent_message = message
         return most_recent_message.id if most_recent_message else None
 
@@ -353,7 +357,12 @@ class LocationsService:
             Dictionary with reactions mapping emojis to lists of usernames,
             and username_to_name mapping for display purposes.
         """
-        keyword = day
+        if day.lower() == "sunday":
+            keyword = ["Sunday", "service"]
+        elif day.lower() == "friday":
+            keyword = ["Friday", "felly", "fellowship"]
+        else:
+            raise ValueError(f"Invalid day: {day}")
         # For Sunday, we might need specific keywords if there are multiple types,
         # but user just said "friday drivers" and "switch to sunday".
         # Usually "Sunday" appears in the message for Sunday service.
