@@ -3,7 +3,6 @@
 from bot.core.enums import DaysOfWeek, PickupLocations
 
 GUILD_ID = 916817752918982716
-ERROR_CHANNEL_ID = 1461610992143175804
 
 LSCC_DAYS = [DaysOfWeek.FRIDAY, DaysOfWeek.SUNDAY]
 

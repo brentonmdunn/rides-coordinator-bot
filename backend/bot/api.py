@@ -23,11 +23,11 @@ from bot.core.database import AsyncSessionLocal, init_db, seed_feature_flags
 from bot.core.logger import logger
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
-from bot.utils.constants import ERROR_CHANNEL_ID
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
 APP_ENV: str = os.getenv("APP_ENV", "local")
+ERROR_CHANNEL_ID: int | None = os.getenv("ERROR_CHANNEL_ID")
 
 # Global bot instance
 _bot_instance: Bot | None = None
@@ -177,7 +177,7 @@ async def bot_lifespan():
             # Log the error
             logger.error(f"Uncaught exception in {event}: {tb_text}")
 
-            if APP_ENV == "local":
+            if APP_ENV == "local" or ERROR_CHANNEL_ID is None:
                 return
 
             # Send to error channel
@@ -218,9 +218,6 @@ async def bot_lifespan():
             # Log the error
             logger.error(f"App command error: {error}", exc_info=error)
 
-            if APP_ENV == "local":
-                return
-
             # Send error to the user
             try:
                 if not interaction.response.is_done():
@@ -235,6 +232,9 @@ async def bot_lifespan():
                     )
             except Exception:
                 pass  # Fail silently if we can't respond to the user
+
+            if APP_ENV == "local" or ERROR_CHANNEL_ID is None:
+                return
 
             # Send to error channel
             try:
