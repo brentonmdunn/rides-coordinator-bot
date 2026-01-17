@@ -177,6 +177,9 @@ async def bot_lifespan():
             # Log the error
             logger.error(f"Uncaught exception in {event}: {tb_text}")
 
+            if APP_ENV == "local":
+                return
+
             # Send to error channel
             try:
                 channel = bot.get_channel(ERROR_CHANNEL_ID)
@@ -214,6 +217,9 @@ async def bot_lifespan():
         else:
             # Log the error
             logger.error(f"App command error: {error}", exc_info=error)
+
+            if APP_ENV == "local":
+                return
 
             # Send error to the user
             try:
