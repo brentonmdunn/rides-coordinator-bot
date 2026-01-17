@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import traceback
 from pathlib import Path
 
 import discord
@@ -16,6 +17,7 @@ from bot.core.database import AsyncSessionLocal, init_db, seed_feature_flags
 from bot.core.logger import logger
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.utils.constants import ERROR_CHANNEL_ID
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
@@ -103,7 +105,115 @@ async def on_app_command_error(
             ephemeral=True,
         )
     else:
-        raise error
+        # Log the error
+        logger.error(f"App command error: {error}", exc_info=error)
+
+        # Send error to the user
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "❌ An error occurred while processing this command.",
+                    ephemeral=True,
+                )
+                logger.info("✅ Sent error response to user")
+            else:
+                await interaction.followup.send(
+                    "❌ An error occurred while processing this command.",
+                    ephemeral=True,
+                )
+                logger.info("✅ Sent error followup to user")
+        except Exception as user_msg_error:
+            logger.warning(f"❌ Failed to send error message to user: {user_msg_error}")
+
+        # Send to error channel
+        try:
+            logger.info(f"🔍 Attempting to send error to channel {ERROR_CHANNEL_ID}")
+            tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
+            tb_text = "".join(tb_lines)
+
+            error_msg = "**App Command Error**\n"
+            cmd_name = interaction.command.name if interaction.command else "Unknown"
+            error_msg += f"Command: `{cmd_name}`\n"
+            error_msg += f"User: {interaction.user.mention} ({interaction.user.id})\n"
+            channel_mention = interaction.channel.mention if interaction.channel else "Unknown"
+            error_msg += f"Channel: {channel_mention}\n\n"
+            error_msg += f"```python\n{tb_text}\n```"
+
+            channel = bot.get_channel(ERROR_CHANNEL_ID)
+            channel = bot.get_channel(ERROR_CHANNEL_ID)
+            if channel and isinstance(channel, discord.TextChannel):
+                logger.info(f"🔍 Sending to channel, message length: {len(error_msg)}")
+                if len(error_msg) > 2000:
+                    # Send header
+                    header = "**App Command Error**\n"
+                    cmd_name = interaction.command.name if interaction.command else "Unknown"
+                    header += f"Command: `{cmd_name}`\n"
+                    header += f"User: {interaction.user.mention} ({interaction.user.id})\n"
+                    channel_mention = (
+                        interaction.channel.mention if interaction.channel else "Unknown"
+                    )
+                    header += f"Channel: {channel_mention}\n"
+                    await channel.send(header)
+                    # Send traceback in chunks
+                    chunks = [tb_text[i : i + 1900] for i in range(0, len(tb_text), 1900)]
+                    for chunk in chunks:
+                        await channel.send(f"```python\n{chunk}\n```")
+                    logger.info(f"✅ Sent error to channel in {len(chunks) + 1} messages")
+                else:
+                    await channel.send(error_msg)
+                    logger.info("✅ Sent error to channel in 1 message")
+            else:
+                logger.warning(f"Error channel {ERROR_CHANNEL_ID} not found or not a text channel")
+        except Exception as e:
+            logger.error(
+                f"❌ Failed to send app command error to channel {ERROR_CHANNEL_ID}: {e}",
+                exc_info=e,
+            )
+
+
+@bot.event
+async def on_error(event: str, *args, **kwargs) -> None:
+    """Handle uncaught exceptions and send them to the error channel."""
+
+    # Format the full traceback
+    error_msg = f"**Uncaught Exception in Event: `{event}`**\n\n"
+
+    # Get the full exception details from sys.exc_info() equivalent
+    import sys
+
+    exc_info = sys.exc_info()
+
+    if exc_info[0] is not None:
+        tb_lines = traceback.format_exception(*exc_info)
+        tb_text = "".join(tb_lines)
+
+        # Discord has a 2000 character limit for messages
+        # Split into multiple messages if needed
+        error_msg += f"```python\n{tb_text}\n```"
+
+        # Log the error
+        logger.error(f"Uncaught exception in {event}: {tb_text}")
+
+        # Send to error channel
+        try:
+            channel = bot.get_channel(ERROR_CHANNEL_ID)
+            if channel and isinstance(channel, discord.TextChannel):
+                # Split message if too long
+                if len(error_msg) > 2000:
+                    # Send header
+                    await channel.send(f"**Uncaught Exception in Event: `{event}`**")
+                    # Send traceback in chunks
+                    chunks = [tb_text[i : i + 1900] for i in range(0, len(tb_text), 1900)]
+                    for chunk in chunks:
+                        await channel.send(f"```python\n{chunk}\n```")
+                else:
+                    await channel.send(error_msg)
+            else:
+                logger.warning(f"Error channel {ERROR_CHANNEL_ID} not found or not a text channel")
+        except Exception as e:
+            logger.error(f"Failed to send error to channel {ERROR_CHANNEL_ID}: {e}")
+    else:
+        logger.error(f"Unknown error in event {event}")
 
 
 async def disable_features_for_local_env():
