@@ -1,13 +1,10 @@
 """Service for group rides logic."""
 
 import asyncio
-import json
-import os
 from datetime import datetime, time, timedelta
 
 import discord
-import tenacity
-import tenacity
+
 # from langchain_google_genai import ChatGoogleGenerativeAI # Removed
 from rapidfuzz import fuzz, process
 
@@ -25,10 +22,11 @@ from bot.core.schemas import (
     LocationQuery,
     Passenger,
 )
-from bot.services.llm_service import LLMService
 from bot.repositories.group_rides_repository import GroupRidesRepository
+from bot.services.llm_service import LLMService
 from bot.services.locations_service import LocationsService
 from bot.utils.constants import MAP_LINKS
+
 # from bot.utils.genai.prompt import (
 #     CUSTOM_INSTRUCTIONS,
 #     GROUP_RIDES_PROMPT,
@@ -60,9 +58,6 @@ living_to_pickup = {
 
 LocationsPeopleType = dict[str, list[tuple[str, str]]]
 PassengersByLocation = dict[PickupLocations, list[Passenger]]
-
-
-
 
 
 def parse_numbers(s: str) -> list[int]:
@@ -334,8 +329,6 @@ class GroupRidesService:
         """
         return living_to_pickup[living_location]
 
-
-
     async def _process_ride_grouping(
         self,
         message_id: int,
@@ -458,9 +451,7 @@ class GroupRidesService:
             )
 
         except Exception as e:
-            logger.error(
-                f"Failed to get a successful LLM response after attempts: {e}"
-            )
+            logger.error(f"Failed to get a successful LLM response after attempts: {e}")
             raise ValueError(
                 "Could not process ride grouping request. Please try again later."
             ) from e

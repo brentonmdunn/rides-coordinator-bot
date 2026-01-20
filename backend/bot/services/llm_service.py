@@ -108,14 +108,14 @@ class LLMService:
             # Attempt to be robust to optional markdown code blocks
             content = ai_response.content
             if "```json" in content:
-                 try:
+                try:
                     start = content.find("```json") + 7
                     end = content.rfind("```")
                     json_str = content[start:end].strip()
                     return json.loads(json_str)
-                 except Exception:
-                     pass
-            
+                except Exception:
+                    pass
+
             # Original logic fallback
             if "json" in ai_response.content:
                 codebox_beginning_idx = 8
