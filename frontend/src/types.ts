@@ -75,3 +75,14 @@ export interface MakeRouteResponse {
     route: string | null
     error: string | null
 }
+
+export interface NonDiscordRide {
+    name: string
+    date: string
+    location: string
+}
+
+export interface NonDiscordRidesListResponse {
+    rides: NonDiscordRide[]
+}
+

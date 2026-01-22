@@ -5,6 +5,7 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 
 from bot.core.database import AsyncSessionLocal
+from bot.core.enums import DaysOfWeek
 from bot.core.models import NonDiscordRides
 from bot.repositories.non_discord_rides_repository import NonDiscordRidesRepository
 from bot.utils.time_helpers import get_next_date_obj
@@ -39,7 +40,7 @@ class NonDiscordRidesService:
         Raises:
             DuplicateRideError: If a ride for the person on that day already exists.
         """
-        ride_date = get_next_date_obj(day)
+        ride_date = get_next_date_obj(DaysOfWeek(day.capitalize()))
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)
             try:
@@ -58,7 +59,7 @@ class NonDiscordRidesService:
         Returns:
             True if the pickup was removed, False if not found.
         """
-        ride_date = get_next_date_obj(day)
+        ride_date = get_next_date_obj(DaysOfWeek(day.capitalize()))
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)
             ride = await repo.get_ride(name, ride_date)
@@ -76,7 +77,7 @@ class NonDiscordRidesService:
         Returns:
             A list of NonDiscordRides objects.
         """
-        ride_date = get_next_date_obj(day)
+        ride_date = get_next_date_obj(DaysOfWeek(day.capitalize()))
         async with AsyncSessionLocal() as session:
             repo = NonDiscordRidesRepository(session)
             return await repo.get_rides_by_date(ride_date)

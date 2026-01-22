@@ -11,6 +11,7 @@ import RideCoverageWarning from './components/RideCoverageWarning'
 import FeatureFlagsManager from './components/FeatureFlagsManager'
 import { ModeToggle } from './components/mode-toggle'
 import EnvironmentBanner from './components/EnvironmentBanner'
+import NonDiscordRides from './components/NonDiscordRides'
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
             <AskRidesDashboard />
             <DriverReactions />
             <RideCoverageCheck />
+            <NonDiscordRides />
             <PickupLocations />
             <GroupRides />
             <RouteBuilder />
