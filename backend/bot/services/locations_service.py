@@ -73,7 +73,7 @@ class LocationsService:
         required_columns = ["Name", "Discord Username", "Year", "Location", "Driver"]
         if reader.fieldnames is None:
             raise Exception("CSV file is empty or has no header row.")
-        
+
         missing_columns = [col for col in required_columns if col not in reader.fieldnames]
         if missing_columns:
             raise Exception(
