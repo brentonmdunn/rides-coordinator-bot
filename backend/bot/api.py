@@ -27,7 +27,13 @@ from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
 APP_ENV: str = os.getenv("APP_ENV", "local")
-ERROR_CHANNEL_ID: int | None = os.getenv("ERROR_CHANNEL_ID")
+_error_channel_id = os.getenv("ERROR_CHANNEL_ID")
+ERROR_CHANNEL_ID: int | None = int(_error_channel_id) if _error_channel_id else None
+
+if ERROR_CHANNEL_ID:
+    logger.info(f"✅ Error channel configured: {ERROR_CHANNEL_ID}")
+else:
+    logger.warning("⚠️  Error channel not configured - errors will only be logged")
 
 # Global bot instance
 _bot_instance: Bot | None = None
