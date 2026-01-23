@@ -69,6 +69,18 @@ class LocationsService:
         csv_file = io.StringIO(csv_data)
         reader = csv.DictReader(csv_file)
 
+        # Validate that all required columns exist
+        required_columns = ["Name", "Discord Username", "Year", "Location", "Driver"]
+        if reader.fieldnames is None:
+            raise Exception("CSV file is empty or has no header row.")
+        
+        missing_columns = [col for col in required_columns if col not in reader.fieldnames]
+        if missing_columns:
+            raise Exception(
+                f"CSV is missing required columns: {', '.join(missing_columns)}. "
+                f"Found columns: {', '.join(reader.fieldnames)}"
+            )
+
         locations_to_add = []
         for row in reader:
             name = self._get_info(row, "Name")
