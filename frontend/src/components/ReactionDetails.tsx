@@ -89,18 +89,7 @@ function ReactionDetails() {
         await fetchDataForType(messageType)
     }
 
-    const handleRefresh = async () => {
-        // If in manual mode, refresh keeps the current selection
-        // If in auto mode, it re-evaluates the auto selection (though usually same) 
-        // effectively treating refresh as "reset to auto" if we want, but typically 
-        // refresh just refreshes current data. 
-        // matching DriverReactions: refresh button calls updateDayAndFetch which resets manual override
-        if (manualOverride) {
-            await fetchDataForType(selectedType)
-        } else {
-            await updateTypeAndFetch()
-        }
-    }
+
 
     useEffect(() => {
         // Run once on mount
@@ -120,11 +109,7 @@ function ReactionDetails() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                            // If user clicks refresh, we typically want to reset to pure state, 
-                            // but in DriverReactions it resets to auto. Let's match that.
-                            updateTypeAndFetch()
-                        }}
+                        onClick={updateTypeAndFetch}
                         title="Refresh data (resets to auto)"
                         className="h-8 w-8 p-0"
                         disabled={loading}
