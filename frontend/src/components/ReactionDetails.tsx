@@ -28,7 +28,23 @@ function ReactionDetails() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [selectedType, setSelectedType] = useState<MessageType>('friday')
+    const [manualOverride, setManualOverride] = useState(false)
     const [showInfo, setShowInfo] = useState(false)
+
+    const getAutomaticDay = (): MessageType => {
+        const now = new Date()
+        const day = now.getDay()
+        const hour = now.getHours()
+
+        // Default to Sunday if it's Saturday (6) or Sunday (0)
+        // OR if it's Friday (5) after 10pm
+        if (day === 6 || day === 0 || (day === 5 && hour >= 22)) {
+            return 'sunday'
+        }
+        // Otherwise default to Friday
+        // Note: Never automatically defaults to 'sunday_class' as requested
+        return 'friday'
+    }
 
     const fetchDataForType = async (messageType: MessageType) => {
         setLoading(true)
@@ -36,6 +52,18 @@ function ReactionDetails() {
         try {
             const response = await apiFetch(`/api/ask-rides/reactions/${messageType}`)
             if (!response.ok) {
+                // If the specific type (e.g. Sunday) isn't found, we don't auto-switch to others
+                // to avoid confusing behavior, just show the "not found" state.
+                if (response.status === 404) {
+                    setData({
+                        message_type: messageType,
+                        reactions: {},
+                        username_to_name: {},
+                        message_found: false
+                    })
+                    setSelectedType(messageType)
+                    return
+                }
                 throw new Error('Failed to fetch ask-rides reactions')
             }
             const result = await response.json()
@@ -48,17 +76,35 @@ function ReactionDetails() {
         }
     }
 
+    const updateTypeAndFetch = async () => {
+        const currentType = getAutomaticDay()
+        setManualOverride(false)
+        await fetchDataForType(currentType)
+    }
+
     const handleTypeChange = async (messageType: MessageType) => {
+        // Set manual override when user explicitly clicks a button
+        setManualOverride(true)
         if (messageType === selectedType && data) return
         await fetchDataForType(messageType)
     }
 
     const handleRefresh = async () => {
-        await fetchDataForType(selectedType)
+        // If in manual mode, refresh keeps the current selection
+        // If in auto mode, it re-evaluates the auto selection (though usually same) 
+        // effectively treating refresh as "reset to auto" if we want, but typically 
+        // refresh just refreshes current data. 
+        // matching DriverReactions: refresh button calls updateDayAndFetch which resets manual override
+        if (manualOverride) {
+            await fetchDataForType(selectedType)
+        } else {
+            await updateTypeAndFetch()
+        }
     }
 
     useEffect(() => {
-        fetchDataForType(selectedType)
+        // Run once on mount
+        updateTypeAndFetch()
     }, [])
 
     const selectedOption = MESSAGE_TYPES.find(t => t.value === selectedType)
@@ -74,8 +120,12 @@ function ReactionDetails() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleRefresh}
-                        title="Refresh data"
+                        onClick={() => {
+                            // If user clicks refresh, we typically want to reset to pure state, 
+                            // but in DriverReactions it resets to auto. Let's match that.
+                            updateTypeAndFetch()
+                        }}
+                        title="Refresh data (resets to auto)"
                         className="h-8 w-8 p-0"
                         disabled={loading}
                     >
@@ -96,13 +146,17 @@ function ReactionDetails() {
                 >
                     <div className="mb-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700">
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Currently viewing: <strong>{selectedOption?.label}</strong>
+                            Currently viewing: <strong>{selectedOption?.label}</strong> {!manualOverride && ['friday', 'sunday'].includes(selectedType) && <span className="text-slate-500 dark:text-slate-400">(Auto)</span>}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            {manualOverride ? 'Manual mode - click refresh to return to auto' : 'Automatic mode - switches based on current time'}
                         </p>
                     </div>
                     <p className="mb-2">
                         This widget shows detailed reactions from the ask rides announcements channel.
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                        <li>Automatically defaults to <strong>Friday</strong> or <strong>Sunday</strong> based on the time.</li>
                         <li>Select a message type using the buttons above.</li>
                         <li>Expand the list to see who reacted with each emoji.</li>
                         <li>Click on any username to copy it to your clipboard.</li>
@@ -121,6 +175,9 @@ function ReactionDetails() {
                         >
                             <span className="mr-2">{type.emoji}</span>
                             {type.label}
+                            {selectedType === type.value && !manualOverride && ['friday', 'sunday'].includes(type.value) && (
+                                <span className="ml-1 text-xs opacity-70">(Auto)</span>
+                            )}
                         </Button>
                     ))}
                 </div>

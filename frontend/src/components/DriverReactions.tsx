@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../lib/api'
-import { useCopyToClipboard } from '../lib/utils'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
@@ -23,8 +22,6 @@ function DriverReactions() {
     const [activeDay, setActiveDay] = useState<'Friday' | 'Sunday'>('Friday')
     const [manualOverride, setManualOverride] = useState(false)
     const [showInfo, setShowInfo] = useState(false)
-    const { copyToClipboard } = useCopyToClipboard()
-    const [copiedKey, setCopiedKey] = useState<string>('')
 
     const getAutomaticDay = (): 'Friday' | 'Sunday' => {
         const now = new Date()
