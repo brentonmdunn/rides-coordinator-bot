@@ -1,24 +1,23 @@
 import { useState } from 'react'
 import { useCopyToClipboard } from '../lib/utils'
 
-interface UsernamePillProps {
-    username: string
-    displayName?: string
+interface CopyPillProps {
+    copyStr: string
+    displayStr: string
 }
 
-export function UsernamePill({ username, displayName }: UsernamePillProps) {
+export function CopyPill({ copyStr, displayStr }: CopyPillProps) {
     const { copyToClipboard } = useCopyToClipboard()
     const [isCopied, setIsCopied] = useState(false)
 
     const handleCopy = () => {
-        copyToClipboard("@" + username)
+        copyToClipboard(copyStr)
         setIsCopied(true)
         setTimeout(() => {
             setIsCopied(false)
         }, 5000)
     }
 
-    const nameToShow = displayName || username
 
     return (
         <span
@@ -29,7 +28,7 @@ export function UsernamePill({ username, displayName }: UsernamePillProps) {
                 }`}
             title={isCopied ? '✓ Copied!' : 'Click to copy username'}
         >
-            {nameToShow}
+            {displayStr}
         </span>
     )
 }

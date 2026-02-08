@@ -6,7 +6,7 @@ import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 
-import { UsernamePill } from './UsernamePill'
+import { CopyPill } from './CopyPill'
 
 interface DriverReactionsData {
     day: string
@@ -190,12 +190,12 @@ function DriverReactions() {
                                                         </div>
                                                         <div className="flex flex-wrap gap-2">
                                                             {usernames.map((username) => {
-                                                                const displayName = data.username_to_name[username] || username
+                                                                const displayName = data.username_to_name[username] || ("@" + username)
                                                                 return (
-                                                                    <UsernamePill
+                                                                    <CopyPill
                                                                         key={username}
-                                                                        username={username}
-                                                                        displayName={displayName}
+                                                                        copyStr={"@" + username}
+                                                                        displayStr={displayName}
                                                                     />
                                                                 )
                                                             })}

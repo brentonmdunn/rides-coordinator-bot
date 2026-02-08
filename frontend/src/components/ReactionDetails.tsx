@@ -6,7 +6,7 @@ import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { AskRidesReactionsData } from '../types'
-import { UsernamePill } from './UsernamePill'
+import { CopyPill } from './CopyPill'
 
 
 type MessageType = 'friday' | 'sunday' | 'sunday_class'
@@ -202,10 +202,10 @@ function ReactionDetails() {
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 pl-1">
                                                     {usernames.map((username) => (
-                                                        <UsernamePill
+                                                        <CopyPill
                                                             key={username}
-                                                            username={username}
-                                                            displayName={data.username_to_name[username] || username}
+                                                            copyStr={"@" + username}
+                                                            displayStr={data.username_to_name[username] || ("@" + username)}
                                                         />
                                                     ))}
                                                 </div>
