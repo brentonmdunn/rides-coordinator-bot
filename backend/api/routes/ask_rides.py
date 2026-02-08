@@ -5,11 +5,11 @@ from collections import defaultdict
 from fastapi import APIRouter, HTTPException
 
 from bot.api import get_bot
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import ChannelIds
 from bot.core.logger import logger
-from bot.jobs.ask_rides import BOT_REACTIONS, get_ask_rides_status
+from bot.jobs.ask_rides import get_ask_rides_status
 from bot.repositories.locations_repository import LocationsRepository
-from bot.core.database import AsyncSessionLocal
 
 router = APIRouter(prefix="/api/ask-rides", tags=["ask-rides"])
 
@@ -68,7 +68,6 @@ async def get_ask_rides_reactions(message_type: str):
         }
 
         keyword = keywords.get(message_type.lower(), "")
-        bot_emojis = BOT_REACTIONS.get(message_type.lower(), [])
 
         # Find the most recent message for this type
         # Search in the last 20 messages (same as get_last_message_reactions)
