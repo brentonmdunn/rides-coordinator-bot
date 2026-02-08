@@ -149,14 +149,14 @@ function ReactionDetails() {
                     </ul>
                 </InfoPanel>
 
-                <div className="mb-6 flex flex-wrap gap-2">
+                <div className="mb-6 flex flex-col md:flex-row gap-2">
                     {MESSAGE_TYPES.map(type => (
                         <Button
                             key={type.value}
                             variant={selectedType === type.value ? 'default' : 'outline'}
                             onClick={() => handleTypeChange(type.value)}
                             disabled={loading}
-                            className="flex-1 min-w-[120px]"
+                            className="flex-1 min-w-[120px] w-full md:w-auto"
                         >
                             <span className="mr-2">{type.emoji}</span>
                             {type.label}
