@@ -7,6 +7,7 @@ import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 
+import { UsernamePill } from './UsernamePill'
 
 interface DriverReactionsData {
     day: string
@@ -192,26 +193,13 @@ function DriverReactions() {
                                                         </div>
                                                         <div className="flex flex-wrap gap-2">
                                                             {usernames.map((username) => {
-                                                                const compositeKey = `${emoji}-${username}`
                                                                 const displayName = data.username_to_name[username] || username
                                                                 return (
-                                                                    <span
+                                                                    <UsernamePill
                                                                         key={username}
-                                                                        onClick={() => {
-                                                                            copyToClipboard("@" + username)
-                                                                            setCopiedKey(compositeKey)
-                                                                            setTimeout(() => {
-                                                                                setCopiedKey('')
-                                                                            }, 5000)
-                                                                        }}
-                                                                        className={`px-2 py-1 rounded text-sm cursor-pointer transition-all duration-300 border ${copiedKey === compositeKey
-                                                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700'
-                                                                            : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-zinc-700 border-transparent'
-                                                                            }`}
-                                                                        title={copiedKey === compositeKey ? '✓ Copied!' : 'Click to copy username'}
-                                                                    >
-                                                                        {displayName}
-                                                                    </span>
+                                                                        username={username}
+                                                                        displayName={displayName}
+                                                                    />
                                                                 )
                                                             })}
                                                         </div>
