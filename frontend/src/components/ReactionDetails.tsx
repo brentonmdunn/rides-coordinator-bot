@@ -174,13 +174,12 @@ function ReactionDetails() {
                                                                         setCopiedKey('')
                                                                     }, 5000)
                                                                 }}
-                                                                className={`px-2.5 py-1.5 rounded text-sm cursor-pointer transition-all duration-200 border shadow-sm ${copiedKey === compositeKey
-                                                                    ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700 scale-105'
-                                                                    : 'bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-700 border-slate-200 dark:border-zinc-700 hover:border-slate-300 dark:hover:border-zinc-600'
+                                                                className={`px-2 py-1 rounded text-sm cursor-pointer transition-all duration-300 border ${copiedKey === compositeKey
+                                                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700'
+                                                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-zinc-700 border-transparent'
                                                                     }`}
                                                                 title={copiedKey === compositeKey ? '✓ Copied!' : 'Click to copy username'}
                                                             >
-                                                                {copiedKey === compositeKey && '✓ '}
                                                                 {displayName}
                                                             </span>
                                                         )

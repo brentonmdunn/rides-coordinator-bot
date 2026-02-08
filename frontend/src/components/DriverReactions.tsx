@@ -210,7 +210,6 @@ function DriverReactions() {
                                                                             }`}
                                                                         title={copiedKey === compositeKey ? '✓ Copied!' : 'Click to copy username'}
                                                                     >
-                                                                        {copiedKey === compositeKey && '✓ '}
                                                                         {displayName}
                                                                     </span>
                                                                 )
