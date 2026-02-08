@@ -75,3 +75,10 @@ export interface MakeRouteResponse {
     route: string | null
     error: string | null
 }
+
+export interface AskRidesReactionsData {
+    message_type: string
+    reactions: Record<string, string[]>
+    username_to_name: Record<string, string>
+    message_found: boolean
+}
