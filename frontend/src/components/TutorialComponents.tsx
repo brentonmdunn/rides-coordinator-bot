@@ -16,6 +16,18 @@ export function TutorialSection({ title, children }: TutorialSectionProps) {
     )
 }
 
+interface TutorialSubheaderProps {
+    children: ReactNode
+}
+
+export function TutorialSubheader({ children }: TutorialSubheaderProps) {
+    return (
+        <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mt-6 mb-3">
+            {children}
+        </h3>
+    )
+}
+
 interface TutorialTextProps {
     children?: ReactNode
 }

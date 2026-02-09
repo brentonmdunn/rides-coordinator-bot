@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { ModeToggle } from '../components/mode-toggle'
 import EnvironmentBanner from '../components/EnvironmentBanner'
-import { TutorialSection, TutorialText } from '../components/TutorialComponents'
+import { TutorialSection, TutorialSubheader, TutorialText } from '../components/TutorialComponents'
 
 function Learn() {
     return (
@@ -38,12 +38,23 @@ function Learn() {
                             <TutorialText>
                                 Welcome to Ridebot! This guide will walk you through everything you need to know
                                 to coordinate rides efficiently.
+
                             </TutorialText>
                         </TutorialSection>
 
                         <TutorialSection title="Getting Started">
                             <TutorialText>
-                                {/* Add your content here */}
+                                First, you'll need to join the Discord server and react to a ride announcement.
+                            </TutorialText>
+
+                            <TutorialSubheader>Joining the Server</TutorialSubheader>
+                            <TutorialText>
+                                Ask a friend for an invite link to join the Discord server.
+                            </TutorialText>
+
+                            <TutorialSubheader>Finding Ride Announcements</TutorialSubheader>
+                            <TutorialText>
+                                Look for ride announcement posts in the rides channel.
                             </TutorialText>
                         </TutorialSection>
 
