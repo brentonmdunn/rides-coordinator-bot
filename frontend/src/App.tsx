@@ -2,6 +2,7 @@ import './App.css'
 // import Header from './components/Header'
 import PickupLocations from './components/PickupLocations'
 import DriverReactions from './components/DriverReactions'
+import ReactionDetails from './components/ReactionDetails'
 import GroupRides from './components/GroupRides'
 import RouteBuilder from './components/RouteBuilder'
 // import DemoControls from './components/DemoControls'
@@ -35,6 +36,7 @@ function App() {
           <div className="grid gap-8">
             <RideCoverageWarning />
             <AskRidesDashboard />
+            <ReactionDetails />
             <DriverReactions />
             <RideCoverageCheck />
             <PickupLocations />
