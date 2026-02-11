@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import ErrorMessage from "../ErrorMessage"
 import type { AskRidesStatus } from '../../types'
@@ -10,6 +10,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 
 function AskRidesDashboard() {
     const [showInfo, setShowInfo] = useState(false)
+    const [showConfirm, setShowConfirm] = useState(false)
+    const queryClient = useQueryClient()
+
     const {
         data: askRidesStatus,
         isLoading: askRidesLoading,
@@ -26,17 +29,54 @@ function AskRidesDashboard() {
         }
     })
 
+    const sendNowMutation = useMutation({
+        mutationFn: async () => {
+            const response = await apiFetch('/api/ask-rides/send-now', {
+                method: 'POST',
+            })
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}))
+                throw new Error(data.detail || 'Failed to send messages')
+            }
+            return response.json()
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['askRidesStatus'] })
+        },
+    })
+
+    const handleSendNow = () => {
+        setShowConfirm(false)
+        sendNowMutation.mutate()
+    }
+
     const askRidesError = error instanceof Error ? error.message : ''
 
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle><span>📅</span> Ask Rides Status Dashboard</CardTitle>
-                <InfoToggleButton
-                    isOpen={showInfo}
-                    onClick={() => setShowInfo(!showInfo)}
-                    title="About Dashboard Status"
-                />
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowConfirm(true)}
+                        disabled={sendNowMutation.isPending}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {sendNowMutation.isPending ? (
+                            <>
+                                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Sending...
+                            </>
+                        ) : (
+                            '📨 Send now'
+                        )}
+                    </button>
+                    <InfoToggleButton
+                        isOpen={showInfo}
+                        onClick={() => setShowInfo(!showInfo)}
+                        title="About Dashboard Status"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <InfoPanel
@@ -67,6 +107,18 @@ function AskRidesDashboard() {
                     </ul>
                 </InfoPanel>
 
+                {sendNowMutation.isSuccess && (
+                    <div className="mb-4 px-3 py-2 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 text-sm">
+                        ✅ Ask rides messages sent successfully!
+                    </div>
+                )}
+
+                {sendNowMutation.isError && (
+                    <div className="mb-4 px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-sm">
+                        ❌ {sendNowMutation.error instanceof Error ? sendNowMutation.error.message : 'Failed to send messages'}
+                    </div>
+                )}
+
                 {askRidesLoading && (
                     <div className="p-8 text-center text-slate-500 animate-pulse">
                         Loading ask rides status...
@@ -90,8 +142,37 @@ function AskRidesDashboard() {
                     </div>
                 )}
             </CardContent>
+
+            {/* Confirmation Modal */}
+            {showConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                            Send rides messages now?
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">
+                            This will immediately send the ask rides messages to the announcements channel. This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowConfirm(false)}
+                                className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSendNow}
+                                className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                            >
+                                Yes, send now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     )
 }
 
 export default AskRidesDashboard
+
