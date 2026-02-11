@@ -65,14 +65,14 @@ function RideCoverageWarning() {
     }
 
     return (
-        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 rounded-md">
+        <div className="p-4 bg-warning/15 border-l-4 border-warning rounded-md">
             <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-warning-text flex-shrink-0 mt-0.5" />
                 <div>
-                    <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                    <h3 className="font-semibold text-warning-text mb-1">
                         ⚠️ Rides Needed
                     </h3>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    <p className="text-sm text-warning-text">
                         {message}
                     </p>
                 </div>

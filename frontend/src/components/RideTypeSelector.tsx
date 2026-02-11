@@ -8,7 +8,7 @@ interface RideTypeSelectorProps {
 export default function RideTypeSelector({ value, onChange }: RideTypeSelectorProps) {
     return (
         <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
                 Select Ride Type
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -18,8 +18,8 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                     className={`
                         flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all
                         ${value === 'friday'
-                            ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/30 dark:border-blue-500 dark:text-blue-300 ring-1 ring-blue-500'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-300 dark:hover:bg-zinc-800'
+                            ? 'bg-info/10 border-info text-foreground ring-1 ring-info'
+                            : 'bg-card border-border text-foreground hover:bg-accent hover:text-accent-foreground'
                         }
                     `}
                 >
@@ -33,8 +33,8 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                     className={`
                         flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all
                         ${value === 'sunday'
-                            ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/30 dark:border-blue-500 dark:text-blue-300 ring-1 ring-blue-500'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-300 dark:hover:bg-zinc-800'
+                            ? 'bg-info/10 border-info text-foreground ring-1 ring-info'
+                            : 'bg-card border-border text-foreground hover:bg-accent hover:text-accent-foreground'
                         }
                     `}
                 >
@@ -48,8 +48,8 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                     className={`
                         flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all
                         ${value === 'message_id'
-                            ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/30 dark:border-blue-500 dark:text-blue-300 ring-1 ring-blue-500'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-slate-300 dark:hover:bg-zinc-800'
+                            ? 'bg-info/10 border-info text-foreground ring-1 ring-info'
+                            : 'bg-card border-border text-foreground hover:bg-accent hover:text-accent-foreground'
                         }
                     `}
                 >
