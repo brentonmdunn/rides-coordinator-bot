@@ -145,8 +145,8 @@ function AskRidesDashboard() {
 
             {/* Confirmation Modal */}
             {showConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowConfirm(false)}>
+                    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                             Send rides messages now?
                         </h3>
