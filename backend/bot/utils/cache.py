@@ -6,6 +6,8 @@ from collections import OrderedDict
 from collections.abc import Callable
 from typing import Any, TypeVar
 
+from bot.core.logger import logger
+
 T = TypeVar("T")
 
 
@@ -64,7 +66,9 @@ def alru_cache(
             return result
 
         def cache_clear():
+            """Clear all cached entries."""
             cache.clear()
+            logger.info(f"Cache cleared for {func.__name__}")
 
         wrapper.cache_clear = cache_clear
         return wrapper
