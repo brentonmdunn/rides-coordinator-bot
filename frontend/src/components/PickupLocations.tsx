@@ -73,8 +73,8 @@ function PickupLocations() {
                         size="icon"
                         onClick={() => setShowSettings(!showSettings)}
                         className={`h-8 w-8 transition-colors ${showSettings
-                            ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                            ? 'bg-accent text-accent-foreground'
+                            : 'text-muted-foreground hover:text-foreground'
                             }`}
                         title="Advanced Settings"
                     >
@@ -107,10 +107,10 @@ function PickupLocations() {
 
                     {/* Message ID Input (only shown when message_id is selected) */}
                     {pickupRideType === 'message_id' && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
+                        <div className="p-4 bg-muted/50 rounded-lg border border-border">
                             {/* ... Message ID input ... */}
                             <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                <span className="text-sm font-medium text-foreground mb-2 block">
                                     Message ID
                                 </span>
                                 <Input
@@ -127,9 +127,9 @@ function PickupLocations() {
 
                     {/* Advanced Settings (Channel ID) */}
                     {showSettings && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-top-2">
+                        <div className="p-4 bg-muted/50 rounded-lg border border-border animate-in fade-in slide-in-from-top-2">
                             <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                <span className="text-sm font-medium text-foreground mb-2 block">
                                     Custom Channel ID (Optional)
                                 </span>
                                 <Input
@@ -139,7 +139,7 @@ function PickupLocations() {
                                     placeholder="Default: Rides Announcements Channel"
                                     className="w-full max-w-md font-mono text-sm"
                                 />
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                     Leave blank to use the default channel.
                                 </p>
                             </label>
@@ -167,10 +167,10 @@ function PickupLocations() {
                 {pickupData && (
                     <div className="mt-8 space-y-6">
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                            <h3 className="text-lg font-semibold text-foreground">
                                 Pickup Locations
                             </h3>
-                            <span className="px-3 py-1 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 text-sm font-medium rounded-full border border-slate-200 dark:border-zinc-700">
+                            <span className="px-3 py-1 bg-muted text-muted-foreground text-sm font-medium rounded-full border border-border">
                                 Total: {
                                     Object.values(pickupData.housing_groups).reduce((acc, group) => acc + group.count, 0) +
                                     (pickupData.unknown_users?.length || 0)
@@ -193,19 +193,19 @@ function PickupLocations() {
 
                         {/* Unknown Users */}
                         {pickupData.unknown_users && pickupData.unknown_users.length > 0 && (
-                            <div className="border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden bg-amber-50 dark:bg-amber-950/30">
-                                <div className="px-4 py-3 border-b border-amber-200 dark:border-amber-800">
-                                    <h4 className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                            <div className="border border-warning rounded-lg overflow-hidden bg-warning/15">
+                                <div className="px-4 py-3 border-b border-warning">
+                                    <h4 className="font-semibold text-foreground flex items-center gap-2">
                                         <span>⚠️</span>
                                         <span>Unknown Users</span>
-                                        <span className="text-sm font-normal text-amber-700 dark:text-amber-400">
+                                        <span className="text-sm font-normal text-foreground/80">
                                             ({pickupData.unknown_users.length})
                                         </span>
-                                        <span className="text-sm font-normal text-amber-700 dark:text-amber-400"><em>Make sure their Discord username is correct in the Google sheet.</em></span>
+                                        <span className="text-sm font-normal text-foreground/80"><em>Make sure their Discord username is correct in the Google sheet.</em></span>
                                     </h4>
                                 </div>
                                 <div className="p-4">
-                                    <div className="text-amber-800 dark:text-amber-300">
+                                    <div className="text-foreground/80">
                                         {pickupData.unknown_users.join(', ')}
                                     </div>
                                 </div>

@@ -6,7 +6,7 @@ import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { AskRidesReactionsData } from '../types'
-import { UsernamePill } from './UsernamePill'
+import { CopyPill } from './CopyPill'
 
 
 type MessageType = 'friday' | 'sunday' | 'sunday_class'
@@ -129,18 +129,18 @@ function ReactionDetails() {
                     onClose={() => setShowInfo(false)}
                     title="About Ask Rides Reactions"
                 >
-                    <div className="mb-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700">
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Currently viewing: <strong>{selectedOption?.label}</strong> {!manualOverride && ['friday', 'sunday'].includes(selectedType) && <span className="text-slate-500 dark:text-slate-400">(Auto)</span>}
+                    <div className="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
+                        <p className="text-sm font-medium text-foreground">
+                            Currently viewing: <strong>{selectedOption?.label}</strong> {!manualOverride && ['friday', 'sunday'].includes(selectedType) && <span className="text-muted-foreground">(Auto)</span>}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                             {manualOverride ? 'Manual mode - click refresh to return to auto' : 'Automatic mode - switches based on current time'}
                         </p>
                     </div>
                     <p className="mb-2">
                         This widget shows detailed reactions from the ask rides announcements channel.
                     </p>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                         <li>Automatically defaults to <strong>Friday</strong> or <strong>Sunday</strong> based on the time.</li>
                         <li>Select a message type using the buttons above.</li>
                         <li>Expand the list to see who reacted with each emoji.</li>
@@ -167,45 +167,45 @@ function ReactionDetails() {
                     ))}
                 </div>
 
-                {loading && <div className="text-center py-8 text-slate-500 animate-pulse">Loading reactions...</div>}
+                {loading && <div className="text-center py-8 text-muted-foreground animate-pulse">Loading reactions...</div>}
 
                 {error && <ErrorMessage message={error} />}
 
                 {!loading && !error && data && (
-                    <div className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-200 dark:border-zinc-800 overflow-hidden transition-all duration-300">
+                    <div className="bg-card rounded-lg border border-border overflow-hidden transition-all duration-300">
                         {!data.message_found ? (
-                            <div className="text-center py-8 text-slate-500 italic">
+                            <div className="text-center py-8 text-muted-foreground italic">
                                 No message found for {selectedOption?.label} this week.
                             </div>
                         ) : (
                             <div className="p-0">
-                                <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-700/50 flex justify-between items-center">
-                                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                                <div className="p-4 bg-muted/50 border-b border-border flex justify-between items-center">
+                                    <h3 className="font-semibold text-foreground">
                                         Reaction Breakdown
                                     </h3>
-                                    <span className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
                                         {Object.values(data.reactions).reduce((acc, curr) => acc + curr.length, 0)} Total Reactions
                                     </span>
                                 </div>
 
                                 {Object.keys(data.reactions).length === 0 ? (
-                                    <div className="text-center py-8 text-slate-500">No reactions found yet.</div>
+                                    <div className="text-center py-8 text-muted-foreground">No reactions found yet.</div>
                                 ) : (
                                     <div className="p-4 space-y-6">
                                         {Object.entries(data.reactions).map(([emoji, usernames]) => (
                                             <div key={emoji}>
                                                 <div className="flex items-center gap-2 mb-3">
                                                     <span className="text-2xl">{emoji}</span>
-                                                    <span className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                                                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                                                         {usernames.length} {usernames.length === 1 ? 'Person' : 'People'}
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 pl-1">
                                                     {usernames.map((username) => (
-                                                        <UsernamePill
+                                                        <CopyPill
                                                             key={username}
-                                                            username={username}
-                                                            displayName={data.username_to_name[username] || username}
+                                                            copyStr={"@" + username}
+                                                            displayStr={data.username_to_name[username] || ("@" + username)}
                                                         />
                                                     ))}
                                                 </div>
