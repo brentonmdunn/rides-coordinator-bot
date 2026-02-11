@@ -17,14 +17,14 @@ function App() {
   return (
     <>
       <EnvironmentBanner />
-      <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50 dark:bg-zinc-950 py-12 px-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background py-12 px-4 font-sans text-foreground transition-colors duration-300">
         <div className="max-w-4xl mx-auto space-y-8 overflow-x-hidden">
           <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-12">
             <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl mb-4">
+              <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl mb-4">
                 🚗 Admin Dashboard
               </h1>
-              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto md:mx-0">
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto md:mx-0">
                 Manage rides, view pickups, and configure bot settings all in one place.
               </p>
             </div>

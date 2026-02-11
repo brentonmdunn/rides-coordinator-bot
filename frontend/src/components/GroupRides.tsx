@@ -105,8 +105,8 @@ function GroupRides() {
                         size="icon"
                         onClick={() => setShowSettings(!showSettings)}
                         className={`h-8 w-8 transition-colors ${showSettings
-                            ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                            ? 'bg-accent text-accent-foreground'
+                            : 'text-muted-foreground hover:text-foreground'
                             }`}
                         title="Advanced Settings"
                     >
@@ -139,9 +139,9 @@ function GroupRides() {
 
                     {/* Message ID Input (only shown when message_id is selected) */}
                     {rideType === 'message_id' && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
+                        <div className="p-4 bg-muted/50 rounded-lg border border-border">
                             <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                <span className="text-sm font-medium text-foreground mb-2 block">
                                     Message ID
                                 </span>
                                 <Input
@@ -159,7 +159,7 @@ function GroupRides() {
                     {/* Driver Capacity */}
                     <div>
                         <label className="block">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                            <span className="text-sm font-medium text-foreground mb-2 block">
                                 Driver Capacity
                             </span>
                             <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ function GroupRides() {
                                     placeholder="e.g., 44444"
                                     className="w-32 font-mono"
                                 />
-                                <span className="text-sm text-slate-500 dark:text-slate-400">
+                                <span className="text-sm text-muted-foreground">
                                     (One digit per driver, e.g., "4" = 4 seats)
                                 </span>
                             </div>
@@ -179,9 +179,9 @@ function GroupRides() {
 
                     {/* Advanced Settings (Channel ID) */}
                     {showSettings && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-top-2">
+                        <div className="p-4 bg-muted/50 rounded-lg border border-border animate-in fade-in slide-in-from-top-2">
                             <label className="block">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                <span className="text-sm font-medium text-foreground mb-2 block">
                                     Custom Channel ID (Optional)
                                 </span>
                                 <Input
@@ -191,7 +191,7 @@ function GroupRides() {
                                     placeholder="Default: Rides Announcements Channel"
                                     className="w-full max-w-md font-mono text-sm"
                                 />
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                     Leave blank to use the default channel.
                                 </p>
                             </label>
@@ -211,7 +211,7 @@ function GroupRides() {
 
                 {/* Loading Indicator */}
                 {groupRidesLoading && (
-                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-lg flex items-start gap-3">
+                    <div className="mt-6 p-4 bg-info/10 text-foreground rounded-lg flex items-start gap-3">
                         <div className="animate-spin text-xl">⏳</div>
                         <div>
                             <strong className="block font-semibold">Grouping rides...</strong>
@@ -233,8 +233,8 @@ function GroupRides() {
                         {/* Summary Section */}
                         {groupRidesSummary && (
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Summary</h3>
-                                <pre className="whitespace-pre-wrap break-all p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-100 rounded-lg text-sm font-mono border border-emerald-100 dark:border-emerald-900/50">
+                                <h3 className="text-lg font-semibold text-foreground mb-3">Summary</h3>
+                                <pre className="whitespace-pre-wrap break-all p-4 bg-success/15 text-foreground rounded-lg text-sm font-mono border border-success/30">
                                     {groupRidesSummary}
                                 </pre>
                             </div>
@@ -243,7 +243,7 @@ function GroupRides() {
                         {/* Individual Ride Groupings */}
                         {groupRidesData && (
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Ride Groupings</h3>
+                                <h3 className="text-lg font-semibold text-foreground mb-4">Ride Groupings</h3>
                                 <div className="space-y-4">
                                     {groupRidesData.map((grouping, index) => (
                                         <EditableOutput

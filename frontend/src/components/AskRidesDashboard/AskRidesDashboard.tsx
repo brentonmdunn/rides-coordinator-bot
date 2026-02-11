@@ -7,6 +7,7 @@ import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
+import { Button } from '../ui/button'
 
 function AskRidesDashboard() {
     const [showInfo, setShowInfo] = useState(false)
@@ -57,10 +58,12 @@ function AskRidesDashboard() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle><span>📅</span> Ask Rides Status Dashboard</CardTitle>
                 <div className="flex items-center gap-2">
-                    <button
+                    <Button
                         onClick={() => setShowConfirm(true)}
                         disabled={sendNowMutation.isPending}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        variant="warning"
+                        size="sm"
+                        className="gap-1.5"
                     >
                         {sendNowMutation.isPending ? (
                             <>
@@ -70,7 +73,7 @@ function AskRidesDashboard() {
                         ) : (
                             '📨 Send now'
                         )}
-                    </button>
+                    </Button>
                     <InfoToggleButton
                         isOpen={showInfo}
                         onClick={() => setShowInfo(!showInfo)}
@@ -89,19 +92,19 @@ function AskRidesDashboard() {
                     </p>
                     <ul className="space-y-1">
                         <li className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-info"></span>
                             <span><span className="font-medium">Will Send:</span> The job is scheduled and will run at the shown time.</span>
                         </li>
                         <li className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-success"></span>
                             <span><span className="font-medium">Message Sent:</span> A message has been sent for this week's ride requests.</span>
                         </li>
                         <li className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-warning"></span>
                             <span><span className="font-medium">Will Not Send:</span> Feature is enabled, but no action is needed (e.g., no class scheduled).</span>
                         </li>
                         <li className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-destructive"></span>
                             <span><span className="font-medium">Disabled:</span> The feature flag for this job is turned off.</span>
                         </li>
                     </ul>
@@ -111,13 +114,13 @@ function AskRidesDashboard() {
                 </InfoPanel>
 
                 {sendNowMutation.isSuccess && (
-                    <div className="mb-4 px-3 py-2 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 text-sm">
+                    <div className="mb-4 px-3 py-2 rounded-md bg-success/15 border border-success/30 text-success-text text-sm">
                         ✅ Ask rides messages sent successfully!
                     </div>
                 )}
 
                 {sendNowMutation.isError && (
-                    <div className="mb-4 px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-sm">
+                    <div className="mb-4 px-3 py-2 rounded-md bg-destructive/15 border border-destructive/30 text-destructive-text text-sm">
                         ❌ {sendNowMutation.error instanceof Error ? sendNowMutation.error.message : 'Failed to send messages'}
                     </div>
                 )}
