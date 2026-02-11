@@ -26,23 +26,22 @@ CLASS_DATES: list[str] = []
 def _get_dynamic_ttl() -> int:
     """
     Calculate dynamic TTL based on current time.
-    
+
     Returns shorter TTL during high-activity periods (Wednesday 11:59 AM - 3 PM)
     when messages are being sent and reactions are actively changing.
-    
+
     Returns:
         60 seconds during Wednesday 11:59 AM - 3 PM, 180 seconds otherwise
     """
     from datetime import datetime
-    
+
     now = datetime.now()
-    
+
     # Wednesday is weekday 2 (0=Monday)
     if now.weekday() == 2 and 11 <= now.hour < 15:
         return 60  # Short TTL during active period
-    
-    return 180  # Longer TTL during quiet periods
 
+    return 180  # Longer TTL during quiet periods
 
 
 def _make_wednesday_msg() -> str | None:
@@ -312,7 +311,6 @@ def get_next_run_time(job_name: str) -> str:
     next_run = next_run.replace(hour=12, minute=0, second=0, microsecond=0)
 
     return next_run.isoformat()
-
 
 
 async def find_message_in_history(
