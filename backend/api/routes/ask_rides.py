@@ -8,10 +8,30 @@ from bot.api import get_bot
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import ChannelIds
 from bot.core.logger import logger
-from bot.jobs.ask_rides import get_ask_rides_status
+from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.repositories.locations_repository import LocationsRepository
 
 router = APIRouter(prefix="/api/ask-rides", tags=["ask-rides"])
+
+
+@router.post("/send-now")
+async def send_now():
+    """
+    Manually trigger all ask rides messages immediately.
+
+    This calls the same run_ask_rides_all function used by the scheduler,
+    useful when the scheduled send was missed (e.g. due to a service crash).
+    """
+    bot = get_bot()
+    if not bot or not bot.is_ready():
+        raise HTTPException(status_code=503, detail="Bot not initialized or not ready")
+
+    try:
+        await run_ask_rides_all(bot, ChannelIds.BOT_STUFF__BOTS)
+        return {"success": True, "message": "Ask rides messages sent successfully"}
+    except Exception as e:
+        logger.error(f"Error sending ask rides messages manually: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send messages: {e!s}") from e
 
 
 @router.get("/status")
