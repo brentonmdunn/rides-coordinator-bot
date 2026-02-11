@@ -11,14 +11,17 @@ T = TypeVar("T")
 
 
 def alru_cache(
-    maxsize: int = 128, ttl: int | float | None = None, ignore_self: bool = False
+    maxsize: int = 128, ttl: int | float | Callable[[], int | float] | None = None, ignore_self: bool = False
 ) -> Callable:
     """
     Async Least Recently Used (LRU) cache decorator with Time To Live (TTL).
 
     Args:
         maxsize: Maximum number of items to keep in the cache.
-        ttl: Time to live in seconds. If None, items never expire by time.
+        ttl: Time to live in seconds. Can be:
+             - int/float: Fixed TTL in seconds
+             - Callable: Function that returns TTL in seconds (evaluated at cache time)
+             - None: Items never expire by time
         ignore_self: If True, ignores the first argument (self/cls) in cache key.
                      Useful for caching instance methods globally across instances.
     """
@@ -33,21 +36,29 @@ def alru_cache(
 
             # Check if key is in cache
             if key in cache:
-                result, timestamp = cache[key]
+                result, timestamp, cached_ttl = cache[key]
 
                 # Check if expired
-                if ttl is not None and time.time() - timestamp > ttl:
+                if cached_ttl is not None and time.time() - timestamp > cached_ttl:
+                    logger.info(f"Cache EXPIRED for {func.__name__} (age: {time.time() - timestamp:.1f}s, ttl: {cached_ttl}s)")
                     del cache[key]
                 else:
                     # Move to end (most recently used)
                     cache.move_to_end(key)
+                    logger.info(f"Cache HIT for {func.__name__} (age: {time.time() - timestamp:.1f}s, ttl: {cached_ttl}s, cache size: {len(cache)})")
                     return result
 
             # Compute result
+            logger.info(f"Cache MISS for {func.__name__} - fetching new data (cache size: {len(cache)})")
             result = await func(*args, **kwargs)
 
-            # Add to cache
-            cache[key] = (result, time.time())
+            # Calculate TTL (support dynamic TTL via callable)
+            current_ttl = ttl() if callable(ttl) else ttl
+            if current_ttl is not None:
+                logger.info(f"Cache stored with TTL: {current_ttl}s for {func.__name__}")
+
+            # Add to cache with computed TTL
+            cache[key] = (result, time.time(), current_ttl)
             cache.move_to_end(key)
 
             # Enforce maxsize

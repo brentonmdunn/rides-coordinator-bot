@@ -23,6 +23,28 @@ WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
 CLASS_DATES: list[str] = []
 
 
+def _get_dynamic_ttl() -> int:
+    """
+    Calculate dynamic TTL based on current time.
+    
+    Returns shorter TTL during high-activity periods (Wednesday 11:59 AM - 3 PM)
+    when messages are being sent and reactions are actively changing.
+    
+    Returns:
+        60 seconds during Wednesday 11:59 AM - 3 PM, 180 seconds otherwise
+    """
+    from datetime import datetime
+    
+    now = datetime.now()
+    
+    # Wednesday is weekday 2 (0=Monday)
+    if now.weekday() == 2 and 11 <= now.hour < 15:
+        return 60  # Short TTL during active period
+    
+    return 180  # Longer TTL during quiet periods
+
+
+
 def _make_wednesday_msg() -> str | None:
     """Create message for Wednesday rides."""
     formatted_date: str = get_next_date(DaysOfWeekNumber.WEDNESDAY)
@@ -327,7 +349,7 @@ async def find_message_in_history(
     return None
 
 
-@alru_cache(ttl=180, ignore_self=True)
+@alru_cache(ttl=_get_dynamic_ttl, ignore_self=True)
 async def get_ask_rides_status(bot: Bot) -> dict:
     """
     Get status for all ask rides jobs.
