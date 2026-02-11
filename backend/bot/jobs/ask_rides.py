@@ -278,7 +278,7 @@ async def run_ask_rides_all(
     await run_ask_rides_fri(bot, channel_id)
     await run_ask_rides_sun_class(bot, channel_id)
     await run_ask_rides_sun(bot, channel_id)
-    
+
     # Invalidate cache since new messages were sent
     logger.info("Invalidating ask rides status cache after sending messages")
     get_ask_rides_status.cache_clear()

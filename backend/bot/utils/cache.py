@@ -6,6 +6,8 @@ from collections import OrderedDict
 from collections.abc import Callable
 from typing import Any, TypeVar
 
+from bot.utils.logger import logger
+
 T = TypeVar("T")
 
 
