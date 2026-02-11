@@ -105,6 +105,9 @@ function AskRidesDashboard() {
                             <span><span className="font-medium">Disabled:</span> The feature flag for this job is turned off.</span>
                         </li>
                     </ul>
+                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+                        Use the <span className="font-medium">📨 Send now</span> button to manually trigger all ask rides messages if the scheduled send was missed (e.g. due to a service crash).
+                    </p>
                 </InfoPanel>
 
                 {sendNowMutation.isSuccess && (
