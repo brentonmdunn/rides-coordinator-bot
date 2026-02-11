@@ -20,6 +20,7 @@ from bot.repositories.locations_repository import LocationsRepository
 from bot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from bot.utils.parsing import get_message_and_embed_content
 from bot.utils.time_helpers import get_last_sunday
+from bot.utils.cache import alru_cache
 
 load_dotenv()
 
@@ -255,6 +256,7 @@ class LocationsService:
             logger.exception("An error occurred: ")
             await interaction.response.send_message(f"Unknown error: {e}")
 
+    @alru_cache(ttl=60, ignore_self=True)
     async def list_locations(
         self,
         day=None,
@@ -359,6 +361,7 @@ class LocationsService:
                 most_recent_message = message
         return most_recent_message.id if most_recent_message else None
 
+    @alru_cache(ttl=60, ignore_self=True)
     async def get_driver_reactions(self, day: str):
         """Retrieves reaction breakdown for a driver message.
 
@@ -406,6 +409,7 @@ class LocationsService:
             "username_to_name": username_to_name,
         }
 
+    @alru_cache(ttl=60, ignore_self=True)
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Retrieves a set of usernames who reacted to a message.
 

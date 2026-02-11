@@ -14,6 +14,7 @@ from bot.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlag
 from bot.core.logger import logger
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.utils.cache import alru_cache
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import get_next_date, get_next_date_obj
@@ -291,71 +292,42 @@ def get_next_run_time(job_name: str) -> str:
     return next_run.isoformat()
 
 
-async def get_last_message_reactions(bot: Bot, job_type: str) -> dict | None:
+
+async def find_message_in_history(
+    messages: list[discord.Message], job_type: str, current_week_start
+) -> dict | None:
     """
-    Fetch reaction summary from the most recent message for a job type.
-    Only returns messages from the current week (since last Wednesday when jobs run).
-
-    Args:
-        bot: Discord bot instance
-        job_type: Type of job ("friday", "sunday", or "sunday_class")
-
-    Returns:
-        Dictionary with message_id and reactions, or None if not found or not from current week
+    Find the most recent message for a job type in the provided messages list.
     """
-    from datetime import datetime, timedelta
+    keywords = {
+        "friday": "friday",
+        "sunday": "sunday service",
+        "sunday_class": "theology class",
+    }
 
-    try:
-        channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        if not channel:
-            return None
+    keyword = keywords.get(job_type, "")
+    bot_emojis = BOT_REACTIONS.get(job_type, [])
 
-        # Calculate the start of current week (last Wednesday at noon when jobs run)
-        now = datetime.now()
-        days_since_wednesday = (now.weekday() - 2) % 7  # 2 = Wednesday
-        if now.weekday() < 2:  # Monday or Tuesday
-            days_since_wednesday += 7  # Go back to previous week's Wednesday
+    for message in messages:
+        # Check if message is from current week
+        if message.created_at.replace(tzinfo=None) < current_week_start:
+            continue
 
-        current_week_start = now - timedelta(days=days_since_wednesday)
-        current_week_start = current_week_start.replace(hour=12, minute=0, second=0, microsecond=0)
+        if message.embeds and keyword.lower() in message.embeds[0].description.lower():
+            # Found a matching message from current week
+            reactions_dict = {}
+            for reaction in message.reactions:
+                count = reaction.count
+                if str(reaction.emoji) in bot_emojis:
+                    count -= 1
+                reactions_dict[str(reaction.emoji)] = count
 
-        # Search keywords for each job type
-        keywords = {
-            "friday": "friday",
-            "sunday": "sunday service",
-            "sunday_class": "theology class",
-        }
+            return {"message_id": str(message.id), "reactions": reactions_dict}
 
-        keyword = keywords.get(job_type, "")
-        # Get bot reactions from the single source of truth
-        bot_emojis = BOT_REACTIONS.get(job_type, [])
-
-        # Fetch recent messages (last 20)
-        async for message in channel.history(limit=20):
-            # Check if message is from current week
-            if message.created_at.replace(tzinfo=None) < current_week_start:
-                continue
-
-            if message.embeds and keyword.lower() in message.embeds[0].description.lower():
-                # Found a matching message from current week
-                reactions_dict = {}
-                for reaction in message.reactions:
-                    # Start with total count, then subtract bot reactions
-                    # The bot auto-adds certain emojis (see bot_reactions mapping above)
-                    # so we subtract 1 if this emoji was added by the bot
-                    count = reaction.count
-                    if str(reaction.emoji) in bot_emojis:
-                        count -= 1
-                    reactions_dict[str(reaction.emoji)] = count
-
-                return {"message_id": str(message.id), "reactions": reactions_dict}
-
-        return None
-    except Exception as e:
-        logger.error(f"Error fetching message reactions for {job_type}: {e}")
-        return None
+    return None
 
 
+@alru_cache(ttl=180, ignore_self=True)
 async def get_ask_rides_status(bot: Bot) -> dict:
     """
     Get status for all ask rides jobs.
@@ -366,12 +338,11 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     Returns:
         Dictionary with status for friday, sunday, and sunday_class jobs
     """
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     now = datetime.now()
 
     # Sent status is active from Wednesday 12:00 PM to Sunday 11:59 PM
-    # weekday(): 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
     is_sent_window = (now.weekday() == 2 and now.hour >= 12) or (3 <= now.weekday() <= 6)
 
     # Check feature flags
@@ -389,10 +360,37 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     sunday_will_send = _should_send_ask_rides_sun() if sunday_enabled else False
     sunday_class_will_send = _should_send_ask_rides_sun_class() if sunday_class_enabled else False
 
-    # Fetch last messages
-    friday_last_msg = await get_last_message_reactions(bot, "friday")
-    sunday_last_msg = await get_last_message_reactions(bot, "sunday")
-    sunday_class_last_msg = await get_last_message_reactions(bot, "sunday_class")
+    # Fetch last messages - OPTIMIZED: Fetch history once
+    try:
+        channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+        if channel:
+            # Calculate the start of current week (last Wednesday at noon when jobs run)
+            days_since_wednesday = (now.weekday() - 2) % 7  # 2 = Wednesday
+            if now.weekday() < 2:  # Monday or Tuesday
+                days_since_wednesday += 7  # Go back to previous week's Wednesday
+
+            current_week_start = now - timedelta(days=days_since_wednesday)
+            current_week_start = current_week_start.replace(
+                hour=12, minute=0, second=0, microsecond=0
+            )
+
+            # Fetch recent messages (last 20)
+            messages = [msg async for msg in channel.history(limit=20)]
+
+            friday_last_msg = await find_message_in_history(messages, "friday", current_week_start)
+            sunday_last_msg = await find_message_in_history(messages, "sunday", current_week_start)
+            sunday_class_last_msg = await find_message_in_history(
+                messages, "sunday_class", current_week_start
+            )
+        else:
+            friday_last_msg = None
+            sunday_last_msg = None
+            sunday_class_last_msg = None
+    except Exception as e:
+        logger.error(f"Error fetching messages history: {e}")
+        friday_last_msg = None
+        sunday_last_msg = None
+        sunday_class_last_msg = None
 
     # Build status response
     status = {
