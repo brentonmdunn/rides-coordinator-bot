@@ -27,7 +27,7 @@ async def send_now():
         raise HTTPException(status_code=503, detail="Bot not initialized or not ready")
 
     try:
-        await run_ask_rides_all(bot, ChannelIds.BOT_STUFF__BOTS)
+        await run_ask_rides_all(bot)
         return {"success": True, "message": "Ask rides messages sent successfully"}
     except Exception as e:
         logger.error(f"Error sending ask rides messages manually: {e}")
