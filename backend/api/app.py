@@ -82,6 +82,11 @@ if APP_ENV == "local":
     )
     logger.info("CORS enabled for local development")
 
+# Add access logging middleware
+from api.middleware.access_logger import AccessLogMiddleware
+app.add_middleware(AccessLogMiddleware)
+logger.info("Access logging middleware enabled")
+
 # Add Cloudflare authentication middleware
 app.middleware("http")(cloudflare_access_middleware)
 
