@@ -126,7 +126,7 @@ function DriverReactions() {
                     </ul>
                 </InfoPanel>
 
-                <div className="mb-4 flex gap-2 -mx-2">
+                <div className="mb-4 flex gap-2">
                     <Button
                         variant={activeDay === 'Friday' ? 'default' : 'outline'}
                         size="sm"
