@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.auth import cloudflare_access_middleware
+from api.middleware.access_logger import AccessLogMiddleware
 from api.routes.ask_rides import router as ask_rides_router
 from api.routes.check_pickups import router as check_pickups_router
 from api.routes.example import router as example_router
@@ -81,6 +82,10 @@ if APP_ENV == "local":
         allow_headers=["*"],
     )
     logger.info("CORS enabled for local development")
+
+# Add access logging middleware
+app.add_middleware(AccessLogMiddleware)
+logger.info("Access logging middleware enabled")
 
 # Add Cloudflare authentication middleware
 app.middleware("http")(cloudflare_access_middleware)
