@@ -70,12 +70,11 @@ file_handler = RotatingFileHandler(
     LOG_FILE,
     maxBytes=10 * 1024 * 1024,  # 10 MB
     backupCount=5,
-    encoding="utf-8"
+    encoding="utf-8",
 )
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
-
 
 
 # ------------------------------
