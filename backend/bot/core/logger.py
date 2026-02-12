@@ -1,12 +1,15 @@
 """Logger configuration.
 
 This module sets up the logging configuration for the application, including
-console handlers, formatters, and log levels for external libraries.
+console handlers, file handlers with rotation, formatters, and log levels for
+external libraries.
 """
 
 import functools
 import logging
 import os
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Any
 
 import discord
@@ -14,7 +17,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-LOG_PATH = os.getenv("LOG_PATH")
+# Determine log file path
+LOG_DIR = Path(__file__).parent.parent.parent.parent / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "bot.log"
 
 # ------------------------------
 # Root logger setup (your code)
@@ -56,11 +62,20 @@ for lib in noisy_loggers:
 logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.orm.mapper.Mapper").setLevel(logging.WARNING)
 
-# Optional file handler
-# file_handler = logging.FileHandler(LOG_PATH)
-# file_handler.setLevel(logging.DEBUG)
-# file_handler.setFormatter(formatter)
-# logger.addHandler(file_handler)
+# ------------------------------
+# File handler with rotation
+# ------------------------------
+# Rotate logs when they reach 10MB, keep 5 backup files
+file_handler = RotatingFileHandler(
+    LOG_FILE,
+    maxBytes=10 * 1024 * 1024,  # 10 MB
+    backupCount=5,
+    encoding="utf-8"
+)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
 
 
 # ------------------------------
