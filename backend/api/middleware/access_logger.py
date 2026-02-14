@@ -91,6 +91,10 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             f'"{user_agent}"'
         )
 
+        # Skip logging for successful health checks
+        if request.url.path == "/health" and response.status_code == 200:
+            return response
+
         # Use different log levels based on status code
         if response.status_code >= 500:
             access_logger.error(log_message)
