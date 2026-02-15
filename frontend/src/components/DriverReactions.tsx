@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
@@ -19,32 +20,17 @@ function DriverReactions() {
     const [data, setData] = useState<DriverReactionsData | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    const [activeDay, setActiveDay] = useState<'Friday' | 'Sunday'>('Friday')
-    const [manualOverride, setManualOverride] = useState(false)
+    const [activeDay, setActiveDay] = useState<'friday' | 'sunday'>('friday')
+
     const [showInfo, setShowInfo] = useState(false)
 
-    const getAutomaticDay = (): 'Friday' | 'Sunday' => {
-        const now = new Date()
-        const day = now.getDay()
-        const hour = now.getHours()
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-        if (day === 6 || day === 0) {
-            // Saturday or Sunday
-            return 'Sunday'
-        } else if (day === 5 && hour >= 22) {
-            // Friday after 10pm
-            return 'Sunday'
-        } else {
-            // Mon, Tue, Wed, Thu, Fri (before 10pm)
-            return 'Friday'
-        }
-    }
-
-    const fetchDataForDay = async (day: 'Friday' | 'Sunday') => {
+    const fetchDataForDay = async (day: 'friday' | 'sunday') => {
         setLoading(true)
         setError('')
         try {
-            const response = await apiFetch(`/api/check-pickups/driver-reactions/${day.toLowerCase()}`)
+            const response = await apiFetch(`/api/check-pickups/driver-reactions/${day}`)
             if (!response.ok) {
                 throw new Error('Failed to fetch driver reactions')
             }
@@ -59,14 +45,10 @@ function DriverReactions() {
     }
 
     const updateDayAndFetch = async () => {
-        const currentDay = getAutomaticDay()
-        setManualOverride(false)
-        await fetchDataForDay(currentDay)
+        await fetchDataForDay(getAutomaticDay())
     }
 
-    const handleDayToggle = async (day: 'Friday' | 'Sunday') => {
-        // Set state immediately for instant visual feedback
-        setManualOverride(true)
+    const handleDayToggle = async (day: 'friday' | 'sunday') => {
         setActiveDay(day)
         await fetchDataForDay(day)
     }
@@ -80,7 +62,7 @@ function DriverReactions() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="flex items-center gap-2">
                     <span>🚙</span>
-                    <span>Driver Reactions ({activeDay})</span>
+                    <span>Driver Reactions ({capitalize(activeDay)})</span>
                 </CardTitle>
                 <div className="flex items-center gap-2">
                     <Button
@@ -108,10 +90,10 @@ function DriverReactions() {
                 >
                     <div className="mb-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700">
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Currently viewing: <strong>{activeDay}</strong> {!manualOverride && <span className="text-slate-500 dark:text-slate-400">(Auto)</span>}
+                            Currently viewing: <strong>{capitalize(activeDay)}</strong>
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            {manualOverride ? 'Manual mode - click refresh to return to auto' : 'Automatic mode - switches based on current time'}
+                            Automatically switches based on current time. Click refresh to reset.
                         </p>
                     </div>
                     <p className="mb-2">
@@ -128,22 +110,22 @@ function DriverReactions() {
 
                 <div className="mb-4 flex gap-2">
                     <Button
-                        variant={activeDay === 'Friday' ? 'default' : 'outline'}
+                        variant={activeDay === 'friday' ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => handleDayToggle('Friday')}
+                        onClick={() => handleDayToggle('friday')}
                         disabled={loading}
                         className="flex-1"
                     >
-                        Friday {activeDay === 'Friday' && !manualOverride && '(Auto)'}
+                        Friday
                     </Button>
                     <Button
-                        variant={activeDay === 'Sunday' ? 'default' : 'outline'}
+                        variant={activeDay === 'sunday' ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => handleDayToggle('Sunday')}
+                        onClick={() => handleDayToggle('sunday')}
                         disabled={loading}
                         className="flex-1"
                     >
-                        Sunday {activeDay === 'Sunday' && !manualOverride && '(Auto)'}
+                        Sunday
                     </Button>
                 </div>
 
@@ -155,7 +137,7 @@ function DriverReactions() {
                     <>
                         {!data.message_found ? (
                             <div className="text-center py-4 text-slate-500 italic">
-                                No driver message found for {activeDay}.
+                                No driver message found for {capitalize(activeDay)}.
                             </div>
                         ) : (
                             <div className="space-y-4">

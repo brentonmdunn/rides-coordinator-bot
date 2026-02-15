@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -98,9 +99,17 @@ function RouteBuilder() {
     // State for selected locations - store keys (e.g., "SEVENTH") not full names
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
 
+    const defaultTimes: Record<'friday' | 'sunday', string> = {
+        friday: '7:10pm',
+        sunday: '10:10am',
+    }
+
+    const autoMode = getAutomaticDay()
+
     // State for leave time
-    const [leaveTime, setLeaveTime] = useState('')
-    const [timeMode, setTimeMode] = useState<'friday' | 'sunday' | 'custom' | null>(null)
+    const [leaveTime, setLeaveTime] = useState(defaultTimes[autoMode])
+    const [timeMode, setTimeMode] = useState<'friday' | 'sunday' | 'custom'>(autoMode)
+
 
     // State for route output
     const [routeOutput, setRouteOutput] = useState<string>('')

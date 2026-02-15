@@ -28,3 +28,21 @@ export function useCopyToClipboard(timeout = 2000) {
 
   return { copiedText, copyToClipboard }
 }
+
+/**
+ * Determine the automatic day based on current day/time.
+ * - Saturday, Sunday, or Friday after 10pm → 'sunday'
+ * - Otherwise → 'friday'
+ *
+ * Used by DriverReactions, ReactionDetails, and RouteBuilder.
+ */
+export function getAutomaticDay(): 'friday' | 'sunday' {
+  const now = new Date()
+  const day = now.getDay()
+  const hour = now.getHours()
+
+  if (day === 6 || day === 0 || (day === 5 && hour >= 22)) {
+    return 'sunday'
+  }
+  return 'friday'
+}
