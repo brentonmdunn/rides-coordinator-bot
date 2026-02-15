@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -98,8 +99,17 @@ function RouteBuilder() {
     // State for selected locations - store keys (e.g., "SEVENTH") not full names
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
 
+    const defaultTimes: Record<'friday' | 'sunday', string> = {
+        friday: '7:10pm',
+        sunday: '10:10am',
+    }
+
+    const autoMode = getAutomaticDay()
+
     // State for leave time
-    const [leaveTime, setLeaveTime] = useState('')
+    const [leaveTime, setLeaveTime] = useState(defaultTimes[autoMode])
+    const [timeMode, setTimeMode] = useState<'friday' | 'sunday' | 'custom'>(autoMode)
+
 
     // State for route output
     const [routeOutput, setRouteOutput] = useState<string>('')
@@ -322,31 +332,65 @@ function RouteBuilder() {
                         </div>
                     )}
 
-                    {/* Leave Time Input */}
+                    {/* Arrival Time Selection */}
                     <div>
-                        <label className="block">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                Arrival Time at Final Destination
-                            </span>
-                            <Input
-                                type="text"
-                                value={leaveTime}
-                                onChange={(e) => setLeaveTime(e.target.value)}
-                                placeholder="e.g., 7:10pm, 7p, 19:10"
-                                required
-                                className="w-full max-w-md"
-                            />
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                Supports formats: "7:10pm", "7p", "19:10"
-                            </p>
-                        </label>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                            Arrival Time at Final Destination
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant={timeMode === 'friday' ? 'default' : 'outline'}
+                                onClick={() => {
+                                    setTimeMode('friday')
+                                    setLeaveTime('7:10pm')
+                                }}
+                            >
+                                Friday Fellowship (7:10pm)
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={timeMode === 'sunday' ? 'default' : 'outline'}
+                                onClick={() => {
+                                    setTimeMode('sunday')
+                                    setLeaveTime('10:10am')
+                                }}
+                            >
+                                Sunday Service (10:10am)
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={timeMode === 'custom' ? 'default' : 'outline'}
+                                onClick={() => {
+                                    setTimeMode('custom')
+                                    setLeaveTime('')
+                                }}
+                            >
+                                Custom
+                            </Button>
+                        </div>
+                        {timeMode === 'custom' && (
+                            <div className="mt-3">
+                                <Input
+                                    type="text"
+                                    value={leaveTime}
+                                    onChange={(e) => setLeaveTime(e.target.value)}
+                                    placeholder="e.g., 7:10pm, 7p, 19:10"
+                                    required
+                                    className="w-full max-w-md"
+                                />
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Supports formats: "7:10pm", "7p", "19:10"
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Generate Button */}
                     <div className="pt-2">
                         <Button
                             type="submit"
-                            disabled={routeLoading || selectedLocationKeys.length === 0}
+                            disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
                             className="w-full sm:w-auto px-8 py-2.5 text-base font-semibold"
                         >
                             {routeLoading ? 'Generating...' : 'Generate Route'}
