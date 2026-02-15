@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
@@ -28,23 +29,10 @@ function ReactionDetails() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [selectedType, setSelectedType] = useState<MessageType>('friday')
-    const [manualOverride, setManualOverride] = useState(false)
+
     const [showInfo, setShowInfo] = useState(false)
 
-    const getAutomaticDay = (): MessageType => {
-        const now = new Date()
-        const day = now.getDay()
-        const hour = now.getHours()
 
-        // Default to Sunday if it's Saturday (6) or Sunday (0)
-        // OR if it's Friday (5) after 10pm
-        if (day === 6 || day === 0 || (day === 5 && hour >= 22)) {
-            return 'sunday'
-        }
-        // Otherwise default to Friday
-        // Note: Never automatically defaults to 'sunday_class' as requested
-        return 'friday'
-    }
 
     const fetchDataForType = async (messageType: MessageType) => {
         setLoading(true)
@@ -78,13 +66,10 @@ function ReactionDetails() {
 
     const updateTypeAndFetch = async () => {
         const currentType = getAutomaticDay()
-        setManualOverride(false)
         await fetchDataForType(currentType)
     }
 
     const handleTypeChange = async (messageType: MessageType) => {
-        // Set manual override when user explicitly clicks a button
-        setManualOverride(true)
         if (messageType === selectedType && data) return
         await fetchDataForType(messageType)
     }
@@ -131,10 +116,10 @@ function ReactionDetails() {
                 >
                     <div className="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
                         <p className="text-sm font-medium text-foreground">
-                            Currently viewing: <strong>{selectedOption?.label}</strong> {!manualOverride && ['friday', 'sunday'].includes(selectedType) && <span className="text-muted-foreground">(Auto)</span>}
+                            Currently viewing: <strong>{selectedOption?.label}</strong>
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {manualOverride ? 'Manual mode - click refresh to return to auto' : 'Automatic mode - switches based on current time'}
+                            Automatically switches based on current time. Click refresh to reset.
                         </p>
                     </div>
                     <p className="mb-2">
@@ -160,9 +145,7 @@ function ReactionDetails() {
                         >
                             <span className="mr-2">{type.emoji}</span>
                             {type.label}
-                            {selectedType === type.value && !manualOverride && ['friday', 'sunday'].includes(type.value) && (
-                                <span className="ml-1 text-xs opacity-70">(Auto)</span>
-                            )}
+
                         </Button>
                     ))}
                 </div>
