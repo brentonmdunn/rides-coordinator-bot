@@ -5,14 +5,29 @@ Provides API access to feature flag management.
 """
 
 import logging
+import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from api.constants import ADMIN_EMAIL
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+APP_ENV = os.getenv("APP_ENV", "local")
+
+
+async def require_admin_email(request: Request):
+    """Dependency that restricts access to the admin email."""
+    user = getattr(request.state, "user", None) or {}
+    email = user.get("email", "")
+    allowed = [ADMIN_EMAIL]
+    if APP_ENV == "local":
+        allowed.append("dev@example.com")
+    if email not in allowed:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return email
 
 
 class FeatureFlagUpdate(BaseModel):
@@ -21,7 +36,7 @@ class FeatureFlagUpdate(BaseModel):
     enabled: bool
 
 
-@router.get("/api/feature-flags")
+@router.get("/api/feature-flags", dependencies=[Depends(require_admin_email)])
 async def list_feature_flags():
     """
     List all feature flags and their current status.
@@ -42,7 +57,7 @@ async def list_feature_flags():
         raise HTTPException(status_code=500, detail=f"Failed to fetch feature flags: {e!s}") from e
 
 
-@router.put("/api/feature-flags/{feature_name}")
+@router.put("/api/feature-flags/{feature_name}", dependencies=[Depends(require_admin_email)])
 async def toggle_feature_flag(feature_name: str, update: FeatureFlagUpdate):
     """
     Toggle a feature flag on or off.
