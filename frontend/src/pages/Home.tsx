@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { BookOpen } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '../lib/api'
 import PickupLocations from '../components/PickupLocations'
 import DriverReactions from '../components/DriverReactions'
 import ReactionDetails from '../components/ReactionDetails'
@@ -13,6 +15,16 @@ import { ModeToggle } from '../components/mode-toggle'
 import EnvironmentBanner from '../components/EnvironmentBanner'
 
 function Home() {
+    const { data: meData } = useQuery<{ email: string; is_admin: boolean }>({
+        queryKey: ['me'],
+        queryFn: async () => {
+            const res = await apiFetch('/api/me')
+            return res.json()
+        },
+    })
+
+    const isAdmin = meData?.is_admin ?? false
+
     return (
         <>
             <EnvironmentBanner />
@@ -48,7 +60,7 @@ function Home() {
                         <PickupLocations />
                         <GroupRides />
                         <RouteBuilder />
-                        <FeatureFlagsManager />
+                        {isAdmin && <FeatureFlagsManager />}
                     </div>
                 </div>
             </div>
