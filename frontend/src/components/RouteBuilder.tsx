@@ -108,7 +108,7 @@ function RouteBuilder() {
 
     // State for leave time
     const [leaveTime, setLeaveTime] = useState(defaultTimes[autoMode])
-    const [timeMode, setTimeMode] = useState<'friday' | 'sunday' | 'custom'>(autoMode)
+    const [timeMode, setTimeMode] = useState<'friday' | 'sunday' | 'sunday_class' | 'discipleship' | 'custom'>(autoMode)
 
 
     // State for route output
@@ -358,6 +358,30 @@ function RouteBuilder() {
                             >
                                 Sunday Service (10:10am)
                             </Button>
+
+
+                            <Button
+                                type="button"
+                                variant={timeMode === 'sunday_class' ? 'default' : 'outline'}
+                                onClick={() => {
+                                    setTimeMode('sunday_class')
+                                    setLeaveTime('8:40am')
+                                }}
+                            >
+                                Sunday Class (8:40am)
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant={timeMode === 'discipleship' ? 'default' : 'outline'}
+                                onClick={() => {
+                                    setTimeMode('discipleship')
+                                    setLeaveTime('7:10am')
+                                }}
+                            >
+                                Discipleship (7:10am)
+                            </Button>
+
                             <Button
                                 type="button"
                                 variant={timeMode === 'custom' ? 'default' : 'outline'}
