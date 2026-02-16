@@ -30,7 +30,7 @@ function PickupLocations() {
         setPickupData(null)
 
         try {
-            const body: any = {
+            const body: Record<string, unknown> = {
                 ride_type: pickupRideType,
                 message_id: pickupRideType === 'message_id' ? messageId : null,
             }

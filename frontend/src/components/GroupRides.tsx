@@ -35,7 +35,7 @@ function GroupRides() {
         setOriginalGroupRidesData(null)
 
         try {
-            const body: any = {
+            const body: Record<string, unknown> = {
                 ride_type: rideType,
                 message_id: rideType === 'message_id' ? groupMessageId : null,
                 driver_capacity: groupDriverCapacity,

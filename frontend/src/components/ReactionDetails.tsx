@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
@@ -64,10 +64,10 @@ function ReactionDetails() {
         }
     }
 
-    const updateTypeAndFetch = async () => {
+    const updateTypeAndFetch = useCallback(async () => {
         const currentType = getAutomaticDay()
         await fetchDataForType(currentType)
-    }
+    }, [])
 
     const handleTypeChange = async (messageType: MessageType) => {
         if (messageType === selectedType && data) return
@@ -79,7 +79,7 @@ function ReactionDetails() {
     useEffect(() => {
         // Run once on mount
         updateTypeAndFetch()
-    }, [])
+    }, [updateTypeAndFetch])
 
     const selectedOption = MESSAGE_TYPES.find(t => t.value === selectedType)
 

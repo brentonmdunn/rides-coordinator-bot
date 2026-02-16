@@ -1,6 +1,6 @@
 import { Moon, Sun, Monitor } from "lucide-react"
 import { Button } from "./ui/button"
-import { useTheme } from "./theme-provider"
+import { useTheme } from "./use-theme"
 
 export function ModeToggle() {
     const { setTheme, theme } = useTheme()
@@ -12,8 +12,8 @@ export function ModeToggle() {
                 size="icon"
                 onClick={() => setTheme("light")}
                 className={`h-8 w-8 rounded-md transition-all ${theme === "light"
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
-                        : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     }`}
                 title="Light Mode"
             >
@@ -25,8 +25,8 @@ export function ModeToggle() {
                 size="icon"
                 onClick={() => setTheme("system")}
                 className={`h-8 w-8 rounded-md transition-all ${theme === "system"
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
-                        : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     }`}
                 title="System (Auto)"
             >
@@ -38,8 +38,8 @@ export function ModeToggle() {
                 size="icon"
                 onClick={() => setTheme("dark")}
                 className={`h-8 w-8 rounded-md transition-all ${theme === "dark"
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
-                        : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     }`}
                 title="Dark Mode"
             >
