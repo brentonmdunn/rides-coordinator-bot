@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
@@ -44,9 +44,9 @@ function DriverReactions() {
         }
     }
 
-    const updateDayAndFetch = async () => {
+    const updateDayAndFetch = useCallback(async () => {
         await fetchDataForDay(getAutomaticDay())
-    }
+    }, [])
 
     const handleDayToggle = async (day: 'friday' | 'sunday') => {
         setActiveDay(day)
@@ -55,7 +55,7 @@ function DriverReactions() {
 
     useEffect(() => {
         updateDayAndFetch()
-    }, [])
+    }, [updateDayAndFetch])
 
     return (
         <Card>
