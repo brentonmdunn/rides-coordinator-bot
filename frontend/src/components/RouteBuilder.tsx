@@ -64,22 +64,22 @@ function SortableLocationItem({
         <div
             ref={setNodeRef}
             style={style}
-            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-md transition-all"
+            className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-md transition-all"
         >
             <div
                 {...attributes}
                 {...listeners}
                 className="cursor-grab active:cursor-grabbing touch-none"
             >
-                <GripVertical className="h-4 w-4 text-slate-400" />
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
-            <span className="flex-1 text-sm text-slate-900 dark:text-slate-100">
+            <span className="flex-1 text-sm text-foreground">
                 {index + 1}. {locationValue}
             </span>
             <button
                 type="button"
                 onClick={onRemove}
-                className="text-slate-400 hover:text-red-500 transition-colors"
+                className="text-muted-foreground hover:text-destructive transition-colors"
                 title="Remove location"
             >
                 <X className="h-4 w-4" />
@@ -266,7 +266,7 @@ function RouteBuilder() {
                     {/* Location Selection Dropdown */}
                     <div>
                         <label className="block">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                            <span className="text-sm font-medium text-foreground mb-2 block">
                                 Select Locations
                             </span>
                             <div className="flex gap-2">
@@ -302,8 +302,8 @@ function RouteBuilder() {
 
                     {/* Selected Locations with Drag & Drop */}
                     {selectedLocationKeys.length > 0 && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
-                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                        <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                            <div className="text-sm font-medium text-foreground mb-3">
                                 Route Order ({selectedLocationKeys.length} location{selectedLocationKeys.length !== 1 ? 's' : ''})
                             </div>
                             <DndContext
@@ -334,7 +334,7 @@ function RouteBuilder() {
 
                     {/* Arrival Time Selection */}
                     <div>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                        <span className="text-sm font-medium text-foreground mb-2 block">
                             Arrival Time at Final Destination
                         </span>
                         <div className="flex flex-wrap gap-2">
@@ -403,7 +403,7 @@ function RouteBuilder() {
                                     required
                                     className="w-full max-w-md"
                                 />
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                     Supports formats: "7:10pm", "7p", "19:10"
                                 </p>
                             </div>
@@ -423,14 +423,16 @@ function RouteBuilder() {
                 </form>
 
                 {/* Error Display */}
-                <div className="mt-6">
-                    <ErrorMessage message={routeError} />
-                </div>
+                {routeError && (
+                    <div className="mt-6">
+                        <ErrorMessage message={routeError} />
+                    </div>
+                )}
 
                 {/* Route Output */}
                 {routeOutput && (
                     <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                        <h3 className="text-lg font-semibold text-foreground">
                             Generated Route
                         </h3>
                         <EditableOutput
