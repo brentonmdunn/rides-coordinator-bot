@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAutomaticDay } from '../lib/utils'
+import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -116,7 +116,7 @@ function RouteBuilder() {
     const [originalRouteOutput, setOriginalRouteOutput] = useState<string>('')
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
-    const [copiedRoute, setCopiedRoute] = useState(false)
+    const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
 
     // UI State
     const [showInfo, setShowInfo] = useState(false)
@@ -215,17 +215,6 @@ function RouteBuilder() {
         }
     }
 
-    // Copy route to clipboard
-    const copyRouteToClipboard = async () => {
-        try {
-            await navigator.clipboard.writeText(routeOutput)
-            setCopiedRoute(true)
-            setTimeout(() => setCopiedRoute(false), 5000)
-        } catch (error) {
-            console.error('Failed to copy:', error)
-            alert('Failed to copy to clipboard')
-        }
-    }
 
     // Revert route to original
     const revertRoute = () => {
@@ -439,9 +428,9 @@ function RouteBuilder() {
                             value={routeOutput}
                             originalValue={originalRouteOutput}
                             onChange={setRouteOutput}
-                            onCopy={copyRouteToClipboard}
+                            onCopy={() => copyToClipboard(routeOutput)}
                             onRevert={revertRoute}
-                            copied={copiedRoute}
+                            copied={copiedText !== null}
                         />
                     </div>
                 )}
