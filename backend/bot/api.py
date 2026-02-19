@@ -19,7 +19,12 @@ from discord.ext.commands import Bot
 from dotenv import load_dotenv
 from sqlalchemy import or_, update
 
-from bot.core.database import AsyncSessionLocal, init_db, seed_feature_flags
+from bot.core.database import (
+    AsyncSessionLocal,
+    init_db,
+    seed_feature_flags,
+    seed_message_schedule_pauses,
+)
 from bot.core.logger import logger
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
@@ -285,6 +290,8 @@ async def bot_lifespan():
     await init_db()
     async with AsyncSessionLocal() as session:
         await seed_feature_flags(session)
+    async with AsyncSessionLocal() as session:
+        await seed_message_schedule_pauses(session)
     await FeatureFlagsRepository.initialize_cache()
     await _disable_features_for_local_env()
 

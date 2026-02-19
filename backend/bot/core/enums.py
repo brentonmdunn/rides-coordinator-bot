@@ -67,6 +67,14 @@ class FeatureFlagNames(StrEnum):
     LATE_RIDES_REACT = "late_rides_react"
 
 
+class JobName(StrEnum):
+    """Job identifiers for ask-rides scheduled jobs. Single source of truth."""
+
+    FRIDAY = "friday"
+    SUNDAY = "sunday"
+    SUNDAY_CLASS = "sunday_class"
+
+
 class ClassYear(StrEnum):
     """Class years for users."""
 

@@ -10,10 +10,18 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from bot.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, RoleIds
+from bot.core.enums import (
+    ChannelIds,
+    DaysOfWeek,
+    DaysOfWeekNumber,
+    FeatureFlagNames,
+    JobName,
+    RoleIds,
+)
 from bot.core.logger import logger
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.utils.cache import alru_cache
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
@@ -95,7 +103,7 @@ def _format_message(message: str) -> str:
 
 
 RIDE_TYPES_CONFIG = {
-    "friday": {
+    JobName.FRIDAY: {
         "title": "Rides to Friday Fellowship",
         "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
     },
@@ -103,7 +111,7 @@ RIDE_TYPES_CONFIG = {
         "title": "Rides to Bible Theology Class",
         "color": discord.Color.blurple(),
     },
-    "sunday": {
+    JobName.SUNDAY: {
         "title": "Rides to Sunday Service",
         "color": discord.Color.blue(),
     },
@@ -116,9 +124,9 @@ DEFAULT_RIDE_COLOR = discord.Color.default()
 # This is the single source of truth for bot reactions (used by both
 # job runners and API helpers to exclude bot reactions from user counts)
 BOT_REACTIONS = {
-    "friday": ["🪨"],
-    "sunday": ["🍔", "🏠", "✳️"],
-    "sunday_class": ["📖"],
+    JobName.FRIDAY: ["🪨"],
+    JobName.SUNDAY: ["🍔", "🏠", "✳️"],
+    JobName.SUNDAY_CLASS: ["📖"],
 }
 
 
@@ -178,8 +186,11 @@ async def run_ask_rides_fri(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Friday rides message."""
+    if await MessageScheduleRepository.is_job_paused(JobName.FRIDAY):
+        logger.info("Blocking run_ask_rides_fri - job is paused")
+        return
     sent_message = await _ask_rides_template(bot, _make_friday_msg, channel_id)
-    for emoji in BOT_REACTIONS["friday"]:
+    for emoji in BOT_REACTIONS[JobName.FRIDAY]:
         await sent_message.add_reaction(emoji)
 
 
@@ -195,6 +206,9 @@ async def run_ask_rides_sun(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday service rides message."""
+    if await MessageScheduleRepository.is_job_paused(JobName.SUNDAY):
+        logger.info("Blocking run_ask_rides_sun - job is paused")
+        return
     if not _should_send_ask_rides_sun():
         logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
         channel: Messageable | None = bot.get_channel(
@@ -209,7 +223,7 @@ async def run_ask_rides_sun(
         return
 
     sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
-    for emoji in BOT_REACTIONS["sunday"]:
+    for emoji in BOT_REACTIONS[JobName.SUNDAY]:
         await sent_message.add_reaction(emoji)
 
 
@@ -225,11 +239,14 @@ async def run_ask_rides_sun_class(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday class rides message."""
+    if await MessageScheduleRepository.is_job_paused(JobName.SUNDAY_CLASS):
+        logger.info("Blocking run_ask_rides_sun_class - job is paused")
+        return
     if not _should_send_ask_rides_sun_class():
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
     sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
-    for emoji in BOT_REACTIONS["sunday_class"]:
+    for emoji in BOT_REACTIONS[JobName.SUNDAY_CLASS]:
         await sent_message.add_reaction(emoji)
 
 
@@ -294,7 +311,7 @@ def get_next_run_time(job_name: str) -> str:
     Calculate the next scheduled run time for a job.
 
     Args:
-        job_name: Name of the job ("friday", "sunday", or "sunday_class")
+        job_name: A JobName value ("friday", "sunday", or "sunday_class")
 
     Returns:
         ISO format datetime string of next run time
@@ -323,9 +340,9 @@ async def find_message_in_history(
     Find the most recent message for a job type in the provided messages list.
     """
     keywords = {
-        "friday": "friday",
-        "sunday": "sunday service",
-        "sunday_class": "theology class",
+        JobName.FRIDAY: "friday",
+        JobName.SUNDAY: "sunday service",
+        JobName.SUNDAY_CLASS: "theology class",
     }
 
     keyword = keywords.get(job_type, "")
@@ -379,6 +396,21 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
     )
 
+    # Check pause statuses
+    pause_statuses = await MessageScheduleRepository.get_all_pause_statuses()
+    pause_map = {}
+    for p in pause_statuses:
+        send_date = None
+        if p.resume_after_date:
+            send_date = MessageScheduleRepository.get_send_wednesday(
+                p.resume_after_date
+            ).isoformat()
+        pause_map[p.job_name] = {
+            "is_paused": p.is_paused,
+            "resume_after_date": p.resume_after_date.isoformat() if p.resume_after_date else None,
+            "resume_send_date": send_date,
+        }
+
     # Check conditions
     sunday_will_send = _should_send_ask_rides_sun() if sunday_enabled else False
     sunday_class_will_send = _should_send_ask_rides_sun_class() if sunday_class_enabled else False
@@ -400,10 +432,14 @@ async def get_ask_rides_status(bot: Bot) -> dict:
             # Fetch recent messages (last 20)
             messages = [msg async for msg in channel.history(limit=20)]
 
-            friday_last_msg = await find_message_in_history(messages, "friday", current_week_start)
-            sunday_last_msg = await find_message_in_history(messages, "sunday", current_week_start)
+            friday_last_msg = await find_message_in_history(
+                messages, JobName.FRIDAY, current_week_start
+            )
+            sunday_last_msg = await find_message_in_history(
+                messages, JobName.SUNDAY, current_week_start
+            )
             sunday_class_last_msg = await find_message_in_history(
-                messages, "sunday_class", current_week_start
+                messages, JobName.SUNDAY_CLASS, current_week_start
             )
         else:
             friday_last_msg = None
@@ -415,35 +451,41 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         sunday_last_msg = None
         sunday_class_last_msg = None
 
+    # Default pause info for jobs that may not have a row yet
+    default_pause = {"is_paused": False, "resume_after_date": None, "resume_send_date": None}
+
     # Build status response
     status = {
-        "friday": {
+        JobName.FRIDAY: {
             "enabled": friday_enabled,
             "will_send": friday_enabled,
             "sent_this_week": is_sent_window and friday_last_msg is not None,
             "reason": None if friday_enabled else "feature_flag_disabled",
-            "next_run": get_next_run_time("friday"),
+            "next_run": get_next_run_time(JobName.FRIDAY),
             "last_message": friday_last_msg,
+            "pause": pause_map.get(JobName.FRIDAY, default_pause),
         },
-        "sunday": {
+        JobName.SUNDAY: {
             "enabled": sunday_enabled,
             "will_send": sunday_will_send,
             "sent_this_week": is_sent_window and sunday_last_msg is not None,
             "reason": None
             if sunday_enabled and sunday_will_send
             else ("feature_flag_disabled" if not sunday_enabled else "wildcard_detected"),
-            "next_run": get_next_run_time("sunday"),
+            "next_run": get_next_run_time(JobName.SUNDAY),
             "last_message": sunday_last_msg,
+            "pause": pause_map.get(JobName.SUNDAY, default_pause),
         },
-        "sunday_class": {
+        JobName.SUNDAY_CLASS: {
             "enabled": sunday_class_enabled,
             "will_send": sunday_class_will_send,
             "sent_this_week": is_sent_window and sunday_class_last_msg is not None,
             "reason": None
             if sunday_class_enabled and sunday_class_will_send
             else ("feature_flag_disabled" if not sunday_class_enabled else "no_class_scheduled"),
-            "next_run": get_next_run_time("sunday_class"),
+            "next_run": get_next_run_time(JobName.SUNDAY_CLASS),
             "last_message": sunday_class_last_msg,
+            "pause": pause_map.get(JobName.SUNDAY_CLASS, default_pause),
         },
     }
 

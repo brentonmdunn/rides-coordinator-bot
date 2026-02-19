@@ -8,7 +8,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from bot.core.database import Base
-from bot.core.models import DiscordUsers, FeatureFlags
+from bot.core.models import DiscordUsers, FeatureFlags, MessageSchedulePause  # noqa: F401
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
