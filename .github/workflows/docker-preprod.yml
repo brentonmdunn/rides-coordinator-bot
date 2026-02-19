@@ -51,3 +51,5 @@ jobs:
           tags: |
             brentonmdunn/ride-bot-preprod:latest
             brentonmdunn/ride-bot-preprod:${{ github.event.pull_request.head.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
