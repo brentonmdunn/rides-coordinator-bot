@@ -138,13 +138,13 @@ function AskRidesDashboard() {
                 {!askRidesLoading && !askRidesError && askRidesStatus && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Friday Fellowship */}
-                        <StatusCard title="🎉 Friday Fellowship" job={askRidesStatus.friday} />
+                        <StatusCard title="🎉 Friday Fellowship" jobName="friday" job={askRidesStatus.friday} />
 
                         {/* Sunday Service */}
-                        <StatusCard title="⛪ Sunday Service" job={askRidesStatus.sunday} />
+                        <StatusCard title="⛪ Sunday Service" jobName="sunday" job={askRidesStatus.sunday} />
 
                         {/* Sunday Class */}
-                        <StatusCard title="📖 Sunday Class" job={askRidesStatus.sunday_class} />
+                        <StatusCard title="📖 Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} />
                     </div>
                 )}
             </CardContent>

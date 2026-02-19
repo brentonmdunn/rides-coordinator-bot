@@ -1,7 +1,9 @@
 import type { AskRidesJobStatus } from '../../types'
+import PauseControls from './PauseControls'
 
 interface StatusCardProps {
     title: string
+    jobName: string
     job: AskRidesJobStatus
 }
 
@@ -17,9 +19,27 @@ const formatDateTime = (isoString: string): string => {
     })
 }
 
+const formatDate = (isoDate: string): string => {
+    const date = new Date(isoDate + 'T12:00:00')
+    return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+    })
+}
+
 const getStatusBadge = (job: AskRidesJobStatus) => {
     if (!job.enabled) {
         return { color: '#ef4444', text: '🔴 Feature flag disabled' }
+    }
+    if (job.pause?.is_paused) {
+        if (job.pause.resume_after_date) {
+            return {
+                color: '#eab308',
+                text: `⏸️ Paused — resumes ${formatDate(job.pause.resume_send_date ?? job.pause.resume_after_date)} for ${formatDate(job.pause.resume_after_date)}`
+            }
+        }
+        return { color: '#eab308', text: '⏸️ Paused indefinitely' }
     }
     if (job.sent_this_week) {
         return { color: '#22c55e', text: '🟢 Message sent for this week' }
@@ -33,10 +53,9 @@ const getStatusBadge = (job: AskRidesJobStatus) => {
     return { color: '#3b82f6', text: `🔵 Will send at ${formatDateTime(job.next_run)} ` }
 }
 
-function StatusCard({ title, job }: StatusCardProps) {
+function StatusCard({ title, jobName, job }: StatusCardProps) {
     const status = getStatusBadge(job)
 
-    // Helper map for better color handling in Tailwind
     // Helper map for better color handling in Tailwind
     const getStatusColors = (color: string) => {
         if (color === '#ef4444') return 'bg-destructive/15 text-destructive-text border-destructive/30'
@@ -51,6 +70,10 @@ function StatusCard({ title, job }: StatusCardProps) {
 
             <div className={`px-3 py-2 rounded-md border text-sm font-medium mb-4 whitespace-normal break-words ${getStatusColors(status.color)}`}>
                 {status.text}
+            </div>
+
+            <div className="mb-4">
+                <PauseControls jobName={jobName} job={job} />
             </div>
 
             {job.last_message && (
@@ -71,3 +94,4 @@ function StatusCard({ title, job }: StatusCardProps) {
 }
 
 export default StatusCard
+

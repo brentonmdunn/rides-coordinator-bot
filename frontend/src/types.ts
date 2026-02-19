@@ -32,6 +32,19 @@ export interface AskRidesJobStatus {
         message_id: string
         reactions: { [emoji: string]: number }
     } | null
+    pause: PauseStatus
+}
+
+export interface PauseStatus {
+    is_paused: boolean
+    resume_after_date: string | null
+    resume_send_date: string | null
+}
+
+export interface UpcomingDate {
+    event_date: string
+    send_date: string
+    label: string
 }
 
 export interface AskRidesStatus {
