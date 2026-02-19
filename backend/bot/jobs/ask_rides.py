@@ -10,7 +10,7 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from bot.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, RoleIds
+from bot.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, JobName, RoleIds
 from bot.core.logger import logger
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
@@ -116,9 +116,9 @@ DEFAULT_RIDE_COLOR = discord.Color.default()
 # This is the single source of truth for bot reactions (used by both
 # job runners and API helpers to exclude bot reactions from user counts)
 BOT_REACTIONS = {
-    "friday": ["🪨"],
-    "sunday": ["🍔", "🏠", "✳️"],
-    "sunday_class": ["📖"],
+    JobName.FRIDAY: ["🪨"],
+    JobName.SUNDAY: ["🍔", "🏠", "✳️"],
+    JobName.SUNDAY_CLASS: ["📖"],
 }
 
 
@@ -179,7 +179,7 @@ async def run_ask_rides_fri(
 ) -> None:
     """Runner for Friday rides message."""
     sent_message = await _ask_rides_template(bot, _make_friday_msg, channel_id)
-    for emoji in BOT_REACTIONS["friday"]:
+    for emoji in BOT_REACTIONS[JobName.FRIDAY]:
         await sent_message.add_reaction(emoji)
 
 
@@ -209,7 +209,7 @@ async def run_ask_rides_sun(
         return
 
     sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
-    for emoji in BOT_REACTIONS["sunday"]:
+    for emoji in BOT_REACTIONS[JobName.SUNDAY]:
         await sent_message.add_reaction(emoji)
 
 
@@ -229,7 +229,7 @@ async def run_ask_rides_sun_class(
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
     sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
-    for emoji in BOT_REACTIONS["sunday_class"]:
+    for emoji in BOT_REACTIONS[JobName.SUNDAY_CLASS]:
         await sent_message.add_reaction(emoji)
 
 
@@ -294,7 +294,7 @@ def get_next_run_time(job_name: str) -> str:
     Calculate the next scheduled run time for a job.
 
     Args:
-        job_name: Name of the job ("friday", "sunday", or "sunday_class")
+        job_name: A JobName value ("friday", "sunday", or "sunday_class")
 
     Returns:
         ISO format datetime string of next run time
@@ -323,9 +323,9 @@ async def find_message_in_history(
     Find the most recent message for a job type in the provided messages list.
     """
     keywords = {
-        "friday": "friday",
-        "sunday": "sunday service",
-        "sunday_class": "theology class",
+        JobName.FRIDAY: "friday",
+        JobName.SUNDAY: "sunday service",
+        JobName.SUNDAY_CLASS: "theology class",
     }
 
     keyword = keywords.get(job_type, "")
@@ -417,7 +417,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
 
     # Build status response
     status = {
-        "friday": {
+        JobName.FRIDAY: {
             "enabled": friday_enabled,
             "will_send": friday_enabled,
             "sent_this_week": is_sent_window and friday_last_msg is not None,
@@ -425,7 +425,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
             "next_run": get_next_run_time("friday"),
             "last_message": friday_last_msg,
         },
-        "sunday": {
+        JobName.SUNDAY: {
             "enabled": sunday_enabled,
             "will_send": sunday_will_send,
             "sent_this_week": is_sent_window and sunday_last_msg is not None,
@@ -435,7 +435,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
             "next_run": get_next_run_time("sunday"),
             "last_message": sunday_last_msg,
         },
-        "sunday_class": {
+        JobName.SUNDAY_CLASS: {
             "enabled": sunday_class_enabled,
             "will_send": sunday_class_will_send,
             "sent_this_week": is_sent_window and sunday_class_last_msg is not None,

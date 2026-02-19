@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from bot.api import get_bot
 from bot.core.database import AsyncSessionLocal
-from bot.core.enums import ChannelIds
+from bot.core.enums import ChannelIds, JobName
 from bot.core.logger import logger
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.repositories.locations_repository import LocationsRepository
@@ -67,7 +67,7 @@ async def get_ask_rides_reactions(message_type: str):
         raise HTTPException(status_code=503, detail="Bot not initialized")
 
     # Validate message_type
-    valid_types = ["friday", "sunday", "sunday_class"]
+    valid_types = [j.value for j in JobName]
     if message_type.lower() not in valid_types:
         raise HTTPException(
             status_code=400,
@@ -82,9 +82,9 @@ async def get_ask_rides_reactions(message_type: str):
 
         # Search keywords for each message type
         keywords = {
-            "friday": "friday",
-            "sunday": "sunday service",
-            "sunday_class": "theology class",
+            JobName.FRIDAY: "friday",
+            JobName.SUNDAY: "sunday service",
+            JobName.SUNDAY_CLASS: "theology class",
         }
 
         keyword = keywords.get(message_type.lower(), "")
