@@ -167,7 +167,7 @@ function ReactionDetails() {
                                         Reaction Breakdown
                                     </h3>
                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                                        {Object.values(data.reactions).reduce((acc, curr) => acc + curr.length, 0)} Total Reactions
+                                        {new Set(Object.values(data.reactions).flat()).size} Total People
                                     </span>
                                 </div>
 
