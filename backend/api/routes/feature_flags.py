@@ -10,7 +10,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from api.constants import ADMIN_EMAIL
+from api.constants import ADMIN_EMAILS
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
@@ -22,9 +22,7 @@ async def require_admin_email(request: Request):
     """Dependency that restricts access to the admin email."""
     user = getattr(request.state, "user", None) or {}
     email = user.get("email", "")
-    allowed = [ADMIN_EMAIL]
-    if APP_ENV == "local":
-        allowed.append("dev@example.com")
+    allowed = ADMIN_EMAILS | ({"dev@example.com"} if APP_ENV == "local" else set())
     if email not in allowed:
         raise HTTPException(status_code=403, detail="Forbidden")
     return email

@@ -8,7 +8,7 @@ import os
 
 from fastapi import APIRouter, Request
 
-from api.constants import ADMIN_EMAIL
+from api.constants import ADMIN_EMAILS
 
 router = APIRouter()
 
@@ -25,7 +25,5 @@ async def get_current_user(request: Request):
     """
     user = getattr(request.state, "user", None) or {}
     email = user.get("email", "")
-    allowed = [ADMIN_EMAIL]
-    if APP_ENV == "local":
-        allowed.append("dev@example.com")
+    allowed = ADMIN_EMAILS | ({"dev@example.com"} if APP_ENV == "local" else set())
     return {"email": email, "is_admin": email in allowed}
