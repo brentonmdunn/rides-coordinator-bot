@@ -5,7 +5,7 @@ This module defines the SQLAlchemy models for the application's database tables.
 
 import datetime
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, PrimaryKeyConstraint, String
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, PrimaryKeyConstraint, String, func
 
 from bot.core.base import Base
 
@@ -69,3 +69,19 @@ class RideCoverage(Base):
     discord_username = Column(String, nullable=False)
     datetime_detected = Column(DateTime, nullable=False, default=datetime.datetime.now())
     message_id = Column(String, nullable=False)
+
+
+class MessageSchedulePause(Base):
+    """Model representing a pause/delay for a scheduled ask-rides job.
+
+    Each job (friday, sunday, sunday_class) can be independently paused
+    either indefinitely or until a specific event date.
+    """
+
+    __tablename__ = "message_schedule_pauses"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    job_name = Column(String, nullable=False, unique=True)
+    is_paused = Column(Boolean, nullable=False, default=False)
+    resume_after_date = Column(Date, nullable=True)
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

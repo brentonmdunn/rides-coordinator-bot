@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from bot.core.base import Base
-from bot.core.enums import FeatureFlagNames
+from bot.core.enums import FeatureFlagNames, JobName
 from bot.core.logger import logger
-from bot.core.models import FeatureFlags
+from bot.core.models import FeatureFlags, MessageSchedulePause
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./db/bot.db")
 
@@ -45,3 +45,28 @@ async def seed_feature_flags(session: AsyncSession):
             logger.info(f"🚩 Created feature flag '{flag_name.value}' (disabled by default).")
 
     await session.commit()
+
+
+async def seed_message_schedule_pauses(session: AsyncSession):
+    """Ensures that all message schedule pause rows exist in the database.
+
+    If a row doesn't exist for a job, it's created with a default un-paused state.
+
+    Args:
+        session: The database session to use for querying and adding rows.
+    """
+    for job_name in JobName:
+        result = await session.execute(
+            select(MessageSchedulePause).where(
+                MessageSchedulePause.job_name == job_name
+            )
+        )
+        existing = result.scalars().first()
+
+        if not existing:
+            new_pause = MessageSchedulePause(job_name=job_name, is_paused=False)
+            session.add(new_pause)
+            logger.info(f"⏸️ Created message schedule pause for '{job_name}' (active by default).")
+
+    await session.commit()
+
