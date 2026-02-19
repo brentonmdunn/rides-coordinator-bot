@@ -1,11 +1,8 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import { Button } from '../ui/button'
-import { Select } from '../ui/select'
 import type { AskRidesJobStatus, UpcomingDate } from '../../types'
-
-type PauseMode = 'choose' | 'indefinite' | 'until-date'
 
 interface PauseControlsProps {
     jobName: string
@@ -23,22 +20,21 @@ const formatEventDate = (isoDate: string): string => {
 
 function PauseControls({ jobName, job }: PauseControlsProps) {
     const [showModal, setShowModal] = useState(false)
-    const [pauseMode, setPauseMode] = useState<PauseMode>('choose')
-    const [selectedDate, setSelectedDate] = useState<string | null>(null)
     const [dateOffset, setDateOffset] = useState(0)
     const queryClient = useQueryClient()
 
     const isPaused = job.pause?.is_paused ?? false
 
-    // Fetch upcoming dates when in date selection mode
+    // Always fetch initial dates when the modal is open — lightweight call
     const { data: upcomingDates, isLoading: datesLoading } = useQuery<{ dates: UpcomingDate[]; has_more: boolean }>({
         queryKey: ['upcomingDates', jobName, dateOffset],
         queryFn: async () => {
-            const response = await apiFetch(`/api/ask-rides/upcoming-dates/${jobName}?count=6&offset=${dateOffset}`)
+            const response = await apiFetch(`/api/ask-rides/upcoming-dates/${jobName}?count=4&offset=${dateOffset}`)
             if (!response.ok) throw new Error('Failed to load dates')
             return response.json()
         },
-        enabled: pauseMode === 'until-date' && showModal,
+        enabled: showModal,
+        placeholderData: keepPreviousData,
     })
 
     const pauseMutation = useMutation({
@@ -57,32 +53,11 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['askRidesStatus'] })
             setShowModal(false)
-            resetModal()
         },
     })
 
-    const resetModal = () => {
-        setPauseMode('choose')
-        setSelectedDate(null)
-        setDateOffset(0)
-    }
-
-    const handleOpenModal = () => {
-        resetModal()
-        setShowModal(true)
-    }
-
     const handleResume = () => {
         pauseMutation.mutate({ is_paused: false })
-    }
-
-    const handlePauseIndefinitely = () => {
-        pauseMutation.mutate({ is_paused: true, resume_after_date: null })
-    }
-
-    const handlePauseUntilDate = () => {
-        if (!selectedDate) return
-        pauseMutation.mutate({ is_paused: true, resume_after_date: selectedDate })
     }
 
     // Don't show controls if the feature flag is off
@@ -109,7 +84,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                 </Button>
             ) : (
                 <Button
-                    onClick={handleOpenModal}
+                    onClick={() => setShowModal(true)}
                     variant="outline"
                     size="sm"
                     className="gap-1.5 w-full"
@@ -118,7 +93,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                 </Button>
             )}
 
-            {/* Pause Modal */}
+            {/* Pause Modal — single-screen with all options visible */}
             {showModal && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -132,102 +107,83 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                             Pause messages
                         </h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-                            Choose how to pause this job's messages.
+                            Skip sending until you resume or until a specific event.
                         </p>
 
-                        {pauseMode === 'choose' && (
-                            <div className="flex flex-col gap-3">
-                                <button
-                                    onClick={() => handlePauseIndefinitely()}
-                                    disabled={pauseMutation.isPending}
-                                    className="w-full text-left px-4 py-3 rounded-md border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
-                                >
-                                    <div className="font-medium text-slate-900 dark:text-white">Pause indefinitely</div>
-                                    <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Messages won't be sent until you manually resume.
-                                    </div>
-                                </button>
-                                <button
-                                    onClick={() => setPauseMode('until-date')}
-                                    className="w-full text-left px-4 py-3 rounded-md border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
-                                >
-                                    <div className="font-medium text-slate-900 dark:text-white">Pause until a specific date</div>
-                                    <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Messages will automatically resume before the selected date.
-                                    </div>
-                                </button>
-                            </div>
-                        )}
+                        <div className="flex flex-col gap-2">
+                            {/* Indefinite pause — always available */}
+                            <button
+                                onClick={() => pauseMutation.mutate({ is_paused: true, resume_after_date: null })}
+                                disabled={pauseMutation.isPending}
+                                className="w-full text-left px-4 py-3 rounded-md border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600 transition-colors"
+                            >
+                                <div className="font-medium text-slate-900 dark:text-white">Pause indefinitely</div>
+                                <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                                    Manually resume when ready
+                                </div>
+                            </button>
 
-                        {pauseMode === 'until-date' && (
-                            <div className="flex flex-col gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                        Resume before which date?
-                                    </label>
-                                    {datesLoading ? (
-                                        <div className="py-3 text-center text-slate-500 animate-pulse text-sm">
-                                            Loading dates...
+                            {/* Divider with date navigation */}
+                            <div className="flex items-center gap-3 my-1">
+                                <div className="flex-1 h-px bg-slate-200 dark:bg-zinc-700" />
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setDateOffset((prev) => Math.max(0, prev - 4))}
+                                        disabled={dateOffset === 0}
+                                        className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                        aria-label="Previous dates"
+                                    >
+                                        ←
+                                    </button>
+                                    <span className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium">
+                                        or skip until
+                                    </span>
+                                    <button
+                                        onClick={() => setDateOffset((prev) => prev + 4)}
+                                        className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                        aria-label="Next dates"
+                                    >
+                                        →
+                                    </button>
+                                </div>
+                                <div className="flex-1 h-px bg-slate-200 dark:bg-zinc-700" />
+                            </div>
+
+                            {/* Date cards */}
+                            {datesLoading ? (
+                                <div className="py-4 text-center text-slate-500 animate-pulse text-sm">
+                                    Loading upcoming dates...
+                                </div>
+                            ) : (
+                                upcomingDates?.dates.map((d: UpcomingDate) => (
+                                    <button
+                                        key={d.event_date}
+                                        onClick={() => pauseMutation.mutate({ is_paused: true, resume_after_date: d.event_date })}
+                                        disabled={pauseMutation.isPending}
+                                        className="w-full text-left px-4 py-2.5 rounded-md border border-slate-200 dark:border-zinc-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-800 transition-colors group"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium text-slate-900 dark:text-white">
+                                                {formatEventDate(d.event_date)}
+                                            </span>
+                                            <span className="text-xs text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors">
+                                                sends {formatEventDate(d.send_date)}
+                                            </span>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <Select
-                                                value={selectedDate ?? ''}
-                                                onChange={(e) => setSelectedDate(e.target.value || null)}
-                                            >
-                                                <option value="">Select a date...</option>
-                                                {upcomingDates?.dates.map((d) => (
-                                                    <option key={d.event_date} value={d.event_date}>
-                                                        {d.label} (sends {formatEventDate(d.send_date)})
-                                                    </option>
-                                                ))}
-                                            </Select>
-                                            <button
-                                                onClick={() => setDateOffset((prev) => prev + 6)}
-                                                className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                            >
-                                                Load later dates →
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-
-                                {selectedDate && (
-                                    <div className="px-3 py-2 rounded-md bg-info/10 border border-info/20 text-sm text-slate-700 dark:text-slate-300">
-                                        Messages will resume on <strong>{formatEventDate(
-                                            upcomingDates?.dates.find(d => d.event_date === selectedDate)?.send_date ?? selectedDate
-                                        )}</strong> for the <strong>{formatEventDate(selectedDate)}</strong> event.
-                                    </div>
-                                )}
-
-                                <div className="flex justify-end gap-3">
-                                    <button
-                                        onClick={() => setPauseMode('choose')}
-                                        className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
-                                    >
-                                        Back
                                     </button>
-                                    <button
-                                        onClick={handlePauseUntilDate}
-                                        disabled={!selectedDate || pauseMutation.isPending}
-                                        className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {pauseMutation.isPending ? 'Pausing...' : 'Confirm pause'}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                                ))
+                            )}
+                        </div>
 
-                        {pauseMode === 'choose' && (
-                            <div className="mt-4 flex justify-end">
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        )}
+                        {/* Cancel */}
+                        <div className="mt-4 flex justify-end">
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
 
                         {pauseMutation.isError && (
                             <div className="mt-3 px-3 py-2 rounded-md bg-destructive/15 text-destructive-text text-sm">
