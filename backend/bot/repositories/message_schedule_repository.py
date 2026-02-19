@@ -27,9 +27,7 @@ class MessageScheduleRepository:
             The MessageSchedulePause row, or None if not found.
         """
         async with AsyncSessionLocal() as session:
-            stmt = select(MessageSchedulePause).where(
-                MessageSchedulePause.job_name == job_name
-            )
+            stmt = select(MessageSchedulePause).where(MessageSchedulePause.job_name == job_name)
             result = await session.execute(stmt)
             return result.scalars().first()
 
@@ -125,9 +123,7 @@ class MessageScheduleRepository:
             True if the job should be blocked from sending.
         """
         async with AsyncSessionLocal() as session:
-            stmt = select(MessageSchedulePause).where(
-                MessageSchedulePause.job_name == job_name
-            )
+            stmt = select(MessageSchedulePause).where(MessageSchedulePause.job_name == job_name)
             result = await session.execute(stmt)
             pause = result.scalars().first()
 
@@ -176,7 +172,3 @@ class MessageScheduleRepository:
         if days_to_subtract == 0 and event_date.weekday() != 2:
             days_to_subtract = 7
         return event_date - timedelta(days=days_to_subtract)
-
-
-
-

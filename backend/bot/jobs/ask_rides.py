@@ -10,7 +10,14 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from bot.core.enums import ChannelIds, DaysOfWeek, DaysOfWeekNumber, FeatureFlagNames, JobName, RoleIds
+from bot.core.enums import (
+    ChannelIds,
+    DaysOfWeek,
+    DaysOfWeekNumber,
+    FeatureFlagNames,
+    JobName,
+    RoleIds,
+)
 from bot.core.logger import logger
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
@@ -425,8 +432,12 @@ async def get_ask_rides_status(bot: Bot) -> dict:
             # Fetch recent messages (last 20)
             messages = [msg async for msg in channel.history(limit=20)]
 
-            friday_last_msg = await find_message_in_history(messages, JobName.FRIDAY, current_week_start)
-            sunday_last_msg = await find_message_in_history(messages, JobName.SUNDAY, current_week_start)
+            friday_last_msg = await find_message_in_history(
+                messages, JobName.FRIDAY, current_week_start
+            )
+            sunday_last_msg = await find_message_in_history(
+                messages, JobName.SUNDAY, current_week_start
+            )
             sunday_class_last_msg = await find_message_in_history(
                 messages, JobName.SUNDAY_CLASS, current_week_start
             )

@@ -57,9 +57,7 @@ async def seed_message_schedule_pauses(session: AsyncSession):
     """
     for job_name in JobName:
         result = await session.execute(
-            select(MessageSchedulePause).where(
-                MessageSchedulePause.job_name == job_name
-            )
+            select(MessageSchedulePause).where(MessageSchedulePause.job_name == job_name)
         )
         existing = result.scalars().first()
 
@@ -69,4 +67,3 @@ async def seed_message_schedule_pauses(session: AsyncSession):
             logger.info(f"⏸️ Created message schedule pause for '{job_name}' (active by default).")
 
     await session.commit()
-

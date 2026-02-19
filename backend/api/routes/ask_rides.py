@@ -73,7 +73,9 @@ async def get_pauses():
             ).isoformat()
         result[pause.job_name] = {
             "is_paused": pause.is_paused,
-            "resume_after_date": pause.resume_after_date.isoformat() if pause.resume_after_date else None,
+            "resume_after_date": pause.resume_after_date.isoformat()
+            if pause.resume_after_date
+            else None,
             "resume_send_date": send_date,
         }
     return result
@@ -127,7 +129,9 @@ async def set_pause(job_name: str, request: PauseRequest):
         "message": msg,
         "pause": {
             "is_paused": updated.is_paused,
-            "resume_after_date": updated.resume_after_date.isoformat() if updated.resume_after_date else None,
+            "resume_after_date": updated.resume_after_date.isoformat()
+            if updated.resume_after_date
+            else None,
             "resume_send_date": send_date,
         },
     }
@@ -151,10 +155,7 @@ async def get_upcoming_dates(job_name: str, count: int = 6, offset: int = 0):
 
     # Determine which weekday to compute
     # Friday = weekday 4, Sunday = weekday 6
-    if job_name == JobName.FRIDAY:
-        target_weekday = 4  # Friday
-    else:
-        target_weekday = 6  # Sunday (both sunday and sunday_class)
+    target_weekday = 4 if job_name == JobName.FRIDAY else 6
 
     today = date.today()
     dates = []
@@ -170,11 +171,13 @@ async def get_upcoming_dates(job_name: str, count: int = 6, offset: int = 0):
 
     for _ in range(count):
         send_wednesday = MessageScheduleRepository.get_send_wednesday(next_date)
-        dates.append({
-            "event_date": next_date.isoformat(),
-            "send_date": send_wednesday.isoformat(),
-            "label": next_date.strftime("%a %b %-d"),
-        })
+        dates.append(
+            {
+                "event_date": next_date.isoformat(),
+                "send_date": send_wednesday.isoformat(),
+                "label": next_date.strftime("%a %b %-d"),
+            }
+        )
         next_date += timedelta(weeks=1)
 
     return {"dates": dates, "has_more": True}
@@ -263,4 +266,3 @@ async def get_ask_rides_reactions(message_type: str):
     except Exception as e:
         logger.error(f"Error fetching ask-rides reactions for {message_type}: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
-
