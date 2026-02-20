@@ -5,6 +5,7 @@ console handlers, file handlers with rotation, formatters, and log levels for
 external libraries.
 """
 
+import contextvars
 import functools
 import logging
 import os
@@ -22,6 +23,18 @@ LOG_DIR = Path(__file__).parent.parent.parent.parent / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / "bot.log"
 
+
+user_email_var: contextvars.ContextVar[str] = contextvars.ContextVar("user_email", default="-")
+
+
+class UserEmailFilter(logging.Filter):
+    """Injects the current user's email into the log record."""
+
+    def filter(self, record):
+        record.user_email = user_email_var.get()
+        return True
+
+
 # ------------------------------
 # Root logger setup (your code)
 # ------------------------------
@@ -33,9 +46,10 @@ logger.setLevel(log_level)
 # Console handler
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)  # Allow DEBUG output for your code
+console_handler.addFilter(UserEmailFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d %(name)s] %(message)s"
+    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"  # noqa: E501
 )
 
 console_handler.setFormatter(formatter)
@@ -74,6 +88,7 @@ file_handler = RotatingFileHandler(
 )
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
+file_handler.addFilter(UserEmailFilter())
 logger.addHandler(file_handler)
 
 
@@ -108,8 +123,12 @@ def log_cmd(func):
         log = f"command=/{command_name} used by user={user} in channel={channel}."
         if args_str:
             log += f" arguments=[{args_str}]"
-        logger.info(log)
 
-        return await func(self, interaction, *args, **kwargs)
+        token = user_email_var.set(str(user))
+        try:
+            logger.info(log)
+            return await func(self, interaction, *args, **kwargs)
+        finally:
+            user_email_var.reset(token)
 
     return wrapper
