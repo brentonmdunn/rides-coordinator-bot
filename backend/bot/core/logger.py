@@ -5,12 +5,12 @@ console handlers, file handlers with rotation, formatters, and log levels for
 external libraries.
 """
 
+import contextvars
 import functools
 import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-import contextvars
 from typing import Any
 
 import discord
@@ -49,7 +49,7 @@ console_handler.setLevel(logging.DEBUG)  # Allow DEBUG output for your code
 console_handler.addFilter(UserEmailFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"
+    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"  # noqa: E501
 )
 
 console_handler.setFormatter(formatter)
@@ -123,7 +123,7 @@ def log_cmd(func):
         log = f"command=/{command_name} used by user={user} in channel={channel}."
         if args_str:
             log += f" arguments=[{args_str}]"
-            
+
         token = user_email_var.set(str(user))
         try:
             logger.info(log)

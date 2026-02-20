@@ -8,10 +8,9 @@ import logging
 import os
 
 import httpx
+from backend.bot.core.logger import user_email_var
 from fastapi import Request, Response
 from jose import jwt
-
-from backend.bot.core.logger import user_email_var
 
 logger = logging.getLogger(__name__)
 
@@ -130,9 +129,10 @@ async def cloudflare_access_middleware(request: Request, call_next):
     user_info = await verify_cloudflare_token(request)
     if user_info:
         request.state.user = user_info  # Attach user info to request
-        
+
         # Set the user_email context variable for this specific async request lifecycle.
-        # Any logger calls made during this request will have access to this email via UserEmailFilter.
+        # Any logger calls made during this request will have access to this email via
+        # UserEmailFilter.
         email = user_info.get("email") or "-"
         token = user_email_var.set(email)
         try:
@@ -142,5 +142,5 @@ async def cloudflare_access_middleware(request: Request, call_next):
             # Reset the context variable to its previous state (e.g. '-') when the request finishes
             # to prevent the email from leaking into other requests on the same thread/loop.
             user_email_var.reset(token)
-            
+
     return Response(content="Unauthorized", status_code=401)
