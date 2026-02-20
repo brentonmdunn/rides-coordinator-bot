@@ -22,6 +22,7 @@ LOCATIONS_MATRIX = {
         (PickupLocations.RITA, 8),
         (PickupLocations.INNOVATION, 1),
         (PickupLocations.GEISEL_LOOP, 3),
+        (PickupLocations.PCYN_LOOP, 6),
     ],
     PickupLocations.GEISEL_LOOP: [(PickupLocations.WARREN_EQL, 3), (PickupLocations.SEVENTH, 5)],
     PickupLocations.RITA: [
@@ -36,7 +37,18 @@ LOCATIONS_MATRIX = {
         ("START", 10),
         ("END", 20),
     ],
-    PickupLocations.EIGHTH: [(PickupLocations.RITA, 4), (PickupLocations.MUIR, 2), ("START", 10)],
+    PickupLocations.EIGHTH: [
+        (PickupLocations.RITA, 4),
+        (PickupLocations.MUIR, 2),
+        ("START", 10),
+        (PickupLocations.PCYN_LOOP, 5),
+    ],
+    PickupLocations.PCYN_LOOP: [
+        (PickupLocations.EIGHTH, 5),
+        (PickupLocations.WARREN_EQL, 6),
+        ("START", 10),
+        ("END", 20),
+    ],
     "START": [
         (PickupLocations.INNOVATION, 10),
         (PickupLocations.EIGHTH, 10),

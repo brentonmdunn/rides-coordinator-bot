@@ -18,4 +18,5 @@ MAP_LINKS = {
     PickupLocations.WARREN_EQL: "https://maps.app.goo.gl/b4vLo5ZCGdZXEoni8",
     PickupLocations.WARREN_JST: "https://maps.app.goo.gl/h5LJCGhvBUbpmkmL7",
     PickupLocations.GEISEL_LOOP: "https://maps.app.goo.gl/nEtXGDLwGeAArNtPA",
+    PickupLocations.PCYN_LOOP: "https://maps.app.goo.gl/PXbzwbt1mAoQPP6r7",
 }
