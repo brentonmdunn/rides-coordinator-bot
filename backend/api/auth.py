@@ -75,7 +75,7 @@ async def verify_cloudflare_token(request: Request):
 
     token = request.headers.get("Cf-Access-Jwt-Assertion")
     if not token:
-        logger.error(f"Missing Cf-Access-Jwt-Assertion header for path: {request.url.path}")
+        logger.warning(f"Missing Cf-Access-Jwt-Assertion header for path: {request.url.path}")
         return None
 
     keys = await get_cloudflare_keys()
