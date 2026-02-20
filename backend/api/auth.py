@@ -8,7 +8,7 @@ import logging
 import os
 
 import httpx
-from backend.bot.core.logger import user_email_var
+from bot.core.logger import user_email_var
 from fastapi import Request, Response
 from jose import jwt
 
