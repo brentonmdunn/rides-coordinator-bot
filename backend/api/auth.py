@@ -8,9 +8,10 @@ import logging
 import os
 
 import httpx
-from bot.core.logger import user_email_var
 from fastapi import Request, Response
 from jose import jwt
+
+from bot.core.logger import user_email_var
 
 logger = logging.getLogger(__name__)
 
