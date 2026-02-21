@@ -136,6 +136,17 @@ class PickupLocations(StrEnum):
     PCYN_LOOP = "Pepper Canyon Loop"
 
 
+class CacheNamespace(StrEnum):
+    """Cache namespaces for grouped invalidation."""
+
+    ASK_RIDES_MESSAGE_ID = "ask_rides_message_id"
+    ASK_DRIVERS_MESSAGE_ID = "ask_drivers_message_id"
+    ASK_RIDES_REACTIONS = "ask_rides_reactions"
+    ASK_DRIVERS_REACTIONS = "ask_drivers_reactions"
+    ASK_RIDES_STATUS = "ask_rides_status"
+    DEFAULT = "default"
+
+
 class AskRidesMessage(StrEnum):
     """Messages for asking for rides."""
 
