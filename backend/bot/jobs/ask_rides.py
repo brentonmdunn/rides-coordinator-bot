@@ -11,6 +11,7 @@ from discord.abc import Messageable
 from discord.ext.commands import Bot
 
 from bot.core.enums import (
+    CacheNamespace,
     ChannelIds,
     DaysOfWeek,
     DaysOfWeekNumber,
@@ -22,7 +23,7 @@ from bot.core.logger import logger
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
-from bot.utils.cache import alru_cache
+from bot.utils.cache import alru_cache, warm_ask_rides_message_cache
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import get_next_date, get_next_date_obj
@@ -296,9 +297,8 @@ async def run_ask_rides_all(
     await run_ask_rides_sun_class(bot, channel_id)
     await run_ask_rides_sun(bot, channel_id)
 
-    # Invalidate cache since new messages were sent
-    logger.info("Invalidating ask rides status cache after sending messages")
-    get_ask_rides_status.cache_clear()
+    # Invalidate and warm caches since new messages were sent
+    await warm_ask_rides_message_cache(bot, channel_id)
 
 
 # ============================================================================
@@ -367,7 +367,7 @@ async def find_message_in_history(
     return None
 
 
-@alru_cache(ttl=_get_dynamic_ttl, ignore_self=True)
+@alru_cache(ttl=_get_dynamic_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_STATUS)
 async def get_ask_rides_status(bot: Bot) -> dict:
     """
     Get status for all ask rides jobs.
