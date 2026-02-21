@@ -1,7 +1,7 @@
 """Unit tests for alru_cache namespace support."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
@@ -206,9 +206,13 @@ async def test_warm_ask_drivers_reactions_cache():
         await warm_ask_drivers_reactions_cache(bot)
 
         mock_invalidate.assert_called_once_with(CacheNamespace.ASK_DRIVERS_REACTIONS)
-        svc_instance.get_driver_reactions.assert_awaited_once_with(
-            AskRidesMessage.FRIDAY_FELLOWSHIP
+        svc_instance.get_driver_reactions.assert_has_awaits(
+            [
+                call(AskRidesMessage.FRIDAY_FELLOWSHIP),
+                call(AskRidesMessage.SUNDAY_SERVICE),
+            ]
         )
+        assert svc_instance.get_driver_reactions.await_count == 2
 
 
 @pytest.mark.asyncio
