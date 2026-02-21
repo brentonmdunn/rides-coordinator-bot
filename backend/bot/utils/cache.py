@@ -175,3 +175,43 @@ async def warm_ask_drivers_message_cache(bot, event=None) -> None:
     locations_svc = LocationsService(bot)
     await locations_svc._find_all_driver_messages()
     logger.info("Warmed ask drivers message ID cache")
+
+
+async def warm_ask_rides_reactions_cache(bot, event) -> None:
+    """Invalidate and warm the ask-rides reactions cache for a specific event.
+
+    Args:
+        bot: The Discord bot instance.
+        event: The AskRidesMessage event.
+    """
+    from bot.services.locations_service import LocationsService
+
+    locations_svc = LocationsService(bot)
+
+    invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
+    # Warm up cache
+    await locations_svc.get_ask_rides_reactions(event)
+    event_name = event.name if hasattr(event, "name") else event
+    logger.info(f"Warmed ask-rides reactions cache for {event_name}")
+
+
+async def warm_ask_drivers_reactions_cache(bot, event) -> None:
+    """Invalidate and warm the ask-drivers reactions cache for a specific event.
+
+    Args:
+        bot: The Discord bot instance.
+        event: The AskRidesMessage event.
+    """
+    from bot.core.enums import AskRidesMessage
+    from bot.services.locations_service import LocationsService
+
+    locations_svc = LocationsService(bot)
+
+    invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
+    # Warm up cache based on day
+    if event == AskRidesMessage.FRIDAY_FELLOWSHIP:
+        await locations_svc.get_driver_reactions("Friday")
+    elif event in (AskRidesMessage.SUNDAY_SERVICE, AskRidesMessage.SUNDAY_CLASS):
+        await locations_svc.get_driver_reactions("Sunday")
+    event_name = event.name if hasattr(event, "name") else event
+    logger.info(f"Warmed ask-drivers reactions cache for {event_name}")
