@@ -82,7 +82,21 @@ def alru_cache(
             cache.clear()
             logger.info(f"Cache cleared for {func.__name__}")
 
+        def cache_set(*args, result):
+            """Inject a value into the cache for the given arguments.
+
+            Args are the function arguments (excluding self if ignore_self is True).
+            This allows batch methods to populate individual cache entries.
+            """
+            key = (args, ())
+            current_ttl = ttl() if callable(ttl) else ttl
+            cache[key] = (result, time.time(), current_ttl)
+            cache.move_to_end(key)
+            if len(cache) > maxsize:
+                cache.popitem(last=False)
+
         wrapper.cache_clear = cache_clear
+        wrapper.cache_set = cache_set
         wrapper.cache_namespace = ns_key
         return wrapper
 
@@ -130,7 +144,7 @@ async def warm_ask_rides_message_cache(bot, channel_id=None) -> None:
         bot: The Discord bot instance.
         channel_id: Optional channel ID override (defaults to RIDES_ANNOUNCEMENTS).
     """
-    from bot.core.enums import AskRidesMessage, ChannelIds
+    from bot.core.enums import ChannelIds
     from bot.services.locations_service import LocationsService
 
     if channel_id is None:
@@ -140,24 +154,24 @@ async def warm_ask_rides_message_cache(bot, channel_id=None) -> None:
     invalidate_namespace(CacheNamespace.ASK_RIDES_MESSAGE_ID)
 
     locations_svc = LocationsService(bot)
-    for msg_type in AskRidesMessage:
-        await locations_svc._find_correct_message(msg_type, channel_id)
+    await locations_svc._find_all_messages(channel_id)
     logger.info("Warmed ask rides message ID cache")
 
 
-async def warm_ask_drivers_message_cache(bot, event) -> None:
-    """Invalidate and re-populate the ask-drivers message ID cache for a specific event.
+async def warm_ask_drivers_message_cache(bot, event=None) -> None:
+    """Invalidate and re-populate the ask-drivers message ID cache.
 
     Call this after sending a new ask-drivers message.
+    If event is None, warms all events in a single pass.
 
     Args:
         bot: The Discord bot instance.
-        event: The AskRidesMessage enum value for the day that was sent.
+        event: Optional AskRidesMessage enum value. If None, warms all events.
     """
     from bot.services.locations_service import LocationsService
 
     invalidate_namespace(CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
 
     locations_svc = LocationsService(bot)
-    await locations_svc._find_driver_message(event)
-    logger.info(f"Warmed ask drivers message ID cache for {event}")
+    await locations_svc._find_all_driver_messages()
+    logger.info("Warmed ask drivers message ID cache")
