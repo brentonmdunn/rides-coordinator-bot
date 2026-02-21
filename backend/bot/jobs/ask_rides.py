@@ -301,6 +301,52 @@ async def run_ask_rides_all(
     await warm_ask_rides_message_cache(bot, channel_id)
 
 
+# State for rotating periodic warmers
+_periodic_warmer_idx = 0
+
+
+async def run_periodic_cache_warming(bot: Bot) -> None:
+    """Rotates through the 2 reaction namespaces, warming one every time it runs."""
+    global _periodic_warmer_idx
+    from bot.core.enums import AskRidesMessage, CacheNamespace, ChannelIds
+    from bot.services.locations_service import LocationsService
+    from bot.utils.cache import invalidate_namespace
+
+    locations_svc = LocationsService(bot)
+
+    try:
+        if _periodic_warmer_idx == 0:
+            logger.info("Periodic cache warming: ASK_RIDES_REACTIONS")
+            invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
+            await locations_svc.list_locations()
+            await locations_svc.get_ask_rides_reactions(AskRidesMessage.SUNDAY_SERVICE)
+            await locations_svc.get_ask_rides_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
+
+            s_msg_id = await locations_svc._find_correct_message(
+                AskRidesMessage.SUNDAY_SERVICE, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+            )
+            f_msg_id = await locations_svc._find_correct_message(
+                AskRidesMessage.FRIDAY_FELLOWSHIP, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+            )
+            if s_msg_id:
+                await locations_svc._get_usernames_who_reacted(
+                    ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS, s_msg_id
+                )
+            if f_msg_id:
+                await locations_svc._get_usernames_who_reacted(
+                    ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS, f_msg_id
+                )
+        elif _periodic_warmer_idx == 1:
+            logger.info("Periodic cache warming: ASK_DRIVERS_REACTIONS")
+            invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
+            await locations_svc.get_driver_reactions("Friday")
+            await locations_svc.get_driver_reactions("Sunday")
+    except Exception as e:
+        logger.error(f"Error checking cache {_periodic_warmer_idx}: {e}")
+
+    _periodic_warmer_idx = (_periodic_warmer_idx + 1) % 2
+
+
 # ============================================================================
 # API Helper Functions (for dashboard status)
 # ============================================================================
