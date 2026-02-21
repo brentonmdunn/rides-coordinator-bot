@@ -1,5 +1,6 @@
 """Simple async LRU cache with TTL and namespace support."""
 
+import asyncio
 import functools
 import time
 from collections import OrderedDict
@@ -37,6 +38,7 @@ def alru_cache(
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         cache: OrderedDict = OrderedDict()
+        locks: dict[Any, asyncio.Lock] = {}
 
         # Register this cache in the namespace registry
         ns_key = str(namespace)
@@ -49,7 +51,7 @@ def alru_cache(
             key_args = args[1:] if ignore_self and args else args
             key = (key_args, tuple(sorted(kwargs.items())))
 
-            # Check if key is in cache
+            # Check if key is in cache initially
             if key in cache:
                 result, timestamp, cached_ttl = cache[key]
 
@@ -61,8 +63,20 @@ def alru_cache(
                     cache.move_to_end(key)
                     return result
 
-            # Compute result
-            result = await func(*args, **kwargs)
+            # Cache miss: synchronize concurrent fetches for the same key
+            lock = locks.setdefault(key, asyncio.Lock())
+            async with lock:
+                # Double-check cache in case another task populated it while we waited
+                if key in cache:
+                    result, timestamp, cached_ttl = cache[key]
+                    if cached_ttl is None or time.time() - timestamp <= cached_ttl:
+                        cache.move_to_end(key)
+                        return result
+                    else:
+                        del cache[key]
+
+                # Compute result
+                result = await func(*args, **kwargs)
 
             # Calculate TTL (support dynamic TTL via callable)
             current_ttl = ttl() if callable(ttl) else ttl
@@ -80,6 +94,7 @@ def alru_cache(
         def cache_clear():
             """Clear all cached entries for this function."""
             cache.clear()
+            locks.clear()
             logger.info(f"Cache cleared for {func.__name__}")
 
         def cache_set(*args, result):
