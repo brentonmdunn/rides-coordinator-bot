@@ -47,10 +47,10 @@ def _get_dynamic_ttl() -> int:
     now = datetime.now()
 
     # Wednesday is weekday 2 (0=Monday)
-    if now.weekday() == 2 and 11 <= now.hour < 15:
+    if now.weekday() == 2 and 11 <= now.hour < 13:
         return 60  # Short TTL during active period
 
-    return 180  # Longer TTL during quiet periods
+    return 60 * 60  # Longer TTL during quiet periods
 
 
 def _make_wednesday_msg() -> str | None:
