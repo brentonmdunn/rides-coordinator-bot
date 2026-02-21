@@ -296,7 +296,8 @@ async def bot_lifespan():
     await _disable_features_for_local_env()
 
     # Load extensions
-    await _load_extensions(bot)
+    if APP_ENV != "local":
+        await _load_extensions(bot)
 
     # Start bot in background
     _bot_instance = bot

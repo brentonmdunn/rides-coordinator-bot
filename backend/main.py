@@ -19,10 +19,16 @@ from bot.core.database import (
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
+from bot.core.enums import ChannelIds
 from bot.core.logger import logger
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
-from bot.utils.constants import ERROR_CHANNEL_ID
+
+try:
+    from bot.utils.constants import ERROR_CHANNEL_ID
+except ImportError:
+    logger.warning("❌ Could not import ERROR_CHANNEL_ID. Defaulting to BOT_STUFF__BOTS.")
+    ERROR_CHANNEL_ID = ChannelIds.BOT_STUFF__BOTS
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
