@@ -13,7 +13,7 @@ import requests
 from dotenv import load_dotenv
 
 from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AskRidesMessage, CanBeDriver, ChannelIds, ClassYear
+from bot.core.enums import AskRidesMessage, CacheNamespace, CanBeDriver, ChannelIds, ClassYear
 from bot.core.logger import logger
 from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
@@ -256,7 +256,7 @@ class LocationsService:
             logger.exception("An error occurred: ")
             await interaction.response.send_message(f"Unknown error: {e}")
 
-    @alru_cache(ttl=60, ignore_self=True)
+    @alru_cache(ttl=60, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
     async def list_locations(
         self,
         day=None,
@@ -313,6 +313,7 @@ class LocationsService:
 
         return locations_people, usernames_reacted, location_found
 
+    @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID)
     async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
         """Finds the most recent message matching the criteria.
 
@@ -334,18 +335,29 @@ class LocationsService:
                 most_recent_message = message
         return most_recent_message.id if most_recent_message else None
 
+    @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
     async def _find_driver_message(
-        self, keyword: list[str], channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
+        self, event: AskRidesMessage, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
     ):
         """Finds the most recent driver message matching the keyword.
 
         Args:
-            keyword: The keyword to search for (e.g., "Friday", "Sunday").
+            event: The event to search for (e.g., "Friday", "Sunday").
             channel_id: The channel ID to search in.
 
         Returns:
             The message ID if found, otherwise None.
         """
+
+        if event == AskRidesMessage.FRIDAY_FELLOWSHIP:
+            keyword = ["Friday", "felly", "fellowship"]
+        elif event == AskRidesMessage.SUNDAY_SERVICE:
+            keyword = ["Sunday", "service"]
+        elif event == AskRidesMessage.SUNDAY_CLASS:
+            keyword = ["Sunday", "class"]
+        else:
+            raise ValueError(f"Invalid event: {event}")
+
         last_sunday = get_last_sunday()
         channel = self.bot.get_channel(channel_id)
         most_recent_message = None
@@ -361,7 +373,43 @@ class LocationsService:
                 most_recent_message = message
         return most_recent_message.id if most_recent_message else None
 
-    @alru_cache(ttl=60, ignore_self=True)
+    @alru_cache(ttl=60, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
+    async def get_ask_rides_reactions(self, event: AskRidesMessage):
+        """Retrieves reaction breakdown for an ask-rides message.
+
+        Args:
+            event: The AskRidesMessage type to look up.
+
+        Returns:
+            Dictionary with reactions mapping emojis to lists of usernames,
+            username_to_name mapping, and message_found flag. None if message not found.
+        """
+        channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+        message_id = await self._find_correct_message(event, channel_id)
+        if not message_id:
+            return None
+
+        channel = self.bot.get_channel(channel_id)
+        message = await channel.fetch_message(message_id)
+
+        reactions_by_emoji = defaultdict(list)
+        all_usernames = set()
+        for reaction in message.reactions:
+            async for user in reaction.users():
+                if not user.bot:
+                    username = user.name
+                    reactions_by_emoji[str(reaction.emoji)].append(username)
+                    all_usernames.add(username)
+
+        async with AsyncSessionLocal() as session:
+            username_to_name = await self.repo.get_names_for_usernames(session, all_usernames)
+
+        return {
+            "reactions": dict(reactions_by_emoji),
+            "username_to_name": username_to_name,
+        }
+
+    @alru_cache(ttl=60, ignore_self=True, namespace=CacheNamespace.ASK_DRIVERS_REACTIONS)
     async def get_driver_reactions(self, day: str):
         """Retrieves reaction breakdown for a driver message.
 
@@ -373,18 +421,15 @@ class LocationsService:
             and username_to_name mapping for display purposes.
         """
         if day.lower() == "sunday":
-            keyword = ["Sunday", "service"]
+            event = AskRidesMessage.SUNDAY_SERVICE
         elif day.lower() == "friday":
-            keyword = ["Friday", "felly", "fellowship"]
+            event = AskRidesMessage.FRIDAY_FELLOWSHIP
         else:
             raise ValueError(f"Invalid day: {day}")
-        # For Sunday, we might need specific keywords if there are multiple types,
-        # but user just said "friday drivers" and "switch to sunday".
-        # Usually "Sunday" appears in the message for Sunday service.
 
         channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 
-        message_id = await self._find_driver_message(keyword, channel_id)
+        message_id = await self._find_driver_message(event, channel_id)
         if not message_id:
             return None
 
@@ -409,7 +454,7 @@ class LocationsService:
             "username_to_name": username_to_name,
         }
 
-    @alru_cache(ttl=60, ignore_self=True)
+    @alru_cache(ttl=60, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Retrieves a set of usernames who reacted to a message.
 
