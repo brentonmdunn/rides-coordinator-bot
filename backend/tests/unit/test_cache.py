@@ -203,7 +203,7 @@ async def test_warm_ask_drivers_reactions_cache():
         svc_instance = AsyncMock()
         mock_locations_service.return_value = svc_instance
 
-        await warm_ask_drivers_reactions_cache(bot, AskRidesMessage.FRIDAY_FELLOWSHIP)
+        await warm_ask_drivers_reactions_cache(bot)
 
         mock_invalidate.assert_called_once_with(CacheNamespace.ASK_DRIVERS_REACTIONS)
         svc_instance.get_driver_reactions.assert_awaited_once_with(

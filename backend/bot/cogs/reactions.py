@@ -131,7 +131,7 @@ class Reactions(commands.Cog):
             for event in AskRidesMessage:
                 m_id = await locations_svc._find_driver_message(event, channel_id)
                 if m_id == message_id:
-                    await warm_ask_drivers_reactions_cache(self.bot, event)
+                    await warm_ask_drivers_reactions_cache(self.bot)
                     break
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
