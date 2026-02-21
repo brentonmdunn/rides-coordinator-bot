@@ -1,5 +1,6 @@
 """Unit tests for alru_cache namespace support."""
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -206,3 +207,25 @@ async def test_warm_ask_drivers_reactions_cache():
 
         mock_invalidate.assert_called_once_with(CacheNamespace.ASK_DRIVERS_REACTIONS)
         svc_instance.get_driver_reactions.assert_awaited_once_with("Friday")
+
+
+@pytest.mark.asyncio
+async def test_cache_stampede_prevention():
+    """Concurrent cache misses for the same key should only result in one underlying
+    function call."""
+    mock_func = AsyncMock(return_value="data")
+
+    @alru_cache(ttl=300)
+    async def fetch_data(key: str):
+        # Simulate network or DB delay
+        await asyncio.sleep(0.1)
+        return await mock_func(key)
+
+    # Spawn 10 concurrent requests for the same key
+    results = await asyncio.gather(*(fetch_data("foo") for _ in range(10)))
+
+    # All 10 requests should get the same data back
+    assert all(r == "data" for r in results)
+
+    # Crucially, the underlying function should only have been called ONCE
+    mock_func.assert_called_once_with("foo")
