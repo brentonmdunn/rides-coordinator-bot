@@ -225,8 +225,8 @@ async def warm_ask_drivers_reactions_cache(bot, event) -> None:
     invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
     # Warm up cache based on day
     if event == AskRidesMessage.FRIDAY_FELLOWSHIP:
-        await locations_svc.get_driver_reactions("Friday")
+        await locations_svc.get_driver_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
     elif event in (AskRidesMessage.SUNDAY_SERVICE, AskRidesMessage.SUNDAY_CLASS):
-        await locations_svc.get_driver_reactions("Sunday")
+        await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
     event_name = event.name if hasattr(event, "name") else event
     logger.info(f"Warmed ask-drivers reactions cache for {event_name}")

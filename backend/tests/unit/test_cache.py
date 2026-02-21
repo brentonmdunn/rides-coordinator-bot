@@ -206,7 +206,9 @@ async def test_warm_ask_drivers_reactions_cache():
         await warm_ask_drivers_reactions_cache(bot, AskRidesMessage.FRIDAY_FELLOWSHIP)
 
         mock_invalidate.assert_called_once_with(CacheNamespace.ASK_DRIVERS_REACTIONS)
-        svc_instance.get_driver_reactions.assert_awaited_once_with("Friday")
+        svc_instance.get_driver_reactions.assert_awaited_once_with(
+            AskRidesMessage.FRIDAY_FELLOWSHIP
+        )
 
 
 @pytest.mark.asyncio

@@ -468,22 +468,18 @@ class LocationsService:
         }
 
     @alru_cache(ttl=2700, ignore_self=True, namespace=CacheNamespace.ASK_DRIVERS_REACTIONS)
-    async def get_driver_reactions(self, day: str):
+    async def get_driver_reactions(self, event: AskRidesMessage):
         """Retrieves reaction breakdown for a driver message.
 
         Args:
-            day: "Friday" or "Sunday"
+            event: AskRidesMessage.FRIDAY_FELLOWSHIP or AskRidesMessage.SUNDAY_SERVICE
 
         Returns:
             Dictionary with reactions mapping emojis to lists of usernames,
             and username_to_name mapping for display purposes.
         """
-        if day.lower() == "sunday":
-            event = AskRidesMessage.SUNDAY_SERVICE
-        elif day.lower() == "friday":
-            event = AskRidesMessage.FRIDAY_FELLOWSHIP
-        else:
-            raise ValueError(f"Invalid day: {day}")
+        if event not in (AskRidesMessage.FRIDAY_FELLOWSHIP, AskRidesMessage.SUNDAY_SERVICE):
+            raise ValueError(f"Invalid event for driver reactions: {event}")
 
         channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 
