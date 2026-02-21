@@ -1,8 +1,8 @@
 """Unit tests for alru_cache namespace support."""
 
-import pytest
-
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from bot.core.enums import AskRidesMessage, CacheNamespace
 from bot.utils.cache import (
@@ -173,31 +173,36 @@ async def test_cache_namespace_attribute():
 async def test_warm_ask_rides_reactions_cache():
     """warm_ask_rides_reactions_cache should invalidate the namespace and warm the cache."""
     bot = AsyncMock()
-    
-    with patch("bot.services.locations_service.LocationsService") as mock_locations_service, patch(
-        "bot.utils.cache.invalidate_namespace"
-    ) as mock_invalidate:
+
+    with (
+        patch("bot.services.locations_service.LocationsService") as mock_locations_service,
+        patch("bot.utils.cache.invalidate_namespace") as mock_invalidate,
+    ):
         svc_instance = AsyncMock()
         mock_locations_service.return_value = svc_instance
-        
+
         await warm_ask_rides_reactions_cache(bot, AskRidesMessage.SUNDAY_SERVICE)
-        
+
         mock_invalidate.assert_called_once_with(CacheNamespace.ASK_RIDES_REACTIONS)
-        svc_instance.get_ask_rides_reactions.assert_awaited_once_with(AskRidesMessage.SUNDAY_SERVICE)
+        svc_instance.get_ask_rides_reactions.assert_awaited_once_with(
+            AskRidesMessage.SUNDAY_SERVICE
+        )
 
 
 @pytest.mark.asyncio
 async def test_warm_ask_drivers_reactions_cache():
-    """warm_ask_drivers_reactions_cache should invalidate the namespace and warm the cache for the specific day."""
+    """warm_ask_drivers_reactions_cache should invalidate the namespace and warm the
+    cache for the specific day."""
     bot = AsyncMock()
-    
-    with patch("bot.services.locations_service.LocationsService") as mock_locations_service, patch(
-        "bot.utils.cache.invalidate_namespace"
-    ) as mock_invalidate:
+
+    with (
+        patch("bot.services.locations_service.LocationsService") as mock_locations_service,
+        patch("bot.utils.cache.invalidate_namespace") as mock_invalidate,
+    ):
         svc_instance = AsyncMock()
         mock_locations_service.return_value = svc_instance
-        
+
         await warm_ask_drivers_reactions_cache(bot, AskRidesMessage.FRIDAY_FELLOWSHIP)
-        
+
         mock_invalidate.assert_called_once_with(CacheNamespace.ASK_DRIVERS_REACTIONS)
         svc_instance.get_driver_reactions.assert_awaited_once_with("Friday")
