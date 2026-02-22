@@ -95,8 +95,12 @@ invalidate_all_namespaces()
 ### Per-Function Clear
 
 ```python
-# Clear only one specific function's cache
+# Clear only one specific function's cache entirely
 get_ask_rides_status.cache_clear()
+
+# Clear only a single set of arguments from a function's cache
+from bot.core.enums import AskRidesMessage
+get_driver_reactions.cache_invalidate(AskRidesMessage.FRIDAY_FELLOWSHIP)
 ```
 
 ### Cache Warming Helpers

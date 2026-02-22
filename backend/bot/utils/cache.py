@@ -110,8 +110,19 @@ def alru_cache(
             if len(cache) > maxsize:
                 cache.popitem(last=False)
 
+        def cache_invalidate(*args):
+            """Invalidate a specific cache entry without touching the rest of the namespace.
+
+            Args are the function arguments (excluding self if ignore_self is True).
+            """
+            key = (args, ())
+            if key in cache:
+                del cache[key]
+                logger.info(f"Cache explicitly invalidated for {func.__name__} {key}")
+
         wrapper.cache_clear = cache_clear
         wrapper.cache_set = cache_set
+        wrapper.cache_invalidate = cache_invalidate
         wrapper.cache_namespace = ns_key
         return wrapper
 
@@ -210,19 +221,28 @@ async def warm_ask_rides_reactions_cache(bot, event) -> None:
     logger.info(f"Warmed ask-rides reactions cache for {event_name}")
 
 
-async def warm_ask_drivers_reactions_cache(bot) -> None:
+async def warm_ask_drivers_reactions_cache(bot, event=None) -> None:
     """Invalidate and warm the ask-drivers reactions cache for a specific event.
 
     Args:
         bot: The Discord bot instance.
+        event: Optional AskRidesMessage event. If provided, selectively invalidates
+               and warms only that event without touching the rest of the namespace.
     """
     from bot.core.enums import AskRidesMessage
     from bot.services.locations_service import LocationsService
 
     locations_svc = LocationsService(bot)
 
-    invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
-    # Warm up cache based on day
-    await locations_svc.get_driver_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
-    await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
-    logger.info("Warmed ask-drivers reactions cache")
+    if event:
+        # Selectively invalidate and warm
+        locations_svc.get_driver_reactions.cache_invalidate(event)
+        await locations_svc.get_driver_reactions(event)
+        event_name = event.name if hasattr(event, "name") else event
+        logger.info(f"Warmed specific ask-drivers reactions cache for {event_name}")
+    else:
+        # Full namespace invalidate and warm
+        invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
+        await locations_svc.get_driver_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
+        await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
+        logger.info("Warmed full ask-drivers reactions cache namespace")
