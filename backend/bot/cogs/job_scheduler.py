@@ -9,6 +9,7 @@ from bot.core.enums import ChannelIds
 # from jobs_disabled.retreat_sync_roles import run_csv_job
 from bot.jobs.ask_rides import (
     run_ask_rides_all,
+    run_periodic_cache_warming,
 )
 from bot.jobs.sync_rides_locations import sync_rides_locations
 
@@ -35,6 +36,13 @@ class JobScheduler(commands.Cog):
             CronTrigger(day_of_week="wed", hour=12, minute=0),
             id="run_ask_rides_all",
             args=[bot, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS],
+        )
+
+        self.scheduler.add_job(
+            run_periodic_cache_warming,
+            CronTrigger(minute="*/20"),
+            id="run_periodic_cache_warming",
+            args=[bot],
         )
 
         # self.scheduler.add_job(

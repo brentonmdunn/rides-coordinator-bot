@@ -152,7 +152,14 @@ async def get_driver_reactions(day: str):
 
     locations_service = LocationsService(bot)
     try:
-        result = await locations_service.get_driver_reactions(day)
+        if day.lower() == "friday":
+            event = AskRidesMessage.FRIDAY_FELLOWSHIP
+        elif day.lower() == "sunday":
+            event = AskRidesMessage.SUNDAY_SERVICE
+        else:
+            raise HTTPException(status_code=400, detail="Invalid day")
+
+        result = await locations_service.get_driver_reactions(event)
         if result is None:
             return {"day": day, "reactions": {}, "username_to_name": {}, "message_found": False}
         return {
