@@ -318,7 +318,6 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
         if _periodic_warmer_idx == 0:
             logger.info("Periodic cache warming: ASK_RIDES_REACTIONS")
             invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
-            await locations_svc.list_locations()
             await locations_svc.get_ask_rides_reactions(AskRidesMessage.SUNDAY_SERVICE)
             await locations_svc.get_ask_rides_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
 
