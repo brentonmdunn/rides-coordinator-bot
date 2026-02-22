@@ -1,7 +1,7 @@
 """Unit tests for alru_cache namespace support."""
 
 import asyncio
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -213,6 +213,56 @@ async def test_warm_ask_drivers_reactions_cache():
             ]
         )
         assert svc_instance.get_driver_reactions.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_warm_ask_drivers_reactions_cache_specific():
+    """warm_ask_drivers_reactions_cache with event should selectively drop and warm."""
+    bot = AsyncMock()
+
+    with patch("bot.services.locations_service.LocationsService") as mock_locations_service:
+        svc_instance = AsyncMock()
+        svc_instance.get_driver_reactions.cache_invalidate = MagicMock()
+        mock_locations_service.return_value = svc_instance
+
+        await warm_ask_drivers_reactions_cache(bot, AskRidesMessage.FRIDAY_FELLOWSHIP)
+
+        svc_instance.get_driver_reactions.cache_invalidate.assert_called_once_with(
+            AskRidesMessage.FRIDAY_FELLOWSHIP
+        )
+        svc_instance.get_driver_reactions.assert_awaited_once_with(
+            AskRidesMessage.FRIDAY_FELLOWSHIP
+        )
+
+
+@pytest.mark.asyncio
+async def test_alru_cache_invalidate():
+    """Test explicit _invalidate method drops specific key without touching others."""
+    mock_func = AsyncMock(side_effect=lambda x: f"data_{x}")
+
+    @alru_cache(ttl=300)
+    async def fetch_data(key: str):
+        return await mock_func(key)
+
+    # Populate cache for A and B
+    res_a1 = await fetch_data("A")
+    res_b1 = await fetch_data("B")
+    assert res_a1 == "data_A"
+    assert res_b1 == "data_B"
+    assert mock_func.call_count == 2
+
+    # Invalidate A explicitly
+    fetch_data.cache_invalidate("A")
+
+    # Fetching A again should trigger computation
+    res_a2 = await fetch_data("A")
+    assert res_a2 == "data_A"
+    assert mock_func.call_count == 3
+
+    # Fetching B should still hit cache (no computation)
+    res_b2 = await fetch_data("B")
+    assert res_b2 == "data_B"
+    assert mock_func.call_count == 3
 
 
 @pytest.mark.asyncio
