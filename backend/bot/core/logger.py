@@ -49,7 +49,7 @@ console_handler.setLevel(logging.DEBUG)  # Allow DEBUG output for your code
 console_handler.addFilter(UserEmailFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"  # noqa: E501
+    "%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"
 )
 
 console_handler.setFormatter(formatter)
