@@ -40,17 +40,22 @@ def _get_dynamic_ttl() -> int:
     when messages are being sent and reactions are actively changing.
 
     Returns:
-        60 seconds during Wednesday 11:59 AM - 3 PM, 180 seconds otherwise
+        60 seconds during Wednesday active period, 3600 seconds otherwise.
     """
     from datetime import datetime
 
+    from bot.utils.time_helpers import is_active_hours
+
     now = datetime.now()
 
-    # Wednesday is weekday 2 (0=Monday)
+    # Wednesday is weekday 2 (0=Monday) — extra-short TTL around message send time
     if now.weekday() == 2 and 11 <= now.hour < 13:
         return 60  # Short TTL during active period
 
-    return 60 * 60  # Longer TTL during quiet periods
+    if is_active_hours():
+        return 60 * 60  # 1 hour during active hours
+
+    return 7 * 60 * 60  # 7 hours during off-hours
 
 
 def _make_wednesday_msg() -> str | None:
@@ -306,11 +311,19 @@ _periodic_warmer_idx = 0
 
 
 async def run_periodic_cache_warming(bot: Bot) -> None:
-    """Rotates through the 2 reaction namespaces, warming one every time it runs."""
+    """Rotates through the 2 reaction namespaces, warming one every time it runs.
+
+    Skips warming during off-hours (1 AM - 7 AM PT) to avoid unnecessary API calls.
+    """
     global _periodic_warmer_idx
     from bot.core.enums import AskRidesMessage, CacheNamespace, ChannelIds
     from bot.services.locations_service import LocationsService
     from bot.utils.cache import invalidate_namespace
+    from bot.utils.time_helpers import is_active_hours
+
+    if not is_active_hours():
+        logger.info("Skipping periodic cache warming during off-hours")
+        return
 
     locations_svc = LocationsService(bot)
 

@@ -111,3 +111,17 @@ def get_last_sunday() -> datetime:
     if days_to_subtract == 0:
         days_to_subtract = 7
     return now - timedelta(days=days_to_subtract)
+
+
+def is_active_hours() -> bool:
+    """Check if current time is within active hours (7 AM - 1 AM Pacific).
+
+    Active hours: 7:00 AM through 12:59 AM (i.e. hour >= 7 or hour < 1).
+    Off-hours: 1:00 AM through 6:59 AM.
+
+    Returns:
+        True if within active hours, False otherwise.
+    """
+    la_tz = pytz.timezone("America/Los_Angeles")
+    hour = datetime.now().astimezone(la_tz).hour
+    return hour >= 7 or hour < 1

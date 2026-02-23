@@ -17,7 +17,7 @@ from bot.core.enums import AskRidesMessage, CacheNamespace, CanBeDriver, Channel
 from bot.core.logger import logger
 from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
-from bot.utils.cache import alru_cache
+from bot.utils.cache import _get_reaction_cache_ttl, alru_cache
 from bot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from bot.utils.parsing import get_message_and_embed_content
 from bot.utils.time_helpers import get_last_sunday
@@ -256,7 +256,7 @@ class LocationsService:
             logger.exception("An error occurred: ")
             await interaction.response.send_message(f"Unknown error: {e}")
 
-    @alru_cache(ttl=2700, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
+    @alru_cache(ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
     async def list_locations(
         self,
         day=None,
@@ -431,7 +431,7 @@ class LocationsService:
 
         return results
 
-    @alru_cache(ttl=2700, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
+    @alru_cache(ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
     async def get_ask_rides_reactions(self, event: AskRidesMessage):
         """Retrieves reaction breakdown for an ask-rides message.
 
@@ -467,7 +467,7 @@ class LocationsService:
             "username_to_name": username_to_name,
         }
 
-    @alru_cache(ttl=2700, ignore_self=True, namespace=CacheNamespace.ASK_DRIVERS_REACTIONS)
+    @alru_cache(ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_DRIVERS_REACTIONS)
     async def get_driver_reactions(self, event: AskRidesMessage):
         """Retrieves reaction breakdown for a driver message.
 
@@ -508,7 +508,7 @@ class LocationsService:
             "username_to_name": username_to_name,
         }
 
-    @alru_cache(ttl=2700, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
+    @alru_cache(ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS)
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Retrieves a set of usernames who reacted to a message.
 

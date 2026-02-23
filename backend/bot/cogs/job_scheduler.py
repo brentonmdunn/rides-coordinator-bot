@@ -40,7 +40,7 @@ class JobScheduler(commands.Cog):
 
         self.scheduler.add_job(
             run_periodic_cache_warming,
-            CronTrigger(minute="*/20"),
+            CronTrigger(minute="*/30"),
             id="run_periodic_cache_warming",
             args=[bot],
         )

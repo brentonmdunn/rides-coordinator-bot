@@ -15,6 +15,26 @@ T = TypeVar("T")
 # Global registry: namespace -> list of cache dicts belonging to that namespace
 _namespace_registry: dict[str, list[OrderedDict]] = {}
 
+# Cache TTL constants (in seconds)
+ACTIVE_HOURS_REACTION_TTL = 65 * 60  # 65 minutes
+OFF_HOURS_REACTION_TTL = 7 * 60 * 60  # 7 hours
+
+
+def _get_reaction_cache_ttl() -> int:
+    """Return dynamic TTL for reaction caches based on time of day.
+
+    Active hours (7 AM - 1 AM PT): 65 minutes
+    Off-hours (1 AM - 7 AM PT): 7 hours
+
+    Returns:
+        TTL in seconds.
+    """
+    from bot.utils.time_helpers import is_active_hours
+
+    if is_active_hours():
+        return ACTIVE_HOURS_REACTION_TTL
+    return OFF_HOURS_REACTION_TTL
+
 
 def alru_cache(
     maxsize: int = 128,
