@@ -316,7 +316,7 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
     Skips warming during off-hours (1 AM - 7 AM PT) to avoid unnecessary API calls.
     """
     global _periodic_warmer_idx
-    from bot.core.enums import AskRidesMessage, CacheNamespace, ChannelIds
+    from bot.core.enums import AskRidesMessage, CacheNamespace
     from bot.services.locations_service import LocationsService
     from bot.utils.cache import invalidate_namespace
     from bot.utils.time_helpers import is_active_hours
@@ -333,21 +333,6 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
             invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
             await locations_svc.get_ask_rides_reactions(AskRidesMessage.SUNDAY_SERVICE)
             await locations_svc.get_ask_rides_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
-
-            s_msg_id = await locations_svc._find_correct_message(
-                AskRidesMessage.SUNDAY_SERVICE, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
-            )
-            f_msg_id = await locations_svc._find_correct_message(
-                AskRidesMessage.FRIDAY_FELLOWSHIP, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
-            )
-            if s_msg_id:
-                await locations_svc._get_usernames_who_reacted(
-                    ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS, s_msg_id
-                )
-            if f_msg_id:
-                await locations_svc._get_usernames_who_reacted(
-                    ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS, f_msg_id
-                )
         elif _periodic_warmer_idx == 1:
             logger.info("Periodic cache warming: ASK_DRIVERS_REACTIONS")
             invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
