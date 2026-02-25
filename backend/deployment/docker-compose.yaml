@@ -1,4 +1,16 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
   ride-bot:
     image: brentonmdunn/ride-bot:latest
     container_name: ride-bot
@@ -8,11 +20,15 @@ services:
       - .env
     environment:
       TZ: America/Los_Angeles
+      REDIS_URL: redis://redis:6379
     volumes:
       - ./db:/app/db:rw
       - ./logs:/logs:rw 
     ports:
       - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       # This uses Python to hit the endpoint. If it returns 200, the script exits with 0 (healthy).
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -20,3 +36,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+
+volumes:
+  redis-data:
