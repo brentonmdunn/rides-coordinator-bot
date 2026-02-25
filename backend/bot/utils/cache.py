@@ -98,6 +98,10 @@ def alru_cache(
                 # Compute result
                 result = await func(*args, **kwargs)
 
+            # Clean up lock to prevent unbounded growth — the stampede
+            # window has passed and the result is about to be cached.
+            locks.pop(key, None)
+
             # Calculate TTL (support dynamic TTL via callable)
             current_ttl = ttl() if callable(ttl) else ttl
 
