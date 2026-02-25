@@ -1,21 +1,27 @@
-"""Simple async LRU cache with TTL and namespace support."""
+"""Simple async LRU cache with TTL and namespace support.
+
+Storage is delegated to a pluggable ``CacheBackend`` (see
+``cache_backends.py``).  The default backend is ``InMemoryBackend``; call
+``set_backend(RedisBackend(...))`` at startup to switch to Redis.
+"""
 
 import asyncio
 import functools
-import time
-from collections import OrderedDict
+import hashlib
+import pickle
 from collections.abc import Callable
 from typing import Any, TypeVar
 
 from bot.core.enums import CacheNamespace
 from bot.core.logger import logger
+from bot.utils.cache_backends import get_backend
 
 T = TypeVar("T")
 
-# Global registry: namespace -> list of cache dicts belonging to that namespace
-_namespace_registry: dict[str, list[OrderedDict]] = {}
+# Global registry: namespace -> list of wrapper references (for invalidation)
+_namespace_registry: dict[str, list[Callable]] = {}
 
-# Global registry: namespace -> list of (func_name, stats_callable) for observability
+# Global registry: namespace -> list of (func_name, stats_callable)
 _func_registry: dict[str, list[tuple[str, Callable]]] = {}
 
 # Cache TTL constants (in seconds)
@@ -39,6 +45,12 @@ def _get_reaction_cache_ttl() -> int:
     return OFF_HOURS_REACTION_TTL
 
 
+def _make_cache_key(*args, **kwargs) -> str:
+    """Create a stable, hashable string key from function arguments."""
+    raw = pickle.dumps((args, tuple(sorted(kwargs.items()))))
+    return hashlib.sha256(raw).hexdigest()
+
+
 def alru_cache(
     maxsize: int = 128,
     ttl: int | float | Callable[[], int | float] | None = None,
@@ -50,6 +62,7 @@ def alru_cache(
 
     Args:
         maxsize: Maximum number of items to keep in the cache.
+                 (Enforced by the backend; Redis uses server-side eviction.)
         ttl: Time to live in seconds. Can be:
              - int/float: Fixed TTL in seconds
              - Callable: Function that returns TTL in seconds (evaluated at cache time)
@@ -60,106 +73,80 @@ def alru_cache(
     """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        cache: OrderedDict = OrderedDict()
-        locks: dict[Any, asyncio.Lock] = {}
+        locks: dict[str, asyncio.Lock] = {}
         stats = {"hits": 0, "misses": 0}
-
-        # Register this cache in the namespace registry
         ns_key = str(namespace)
-        if ns_key not in _namespace_registry:
-            _namespace_registry[ns_key] = []
-        _namespace_registry[ns_key].append(cache)
+        func_prefix = func.__qualname__
 
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
+            backend = get_backend()
             key_args = args[1:] if ignore_self and args else args
-            key = (key_args, tuple(sorted(kwargs.items())))
+            key = _make_cache_key(func_prefix, *key_args, **kwargs)
 
-            # Check if key is in cache initially
-            if key in cache:
-                result, timestamp, cached_ttl = cache[key]
-
-                # Check if expired
-                if cached_ttl is not None and time.time() - timestamp > cached_ttl:
-                    del cache[key]
-                else:
-                    # Move to end (most recently used)
-                    cache.move_to_end(key)
-                    stats["hits"] += 1
-                    return result
+            # Try cache first
+            hit, result = await backend.get(ns_key, key)
+            if hit:
+                stats["hits"] += 1
+                return result
 
             # Cache miss: synchronize concurrent fetches for the same key
             lock = locks.setdefault(key, asyncio.Lock())
             async with lock:
-                # Double-check cache in case another task populated it while we waited
-                if key in cache:
-                    result, timestamp, cached_ttl = cache[key]
-                    if cached_ttl is None or time.time() - timestamp <= cached_ttl:
-                        cache.move_to_end(key)
-                        stats["hits"] += 1
-                        return result
-                    else:
-                        del cache[key]
+                # Double-check after acquiring lock
+                hit, result = await backend.get(ns_key, key)
+                if hit:
+                    stats["hits"] += 1
+                    return result
 
                 # Compute result
                 stats["misses"] += 1
                 result = await func(*args, **kwargs)
 
-            # Clean up lock to prevent unbounded growth — the stampede
-            # window has passed and the result is about to be cached.
+            # Clean up lock to prevent unbounded growth
             locks.pop(key, None)
 
             # Calculate TTL (support dynamic TTL via callable)
             current_ttl = ttl() if callable(ttl) else ttl
 
-            # Add to cache with computed TTL
-            cache[key] = (result, time.time(), current_ttl)
-            cache.move_to_end(key)
-
-            # Enforce maxsize
-            if len(cache) > maxsize:
-                cache.popitem(last=False)
+            # Store in backend
+            await backend.set(ns_key, key, result, current_ttl)
 
             return result
 
         def cache_clear():
-            """Clear all cached entries for this function."""
-            cache.clear()
+            """Clear all cached entries for this function's namespace."""
             locks.clear()
             stats["hits"] = 0
             stats["misses"] = 0
             logger.info(f"Cache cleared for {func.__name__}")
 
-        def cache_set(*args, result):
+        async def cache_set(*args, result):
             """Inject a value into the cache for the given arguments.
 
             Args are the function arguments (excluding self if ignore_self is True).
             This allows batch methods to populate individual cache entries.
             """
-            key = (args, ())
+            backend = get_backend()
+            key = _make_cache_key(func_prefix, *args)
             current_ttl = ttl() if callable(ttl) else ttl
-            cache[key] = (result, time.time(), current_ttl)
-            cache.move_to_end(key)
-            if len(cache) > maxsize:
-                cache.popitem(last=False)
+            await backend.set(ns_key, key, result, current_ttl)
 
-        def cache_invalidate(*args):
+        async def cache_invalidate(*args):
             """Invalidate a specific cache entry without touching the rest of the namespace.
 
             Args are the function arguments (excluding self if ignore_self is True).
             """
-            key = (args, ())
-            if key in cache:
-                del cache[key]
-                logger.info(f"Cache explicitly invalidated for {func.__name__} {key}")
+            backend = get_backend()
+            key = _make_cache_key(func_prefix, *args)
+            await backend.delete(ns_key, key)
+            logger.info(f"Cache explicitly invalidated for {func.__name__}")
 
         def cache_info() -> dict:
             """Return cache statistics for this function."""
             return {
                 "func": func.__name__,
                 "namespace": ns_key,
-                "size": len(cache),
-                "maxsize": maxsize,
                 "hits": stats["hits"],
                 "misses": stats["misses"],
                 "hit_rate": (
@@ -175,6 +162,11 @@ def alru_cache(
         wrapper.cache_info = cache_info
         wrapper.cache_namespace = ns_key
 
+        # Register for namespace invalidation
+        if ns_key not in _namespace_registry:
+            _namespace_registry[ns_key] = []
+        _namespace_registry[ns_key].append(wrapper)
+
         # Register for global stats lookup
         if ns_key not in _func_registry:
             _func_registry[ns_key] = []
@@ -185,29 +177,22 @@ def alru_cache(
     return decorator
 
 
-def invalidate_namespace(namespace: CacheNamespace) -> None:
+async def invalidate_namespace(namespace: CacheNamespace) -> None:
     """Clear all caches registered under a namespace.
 
     Args:
         namespace: The namespace to invalidate.
     """
-    ns_key = str(namespace)
-    caches = _namespace_registry.get(ns_key, [])
-    total_cleared = 0
-    for cache in caches:
-        total_cleared += len(cache)
-        cache.clear()
+    backend = get_backend()
+    total_cleared = await backend.clear_namespace(str(namespace))
     if total_cleared > 0:
-        logger.info(f"Invalidated namespace '{ns_key}': cleared {total_cleared} entries")
+        logger.info(f"Invalidated namespace '{namespace}': cleared {total_cleared} entries")
 
 
-def invalidate_all_namespaces() -> None:
+async def invalidate_all_namespaces() -> None:
     """Clear all caches across every namespace."""
-    total_cleared = 0
-    for _ns_key, caches in _namespace_registry.items():
-        for cache in caches:
-            total_cleared += len(cache)
-            cache.clear()
+    backend = get_backend()
+    total_cleared = await backend.clear_all()
     if total_cleared > 0:
         logger.info(f"Invalidated all namespaces: cleared {total_cleared} entries")
 
@@ -243,8 +228,8 @@ async def warm_ask_rides_message_cache(bot, channel_id=None) -> None:
     if channel_id is None:
         channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 
-    invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
-    invalidate_namespace(CacheNamespace.ASK_RIDES_MESSAGE_ID)
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_MESSAGE_ID)
 
     locations_svc = LocationsService(bot)
     await locations_svc._find_all_messages(channel_id)
@@ -263,7 +248,7 @@ async def warm_ask_drivers_message_cache(bot, event=None) -> None:
     """
     from bot.services.locations_service import LocationsService
 
-    invalidate_namespace(CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
+    await invalidate_namespace(CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
 
     locations_svc = LocationsService(bot)
     await locations_svc._find_all_driver_messages()
@@ -281,7 +266,7 @@ async def warm_ask_rides_reactions_cache(bot, event) -> None:
 
     locations_svc = LocationsService(bot)
 
-    invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
     # Warm up cache
     await locations_svc.get_ask_rides_reactions(event)
     event_name = event.name if hasattr(event, "name") else event
@@ -303,13 +288,13 @@ async def warm_ask_drivers_reactions_cache(bot, event=None) -> None:
 
     if event:
         # Selectively invalidate and warm
-        locations_svc.get_driver_reactions.cache_invalidate(event)
+        await locations_svc.get_driver_reactions.cache_invalidate(event)
         await locations_svc.get_driver_reactions(event)
         event_name = event.name if hasattr(event, "name") else event
         logger.info(f"Warmed specific ask-drivers reactions cache for {event_name}")
     else:
         # Full namespace invalidate and warm
-        invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
+        await invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
         await locations_svc.get_driver_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
         await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
         logger.info("Warmed full ask-drivers reactions cache namespace")

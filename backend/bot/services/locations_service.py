@@ -364,7 +364,7 @@ class LocationsService:
 
         # Populate per-key cache entries
         for msg_type, msg_id in results.items():
-            self._find_correct_message.cache_set(msg_type, channel_id, result=msg_id)
+            await self._find_correct_message.cache_set(msg_type, channel_id, result=msg_id)
 
         return results
 
@@ -429,7 +429,7 @@ class LocationsService:
 
         # Populate per-key cache entries
         for event, msg_id in results.items():
-            self._find_driver_message.cache_set(event, channel_id, result=msg_id)
+            await self._find_driver_message.cache_set(event, channel_id, result=msg_id)
 
         return results
 

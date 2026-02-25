@@ -286,6 +286,13 @@ async def bot_lifespan():
             except Exception as e:
                 logger.error(f"Failed to send app command error to channel {ERROR_CHANNEL_ID}: {e}")
 
+    # Initialize cache backend (Redis for prod/preprod, in-memory for local)
+    if APP_ENV != "local":
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        from bot.utils.cache_backends import RedisBackend, set_backend
+
+        set_backend(RedisBackend(redis_url))
+
     # Initialize database and feature flags
     await init_db()
     async with AsyncSessionLocal() as session:

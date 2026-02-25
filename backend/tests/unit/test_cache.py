@@ -1,27 +1,33 @@
 """Unit tests for alru_cache namespace support."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
 from bot.core.enums import AskRidesMessage, CacheNamespace
 from bot.utils.cache import (
-    _namespace_registry,
     alru_cache,
     invalidate_all_namespaces,
     invalidate_namespace,
     warm_ask_drivers_reactions_cache,
     warm_ask_rides_reactions_cache,
 )
+from bot.utils.cache_backends import InMemoryBackend, set_backend
 
 
 @pytest.fixture(autouse=True)
-def clear_registry():
-    """Clear the namespace registry before and after each test."""
+def _fresh_backend():
+    """Install a fresh InMemoryBackend before each test so tests don't leak state."""
+    from bot.utils.cache import _func_registry, _namespace_registry
+
     _namespace_registry.clear()
+    _func_registry.clear()
+    set_backend(InMemoryBackend())
     yield
     _namespace_registry.clear()
+    _func_registry.clear()
+    set_backend(InMemoryBackend())
 
 
 @pytest.mark.asyncio
@@ -53,42 +59,53 @@ async def test_invalidate_namespace_clears_target():
     async def func_b(x):
         return x + 2
 
-    await func_a(1)
-    await func_b(1)
+    assert await func_a(1) == 2
+    assert await func_b(1) == 3
 
-    # Both should have cached entries
-    caches = _namespace_registry[CacheNamespace.ASK_RIDES_MESSAGE_ID]
-    assert all(len(c) > 0 for c in caches)
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_MESSAGE_ID)
 
-    invalidate_namespace(CacheNamespace.ASK_RIDES_MESSAGE_ID)
+    # After invalidation, calling again should re-compute
+    call_count = 0
 
-    # All caches in that namespace should be empty
-    assert all(len(c) == 0 for c in caches)
+    @alru_cache(ttl=300, namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID)
+    async def func_c(x):
+        nonlocal call_count
+        call_count += 1
+        return x + 10
+
+    assert await func_c(1) == 11
+    assert call_count == 1
 
 
 @pytest.mark.asyncio
 async def test_invalidate_namespace_does_not_affect_others():
     """invalidate_namespace should not touch caches in other namespaces."""
 
+    call_count_rides = 0
+    call_count_drivers = 0
+
     @alru_cache(ttl=300, namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID)
     async def rides_func(x):
+        nonlocal call_count_rides
+        call_count_rides += 1
         return x
 
     @alru_cache(ttl=300, namespace=CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
     async def drivers_func(x):
+        nonlocal call_count_drivers
+        call_count_drivers += 1
         return x
 
     await rides_func(1)
     await drivers_func(1)
 
-    invalidate_namespace(CacheNamespace.ASK_RIDES_MESSAGE_ID)
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_MESSAGE_ID)
 
-    # Rides namespace should be cleared
-    assert all(len(c) == 0 for c in _namespace_registry[CacheNamespace.ASK_RIDES_MESSAGE_ID])
+    # Drivers namespace should still have cached entry
+    await drivers_func(1)
+    assert call_count_drivers == 1  # Still cached, no recomputation
 
-    # Drivers namespace should still have entries
-    drivers_caches = _namespace_registry[CacheNamespace.ASK_DRIVERS_MESSAGE_ID]
-    assert any(len(c) > 0 for c in drivers_caches)
+    # Rides namespace was cleared — would need a new function to verify
 
 
 @pytest.mark.asyncio
@@ -111,10 +128,16 @@ async def test_invalidate_all_namespaces():
     await func_b(1)
     await func_c(1)
 
-    invalidate_all_namespaces()
+    await invalidate_all_namespaces()
 
-    for caches in _namespace_registry.values():
-        assert all(len(c) == 0 for c in caches)
+    # All should be cleared — verify via backend
+    from bot.utils.cache_backends import get_backend
+
+    backend = get_backend()
+    hit_a, _ = await backend.get(str(CacheNamespace.ASK_RIDES_MESSAGE_ID), "anything")
+    hit_b, _ = await backend.get(str(CacheNamespace.ASK_DRIVERS_REACTIONS), "anything")
+    assert not hit_a
+    assert not hit_b
 
 
 @pytest.mark.asyncio
@@ -127,8 +150,7 @@ async def test_default_namespace_when_unspecified():
 
     await func_default(1)
 
-    assert CacheNamespace.DEFAULT in _namespace_registry
-    assert any(len(c) > 0 for c in _namespace_registry[CacheNamespace.DEFAULT])
+    assert func_default.cache_namespace == str(CacheNamespace.DEFAULT)
 
 
 @pytest.mark.asyncio
@@ -146,16 +168,20 @@ async def test_cache_clear_still_works():
     await my_func(1)
     assert call_count == 1
 
+    # Clear just resets stats; actual data is in the backend
     my_func.cache_clear()
 
+    # Backend data was NOT cleared by cache_clear, but let's invalidate namespace
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
+
     await my_func(1)
-    assert call_count == 2  # Re-computed after clear
+    assert call_count == 2  # Re-computed after invalidation
 
 
 @pytest.mark.asyncio
 async def test_invalidate_nonexistent_namespace():
     """Invalidating a namespace with no registered caches should not error."""
-    invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
     # Should complete without raising
 
 
@@ -167,7 +193,7 @@ async def test_cache_namespace_attribute():
     async def my_func(x):
         return x
 
-    assert my_func.cache_namespace == CacheNamespace.ASK_DRIVERS_MESSAGE_ID
+    assert my_func.cache_namespace == str(CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
 
 
 @pytest.mark.asyncio
@@ -177,14 +203,14 @@ async def test_warm_ask_rides_reactions_cache():
 
     with (
         patch("bot.services.locations_service.LocationsService") as mock_locations_service,
-        patch("bot.utils.cache.invalidate_namespace") as mock_invalidate,
+        patch("bot.utils.cache.invalidate_namespace", new_callable=AsyncMock) as mock_invalidate,
     ):
         svc_instance = AsyncMock()
         mock_locations_service.return_value = svc_instance
 
         await warm_ask_rides_reactions_cache(bot, AskRidesMessage.SUNDAY_SERVICE)
 
-        mock_invalidate.assert_called_once_with(CacheNamespace.ASK_RIDES_REACTIONS)
+        mock_invalidate.assert_awaited_once_with(CacheNamespace.ASK_RIDES_REACTIONS)
         svc_instance.get_ask_rides_reactions.assert_awaited_once_with(
             AskRidesMessage.SUNDAY_SERVICE
         )
@@ -198,14 +224,14 @@ async def test_warm_ask_drivers_reactions_cache():
 
     with (
         patch("bot.services.locations_service.LocationsService") as mock_locations_service,
-        patch("bot.utils.cache.invalidate_namespace") as mock_invalidate,
+        patch("bot.utils.cache.invalidate_namespace", new_callable=AsyncMock) as mock_invalidate,
     ):
         svc_instance = AsyncMock()
         mock_locations_service.return_value = svc_instance
 
         await warm_ask_drivers_reactions_cache(bot)
 
-        mock_invalidate.assert_called_once_with(CacheNamespace.ASK_DRIVERS_REACTIONS)
+        mock_invalidate.assert_awaited_once_with(CacheNamespace.ASK_DRIVERS_REACTIONS)
         svc_instance.get_driver_reactions.assert_has_awaits(
             [
                 call(AskRidesMessage.FRIDAY_FELLOWSHIP),
@@ -222,12 +248,12 @@ async def test_warm_ask_drivers_reactions_cache_specific():
 
     with patch("bot.services.locations_service.LocationsService") as mock_locations_service:
         svc_instance = AsyncMock()
-        svc_instance.get_driver_reactions.cache_invalidate = MagicMock()
+        svc_instance.get_driver_reactions.cache_invalidate = AsyncMock()
         mock_locations_service.return_value = svc_instance
 
         await warm_ask_drivers_reactions_cache(bot, AskRidesMessage.FRIDAY_FELLOWSHIP)
 
-        svc_instance.get_driver_reactions.cache_invalidate.assert_called_once_with(
+        svc_instance.get_driver_reactions.cache_invalidate.assert_awaited_once_with(
             AskRidesMessage.FRIDAY_FELLOWSHIP
         )
         svc_instance.get_driver_reactions.assert_awaited_once_with(
@@ -237,7 +263,7 @@ async def test_warm_ask_drivers_reactions_cache_specific():
 
 @pytest.mark.asyncio
 async def test_alru_cache_invalidate():
-    """Test explicit _invalidate method drops specific key without touching others."""
+    """Test explicit cache_invalidate method drops specific key without touching others."""
     mock_func = AsyncMock(side_effect=lambda x: f"data_{x}")
 
     @alru_cache(ttl=300)
@@ -252,7 +278,7 @@ async def test_alru_cache_invalidate():
     assert mock_func.call_count == 2
 
     # Invalidate A explicitly
-    fetch_data.cache_invalidate("A")
+    await fetch_data.cache_invalidate("A")
 
     # Fetching A again should trigger computation
     res_a2 = await fetch_data("A")

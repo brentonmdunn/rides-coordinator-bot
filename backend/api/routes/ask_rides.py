@@ -98,7 +98,7 @@ async def set_pause(job_name: str, request: PauseRequest):
     if not request.is_paused:
         # Resuming — clear the pause
         await MessageScheduleRepository.clear_pause(job_name)
-        invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
+        await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
         logger.info(f"⏸️ Cleared pause for '{job_name}'")
         return {"success": True, "message": f"Resumed {job_name}"}
 
@@ -122,7 +122,7 @@ async def set_pause(job_name: str, request: PauseRequest):
         msg += " indefinitely"
 
     logger.info(f"⏸️ {msg}")
-    invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
+    await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
     return {
         "success": True,
         "message": msg,

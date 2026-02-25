@@ -96,7 +96,7 @@ async def toggle_feature_flag(feature_name: str, update: FeatureFlagUpdate):
 
         # Refresh caches
         await FeatureFlagsRepository.initialize_cache()
-        invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
+        await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
 
         # Get updated flag
         updated_flag = await FeatureFlagsRepository.get_feature_flag(feature_name)

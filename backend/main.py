@@ -262,6 +262,13 @@ async def main() -> None:
     """Run the bot."""
 
     async with bot:
+        # Initialize cache backend (Redis for prod/preprod, in-memory for local)
+        if APP_ENV != "local":
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+            from bot.utils.cache_backends import RedisBackend, set_backend
+
+            set_backend(RedisBackend(redis_url))
+
         await init_db()
         async with AsyncSessionLocal() as session:
             await seed_feature_flags(session)

@@ -330,12 +330,12 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
     try:
         if _periodic_warmer_idx == 0:
             logger.info("Periodic cache warming: ASK_RIDES_REACTIONS")
-            invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
+            await invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
             await locations_svc.get_ask_rides_reactions(AskRidesMessage.SUNDAY_SERVICE)
             await locations_svc.get_ask_rides_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
         elif _periodic_warmer_idx == 1:
             logger.info("Periodic cache warming: ASK_DRIVERS_REACTIONS")
-            invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
+            await invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
             await locations_svc.get_driver_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
             await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
     except Exception as e:
