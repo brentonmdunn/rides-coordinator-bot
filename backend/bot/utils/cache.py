@@ -15,6 +15,9 @@ T = TypeVar("T")
 # Global registry: namespace -> list of cache dicts belonging to that namespace
 _namespace_registry: dict[str, list[OrderedDict]] = {}
 
+# Global registry: namespace -> list of (func_name, stats_callable) for observability
+_func_registry: dict[str, list[tuple[str, Callable]]] = {}
+
 # Cache TTL constants (in seconds)
 ACTIVE_HOURS_REACTION_TTL = 65 * 60  # 65 minutes
 OFF_HOURS_REACTION_TTL = 7 * 60 * 60  # 7 hours
@@ -59,6 +62,7 @@ def alru_cache(
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         cache: OrderedDict = OrderedDict()
         locks: dict[Any, asyncio.Lock] = {}
+        stats = {"hits": 0, "misses": 0}
 
         # Register this cache in the namespace registry
         ns_key = str(namespace)
@@ -81,6 +85,7 @@ def alru_cache(
                 else:
                     # Move to end (most recently used)
                     cache.move_to_end(key)
+                    stats["hits"] += 1
                     return result
 
             # Cache miss: synchronize concurrent fetches for the same key
@@ -91,11 +96,13 @@ def alru_cache(
                     result, timestamp, cached_ttl = cache[key]
                     if cached_ttl is None or time.time() - timestamp <= cached_ttl:
                         cache.move_to_end(key)
+                        stats["hits"] += 1
                         return result
                     else:
                         del cache[key]
 
                 # Compute result
+                stats["misses"] += 1
                 result = await func(*args, **kwargs)
 
             # Clean up lock to prevent unbounded growth — the stampede
@@ -119,6 +126,8 @@ def alru_cache(
             """Clear all cached entries for this function."""
             cache.clear()
             locks.clear()
+            stats["hits"] = 0
+            stats["misses"] = 0
             logger.info(f"Cache cleared for {func.__name__}")
 
         def cache_set(*args, result):
@@ -144,10 +153,33 @@ def alru_cache(
                 del cache[key]
                 logger.info(f"Cache explicitly invalidated for {func.__name__} {key}")
 
+        def cache_info() -> dict:
+            """Return cache statistics for this function."""
+            return {
+                "func": func.__name__,
+                "namespace": ns_key,
+                "size": len(cache),
+                "maxsize": maxsize,
+                "hits": stats["hits"],
+                "misses": stats["misses"],
+                "hit_rate": (
+                    round(stats["hits"] / (stats["hits"] + stats["misses"]), 3)
+                    if (stats["hits"] + stats["misses"]) > 0
+                    else 0.0
+                ),
+            }
+
         wrapper.cache_clear = cache_clear
         wrapper.cache_set = cache_set
         wrapper.cache_invalidate = cache_invalidate
+        wrapper.cache_info = cache_info
         wrapper.cache_namespace = ns_key
+
+        # Register for global stats lookup
+        if ns_key not in _func_registry:
+            _func_registry[ns_key] = []
+        _func_registry[ns_key].append((func.__name__, cache_info))
+
         return wrapper
 
     return decorator
@@ -178,6 +210,17 @@ def invalidate_all_namespaces() -> None:
             cache.clear()
     if total_cleared > 0:
         logger.info(f"Invalidated all namespaces: cleared {total_cleared} entries")
+
+
+def get_all_cache_stats() -> dict[str, list[dict]]:
+    """Return cache stats for every registered function, grouped by namespace.
+
+    Returns:
+        Dictionary mapping namespace names to lists of per-function stat dicts.
+    """
+    return {
+        ns_key: [stats_fn() for _, stats_fn in funcs] for ns_key, funcs in _func_registry.items()
+    }
 
 
 # ============================================================================
