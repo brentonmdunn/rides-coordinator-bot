@@ -11,6 +11,7 @@ from discord.abc import Messageable
 from discord.ext.commands import Bot
 
 from bot.core.enums import (
+    CacheNamespace,
     ChannelIds,
     DaysOfWeek,
     DaysOfWeekNumber,
@@ -22,7 +23,7 @@ from bot.core.logger import logger
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
-from bot.utils.cache import alru_cache
+from bot.utils.cache import alru_cache, warm_ask_rides_message_cache
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import get_next_date, get_next_date_obj
@@ -39,17 +40,22 @@ def _get_dynamic_ttl() -> int:
     when messages are being sent and reactions are actively changing.
 
     Returns:
-        60 seconds during Wednesday 11:59 AM - 3 PM, 180 seconds otherwise
+        60 seconds during Wednesday active period, 3600 seconds otherwise.
     """
     from datetime import datetime
 
+    from bot.utils.time_helpers import is_active_hours
+
     now = datetime.now()
 
-    # Wednesday is weekday 2 (0=Monday)
-    if now.weekday() == 2 and 11 <= now.hour < 15:
+    # Wednesday is weekday 2 (0=Monday) — extra-short TTL around message send time
+    if now.weekday() == 2 and 11 <= now.hour < 13:
         return 60  # Short TTL during active period
 
-    return 180  # Longer TTL during quiet periods
+    if is_active_hours():
+        return 60 * 60  # 1 hour during active hours
+
+    return 7 * 60 * 60  # 7 hours during off-hours
 
 
 def _make_wednesday_msg() -> str | None:
@@ -296,9 +302,46 @@ async def run_ask_rides_all(
     await run_ask_rides_sun_class(bot, channel_id)
     await run_ask_rides_sun(bot, channel_id)
 
-    # Invalidate cache since new messages were sent
-    logger.info("Invalidating ask rides status cache after sending messages")
-    get_ask_rides_status.cache_clear()
+    # Invalidate and warm caches since new messages were sent
+    await warm_ask_rides_message_cache(bot, channel_id)
+
+
+# State for rotating periodic warmers
+_periodic_warmer_idx = 0
+
+
+async def run_periodic_cache_warming(bot: Bot) -> None:
+    """Rotates through the 2 reaction namespaces, warming one every time it runs.
+
+    Skips warming during off-hours (1 AM - 7 AM PT) to avoid unnecessary API calls.
+    """
+    global _periodic_warmer_idx
+    from bot.core.enums import AskRidesMessage, CacheNamespace
+    from bot.services.locations_service import LocationsService
+    from bot.utils.cache import invalidate_namespace
+    from bot.utils.time_helpers import is_active_hours
+
+    if not is_active_hours():
+        logger.info("Skipping periodic cache warming during off-hours")
+        return
+
+    locations_svc = LocationsService(bot)
+
+    try:
+        if _periodic_warmer_idx == 0:
+            logger.info("Periodic cache warming: ASK_RIDES_REACTIONS")
+            invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
+            await locations_svc.get_ask_rides_reactions(AskRidesMessage.SUNDAY_SERVICE)
+            await locations_svc.get_ask_rides_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
+        elif _periodic_warmer_idx == 1:
+            logger.info("Periodic cache warming: ASK_DRIVERS_REACTIONS")
+            invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
+            await locations_svc.get_driver_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
+            await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
+    except Exception as e:
+        logger.error(f"Error checking cache {_periodic_warmer_idx}: {e}")
+
+    _periodic_warmer_idx = (_periodic_warmer_idx + 1) % 2
 
 
 # ============================================================================
@@ -367,7 +410,7 @@ async def find_message_in_history(
     return None
 
 
-@alru_cache(ttl=_get_dynamic_ttl, ignore_self=True)
+@alru_cache(ttl=_get_dynamic_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_STATUS)
 async def get_ask_rides_status(bot: Bot) -> dict:
     """
     Get status for all ask rides jobs.

@@ -1,18 +1,17 @@
 """Ask Rides API Routes."""
 
-from collections import defaultdict
 from datetime import date, timedelta
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bot.api import get_bot
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import ChannelIds, JobName
+from bot.core.enums import AskRidesMessage, CacheNamespace, JobName
 from bot.core.logger import logger
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
-from bot.repositories.locations_repository import LocationsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
+from bot.services.locations_service import LocationsService
+from bot.utils.cache import invalidate_namespace
 
 router = APIRouter(prefix="/api/ask-rides", tags=["ask-rides"])
 
@@ -99,7 +98,7 @@ async def set_pause(job_name: str, request: PauseRequest):
     if not request.is_paused:
         # Resuming — clear the pause
         await MessageScheduleRepository.clear_pause(job_name)
-        get_ask_rides_status.cache_clear()
+        invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
         logger.info(f"⏸️ Cleared pause for '{job_name}'")
         return {"success": True, "message": f"Resumed {job_name}"}
 
@@ -123,7 +122,7 @@ async def set_pause(job_name: str, request: PauseRequest):
         msg += " indefinitely"
 
     logger.info(f"⏸️ {msg}")
-    get_ask_rides_status.cache_clear()
+    invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
     return {
         "success": True,
         "message": msg,
@@ -199,38 +198,26 @@ async def get_ask_rides_reactions(message_type: str):
     if not bot:
         raise HTTPException(status_code=503, detail="Bot not initialized")
 
-    # Validate message_type
-    valid_types = [j.value for j in JobName]
-    if message_type.lower() not in valid_types:
+    # Map message_type to AskRidesMessage enum
+    type_to_event = {
+        JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
+        JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
+        JobName.SUNDAY_CLASS: AskRidesMessage.SUNDAY_CLASS,
+    }
+
+    event = type_to_event.get(message_type.lower())
+    if not event:
+        valid_types = [j.value for j in JobName]
         raise HTTPException(
             status_code=400,
             detail=f"message_type must be one of: {', '.join(valid_types)}",
         )
 
     try:
-        channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        if not channel:
-            logger.error(f"Channel {ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS} not found")
-            raise HTTPException(status_code=500, detail="Channel not found")
+        locations_svc = LocationsService(bot)
+        result = await locations_svc.get_ask_rides_reactions(event)
 
-        # Search keywords for each message type
-        keywords = {
-            JobName.FRIDAY: "friday",
-            JobName.SUNDAY: "sunday service",
-            JobName.SUNDAY_CLASS: "theology class",
-        }
-
-        keyword = keywords.get(message_type.lower(), "")
-
-        # Find the most recent message for this type
-        # Search in the last 20 messages (same as get_last_message_reactions)
-        target_message = None
-        async for message in channel.history(limit=20):
-            if message.embeds and keyword.lower() in message.embeds[0].description.lower():
-                target_message = message
-                break
-
-        if not target_message:
+        if not result:
             return {
                 "message_type": message_type,
                 "reactions": {},
@@ -238,28 +225,9 @@ async def get_ask_rides_reactions(message_type: str):
                 "message_found": False,
             }
 
-        # Collect reactions by emoji, excluding bot reactions
-        reactions_by_emoji = defaultdict(list)
-        all_usernames = set()
-
-        for reaction in target_message.reactions:
-            # Only process reactions that aren't from the bot itself
-            emoji_str = str(reaction.emoji)
-            async for user in reaction.users():
-                if not user.bot:
-                    username = user.name
-                    reactions_by_emoji[emoji_str].append(username)
-                    all_usernames.add(username)
-
-        # Get display names for all usernames
-        locations_repo = LocationsRepository()
-        async with AsyncSessionLocal() as session:
-            username_to_name = await locations_repo.get_names_for_usernames(session, all_usernames)
-
         return {
             "message_type": message_type,
-            "reactions": dict(reactions_by_emoji),
-            "username_to_name": username_to_name,
+            **result,
             "message_found": True,
         }
 

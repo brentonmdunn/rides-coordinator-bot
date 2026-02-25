@@ -86,6 +86,7 @@ class Reactions(commands.Cog):
         await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
         await self._new_rides_helper(user, guild, payload.message_id)
         await self._event_thread_add(payload, guild, user)
+        await self._check_if_ask_message(payload.message_id, payload.channel_id)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -108,6 +109,30 @@ class Reactions(commands.Cog):
         await self._late_rides_react(user, payload, message, channel, ReactionAction.REMOVE)
         await self._log_reactions(user, payload, message, channel, ReactionAction.REMOVE)
         await self._event_thread_remove(payload, guild)
+        await self._check_if_ask_message(payload.message_id, payload.channel_id)
+
+    async def _check_if_ask_message(self, message_id, channel_id):
+        from bot.services.locations_service import LocationsService
+        from bot.utils.cache import (
+            warm_ask_drivers_reactions_cache,
+            warm_ask_rides_reactions_cache,
+        )
+
+        if channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS:
+            locations_svc = LocationsService(self.bot)
+            for event in AskRidesMessage:
+                m_id = await locations_svc._find_correct_message(event, channel_id)
+                if m_id == message_id:
+                    await warm_ask_rides_reactions_cache(self.bot, event)
+                    break
+
+        elif channel_id == ChannelIds.SERVING__DRIVER_CHAT_WOOOOO:
+            locations_svc = LocationsService(self.bot)
+            for event in AskRidesMessage:
+                m_id = await locations_svc._find_driver_message(event, channel_id)
+                if m_id == message_id:
+                    await warm_ask_drivers_reactions_cache(self.bot, event)
+                    break
 
     @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
     async def _event_thread_add(

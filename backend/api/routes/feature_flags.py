@@ -11,7 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from api.constants import ADMIN_EMAILS
+from bot.core.enums import CacheNamespace
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.utils.cache import invalidate_namespace
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -92,8 +94,9 @@ async def toggle_feature_flag(feature_name: str, update: FeatureFlagUpdate):
         # Update the flag
         await FeatureFlagsRepository.update_feature_flag(feature_name, update.enabled)
 
-        # Refresh cache
+        # Refresh caches
         await FeatureFlagsRepository.initialize_cache()
+        invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
 
         # Get updated flag
         updated_flag = await FeatureFlagsRepository.get_feature_flag(feature_name)

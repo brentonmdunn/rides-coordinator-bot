@@ -11,6 +11,7 @@ import AskRidesDashboard from '../components/AskRidesDashboard/AskRidesDashboard
 import RideCoverageCheck from '../components/RideCoverageCheck'
 import RideCoverageWarning from '../components/RideCoverageWarning'
 import FeatureFlagsManager from '../components/FeatureFlagsManager'
+import CacheStats from '../components/CacheStats'
 import { ModeToggle } from '../components/mode-toggle'
 import EnvironmentBanner from '../components/EnvironmentBanner'
 
@@ -61,6 +62,7 @@ function Home() {
                         <GroupRides />
                         <RouteBuilder />
                         {isAdmin && <FeatureFlagsManager />}
+                        {isAdmin && <CacheStats />}
                     </div>
                 </div>
             </div>

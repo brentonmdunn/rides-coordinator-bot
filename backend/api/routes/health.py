@@ -33,5 +33,5 @@ def get_environment():
         Dictionary with the current APP_ENV value.
     """
     app_env = os.getenv("APP_ENV", "local")
-    logger.info(app_env)
+    logger.debug(app_env)
     return {"environment": app_env}
