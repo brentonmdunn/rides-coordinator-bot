@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from api.auth import cloudflare_access_middleware
 from api.middleware.access_logger import AccessLogMiddleware
 from api.routes.ask_rides import router as ask_rides_router
+from api.routes.cache_stats import router as cache_stats_router
 from api.routes.check_pickups import router as check_pickups_router
 from api.routes.example import router as example_router
 from api.routes.feature_flags import router as feature_flags_router
@@ -98,6 +99,7 @@ app.include_router(locations_router)
 app.include_router(feature_flags_router)
 app.include_router(me_router)
 app.include_router(ask_rides_router)
+app.include_router(cache_stats_router)
 app.include_router(group_rides_router)
 app.include_router(list_pickups_router)
 app.include_router(check_pickups_router)
