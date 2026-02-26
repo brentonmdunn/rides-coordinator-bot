@@ -164,3 +164,11 @@ class RideType(StrEnum):
     SUN_CLASS_PICKUP = "Sunday class pickup"
     SUN_BACK_HOME_DROPOFF = "Sunday back home dropoff"
     SUN_LUNCH_DROPOFF = "Sunday lunch dropoff"
+
+
+class AccountRoles(StrEnum):
+    """Roles for accounts."""
+
+    ADMIN = "admin"
+    VIEWER = "viewer"
+    RIDE_COORDINATOR = "ride_coordinator"
