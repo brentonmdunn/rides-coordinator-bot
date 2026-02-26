@@ -8,14 +8,14 @@ import logging
 
 from fastapi import APIRouter, Depends
 
-from api.routes.feature_flags import require_admin_email
+from api.auth import require_admin
 from bot.utils.cache import get_all_cache_stats
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/api/cache/stats", dependencies=[Depends(require_admin_email)])
+@router.get("/api/cache/stats", dependencies=[Depends(require_admin)])
 async def cache_stats():
     """
     Get cache statistics for all registered cache functions, grouped by namespace.
