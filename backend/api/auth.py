@@ -1,17 +1,21 @@
 """
 Cloudflare Access Authentication
 
-This module handles JWT verification for Cloudflare Access.
+This module handles JWT verification for Cloudflare Access
+and role-based access control dependencies.
 """
 
 import logging
 import os
+from collections.abc import Callable
 
 import httpx
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response
 from jose import jwt
 
+from bot.core.enums import AccountRoles
 from bot.core.logger import user_email_var
+from bot.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
 
@@ -145,3 +149,39 @@ async def cloudflare_access_middleware(request: Request, call_next):
             user_email_var.reset(token)
 
     return Response(content="Unauthorized", status_code=401)
+
+
+# ---------------------------------------------------------------------------
+# Role-based access control dependencies
+# ---------------------------------------------------------------------------
+
+
+def require_role(minimum_role: AccountRoles) -> Callable:
+    """Factory that returns a FastAPI dependency enforcing a minimum role.
+
+    Role hierarchy: admin (3) > ride_coordinator (2) > viewer (1).
+
+    Args:
+        minimum_role: The minimum AccountRoles value required.
+
+    Returns:
+        An async dependency function for use with Depends().
+    """
+
+    async def _check(request: Request) -> str:
+        user = getattr(request.state, "user", None) or {}
+        email = user.get("email", "")
+        if not email:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        has_role = await UserAccountsService.has_minimum_role(email, minimum_role)
+        if not has_role:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return email
+
+    return _check
+
+
+# Convenience dependencies
+require_admin = require_role(AccountRoles.ADMIN)
+require_ride_coordinator = require_role(AccountRoles.RIDE_COORDINATOR)

@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api.auth import cloudflare_access_middleware
 from api.middleware.access_logger import AccessLogMiddleware
+from api.routes.admin_users import router as admin_users_router
 from api.routes.ask_rides import router as ask_rides_router
 from api.routes.cache_stats import router as cache_stats_router
 from api.routes.check_pickups import router as check_pickups_router
@@ -104,6 +105,7 @@ app.include_router(group_rides_router)
 app.include_router(list_pickups_router)
 app.include_router(check_pickups_router)
 app.include_router(route_builder_router)
+app.include_router(admin_users_router)
 
 # Mount static files for React SPA (if directory exists)
 admin_ui_path = Path("admin_ui")

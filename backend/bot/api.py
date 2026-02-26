@@ -22,6 +22,7 @@ from sqlalchemy import or_, update
 from bot.core.database import (
     AsyncSessionLocal,
     init_db,
+    seed_admin_accounts,
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
@@ -299,6 +300,8 @@ async def bot_lifespan():
         await seed_feature_flags(session)
     async with AsyncSessionLocal() as session:
         await seed_message_schedule_pauses(session)
+    async with AsyncSessionLocal() as session:
+        await seed_admin_accounts(session)
     await FeatureFlagsRepository.initialize_cache()
     await _disable_features_for_local_env()
 

@@ -3,7 +3,13 @@ import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { Select } from './ui/select'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from './ui/select'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from './ErrorMessage'
 import EditableOutput from './EditableOutput'
@@ -272,20 +278,21 @@ function RouteBuilder() {
                             <div className="flex gap-2">
                                 <Select
                                     value={selectedLocation}
-                                    onChange={(e) => setSelectedLocation(e.target.value)}
+                                    onValueChange={setSelectedLocation}
                                     disabled={locationsLoading}
-                                    className="flex-1"
                                 >
-                                    <option value="">
-                                        {locationsLoading ? 'Loading locations...' : 'Choose a location...'}
-                                    </option>
-                                    {availableLocations?.locations
-                                        .filter(loc => !selectedLocationKeys.includes(loc.key))
-                                        .map((location) => (
-                                            <option key={location.key} value={location.key}>
-                                                {location.value}
-                                            </option>
-                                        ))}
+                                    <SelectTrigger className="flex-1">
+                                        <SelectValue placeholder={locationsLoading ? 'Loading locations...' : 'Choose a location...'} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableLocations?.locations
+                                            .filter(loc => !selectedLocationKeys.includes(loc.key))
+                                            .map((location) => (
+                                                <SelectItem key={location.key} value={location.key}>
+                                                    {location.value}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectContent>
                                 </Select>
                                 <Button
                                     type="button"

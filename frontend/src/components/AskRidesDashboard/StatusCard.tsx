@@ -5,6 +5,7 @@ interface StatusCardProps {
     title: string
     jobName: string
     job: AskRidesJobStatus
+    canManage: boolean
 }
 
 const formatDateTime = (isoString: string): string => {
@@ -53,7 +54,7 @@ const getStatusBadge = (job: AskRidesJobStatus) => {
     return { color: '#3b82f6', text: `🔵 Will send at ${formatDateTime(job.next_run)} ` }
 }
 
-function StatusCard({ title, jobName, job }: StatusCardProps) {
+function StatusCard({ title, jobName, job, canManage }: StatusCardProps) {
     const status = getStatusBadge(job)
 
     // Helper map for better color handling in Tailwind
@@ -72,9 +73,11 @@ function StatusCard({ title, jobName, job }: StatusCardProps) {
                 {status.text}
             </div>
 
-            <div className="mb-4">
-                <PauseControls jobName={jobName} job={job} />
-            </div>
+            {canManage && (
+                <div className="mb-4">
+                    <PauseControls jobName={jobName} job={job} />
+                </div>
+            )}
 
             {job.last_message && (
                 <div className="pt-3 border-t border-border text-sm">

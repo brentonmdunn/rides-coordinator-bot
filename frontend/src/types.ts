@@ -95,3 +95,5 @@ export interface AskRidesReactionsData {
     username_to_name: Record<string, string>
     message_found: boolean
 }
+
+export type AccountRole = 'admin' | 'ride_coordinator' | 'viewer'

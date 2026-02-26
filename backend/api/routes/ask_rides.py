@@ -2,9 +2,10 @@
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from api.auth import require_ride_coordinator
 from bot.api import get_bot
 from bot.core.enums import AskRidesMessage, CacheNamespace, JobName
 from bot.core.logger import logger
@@ -23,7 +24,7 @@ class PauseRequest(BaseModel):
     resume_after_date: date | None = None
 
 
-@router.post("/send-now")
+@router.post("/send-now", dependencies=[Depends(require_ride_coordinator)])
 async def send_now():
     """
     Manually trigger all ask rides messages immediately.
@@ -80,7 +81,7 @@ async def get_pauses():
     return result
 
 
-@router.put("/pauses/{job_name}")
+@router.put("/pauses/{job_name}", dependencies=[Depends(require_ride_coordinator)])
 async def set_pause(job_name: str, request: PauseRequest):
     """Set the pause state for a specific job.
 

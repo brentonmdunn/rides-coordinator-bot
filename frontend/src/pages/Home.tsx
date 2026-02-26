@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { BookOpen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
+import type { AccountRole } from '../types'
 import PickupLocations from '../components/PickupLocations'
 import DriverReactions from '../components/DriverReactions'
 import ReactionDetails from '../components/ReactionDetails'
@@ -12,11 +13,13 @@ import RideCoverageCheck from '../components/RideCoverageCheck'
 import RideCoverageWarning from '../components/RideCoverageWarning'
 import FeatureFlagsManager from '../components/FeatureFlagsManager'
 import CacheStats from '../components/CacheStats'
+import UserManagement from '../components/UserManagement'
+import RoleSwitcher from '../components/RoleSwitcher'
 import { ModeToggle } from '../components/mode-toggle'
 import EnvironmentBanner from '../components/EnvironmentBanner'
 
 function Home() {
-    const { data: meData } = useQuery<{ email: string; is_admin: boolean }>({
+    const { data: meData } = useQuery<{ email: string; role: AccountRole; is_local: boolean }>({
         queryKey: ['me'],
         queryFn: async () => {
             const res = await apiFetch('/api/me')
@@ -24,10 +27,14 @@ function Home() {
         },
     })
 
-    const isAdmin = meData?.is_admin ?? false
+    const role = meData?.role ?? 'viewer'
+    const isLocal = meData?.is_local ?? false
+    const isAdmin = role === 'admin'
+    const canManage = role === 'admin' || role === 'ride_coordinator'
 
     return (
         <>
+            {isLocal && <RoleSwitcher currentRole={role} />}
             <EnvironmentBanner />
             <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50 dark:bg-zinc-950 py-12 px-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
                 <div className="max-w-4xl mx-auto space-y-8 overflow-x-hidden">
@@ -54,7 +61,7 @@ function Home() {
 
                     <div className="grid gap-8">
                         <RideCoverageWarning />
-                        <AskRidesDashboard />
+                        <AskRidesDashboard canManage={canManage} />
                         <ReactionDetails />
                         <DriverReactions />
                         <RideCoverageCheck />
@@ -62,6 +69,7 @@ function Home() {
                         <GroupRides />
                         <RouteBuilder />
                         {isAdmin && <FeatureFlagsManager />}
+                        {isAdmin && <UserManagement />}
                         {isAdmin && <CacheStats />}
                     </div>
                 </div>

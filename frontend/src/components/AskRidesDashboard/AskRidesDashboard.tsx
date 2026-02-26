@@ -9,7 +9,11 @@ import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 
-function AskRidesDashboard() {
+interface AskRidesDashboardProps {
+    canManage: boolean
+}
+
+function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const [showInfo, setShowInfo] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const queryClient = useQueryClient()
@@ -58,22 +62,24 @@ function AskRidesDashboard() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle><span>📅</span> Ask Rides Status Dashboard</CardTitle>
                 <div className="flex items-center gap-2">
-                    <Button
-                        onClick={() => setShowConfirm(true)}
-                        disabled={sendNowMutation.isPending}
-                        variant="warning"
-                        size="sm"
-                        className="gap-1.5"
-                    >
-                        {sendNowMutation.isPending ? (
-                            <>
-                                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Sending...
-                            </>
-                        ) : (
-                            '📨 Send now'
-                        )}
-                    </Button>
+                    {canManage && (
+                        <Button
+                            onClick={() => setShowConfirm(true)}
+                            disabled={sendNowMutation.isPending}
+                            variant="warning"
+                            size="sm"
+                            className="gap-1.5"
+                        >
+                            {sendNowMutation.isPending ? (
+                                <>
+                                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Sending...
+                                </>
+                            ) : (
+                                '📨 Send now'
+                            )}
+                        </Button>
+                    )}
                     <InfoToggleButton
                         isOpen={showInfo}
                         onClick={() => setShowInfo(!showInfo)}
@@ -138,13 +144,13 @@ function AskRidesDashboard() {
                 {!askRidesLoading && !askRidesError && askRidesStatus && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Friday Fellowship */}
-                        <StatusCard title="🎉 Friday Fellowship" jobName="friday" job={askRidesStatus.friday} />
+                        <StatusCard title="🎉 Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
 
                         {/* Sunday Service */}
-                        <StatusCard title="⛪ Sunday Service" jobName="sunday" job={askRidesStatus.sunday} />
+                        <StatusCard title="⛪ Sunday Service" jobName="sunday" job={askRidesStatus.sunday} canManage={canManage} />
 
                         {/* Sunday Class */}
-                        <StatusCard title="📖 Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} />
+                        <StatusCard title="📖 Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
                     </div>
                 )}
             </CardContent>

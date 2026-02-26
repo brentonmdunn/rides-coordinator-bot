@@ -8,6 +8,7 @@ import datetime
 from sqlalchemy import Boolean, Column, Date, DateTime, Integer, PrimaryKeyConstraint, String, func
 
 from bot.core.base import Base
+from bot.core.enums import AccountRoles
 
 
 class DiscordUsers(Base):
@@ -84,4 +85,16 @@ class MessageSchedulePause(Base):
     job_name = Column(String, nullable=False, unique=True)
     is_paused = Column(Boolean, nullable=False, default=False)
     resume_after_date = Column(Date, nullable=True)
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class UserAccount(Base):
+    """Model representing a user account with role-based access."""
+
+    __tablename__ = "user_accounts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String, nullable=False, unique=True, index=True)
+    role = Column(String, nullable=False, default=AccountRoles.VIEWER)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
