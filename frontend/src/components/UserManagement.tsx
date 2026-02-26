@@ -21,6 +21,8 @@ interface UserAccount {
 
 interface UsersResponse {
     users: UserAccount[]
+    current_user_email: string
+    admin_emails: string[]
 }
 
 const ROLES: { value: AccountRole; label: string }[] = [
@@ -121,7 +123,11 @@ function UserManagement() {
                                                         role: val,
                                                     })
                                                 }
-                                                disabled={updateRoleMutation.isPending}
+                                                disabled={
+                                                    updateRoleMutation.isPending ||
+                                                    user.email === data?.current_user_email ||
+                                                    data?.admin_emails.includes(user.email)
+                                                }
                                             >
                                                 <SelectTrigger className={`w-full font-medium ${ROLE_COLORS[user.role]}`}>
                                                     <SelectValue />
