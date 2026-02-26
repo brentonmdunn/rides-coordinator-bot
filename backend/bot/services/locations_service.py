@@ -304,7 +304,11 @@ class LocationsService:
                 AskRidesMessage.SUNDAY_CLASS, channel_id
             )
         ) is not None:
-            usernames_reacted -= await self._get_usernames_who_reacted(channel_id, class_message_id)
+            # We must use `=` and `-` creates a new set.
+            # Avoid `-=` as it mutates the set in-place, which corrupts the InMemoryBackend cache.
+            usernames_reacted = usernames_reacted - await self._get_usernames_who_reacted(
+                channel_id, class_message_id
+            )
 
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
