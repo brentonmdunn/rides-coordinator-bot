@@ -42,6 +42,7 @@ async def list_users(request: Request):
                 "id": account.id,
                 "email": account.email,
                 "role": account.role,
+                "role_edited_by": account.role_edited_by,
                 "created_at": account.created_at.isoformat() if account.created_at else None,
             }
             for account in accounts
@@ -85,7 +86,7 @@ async def update_user_role(email: str, body: UpdateRoleRequest, request: Request
             detail=f"role must be one of: {', '.join(valid_roles)}",
         )
 
-    updated = await UserAccountsRepository.update_role(email, body.role)
+    updated = await UserAccountsRepository.update_role(email, body.role, role_edited_by=current_user_email)
     if not updated:
         raise HTTPException(status_code=404, detail=f"User '{email}' not found")
 

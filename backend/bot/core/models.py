@@ -96,5 +96,6 @@ class UserAccount(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String, nullable=False, unique=True, index=True)
     role = Column(String, nullable=False, default=AccountRoles.VIEWER)
+    role_edited_by = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
