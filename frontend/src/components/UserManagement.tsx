@@ -16,6 +16,7 @@ interface UserAccount {
     id: number
     email: string
     role: AccountRole
+    role_edited_by: string | null
     created_at: string | null
 }
 
@@ -111,8 +112,13 @@ function UserManagement() {
                                         key={user.id}
                                         className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors"
                                     >
-                                        <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
-                                            {user.email}
+                                        <td className="px-6 py-4">
+                                            <span className="text-slate-700 dark:text-slate-300">{user.email}</span>
+                                            {user.role_edited_by && (
+                                                <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                                                    promoted by {user.role_edited_by}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <Select

@@ -77,12 +77,15 @@ class UserAccountsRepository:
         return await UserAccountsRepository.create_account(email, default_role)
 
     @staticmethod
-    async def update_role(email: str, role: AccountRoles) -> UserAccount | None:
+    async def update_role(
+        email: str, role: AccountRoles, role_edited_by: str | None = None
+    ) -> UserAccount | None:
         """Update the role of an existing account.
 
         Args:
             email: The email address of the account to update.
             role: The new role to assign.
+            role_edited_by: Email of the admin who made the change.
 
         Returns:
             The updated UserAccount, or None if not found.
@@ -91,11 +94,11 @@ class UserAccountsRepository:
             result = await session.execute(
                 update(UserAccount)
                 .where(UserAccount.email == email)
-                .values(role=role)
+                .values(role=role, role_edited_by=role_edited_by)
                 .returning(UserAccount)
             )
             await session.commit()
             updated = result.scalars().first()
             if updated:
-                logger.info(f"👤 Updated role for '{email}' to '{role}'")
+                logger.info(f"👤 Updated role for '{email}' to '{role}' (by '{role_edited_by}')")
             return updated
