@@ -540,7 +540,7 @@ class LocationsService:
                 continue
             async for user in reaction.users():
                 if not user.bot:
-                    usernames_reacted.add(user)
+                    usernames_reacted.add(user.name)
         return usernames_reacted
 
     async def _sort_locations(self, usernames_reacted):
