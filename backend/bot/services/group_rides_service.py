@@ -413,9 +413,7 @@ class GroupRidesService:
             # Get the existing list or create a new one, then extend it
             passengers_by_location.setdefault(pickup_key, []).extend(
                 Passenger(
-                    identity=Identity(
-                        name=person[0], username=person[1].name if person[1] else None
-                    ),
+                    identity=Identity(name=person[0], username=person[1]),
                     living_location=living_loc_enum,
                     pickup_location=pickup_key,
                 )
