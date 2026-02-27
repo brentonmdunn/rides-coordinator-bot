@@ -8,6 +8,7 @@ import discord
 # from langchain_google_genai import ChatGoogleGenerativeAI # Removed
 from rapidfuzz import fuzz, process
 
+from bot.api import send_error_to_discord
 from bot.core.enums import (
     AskRidesMessage,
     CampusLivingLocations,
@@ -448,11 +449,14 @@ class GroupRidesService:
                 custom_prompt,
             )
 
-        except Exception as e:
-            logger.error(f"Failed to get a successful LLM response after attempts: {e}")
+        except Exception:
+            logger.exception("Failed to get a successful LLM response after retries")
+            await send_error_to_discord(
+                "**Unexpected Error** in `_process_ride_grouping`: LLM failed after retries"
+            )
             raise ValueError(
                 "Could not process ride grouping request. Please try again later."
-            ) from e
+            ) from None
 
         if "error" in {key.lower() for key in llm_result}:
             raise ValueError(f"LLM returned with error: {llm_result}")
