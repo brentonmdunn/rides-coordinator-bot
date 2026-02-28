@@ -1,5 +1,6 @@
 """Job for synchronizing non-Discord rides."""
 
+from bot.api import send_error_to_discord
 from bot.core.logger import logger
 from bot.services.non_discord_rides_service import NonDiscordRidesService
 
@@ -16,5 +17,6 @@ async def delete_past_pickups():
             logger.info(f"Successfully deleted {deleted_count} past pickup entries.")
         else:
             logger.info("No past pickup entries found to delete.")
-    except Exception as e:
-        logger.error(f"An error occurred while deleting past pickups: {e}")
+    except Exception:
+        logger.exception("Unexpected error while deleting past pickups")
+        await send_error_to_discord("**Unexpected Error** in `delete_past_pickups` job")

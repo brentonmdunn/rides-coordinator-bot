@@ -3,6 +3,7 @@
 import discord
 from discord.ext import commands
 
+from bot.api import send_error_to_discord
 from bot.core.enums import ChannelIds
 from bot.core.logger import logger
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
@@ -86,8 +87,11 @@ class RideCoverage(commands.Cog):
                             # Likely duplicate key error, which is fine
                             logger.debug(f"sync_ride_coverage: Entry may already exist: {e}")
 
-            except Exception as e:
-                logger.error(f"sync_ride_coverage: Error scanning channel {channel_id}: {e}")
+            except Exception:
+                logger.exception(f"sync_ride_coverage: Error scanning channel {channel_id}")
+                await send_error_to_discord(
+                    f"**Unexpected Error** in `sync_ride_coverage` scanning channel `{channel_id}`"
+                )
 
         # Clean up entries for messages that no longer exist
         logger.info("sync_ride_coverage: Checking for orphaned entries...")
@@ -108,8 +112,11 @@ class RideCoverage(commands.Cog):
                     f"from {len(orphaned_ids)} deleted messages"
                 )
 
-        except Exception as e:
-            logger.error(f"sync_ride_coverage: Error during orphan cleanup: {e}")
+        except Exception:
+            logger.exception("sync_ride_coverage: Error during orphan cleanup")
+            await send_error_to_discord(
+                "**Unexpected Error** in `sync_ride_coverage` orphan cleanup"
+            )
 
         logger.info(
             f"sync_ride_coverage: Completed. Scanned {total_messages_scanned} messages, "
@@ -185,8 +192,11 @@ class RideCoverage(commands.Cog):
                 logger.info(
                     f"on_message: Successfully added {len(passenger_usernames)} coverage entries"
                 )
-            except Exception as e:
-                logger.error(f"on_message: Failed to record ride coverage: {e}")
+            except Exception:
+                logger.exception("on_message: Failed to record ride coverage")
+                await send_error_to_discord(
+                    "**Unexpected Error** in `on_message` ride coverage recording"
+                )
         else:
             logger.debug(f"on_message: No passengers found in message {message.id}")
 
@@ -224,8 +234,11 @@ class RideCoverage(commands.Cog):
             try:
                 await self.repo.add_coverage_entries(list(added), str(after.id))
                 logger.info(f"on_message_edit: Successfully added {len(added)} coverage entries")
-            except Exception as e:
-                logger.error(f"on_message_edit: Failed to add ride coverage on edit: {e}")
+            except Exception:
+                logger.exception("on_message_edit: Failed to add ride coverage on edit")
+                await send_error_to_discord(
+                    "**Unexpected Error** in `on_message_edit` adding ride coverage"
+                )
 
         if removed:
             logger.info(
@@ -238,8 +251,11 @@ class RideCoverage(commands.Cog):
                 logger.info(
                     f"on_message_edit: Successfully removed {len(removed)} coverage entries"
                 )
-            except Exception as e:
-                logger.error(f"on_message_edit: Failed to remove ride coverage on edit: {e}")
+            except Exception:
+                logger.exception("on_message_edit: Failed to remove ride coverage on edit")
+                await send_error_to_discord(
+                    "**Unexpected Error** in `on_message_edit` removing ride coverage"
+                )
 
         if not added and not removed:
             logger.debug(f"on_message_edit: No passenger changes detected for message {after.id}")
@@ -270,8 +286,11 @@ class RideCoverage(commands.Cog):
                 logger.debug(
                     f"on_message_delete: No coverage entries found for message {message.id}"
                 )
-        except Exception as e:
-            logger.error(f"on_message_delete: Failed to remove coverage entries: {e}")
+        except Exception:
+            logger.exception("on_message_delete: Failed to remove coverage entries")
+            await send_error_to_discord(
+                "**Unexpected Error** in `on_message_delete` removing coverage entries"
+            )
 
 
 async def setup(bot: commands.Bot):

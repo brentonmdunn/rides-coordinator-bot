@@ -10,6 +10,7 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
+from bot.api import send_error_to_discord
 from bot.core.enums import (
     CacheNamespace,
     ChannelIds,
@@ -338,8 +339,11 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
             await invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
             await locations_svc.get_driver_reactions(AskRidesMessage.FRIDAY_FELLOWSHIP)
             await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
-    except Exception as e:
-        logger.error(f"Error checking cache {_periodic_warmer_idx}: {e}")
+    except Exception:
+        logger.exception(f"Error during periodic cache warming (idx={_periodic_warmer_idx})")
+        await send_error_to_discord(
+            f"**Unexpected Error** in `run_periodic_cache_warming` (idx={_periodic_warmer_idx})"
+        )
 
     _periodic_warmer_idx = (_periodic_warmer_idx + 1) % 2
 
@@ -488,8 +492,11 @@ async def get_ask_rides_status(bot: Bot) -> dict:
             friday_last_msg = None
             sunday_last_msg = None
             sunday_class_last_msg = None
-    except Exception as e:
-        logger.error(f"Error fetching messages history: {e}")
+    except Exception:
+        logger.exception("Error fetching messages history in get_ask_rides_status")
+        await send_error_to_discord(
+            "**Unexpected Error** fetching message history in `get_ask_rides_status`"
+        )
         friday_last_msg = None
         sunday_last_msg = None
         sunday_class_last_msg = None

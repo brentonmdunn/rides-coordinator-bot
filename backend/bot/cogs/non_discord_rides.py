@@ -4,6 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from bot.api import send_error_to_discord
 from bot.core.enums import (
     FeatureFlagNames,
 )
@@ -57,8 +58,12 @@ class NonDiscordRidesCog(commands.Cog):
                 f"Pickup for {name} on {day} already exists.", ephemeral=True
             )
             return
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}")
+        except Exception:
+            logger.exception("Unexpected error in add_pickup")
+            await send_error_to_discord("**Unexpected Error** in `/add-pickup`")
+            await interaction.response.send_message(
+                "An unexpected error occurred. Please try again later.", ephemeral=True
+            )
 
     @app_commands.command(
         name="remove-pickup",
@@ -97,6 +102,7 @@ class NonDiscordRidesCog(commands.Cog):
         except Exception:
             # Handle other potential errors
             logger.exception("An unexpected error occurred")
+            await send_error_to_discord("**Unexpected Error** in `/remove-pickup`")
             await interaction.response.send_message(
                 "An unexpected error occurred. Please try again later.", ephemeral=True
             )
@@ -138,6 +144,7 @@ class NonDiscordRidesCog(commands.Cog):
 
         except Exception:
             logger.exception("An error occurred while listing pickups:")
+            await send_error_to_discord("**Unexpected Error** in `/list-added-pickups`")
             await interaction.response.send_message(
                 "An error occurred while trying to list the pickups. Please try again later.",
                 ephemeral=True,

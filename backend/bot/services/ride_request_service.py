@@ -2,6 +2,7 @@
 
 import discord
 
+from bot.api import send_error_to_discord
 from bot.core.enums import CategoryIds, ChannelIds, RoleIds
 from bot.core.logger import logger
 
@@ -63,8 +64,11 @@ class RideRequestService:
         except discord.Forbidden:
             logger.error(f"Missing permissions to create channel for {user.name}")
             return False
-        except Exception as e:
-            logger.error(f"Failed to create channel for {user.name}: {e}")
+        except Exception:
+            logger.exception(f"Failed to create channel for {user.name}")
+            await send_error_to_discord(
+                f"**Unexpected Error** creating ride channel for `{user.name}`"
+            )
             return False
 
         # Send welcome message
@@ -77,8 +81,11 @@ class RideRequestService:
                 "One of our ride coordinators will check in with you shortly!",
                 allowed_mentions=discord.AllowedMentions(users=True),
             )
-        except Exception as e:
-            logger.error(f"Failed to send welcome message to {new_channel.name}: {e}")
+        except Exception:
+            logger.exception(f"Failed to send welcome message to {new_channel.name}")
+            await send_error_to_discord(
+                f"**Unexpected Error** sending welcome message to `{new_channel.name}`"
+            )
             # Channel was created, so still return True
 
         return True

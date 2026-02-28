@@ -55,6 +55,54 @@ def get_bot() -> Bot | None:
     return _bot_instance if _bot_instance and _bot_instance.is_ready() else None
 
 
+async def send_error_to_discord(
+    error_msg: str, error: Exception | None = None, tb_text: str | None = None
+) -> None:
+    """
+    Send an error message and optional traceback to the configured Discord error channel.
+    If `error` is provided, it extracts the traceback directly from the Exception object.
+    If neither `error` nor `tb_text` is provided, it attempts to extract the traceback
+    from sys.exc_info().
+    """
+    if APP_ENV == "local" or ERROR_CHANNEL_ID is None:
+        return
+
+    bot = get_bot()
+    if not bot:
+        logger.warning("Could not send error to Discord: Bot is not ready")
+        return
+
+    if tb_text is None:
+        if error is not None:
+            tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
+            tb_text = "".join(tb_lines)
+        else:
+            import sys
+
+            exc_info = sys.exc_info()
+            if exc_info[0] is not None:
+                tb_lines = traceback.format_exception(*exc_info)
+                tb_text = "".join(tb_lines)
+
+    try:
+        channel = bot.get_channel(ERROR_CHANNEL_ID)
+        if channel and isinstance(channel, discord.TextChannel):
+            if tb_text and len(error_msg) + len(tb_text) > 1900:
+                await channel.send(error_msg)
+                chunks = [tb_text[i : i + 1900] for i in range(0, len(tb_text), 1900)]
+                for chunk in chunks:
+                    await channel.send(f"```python\n{chunk}\n```")
+            else:
+                full_msg = error_msg
+                if tb_text:
+                    full_msg += f"\n```python\n{tb_text}\n```"
+                await channel.send(full_msg)
+        else:
+            logger.warning(f"Error channel {ERROR_CHANNEL_ID} not found or not a text channel")
+    except Exception as e:
+        logger.error(f"Failed to send error to Discord channel {ERROR_CHANNEL_ID}: {e}")
+
+
 async def _load_extensions(bot: Bot) -> None:
     """Load all bot extensions (cogs)."""
     cogs_path = Path.cwd() / "bot" / "cogs"
@@ -175,42 +223,15 @@ async def bot_lifespan():
 
         exc_info = sys.exc_info()
 
-        # Format the full traceback
-        error_msg = f"**Uncaught Exception in Event: `{event}`**\n\n"
-
         if exc_info[0] is not None:
             tb_lines = traceback.format_exception(*exc_info)
             tb_text = "".join(tb_lines)
 
-            # Discord has a 2000 character limit for messages
-            # Split into multiple messages if needed
-            error_msg += f"```python\n{tb_text}\n```"
-
             # Log the error
             logger.error(f"Uncaught exception in {event}: {tb_text}")
 
-            if APP_ENV == "local" or ERROR_CHANNEL_ID is None:
-                return
-
             # Send to error channel
-            try:
-                channel = bot.get_channel(ERROR_CHANNEL_ID)
-                if channel and isinstance(channel, discord.TextChannel):
-                    if len(error_msg) > 2000:
-                        # Send header
-                        await channel.send(f"**Uncaught Exception in Event: `{event}`**")
-                        # Send traceback in chunks
-                        chunks = [tb_text[i : i + 1900] for i in range(0, len(tb_text), 1900)]
-                        for chunk in chunks:
-                            await channel.send(f"```python\n{chunk}\n```")
-                    else:
-                        await channel.send(error_msg)
-                else:
-                    logger.warning(
-                        f"Error channel {ERROR_CHANNEL_ID} not found or not a text channel"
-                    )
-            except Exception as e:
-                logger.error(f"Failed to send error to channel {ERROR_CHANNEL_ID}: {e}")
+            await send_error_to_discord(f"**Uncaught Exception in Event: `{event}`**", tb_text)
         else:
             logger.error(f"Unknown error in event {event}")
 
@@ -245,47 +266,15 @@ async def bot_lifespan():
             except Exception:
                 pass  # Fail silently if we can't respond to the user
 
-            if APP_ENV == "local" or ERROR_CHANNEL_ID is None:
-                return
+            cmd_name = interaction.command.name if interaction.command else "Unknown"
+            channel_mention = interaction.channel.mention if interaction.channel else "Unknown"
 
-            # Send to error channel
-            try:
-                tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
-                tb_text = "".join(tb_lines)
+            error_msg = "**App Command Error**\n"
+            error_msg += f"Command: `{cmd_name}`\n"
+            error_msg += f"User: {interaction.user.mention} ({interaction.user.id})\n"
+            error_msg += f"Channel: {channel_mention}\n"
 
-                error_msg = "**App Command Error**\n"
-                cmd_name = interaction.command.name if interaction.command else "Unknown"
-                error_msg += f"Command: `{cmd_name}`\n"
-                error_msg += f"User: {interaction.user.mention} ({interaction.user.id})\n"
-                channel_mention = interaction.channel.mention if interaction.channel else "Unknown"
-                error_msg += f"Channel: {channel_mention}\n\n"
-                error_msg += f"```python\n{tb_text}\n```"
-
-                channel = bot.get_channel(ERROR_CHANNEL_ID)
-                if channel and isinstance(channel, discord.TextChannel):
-                    if len(error_msg) > 2000:
-                        # Send header
-                        header = "**App Command Error**\n"
-                        cmd_name = interaction.command.name if interaction.command else "Unknown"
-                        header += f"Command: `{cmd_name}`\n"
-                        header += f"User: {interaction.user.mention} ({interaction.user.id})\n"
-                        channel_mention = (
-                            interaction.channel.mention if interaction.channel else "Unknown"
-                        )
-                        header += f"Channel: {channel_mention}\n"
-                        await channel.send(header)
-                        # Send traceback in chunks
-                        chunks = [tb_text[i : i + 1900] for i in range(0, len(tb_text), 1900)]
-                        for chunk in chunks:
-                            await channel.send(f"```python\n{chunk}\n```")
-                    else:
-                        await channel.send(error_msg)
-                else:
-                    logger.warning(
-                        f"Error channel {ERROR_CHANNEL_ID} not found or not a text channel"
-                    )
-            except Exception as e:
-                logger.error(f"Failed to send app command error to channel {ERROR_CHANNEL_ID}: {e}")
+            await send_error_to_discord(error_msg)
 
     # Initialize cache backend (Redis for prod/preprod, in-memory for local)
     if APP_ENV != "local":

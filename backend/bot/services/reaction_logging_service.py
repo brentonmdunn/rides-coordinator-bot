@@ -2,6 +2,7 @@
 
 import discord
 
+from bot.api import send_error_to_discord
 from bot.core.enums import ChannelIds
 from bot.core.logger import logger
 from bot.core.reaction_enums import ReactionAction
@@ -52,8 +53,9 @@ class ReactionLoggingService:
         except discord.Forbidden:
             logger.error(f"Missing permissions to send to channel {log_channel.id}")
             return False
-        except Exception as e:
-            logger.error(f"Failed to send log message: {e}")
+        except Exception:
+            logger.exception("Failed to send log message in log_reaction")
+            await send_error_to_discord("**Unexpected Error** in `log_reaction`")
             return False
 
     async def log_late_ride_reaction(
@@ -86,8 +88,9 @@ class ReactionLoggingService:
         except discord.Forbidden:
             logger.error(f"Missing permissions to send to channel {log_channel.id}")
             return False
-        except Exception as e:
-            logger.error(f"Failed to send log message: {e}")
+        except Exception:
+            logger.exception("Failed to send log message in log_late_ride_reaction")
+            await send_error_to_discord("**Unexpected Error** in `log_late_ride_reaction`")
             return False
 
     def _format_reaction_log(

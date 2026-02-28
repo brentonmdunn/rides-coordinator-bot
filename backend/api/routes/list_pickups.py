@@ -4,8 +4,9 @@ import discord
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from bot.api import get_bot
+from bot.api import get_bot, send_error_to_discord
 from bot.core.enums import AskRidesMessage
+from bot.core.logger import logger
 from bot.services.locations_service import LocationsService
 
 router = APIRouter(prefix="/api/list-pickups", tags=["list-pickups"])
@@ -140,4 +141,6 @@ async def list_pickups(request: ListPickupsRequest):
             success=False, error="Bot does not have permission to access this message or channel."
         )
     except Exception as e:
+        logger.exception("An unexpected error occurred while listing pickups")
+        await send_error_to_discord("**Uncaught API Error** in `/api/list-pickups`", error=e)
         return ListPickupsResponse(success=False, error=f"An unexpected error occurred: {e!s}")

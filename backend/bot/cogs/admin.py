@@ -4,7 +4,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.logger import log_cmd
+from bot.api import send_error_to_discord
+from bot.core.logger import log_cmd, logger
 from bot.services.admin_service import AdminService
 
 
@@ -60,8 +61,10 @@ class Admin(commands.Cog):
 
             await interaction.followup.send(embed=embed)
 
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
+        except Exception:
+            logger.exception("Unexpected error in give_role")
+            await send_error_to_discord("**Unexpected Error** in `/give-role`")
+            await interaction.followup.send("An unexpected error occurred. Please try again later.")
 
 
 async def setup(bot: commands.Bot):
