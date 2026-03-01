@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames
+from bot.core.enums import FeatureFlagNames, JobName
 from bot.core.logger import log_cmd
 from bot.services.group_rides_service import GroupRidesService
 from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
@@ -51,7 +51,7 @@ class GroupRides(commands.Cog):
         await self.service.group_rides(
             interaction,
             driver_capacity,
-            day="friday",
+            day=JobName.FRIDAY,
             legacy_prompt=legacy_prompt,
             custom_prompt=custom_prompt,
         )
@@ -86,7 +86,7 @@ class GroupRides(commands.Cog):
         await self.service.group_rides(
             interaction,
             driver_capacity,
-            day="sunday",
+            day=JobName.SUNDAY,
             legacy_prompt=legacy_prompt,
             custom_prompt=custom_prompt,
         )

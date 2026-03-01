@@ -9,6 +9,7 @@ from bot.core.enums import (
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
+    JobName,
 )
 from bot.core.logger import log_cmd
 from bot.services.driver_service import DriverService
@@ -21,8 +22,8 @@ from bot.utils.channel_whitelist import (
 from bot.utils.checks import feature_flag_enabled
 
 DAY_TO_EVENT: dict[str, AskRidesMessage] = {
-    "sunday": AskRidesMessage.SUNDAY_SERVICE,
-    "friday": AskRidesMessage.FRIDAY_FELLOWSHIP,
+    JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
+    JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
 }
 
 

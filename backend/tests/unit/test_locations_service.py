@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from bot.core.enums import JobName, RideOption
 from bot.services.locations_service import LocationsService
 
 
@@ -83,7 +84,9 @@ async def test_build_embed_groups_and_unknown():
     usernames_reacted = {"alice#123", "bob#456", "unknown_user"}
     location_found = {"alice#123", "bob#456"}
 
-    embed = svc._build_embed(locations_people, usernames_reacted, location_found, option="Friday")
+    embed = svc._build_embed(
+        locations_people, usernames_reacted, location_found, option=RideOption.FRIDAY
+    )
     assert isinstance(embed, discord.Embed)
     assert any(f.name.startswith("🏫") for f in embed.fields)  # Scholars group
     assert any("Unknown Location" in f.name for f in embed.fields)
@@ -116,7 +119,7 @@ async def test_list_locations_adds_non_discord_pickups():
     locations_people, _ = result
 
     # manually call the post-processing logic (simulating what list_locations does)
-    pickups = await svc.repo.get_non_discord_pickups("Friday")
+    pickups = await svc.repo.get_non_discord_pickups(JobName.FRIDAY)
     for pickup in pickups:
         locations_people[pickup.location].append((pickup.name, None))
 

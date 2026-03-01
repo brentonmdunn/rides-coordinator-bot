@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 
 from bot.api import get_bot
-from bot.core.enums import AskRidesMessage, ChannelIds
+from bot.core.enums import AskRidesMessage, ChannelIds, JobName
 from bot.core.logger import logger
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
 from bot.services.locations_service import LocationsService
@@ -31,7 +31,7 @@ async def get_pickup_coverage(ride_type: str):
         raise HTTPException(status_code=503, detail="Bot not initialized")
 
     # Validate ride_type
-    if ride_type.lower() not in ["friday", "sunday"]:
+    if ride_type.lower() not in [JobName.FRIDAY, JobName.SUNDAY]:
         raise HTTPException(status_code=400, detail="ride_type must be 'friday' or 'sunday'")
 
     try:
@@ -39,7 +39,7 @@ async def get_pickup_coverage(ride_type: str):
         ride_coverage_repo = RideCoverageRepository()
 
         # Determine which message to check based on ride type
-        if ride_type.lower() == "friday":
+        if ride_type.lower() == JobName.FRIDAY:
             ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
         else:  # sunday
             ask_message = AskRidesMessage.SUNDAY_SERVICE
@@ -65,7 +65,7 @@ async def get_pickup_coverage(ride_type: str):
         )
 
         # For Sunday, exclude users going to class
-        if ride_type.lower() == "sunday":
+        if ride_type.lower() == JobName.SUNDAY:
             class_message_id = await locations_service._find_correct_message(
                 AskRidesMessage.SUNDAY_CLASS, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             )
@@ -152,9 +152,9 @@ async def get_driver_reactions(day: str):
 
     locations_service = LocationsService(bot)
     try:
-        if day.lower() == "friday":
+        if day.lower() == JobName.FRIDAY:
             event = AskRidesMessage.FRIDAY_FELLOWSHIP
-        elif day.lower() == "sunday":
+        elif day.lower() == JobName.SUNDAY:
             event = AskRidesMessage.SUNDAY_SERVICE
         else:
             raise HTTPException(status_code=400, detail="Invalid day")

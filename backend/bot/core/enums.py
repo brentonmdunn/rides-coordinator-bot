@@ -166,6 +166,15 @@ class RideType(StrEnum):
     SUN_LUNCH_DROPOFF = "Sunday lunch dropoff"
 
 
+class RideOption(StrEnum):
+    """Ride option types for location commands."""
+
+    SUNDAY_PICKUP = "Sunday pickup"
+    SUNDAY_DROPOFF_BACK = "Sunday dropoff back"
+    SUNDAY_DROPOFF_LUNCH = "Sunday dropoff lunch"
+    FRIDAY = "Friday"
+
+
 class AccountRoles(StrEnum):
     """Roles for accounts."""
 

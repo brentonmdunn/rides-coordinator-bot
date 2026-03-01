@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bot.api import get_bot, send_error_to_discord
-from bot.core.enums import AskRidesMessage
+from bot.core.enums import AskRidesMessage, JobName
 from bot.core.logger import logger
 from bot.services.locations_service import LocationsService
 
@@ -45,7 +45,7 @@ async def list_pickups(request: ListPickupsRequest):
 
     try:
         # Validate ride_type
-        if request.ride_type not in ["friday", "sunday", "message_id"]:
+        if request.ride_type not in [JobName.FRIDAY, JobName.SUNDAY, "message_id"]:
             return ListPickupsResponse(
                 success=False, error="ride_type must be 'friday', 'sunday', or 'message_id'"
             )
@@ -70,7 +70,7 @@ async def list_pickups(request: ListPickupsRequest):
                 )
         else:
             # Find the message for Friday or Sunday
-            if request.ride_type == "friday":
+            if request.ride_type == JobName.FRIDAY:
                 ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
             else:  # sunday
                 ask_message = AskRidesMessage.SUNDAY_SERVICE

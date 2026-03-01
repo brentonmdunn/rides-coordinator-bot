@@ -13,6 +13,7 @@ from bot.core.enums import (
     AskRidesMessage,
     CampusLivingLocations,
     ChannelIds,
+    JobName,
     PickupLocations,
 )
 from bot.core.logger import logger
@@ -486,9 +487,9 @@ class GroupRidesService:
         await interaction.response.defer()
 
         if day:
-            if day.lower() == "friday":
+            if day == JobName.FRIDAY:
                 ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
-            elif day.lower() == "sunday":
+            elif day == JobName.SUNDAY:
                 ask_message = AskRidesMessage.SUNDAY_SERVICE
             else:
                 # This shouldn't happen if called correctly
@@ -651,9 +652,9 @@ class GroupRidesService:
 
         # If day is provided, find the corresponding message
         if day:
-            if day.lower() == "friday":
+            if day == JobName.FRIDAY:
                 ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
-            elif day.lower() == "sunday":
+            elif day == JobName.SUNDAY:
                 ask_message = AskRidesMessage.SUNDAY_SERVICE
             else:
                 raise ValueError("day must be 'friday' or 'sunday'")
