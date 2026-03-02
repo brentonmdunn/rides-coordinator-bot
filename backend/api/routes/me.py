@@ -32,7 +32,7 @@ async def get_current_user(request: Request):
     email = user.get("email", "")
 
     if not email:
-        return {"email": "", "role": "viewer", "is_local": APP_ENV == "local"}
+        return {"email": "", "role": AccountRoles.VIEWER, "is_local": APP_ENV == "local"}
 
     account = await UserAccountsService.get_or_create_account(email)
     return {"email": email, "role": account.role, "is_local": APP_ENV == "local"}

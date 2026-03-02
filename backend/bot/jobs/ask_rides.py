@@ -114,7 +114,7 @@ RIDE_TYPES_CONFIG = {
         "title": "Rides to Friday Fellowship",
         "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
     },
-    "class": {
+    JobName.SUNDAY_CLASS: {
         "title": "Rides to Bible Theology Class",
         "color": discord.Color.blurple(),
     },

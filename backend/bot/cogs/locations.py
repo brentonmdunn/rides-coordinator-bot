@@ -3,7 +3,7 @@
 import discord
 from discord.ext import commands
 
-from bot.core.enums import ChannelIds, FeatureFlagNames
+from bot.core.enums import ChannelIds, FeatureFlagNames, JobName, RideOption
 from bot.core.logger import log_cmd
 from bot.services.locations_service import LocationsService
 from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
@@ -71,7 +71,9 @@ class Locations(commands.Cog):
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
-        await self.service.list_locations_wrapper(interaction, day="sunday", option="Sunday pickup")
+        await self.service.list_locations_wrapper(
+            interaction, day=JobName.SUNDAY, option=RideOption.SUNDAY_PICKUP
+        )
 
     @discord.app_commands.command(
         name="list-dropoffs-sunday-back",
@@ -90,7 +92,7 @@ class Locations(commands.Cog):
         ):
             return
         await self.service.list_locations_wrapper(
-            interaction, day="sunday", option="Sunday dropoff back"
+            interaction, day=JobName.SUNDAY, option=RideOption.SUNDAY_DROPOFF_BACK
         )
 
     @discord.app_commands.command(
@@ -110,7 +112,7 @@ class Locations(commands.Cog):
         ):
             return
         await self.service.list_locations_wrapper(
-            interaction, day="sunday", option="Sunday dropoff lunch"
+            interaction, day=JobName.SUNDAY, option=RideOption.SUNDAY_DROPOFF_LUNCH
         )
 
     @discord.app_commands.command(
@@ -129,7 +131,7 @@ class Locations(commands.Cog):
             interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
         ):
             return
-        await self.service.list_locations_wrapper(interaction, day="friday")
+        await self.service.list_locations_wrapper(interaction, day=JobName.FRIDAY)
 
     @discord.app_commands.command(
         name="list-pickups-by-message-id",

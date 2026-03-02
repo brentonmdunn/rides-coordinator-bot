@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bot.api import get_bot
+from bot.core.enums import JobName
 from bot.services.group_rides_service import GroupRidesService
 
 router = APIRouter(prefix="/api/group-rides", tags=["group-rides"])
@@ -44,7 +45,7 @@ async def group_rides(request: GroupRidesRequest):
 
     try:
         # Validate ride_type
-        if request.ride_type not in ["friday", "sunday", "message_id"]:
+        if request.ride_type not in [JobName.FRIDAY, JobName.SUNDAY, "message_id"]:
             return GroupRidesResponse(
                 success=False, error="ride_type must be 'friday', 'sunday', or 'message_id'"
             )
@@ -72,7 +73,9 @@ async def group_rides(request: GroupRidesRequest):
         service = GroupRidesService(bot)
         result = await service.group_rides_api(
             message_id=message_id_int,
-            day=request.ride_type if request.ride_type in ["friday", "sunday"] else None,
+            day=request.ride_type
+            if request.ride_type in [JobName.FRIDAY, JobName.SUNDAY]
+            else None,
             driver_capacity=request.driver_capacity,
             channel_id=channel_id_int,
         )
