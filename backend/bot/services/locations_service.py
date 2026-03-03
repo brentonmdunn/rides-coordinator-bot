@@ -6,14 +6,21 @@ import io
 import os
 from collections import defaultdict
 from collections.abc import Callable
-from typing import Literal
 
 import discord
 import requests
 from dotenv import load_dotenv
 
 from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AskRidesMessage, CacheNamespace, CanBeDriver, ChannelIds, ClassYear
+from bot.core.enums import (
+    AskRidesMessage,
+    CacheNamespace,
+    CanBeDriver,
+    ChannelIds,
+    ClassYear,
+    JobName,
+    RideOption,
+)
 from bot.core.logger import logger
 from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
@@ -26,9 +33,7 @@ load_dotenv()
 
 LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
 
-RideOptionsSchema = Literal[
-    "Sunday pickup", "Sunday dropoff back", "Sunday dropoff lunch", "Friday"
-]
+RideOptionsSchema = RideOption
 
 SCHOLARS_LOCATIONS = [
     "revelle",
@@ -278,9 +283,9 @@ class LocationsService:
             A tuple containing (locations_people, usernames_reacted, location_found).
         """
         if day:
-            if day.lower() == "sunday":
+            if day == JobName.SUNDAY:
                 ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
-            elif day.lower() == "friday":
+            elif day == JobName.FRIDAY:
                 ask_rides_message = AskRidesMessage.FRIDAY_FELLOWSHIP
             else:
                 raise ValueError(f"Invalid day: {day}")
@@ -297,7 +302,7 @@ class LocationsService:
             tmp_content = get_message_and_embed_content(tmp_message).lower()
 
         if (
-            (day and day.lower() == "sunday")
+            (day and day == JobName.SUNDAY)
             or ("service" in tmp_content and "sunday" in tmp_content)
         ) and (
             class_message_id := await self._find_correct_message(
@@ -538,9 +543,17 @@ class LocationsService:
         channel = self.bot.get_channel(channel_id)
         message = await channel.fetch_message(message_id)
         for reaction in message.reactions:
-            if option and option == "Sunday dropoff back" and (str(reaction.emoji) in ["🍔", "✳️"]):
+            if (
+                option
+                and option == RideOption.SUNDAY_DROPOFF_BACK
+                and (str(reaction.emoji) in ["🍔", "✳️"])
+            ):
                 continue
-            if option and option == "Sunday dropoff lunch" and (str(reaction.emoji) in ["🏠", "✳️"]):
+            if (
+                option
+                and option == RideOption.SUNDAY_DROPOFF_LUNCH
+                and (str(reaction.emoji) in ["🏠", "✳️"])
+            ):
                 continue
             async for user in reaction.users():
                 if not user.bot:

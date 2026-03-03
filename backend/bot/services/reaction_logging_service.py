@@ -3,7 +3,7 @@
 import discord
 
 from bot.api import send_error_to_discord
-from bot.core.enums import ChannelIds
+from bot.core.enums import ChannelIds, JobName
 from bot.core.logger import logger
 from bot.core.reaction_enums import ReactionAction
 from bot.utils.format_message import message_link
@@ -160,8 +160,8 @@ class ReactionLoggingService:
         action_verb = "reacted" if action == ReactionAction.ADD else "removed their reaction"
 
         event_map = {
-            "sunday": "Sunday Service",
-            "friday": "Friday Fellowship",
+            JobName.SUNDAY: "Sunday Service",
+            JobName.FRIDAY: "Friday Fellowship",
         }
 
         event_name = None
