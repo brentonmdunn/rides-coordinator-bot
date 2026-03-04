@@ -21,10 +21,11 @@ from bot.core.enums import (
     RoleIds,
 )
 from bot.core.logger import logger
+from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
-from bot.utils.cache import alru_cache, warm_ask_rides_message_cache
+from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import get_next_date, get_next_date_obj
@@ -294,17 +295,25 @@ async def run_ask_rides_header(
 
 
 async def run_ask_rides_all(
-    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    bot: Bot,
+    rides_channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
 ) -> None:
     """Run the job to send all ask rides messages."""
 
-    await run_ask_rides_header(bot, channel_id)
-    await run_ask_rides_fri(bot, channel_id)
-    await run_ask_rides_sun_class(bot, channel_id)
-    await run_ask_rides_sun(bot, channel_id)
+    await run_ask_rides_header(bot, rides_channel_id)
+    await run_ask_rides_fri(bot, rides_channel_id)
+    await run_ask_rides_sun_class(bot, rides_channel_id)
+    await run_ask_rides_sun(bot, rides_channel_id)
 
     # Invalidate and warm caches since new messages were sent
-    await warm_ask_rides_message_cache(bot, channel_id)
+    await warm_ask_rides_message_cache(bot, rides_channel_id)
+
+    await run_ask_drivers_fri(bot, drivers_channel_id)
+    await run_ask_drivers_sun(bot, drivers_channel_id)
+
+    # Invalidate and warm driver caches since new messages were sent
+    await warm_ask_drivers_message_cache(bot)
 
 
 # State for rotating periodic warmers
