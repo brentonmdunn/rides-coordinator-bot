@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 
@@ -17,6 +17,8 @@ interface CacheStatsResponse {
 }
 
 function CacheStats() {
+    const queryClient = useQueryClient()
+
     const { data, isLoading, error } = useQuery<CacheStatsResponse>({
         queryKey: ['cacheStats'],
         queryFn: async () => {
@@ -27,18 +29,60 @@ function CacheStats() {
         refetchInterval: 30000,
     })
 
+    const invalidateMutation = useMutation({
+        mutationFn: async () => {
+            const res = await apiFetch('/api/cache/invalidate', { method: 'POST' })
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                throw new Error(data.detail || 'Failed to invalidate cache')
+            }
+            return res.json()
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['cacheStats'] })
+        },
+    })
+
+    const handleInvalidate = () => {
+        if (window.confirm('Are you sure you want to invalidate all cache entries?')) {
+            invalidateMutation.mutate()
+        }
+    }
+
     const stats = data?.stats ?? {}
     const namespaces = Object.keys(stats)
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <span>📊</span>
-                    <span>Cache Stats</span>
-                </CardTitle>
+                <div className="flex items-center justify-between w-full">
+                    <CardTitle className="flex items-center gap-2">
+                        <span>📊</span>
+                        <span>Cache Stats</span>
+                    </CardTitle>
+                    <button
+                        id="invalidate-all-cache-btn"
+                        onClick={handleInvalidate}
+                        disabled={invalidateMutation.isPending}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        🗑️ {invalidateMutation.isPending ? 'Invalidating...' : 'Invalidate All'}
+                    </button>
+                </div>
             </CardHeader>
             <CardContent>
+                {invalidateMutation.isError && (
+                    <div className="mb-4 px-3 py-2 rounded-md bg-destructive/15 border border-destructive/30 text-destructive-text text-sm">
+                        ❌ {invalidateMutation.error instanceof Error ? invalidateMutation.error.message : 'Failed to invalidate cache'}
+                    </div>
+                )}
+
+                {invalidateMutation.isSuccess && (
+                    <div className="mb-4 px-3 py-2 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 text-sm">
+                        ✅ All cache entries invalidated successfully.
+                    </div>
+                )}
+
                 {isLoading && (
                     <div className="p-8 text-center text-slate-500 animate-pulse">
                         Loading cache stats...
@@ -98,13 +142,12 @@ function CacheStats() {
                                                         <td className="px-4 py-3 text-right">
                                                             {total > 0 ? (
                                                                 <span
-                                                                    className={`font-semibold tabular-nums ${
-                                                                        fn.hit_rate >= 0.8
+                                                                    className={`font-semibold tabular-nums ${fn.hit_rate >= 0.8
                                                                             ? 'text-green-600 dark:text-green-400'
                                                                             : fn.hit_rate >= 0.5
-                                                                              ? 'text-amber-600 dark:text-amber-400'
-                                                                              : 'text-red-600 dark:text-red-400'
-                                                                    }`}
+                                                                                ? 'text-amber-600 dark:text-amber-400'
+                                                                                : 'text-red-600 dark:text-red-400'
+                                                                        }`}
                                                                 >
                                                                     {(fn.hit_rate * 100).toFixed(1)}%
                                                                 </span>
