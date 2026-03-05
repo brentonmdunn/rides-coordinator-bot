@@ -14,7 +14,7 @@ from fastapi import HTTPException, Request, Response
 from jose import jwt
 
 from bot.core.enums import AccountRoles
-from bot.core.logger import user_email_var
+from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
 from bot.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
@@ -139,14 +139,15 @@ async def cloudflare_access_middleware(request: Request, call_next):
         # Any logger calls made during this request will have access to this email via
         # UserEmailFilter.
         email = user_info.get("email") or "-"
-        token = user_email_var.set(email)
+        email_token = user_email_var.set(email)
+        txn_token = txn_id_var.set(generate_txn_id())
         try:
             response = await call_next(request)
             return response
         finally:
-            # Reset the context variable to its previous state (e.g. '-') when the request finishes
-            # to prevent the email from leaking into other requests on the same thread/loop.
-            user_email_var.reset(token)
+            # Reset context variables to prevent leaking into other requests.
+            txn_id_var.reset(txn_token)
+            user_email_var.reset(email_token)
 
     return Response(content="Unauthorized", status_code=401)
 

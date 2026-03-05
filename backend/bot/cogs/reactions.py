@@ -10,7 +10,7 @@ from bot.core.enums import (
     DaysOfWeek,
     FeatureFlagNames,
 )
-from bot.core.logger import logger
+from bot.core.logger import generate_txn_id, logger, txn_id_var
 from bot.core.reaction_enums import ReactionAction
 from bot.repositories.thread_repository import EventThreadRepository
 from bot.services.reaction_logging_service import ReactionLoggingService
@@ -64,6 +64,14 @@ class Reactions(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         """Handles when a reaction is added to a message."""
+        txn_token = txn_id_var.set(generate_txn_id())
+        try:
+            await self._handle_reaction_add(payload)
+        finally:
+            txn_id_var.reset(txn_token)
+
+    async def _handle_reaction_add(self, payload: discord.RawReactionActionEvent):
+        """Inner handler for reaction add, runs under a transaction ID."""
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             return  # DM or unknown guild
@@ -91,6 +99,14 @@ class Reactions(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         """Handles when a reaction is removed from a message."""
+        txn_token = txn_id_var.set(generate_txn_id())
+        try:
+            await self._handle_reaction_remove(payload)
+        finally:
+            txn_id_var.reset(txn_token)
+
+    async def _handle_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        """Inner handler for reaction remove, runs under a transaction ID."""
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             return

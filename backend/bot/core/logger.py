@@ -9,6 +9,7 @@ import contextvars
 import functools
 import logging
 import os
+import uuid
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,12 @@ LOG_FILE = LOG_DIR / "bot.log"
 
 
 user_email_var: contextvars.ContextVar[str] = contextvars.ContextVar("user_email", default="-")
+txn_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("txn_id", default="-")
+
+
+def generate_txn_id() -> str:
+    """Generate a short unique transaction ID (8 hex chars)."""
+    return uuid.uuid4().hex[:8]
 
 
 class UserEmailFilter(logging.Filter):
@@ -32,6 +39,14 @@ class UserEmailFilter(logging.Filter):
 
     def filter(self, record):
         record.user_email = user_email_var.get()
+        return True
+
+
+class TransactionIdFilter(logging.Filter):
+    """Injects the current transaction ID into the log record."""
+
+    def filter(self, record):
+        record.txn_id = txn_id_var.get()
         return True
 
 
@@ -47,9 +62,10 @@ logger.setLevel(log_level)
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)  # Allow DEBUG output for your code
 console_handler.addFilter(UserEmailFilter())
+console_handler.addFilter(TransactionIdFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"
+    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"  # noqa: E501
 )
 
 console_handler.setFormatter(formatter)
@@ -89,11 +105,12 @@ file_handler = RotatingFileHandler(
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 file_handler.addFilter(UserEmailFilter())
+file_handler.addFilter(TransactionIdFilter())
 logger.addHandler(file_handler)
 
 
 # ------------------------------
-# Decorator
+# Decorators
 # ------------------------------
 def log_cmd(func):
     """A decorator that logs Discord slash commands, including their arguments.
@@ -124,11 +141,34 @@ def log_cmd(func):
         if args_str:
             log += f" arguments=[{args_str}]"
 
-        token = user_email_var.set(str(user))
+        txn_token = txn_id_var.set(generate_txn_id())
+        email_token = user_email_var.set(str(user))
         try:
             logger.info(log)
             return await func(self, interaction, *args, **kwargs)
         finally:
-            user_email_var.reset(token)
+            user_email_var.reset(email_token)
+            txn_id_var.reset(txn_token)
+
+    return wrapper
+
+
+def log_job(func):
+    """A decorator that assigns a transaction ID to a scheduled job execution.
+
+    Args:
+        func: The job function to wrap.
+
+    Returns:
+        The wrapped function.
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        txn_token = txn_id_var.set(generate_txn_id())
+        try:
+            return await func(*args, **kwargs)
+        finally:
+            txn_id_var.reset(txn_token)
 
     return wrapper

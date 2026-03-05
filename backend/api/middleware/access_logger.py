@@ -13,6 +13,8 @@ from pathlib import Path
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from bot.core.logger import txn_id_var
+
 # Configure access logger
 access_logger = logging.getLogger("api.access")
 access_logger.setLevel(logging.INFO)
@@ -82,9 +84,13 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         # Get user agent
         user_agent = request.headers.get("user-agent", "-")
 
+        # Get transaction ID from context
+        txn_id = txn_id_var.get()
+
         # Log in structured format
         log_message = (
             f"{client_ip} - {user_email} - "
+            f"[txn:{txn_id}] "
             f'"{request.method} {request.url.path}" '
             f"{response.status_code} - "
             f"{duration_ms:.2f}ms - "
