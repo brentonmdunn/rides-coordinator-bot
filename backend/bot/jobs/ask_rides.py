@@ -20,7 +20,7 @@ from bot.core.enums import (
     JobName,
     RoleIds,
 )
-from bot.core.logger import logger
+from bot.core.logger import log_job, logger
 from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
@@ -294,6 +294,7 @@ async def run_ask_rides_header(
         )
 
 
+@log_job
 async def run_ask_rides_all(
     bot: Bot,
     rides_channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
@@ -320,6 +321,7 @@ async def run_ask_rides_all(
 _periodic_warmer_idx = 0
 
 
+@log_job
 async def run_periodic_cache_warming(bot: Bot) -> None:
     """Rotates through the 2 reaction namespaces, warming one every time it runs.
 

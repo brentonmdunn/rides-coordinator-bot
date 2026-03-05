@@ -1,10 +1,11 @@
 """Job for synchronizing non-Discord rides."""
 
 from bot.api import send_error_to_discord
-from bot.core.logger import logger
+from bot.core.logger import log_job, logger
 from bot.services.non_discord_rides_service import NonDiscordRidesService
 
 
+@log_job
 async def delete_past_pickups():
     """
     Deletes all records from the NonDiscordRides table
