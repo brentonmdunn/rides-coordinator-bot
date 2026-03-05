@@ -20,6 +20,7 @@ from bot.core.enums import (
     ClassYear,
     JobName,
     RideOption,
+    RoleIds,
 )
 from bot.core.logger import logger
 from bot.core.models import Locations as LocationsModel
@@ -424,9 +425,11 @@ class LocationsService:
         if not channel:
             return results
 
+        driver_role_mention = f"<@&{RoleIds.DRIVER}>"
+
         most_recent: dict[AskRidesMessage, object] = {}
         async for message in channel.history(after=last_sunday):
-            if not message.interaction_metadata:
+            if driver_role_mention not in message.content:
                 continue
             combined_text = get_message_and_embed_content(message).lower()
             for event, keywords in driver_keywords.items():
