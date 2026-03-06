@@ -22,6 +22,7 @@ from bot.core.enums import (
     RideOption,
     RoleIds,
 )
+from bot.api import send_error_to_discord
 from bot.core.logger import logger
 from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
@@ -233,6 +234,10 @@ class LocationsService:
             option: Additional filtering options.
         """
         try:
+            logger.info(
+                f"list_locations_wrapper: user action - day={day}, "
+                f"message_id={message_id}, option={option}"
+            )
             args = await self.list_locations(day, message_id, channel_id, option)
             embed = self._build_embed(*args, option=option)
             if day and option and "dropoff" in option.lower():
@@ -258,9 +263,12 @@ class LocationsService:
             await interaction.response.send_message("Command not allowed in channel.")
         except NoMatchingMessageFoundError:
             await interaction.response.send_message("No matching message found.")
-        except Exception as e:
-            logger.exception("An error occurred: ")
-            await interaction.response.send_message(f"Unknown error: {e}")
+        except Exception:
+            logger.exception("An unexpected error occurred in list_locations_wrapper")
+            await send_error_to_discord("**Unexpected Error** in `list_locations_wrapper`")
+            await interaction.response.send_message(
+                "An unexpected error occurred. Please try again later.", ephemeral=True
+            )
 
     @alru_cache(
         ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS
@@ -394,7 +402,9 @@ class LocationsService:
         Returns:
             The message ID if found, otherwise None.
         """
+        logger.error(2)
         results = await self._find_all_driver_messages(channel_id)
+        logger.error(3)
         return results.get(event)
 
     async def _find_all_driver_messages(
@@ -412,6 +422,7 @@ class LocationsService:
         Returns:
             Dictionary mapping each AskRidesMessage to its driver message ID (or None).
         """
+        logger.error(2.5)
         driver_keywords: dict[AskRidesMessage, list[str]] = {
             AskRidesMessage.FRIDAY_FELLOWSHIP: ["friday", "felly", "fellowship"],
             AskRidesMessage.SUNDAY_SERVICE: ["sunday", "service"],
@@ -432,6 +443,7 @@ class LocationsService:
             if driver_role_mention not in message.content:
                 continue
             combined_text = get_message_and_embed_content(message).lower()
+            logger.error(f"combined_text: {combined_text}")
             for event, keywords in driver_keywords.items():
                 if any(kw in combined_text for kw in keywords):
                     most_recent[event] = message
@@ -498,11 +510,13 @@ class LocationsService:
             Dictionary with reactions mapping emojis to lists of usernames,
             and username_to_name mapping for display purposes.
         """
+        logger.error(f"event: {event}")
         if event not in (AskRidesMessage.FRIDAY_FELLOWSHIP, AskRidesMessage.SUNDAY_SERVICE):
             raise ValueError(f"Invalid event for driver reactions: {event}")
 
         channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 
+        logger.error(1)
         message_id = await self._find_driver_message(event, channel_id)
         if not message_id:
             return None

@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 # Your original imports
+from bot.api import send_error_to_discord
 from bot.core.enums import FeatureFlagNames
 from bot.core.logger import log_cmd, logger
 from bot.repositories.community_events_repository import (
@@ -102,15 +103,19 @@ class CommunityEventsCog(commands.Cog):
             await interaction.followup.send("Message not found.", ephemeral=True)
         except RoleNotFoundError:
             await interaction.followup.send("Role not found.", ephemeral=True)
-        except RoleServiceError as e:
+        except RoleServiceError:
             # Catch other potential service errors
-            logger.error(f"A service error occurred: {e}")
+            logger.exception("A service error occurred in assign-role-to-reacts")
+            await send_error_to_discord(
+                "**Unexpected Error** in `/assign-role-to-reacts` (RoleServiceError)"
+            )
             await interaction.followup.send(
                 "An error occurred while processing the command.", ephemeral=True
             )
-        except Exception as e:
+        except Exception:
             # Catch any unexpected errors
-            logger.error(f"An unexpected error occurred: {e}")
+            logger.exception("An unexpected error occurred in assign-role-to-reacts")
+            await send_error_to_discord("**Unexpected Error** in `/assign-role-to-reacts`")
             await interaction.followup.send("An unexpected error occurred.", ephemeral=True)
 
 

@@ -3,6 +3,7 @@
 import discord
 
 from bot.core.enums import FeatureFlagNames
+from bot.core.logger import logger
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
@@ -50,6 +51,7 @@ class FeatureFlagsService:
 
         await FeatureFlagsRepository.update_feature_flag(feature_name, enabled)
         new_state = "enabled" if enabled else "disabled"
+        logger.info(f"modify_feature_flag: {feature_name} set to {new_state}")
         return True, f"✅ Feature flag `{feature_name}` is now **{new_state}**."
 
     async def list_feature_flags_embed(self) -> discord.Embed:

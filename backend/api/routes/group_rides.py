@@ -3,8 +3,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from bot.api import get_bot
+from bot.api import get_bot, send_error_to_discord
 from bot.core.enums import JobName
+from bot.core.logger import logger
 from bot.services.group_rides_service import GroupRidesService
 
 router = APIRouter(prefix="/api/group-rides", tags=["group-rides"])
@@ -86,5 +87,9 @@ async def group_rides(request: GroupRidesRequest):
 
     except ValueError as e:
         return GroupRidesResponse(success=False, error=str(e))
-    except Exception as e:
-        return GroupRidesResponse(success=False, error=f"An unexpected error occurred: {e!s}")
+    except Exception:
+        logger.exception("Unexpected error in group_rides API")
+        await send_error_to_discord("**Unexpected Error** in `POST /api/group-rides`")
+        return GroupRidesResponse(
+            success=False, error="An unexpected error occurred. Please try again later."
+        )

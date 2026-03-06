@@ -52,6 +52,7 @@ class ThreadService:
 
             await self.repository.delete(session, thread_to_delete)
             await session.commit()
+            logger.info(f"end_event_thread: ended event thread {thread_id}")
 
     async def create_event_thread(
         self, thread: discord.Thread
@@ -70,6 +71,7 @@ class ThreadService:
             discord.Forbidden: If bot permissions are missing.
         """
         thread_id = str(thread.id)
+        logger.info(f"create_event_thread: creating event thread for thread_id={thread_id}")
         async with AsyncSessionLocal() as session:
             existing_thread = await self.repository.get_by_id(session, thread_id)
             if existing_thread:
@@ -82,6 +84,10 @@ class ThreadService:
             await self.repository.create(session, thread_id)
             await session.commit()
 
+        logger.info(
+            f"create_event_thread: completed - added {len(added)} users, "
+            f"{len(failed)} failed for thread_id={thread_id}"
+        )
         return added, failed
 
     async def bulk_add_reactors_to_thread(
@@ -191,7 +197,12 @@ class ThreadService:
                 return False  # User already in thread
 
             # Add the user to the thread
-            return await self.repository.add_user_to_thread(thread, user)
+            result = await self.repository.add_user_to_thread(thread, user)
+            if result:
+                logger.info(
+                    f"add_reactor_to_thread: added user={user.name} to thread={payload.message_id}"
+                )
+            return result
 
     async def remove_reactor_from_thread(
         self,
@@ -255,4 +266,10 @@ class ThreadService:
             return False  # User not in thread
 
         # Remove the user from the thread
-        return await self.repository.remove_user_from_thread(thread, user)
+        result = await self.repository.remove_user_from_thread(thread, user)
+        if result:
+            logger.info(
+                f"remove_reactor_from_thread: removed user={user.name} "
+                f"from thread={payload.message_id}"
+            )
+        return result
