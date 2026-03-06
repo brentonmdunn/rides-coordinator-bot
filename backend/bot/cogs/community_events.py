@@ -1,12 +1,14 @@
 """Cog for event-related commands."""
 
+import logging
+
 import discord
 from discord.ext import commands
 
 # Your original imports
 from bot.api import send_error_to_discord
 from bot.core.enums import FeatureFlagNames
-from bot.core.logger import log_cmd, logger
+from bot.core.logger import log_cmd
 from bot.repositories.community_events_repository import (
     EventsRepository as CommunityEventsRepository,
 )
@@ -20,6 +22,8 @@ from bot.utils.custom_exceptions import (
     RoleNotFoundError,
     RoleServiceError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CommunityEventsCog(commands.Cog):

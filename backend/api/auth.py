@@ -14,8 +14,10 @@ from fastapi import HTTPException, Request, Response
 from jose import jwt
 
 from bot.core.enums import AccountRoles
-from bot.core.logger import generate_txn_id, logger, txn_id_var, user_email_var
+from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
 from bot.services.user_accounts_service import UserAccountsService
+
+logger = logging.getLogger(__name__)
 
 # Cloudflare Access Configuration
 CLOUDFLARE_TEAM_DOMAIN = os.getenv("CLOUDFLARE_TEAM_DOMAIN")

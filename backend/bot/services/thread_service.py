@@ -1,12 +1,14 @@
 """Service for event thread management."""
 
 import asyncio
+import logging
 
 import discord
 
 from bot.core.database import AsyncSessionLocal
-from bot.core.logger import logger
 from bot.repositories.thread_repository import EventThreadRepository
+
+logger = logging.getLogger(__name__)
 
 
 # Custom exceptions to communicate outcomes to the cog layer

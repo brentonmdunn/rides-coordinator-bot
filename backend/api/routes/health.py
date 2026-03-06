@@ -4,11 +4,12 @@ Health Check Endpoint
 Provides a simple health check endpoint for monitoring.
 """
 
+import logging
 import os
 
 from fastapi import APIRouter
 
-from bot.core.logger import logger
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

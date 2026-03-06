@@ -1,9 +1,12 @@
 """utils/channel_whitelist.py"""
 
+import logging
+
 import discord
 
 from bot.core.enums import ChannelIds
-from bot.core.logger import logger
+
+logger = logging.getLogger(__name__)
 
 BOT_TESTING_CHANNELS = {
     ChannelIds.BOT_STUFF__BOTS,

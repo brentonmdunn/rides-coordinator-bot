@@ -1,3 +1,5 @@
+import logging
+
 import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
@@ -9,10 +11,11 @@ from bot.core.enums import (
     FeatureFlagNames,
     JobName,
 )
-from bot.core.logger import logger
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.driver_service import DriverService
 from bot.utils.checks import feature_flag_enabled
+
+logger = logging.getLogger(__name__)
 
 
 async def _ask_drivers_template(

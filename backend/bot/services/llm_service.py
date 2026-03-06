@@ -1,12 +1,12 @@
 """Service for LLM interactions."""
 
 import json
+import logging
 import os
 
 import tenacity
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from bot.core.logger import logger
 from bot.core.schemas import LLMOutputError, LLMOutputNominal
 from bot.utils.genai.prompt import (
     CUSTOM_INSTRUCTIONS,
@@ -14,6 +14,8 @@ from bot.utils.genai.prompt import (
     GROUP_RIDES_PROMPT_LEGACY,
     PROMPT_EPILOGUE,
 )
+
+logger = logging.getLogger(__name__)
 
 # LLM_MODEL = "gemini-2.5-pro"
 LLM_MODEL = "gemini-2.5-flash"

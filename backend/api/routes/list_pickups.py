@@ -1,13 +1,16 @@
 """List Pickups API Routes."""
 
+import logging
+
 import discord
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bot.api import get_bot, send_error_to_discord
 from bot.core.enums import AskRidesMessage, JobName
-from bot.core.logger import logger
 from bot.services.locations_service import LocationsService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/list-pickups", tags=["list-pickups"])
 

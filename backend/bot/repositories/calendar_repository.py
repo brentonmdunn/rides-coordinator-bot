@@ -1,13 +1,14 @@
 """Repository for calendar data access."""
 
 import datetime
+import logging
 from os import getenv
 
 import recurring_ical_events
 import requests
 from icalendar import Calendar
 
-from bot.core.logger import logger
+logger = logging.getLogger(__name__)
 
 ICAL_URL = getenv("ICAL_URL")
 

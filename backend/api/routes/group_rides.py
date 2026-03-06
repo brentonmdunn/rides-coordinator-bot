@@ -1,12 +1,15 @@
 """Group Rides API Routes."""
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bot.api import get_bot, send_error_to_discord
 from bot.core.enums import JobName
-from bot.core.logger import logger
 from bot.services.group_rides_service import GroupRidesService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/group-rides", tags=["group-rides"])
 

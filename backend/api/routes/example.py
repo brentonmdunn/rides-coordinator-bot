@@ -10,7 +10,8 @@ import os
 from fastapi import APIRouter, HTTPException, Request
 
 from bot.api import get_bot
-from bot.core.logger import logger
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

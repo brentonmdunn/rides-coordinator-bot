@@ -1,11 +1,14 @@
 """Repository for event thread data access."""
 
+import logging
+
 import discord
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.logger import logger
 from bot.core.models import EventThreads
+
+logger = logging.getLogger(__name__)
 
 
 class EventThreadRepository:

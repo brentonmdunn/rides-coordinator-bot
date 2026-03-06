@@ -3,6 +3,7 @@
 import csv
 import gc
 import io
+import logging
 import os
 from collections import defaultdict
 from collections.abc import Callable
@@ -11,6 +12,7 @@ import discord
 import requests
 from dotenv import load_dotenv
 
+from bot.api import send_error_to_discord
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     AskRidesMessage,
@@ -22,14 +24,14 @@ from bot.core.enums import (
     RideOption,
     RoleIds,
 )
-from bot.api import send_error_to_discord
-from bot.core.logger import logger
 from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
 from bot.utils.cache import _get_reaction_cache_ttl, alru_cache
 from bot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from bot.utils.parsing import get_message_and_embed_content
 from bot.utils.time_helpers import get_last_sunday
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 

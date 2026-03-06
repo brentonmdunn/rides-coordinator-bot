@@ -6,6 +6,7 @@ It manages the bot lifecycle and allows API endpoints to interact with Discord.
 """
 
 import asyncio
+import logging
 import os
 import traceback
 from contextlib import asynccontextmanager
@@ -26,9 +27,10 @@ from bot.core.database import (
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
-from bot.core.logger import logger
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")

@@ -3,6 +3,7 @@
 This module handles the database connection, session creation, and initialization routines.
 """
 
+import logging
 import os
 
 from sqlalchemy import select
@@ -10,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from bot.core.base import Base
 from bot.core.enums import AccountRoles, FeatureFlagNames, JobName
-from bot.core.logger import logger
 from bot.core.models import FeatureFlags, MessageSchedulePause, UserAccount
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./db/bot.db")
 

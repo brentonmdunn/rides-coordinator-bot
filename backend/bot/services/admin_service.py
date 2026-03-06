@@ -1,9 +1,12 @@
 """Service for admin-related operations."""
 
+import logging
+
 import discord
 
-from bot.core.logger import logger
 from bot.utils.parsing import parse_discord_username
+
+logger = logging.getLogger(__name__)
 
 
 class AdminService:

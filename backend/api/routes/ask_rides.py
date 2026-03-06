@@ -1,5 +1,6 @@
 """Ask Rides API Routes."""
 
+import logging
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,11 +9,12 @@ from pydantic import BaseModel
 from api.auth import require_ride_coordinator
 from bot.api import get_bot
 from bot.core.enums import AskRidesMessage, CacheNamespace, JobName
-from bot.core.logger import logger
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.locations_service import LocationsService
 from bot.utils.cache import invalidate_namespace
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ask-rides", tags=["ask-rides"])
 

@@ -1,11 +1,12 @@
 """Cache backend abstraction for pluggable storage (in-memory or Redis)."""
 
+import logging
 import pickle
 import time
 from collections import OrderedDict
 from typing import Any, Protocol
 
-from bot.core.logger import logger
+logger = logging.getLogger(__name__)
 
 
 class CacheBackend(Protocol):

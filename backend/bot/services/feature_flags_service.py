@@ -1,10 +1,13 @@
 """Service layer for feature flag logic and validation."""
 
+import logging
+
 import discord
 
 from bot.core.enums import FeatureFlagNames
-from bot.core.logger import logger
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+
+logger = logging.getLogger(__name__)
 
 
 class FeatureFlagsService:

@@ -8,13 +8,15 @@ Storage is delegated to a pluggable ``CacheBackend`` (see
 import asyncio
 import functools
 import hashlib
+import logging
 import pickle
 from collections.abc import Callable
 from typing import Any, TypeVar
 
 from bot.core.enums import CacheNamespace
-from bot.core.logger import logger
 from bot.utils.cache_backends import get_backend
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 

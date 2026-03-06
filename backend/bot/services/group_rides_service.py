@@ -1,6 +1,7 @@
 """Service for group rides logic."""
 
 import asyncio
+import logging
 from datetime import datetime, time, timedelta
 
 import discord
@@ -16,7 +17,6 @@ from bot.core.enums import (
     JobName,
     PickupLocations,
 )
-from bot.core.logger import logger
 from bot.core.schemas import (
     Identity,
     # LLMOutputError, # Removed
@@ -37,6 +37,8 @@ from bot.utils.constants import MAP_LINKS
 # )
 from bot.utils.locations import LOCATIONS_MATRIX, lookup_time
 from bot.utils.parsing import get_message_and_embed_content, parse_time
+
+logger = logging.getLogger(__name__)
 
 # LLM_MODEL = "gemini-2.5-pro"
 # LLM_MODEL = "gemini-2.5-flash"

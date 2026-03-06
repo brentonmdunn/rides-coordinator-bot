@@ -4,12 +4,15 @@ Locations API Endpoints
 Provides API access to location/pickup listing functionality.
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Query
 
 from bot.api import get_bot
 from bot.core.enums import ChannelIds
-from bot.core.logger import logger
 from bot.services.locations_service import LocationsService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

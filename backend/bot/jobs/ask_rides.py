@@ -3,6 +3,7 @@
 Scheduled jobs for asking for rides.
 """
 
+import logging
 import os
 from collections.abc import Callable
 
@@ -20,7 +21,7 @@ from bot.core.enums import (
     JobName,
     RoleIds,
 )
-from bot.core.logger import log_job, logger
+from bot.core.logger import log_job
 from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
@@ -29,6 +30,8 @@ from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import get_next_date, get_next_date_obj
+
+logger = logging.getLogger(__name__)
 
 WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
 CLASS_DATES: list[str] = []

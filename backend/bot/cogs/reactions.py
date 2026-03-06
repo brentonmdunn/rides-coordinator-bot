@@ -1,5 +1,7 @@
 """Cog for handling reactions."""
 
+import logging
+
 import discord
 from discord.ext import commands
 
@@ -10,7 +12,7 @@ from bot.core.enums import (
     DaysOfWeek,
     FeatureFlagNames,
 )
-from bot.core.logger import generate_txn_id, logger, txn_id_var
+from bot.core.logger import generate_txn_id, txn_id_var
 from bot.core.reaction_enums import ReactionAction
 from bot.repositories.thread_repository import EventThreadRepository
 from bot.services.reaction_logging_service import ReactionLoggingService
@@ -19,6 +21,8 @@ from bot.services.thread_service import ThreadService
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.parsing import get_message_and_embed_content
 from bot.utils.time_helpers import is_during_target_window
+
+logger = logging.getLogger(__name__)
 
 
 class Reactions(commands.Cog):

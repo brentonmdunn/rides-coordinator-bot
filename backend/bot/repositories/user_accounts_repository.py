@@ -3,12 +3,15 @@
 Data access layer for user account management.
 """
 
+import logging
+
 from sqlalchemy import select, update
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
-from bot.core.logger import logger
 from bot.core.models import UserAccount
+
+logger = logging.getLogger(__name__)
 
 
 class UserAccountsRepository:
