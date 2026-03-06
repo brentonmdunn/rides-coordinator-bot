@@ -65,7 +65,7 @@ console_handler.addFilter(UserEmailFilter())
 console_handler.addFilter(TransactionIdFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"  # noqa: E501
+    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(name)s:%(lineno)d] [%(user_email)s] %(message)s"  # noqa: E501
 )
 
 console_handler.setFormatter(formatter)
