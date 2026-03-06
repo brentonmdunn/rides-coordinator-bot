@@ -12,9 +12,9 @@ from pydantic import BaseModel
 from api.auth import require_admin
 from api.constants import ADMIN_EMAILS
 from bot.core.enums import AccountRoles
+from bot.core.logger import logger
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 

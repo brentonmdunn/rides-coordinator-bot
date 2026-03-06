@@ -4,14 +4,14 @@ Cache Stats API Endpoint
 Provides admin-only access to cache performance statistics and invalidation.
 """
 
-import logging
-
 from fastapi import APIRouter, Depends
 
 from api.auth import require_admin
+
+from bot.core.logger import logger
 from bot.utils.cache import get_all_cache_stats, invalidate_all_namespaces
 
-logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 

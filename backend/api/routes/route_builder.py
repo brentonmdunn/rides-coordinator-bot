@@ -6,17 +6,15 @@ Provides API access to route building functionality:
 - POST /api/make-route: Generates route based on locations and leave time
 """
 
-import logging
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bot.api import get_bot
 from bot.core.enums import PickupLocations
+from bot.core.logger import logger
 from bot.services.group_rides_service import GroupRidesService
 from bot.utils.constants import MAP_LINKS
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 

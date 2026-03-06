@@ -4,17 +4,15 @@ Feature Flags API Endpoints
 Provides API access to feature flag management (admin only).
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.auth import require_admin
 from bot.core.enums import CacheNamespace
+from bot.core.logger import logger
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.utils.cache import invalidate_namespace
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
