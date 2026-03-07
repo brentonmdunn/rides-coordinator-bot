@@ -137,7 +137,7 @@ async def sync_ride_coverage():
         return {"success": True, "message": "Ride coverage sync completed", **result}
 
     except Exception as e:
-        logger.error(f"API: Failed to sync ride coverage: {e}")
+        logger.exception("API: Failed to sync ride coverage")
         raise HTTPException(status_code=500, detail=f"Failed to sync ride coverage: {e!s}") from e
 
 
@@ -172,5 +172,5 @@ async def get_driver_reactions(day: str):
             "message_found": True,
         }
     except Exception as e:
-        logger.error(f"Error fetching driver reactions: {e}")
+        logger.exception("Error fetching driver reactions")
         raise HTTPException(status_code=500, detail=str(e)) from e

@@ -42,10 +42,8 @@ async def get_pickups_by_message(
 
     bot = get_bot()
 
-    logger.info("here")
-
     if bot is None or not bot.is_ready():
-        logger.error("Bot not ready")
+        logger.warning("Bot not ready")
         raise HTTPException(status_code=503, detail="Discord bot not ready")
 
     # Validate and convert IDs
@@ -54,7 +52,7 @@ async def get_pickups_by_message(
         channel_id_int = int(channel_id)
         logger.info(f"Converted IDs: message_id={message_id_int}, channel_id={channel_id_int}")
     except ValueError:
-        logger.error(f"Invalid IDs: message_id={message_id}, channel_id={channel_id}")
+        logger.warning(f"Invalid IDs: message_id={message_id}, channel_id={channel_id}")
         raise HTTPException(
             status_code=400, detail="Message ID and Channel ID must be valid integers"
         ) from None

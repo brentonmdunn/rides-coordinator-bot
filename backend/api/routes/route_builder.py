@@ -74,7 +74,7 @@ async def get_pickup_locations():
         return PickupLocationsResponse(locations=locations, map_links=map_links)
 
     except Exception as e:
-        logger.exception(f"Error fetching pickup locations: {e}")
+        logger.exception("Error fetching pickup locations")
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch pickup locations: {e!s}"
         ) from e
@@ -102,7 +102,7 @@ async def make_route(request: MakeRouteRequest):
     bot = get_bot()
 
     if bot is None or not bot.is_ready():
-        logger.error("Bot not ready")
+        logger.warning("Bot not ready")
         raise HTTPException(status_code=503, detail="Discord bot not ready")
 
     # Validate inputs
@@ -129,5 +129,5 @@ async def make_route(request: MakeRouteRequest):
         return MakeRouteResponse(success=False, error=str(e))
 
     except Exception as e:
-        logger.exception(f"Error generating route: {e}")
+        logger.exception("Error generating route")
         raise HTTPException(status_code=500, detail=f"Failed to generate route: {e!s}") from e

@@ -404,9 +404,9 @@ class LocationsService:
         Returns:
             The message ID if found, otherwise None.
         """
-        logger.error(2)
+        logger.debug("_find_driver_message: looking up results")
         results = await self._find_all_driver_messages(channel_id)
-        logger.error(3)
+        logger.debug("_find_driver_message: got results")
         return results.get(event)
 
     async def _find_all_driver_messages(
@@ -424,7 +424,7 @@ class LocationsService:
         Returns:
             Dictionary mapping each AskRidesMessage to its driver message ID (or None).
         """
-        logger.error(2.5)
+        logger.debug("_find_all_driver_messages: starting scan")
         driver_keywords: dict[AskRidesMessage, list[str]] = {
             AskRidesMessage.FRIDAY_FELLOWSHIP: ["friday", "felly", "fellowship"],
             AskRidesMessage.SUNDAY_SERVICE: ["sunday", "service"],
@@ -445,7 +445,7 @@ class LocationsService:
             if driver_role_mention not in message.content:
                 continue
             combined_text = get_message_and_embed_content(message).lower()
-            logger.error(f"combined_text: {combined_text}")
+            logger.debug(f"combined_text: {combined_text}")
             for event, keywords in driver_keywords.items():
                 if any(kw in combined_text for kw in keywords):
                     most_recent[event] = message
@@ -512,13 +512,13 @@ class LocationsService:
             Dictionary with reactions mapping emojis to lists of usernames,
             and username_to_name mapping for display purposes.
         """
-        logger.error(f"event: {event}")
+        logger.debug(f"get_driver_reactions: event={event}")
         if event not in (AskRidesMessage.FRIDAY_FELLOWSHIP, AskRidesMessage.SUNDAY_SERVICE):
             raise ValueError(f"Invalid event for driver reactions: {event}")
 
         channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 
-        logger.error(1)
+        logger.debug("get_driver_reactions: looking up driver message")
         message_id = await self._find_driver_message(event, channel_id)
         if not message_id:
             return None

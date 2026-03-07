@@ -1,11 +1,14 @@
 """Repository for ride coverage data access."""
 
 import datetime
+import logging
 
 from sqlalchemy import delete
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.models import RideCoverage as RideCoverageModel
+
+logger = logging.getLogger(__name__)
 
 
 class RideCoverageRepository:
@@ -59,6 +62,7 @@ class RideCoverageRepository:
                 result = await session.execute(stmt)
                 return result.scalars().first() is not None
             except Exception:
+                logger.exception("Failed to check coverage status for %s", discord_username)
                 return False
 
     async def get_bulk_coverage_status(
@@ -89,6 +93,7 @@ class RideCoverageRepository:
                 result = await session.execute(stmt)
                 return set(result.scalars().all())
             except Exception:
+                logger.exception("Failed to check bulk coverage status")
                 return set()
 
     async def delete_coverage_entries(self, usernames: list[str], message_id: str):
@@ -156,6 +161,7 @@ class RideCoverageRepository:
                 result = await session.execute(stmt)
                 return set(result.scalars().all())
             except Exception:
+                logger.exception("Failed to fetch unique message IDs")
                 return set()
 
     async def has_coverage_entries(self, since: datetime.datetime) -> bool:
@@ -180,4 +186,5 @@ class RideCoverageRepository:
                 result = await session.execute(stmt)
                 return result.scalars().first() is not None
             except Exception:
+                logger.exception("Failed to check coverage entries")
                 return False

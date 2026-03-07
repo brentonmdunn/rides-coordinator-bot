@@ -42,7 +42,7 @@ async def send_now():
         await run_ask_rides_all(bot)
         return {"success": True, "message": "Ask rides messages sent successfully"}
     except Exception as e:
-        logger.error(f"Error sending ask rides messages manually: {e}")
+        logger.exception("Error sending ask rides messages manually")
         raise HTTPException(status_code=500, detail=f"Failed to send messages: {e!s}") from e
 
 
@@ -235,5 +235,5 @@ async def get_ask_rides_reactions(message_type: str):
         }
 
     except Exception as e:
-        logger.error(f"Error fetching ask-rides reactions for {message_type}: {e}")
+        logger.exception(f"Error fetching ask-rides reactions for {message_type}")
         raise HTTPException(status_code=500, detail=str(e)) from e

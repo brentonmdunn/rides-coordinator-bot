@@ -44,10 +44,10 @@ class CalendarRepository:
             return events
 
         except requests.exceptions.RequestException as e:
-            logger.debug(f"Error downloading calendar: {e}")
+            logger.warning(f"Error downloading calendar: {e}")
             return []
         except ValueError as e:
-            logger.debug(f"Error parsing iCal data: {e}")
+            logger.warning(f"Error parsing iCal data: {e}")
             return []
 
     def get_event_summaries(self, target_date: datetime.date) -> list[str]:
