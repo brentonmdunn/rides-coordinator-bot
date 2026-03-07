@@ -206,7 +206,7 @@ async def on_error(event: str, *args, **kwargs) -> None:
         error_msg += f"```python\n{tb_text}\n```"
 
         # Log the error
-        logger.error(f"Uncaught exception in {event}: {tb_text}")
+        logger.exception(f"Uncaught exception in {event}")
 
         # Send to error channel
         try:

@@ -1,5 +1,7 @@
 """Service for event-related operations."""
 
+import logging
+
 from bot.repositories.community_events_repository import (
     EventsRepository as CommunityEventsRepository,
 )
@@ -9,6 +11,8 @@ from bot.utils.custom_exceptions import (
     MessageNotFoundError,
     RoleNotFoundError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class EventsService:
