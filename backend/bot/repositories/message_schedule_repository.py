@@ -1,13 +1,15 @@
 """Data access layer for message schedule pause operations."""
 
+import logging
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import select, update
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import JobName
-from bot.core.logger import logger
 from bot.core.models import MessageSchedulePause
+
+logger = logging.getLogger(__name__)
 
 # Valid job names — derived from the enum (single source of truth)
 VALID_JOB_NAMES = tuple(j.value for j in JobName)

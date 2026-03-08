@@ -1,13 +1,15 @@
 """Data access layer for feature flag operations."""
 
+import logging
 from typing import ClassVar
 
 from sqlalchemy import case, select, update
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import FeatureFlagNames
-from bot.core.logger import logger
 from bot.core.models import FeatureFlags as FeatureFlagsModel
+
+logger = logging.getLogger(__name__)
 
 
 class FeatureFlagsRepository:

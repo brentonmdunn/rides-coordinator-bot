@@ -65,7 +65,7 @@ console_handler.addFilter(UserEmailFilter())
 console_handler.addFilter(TransactionIdFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(filename)s:%(lineno)d %(name)s] [%(user_email)s] %(message)s"  # noqa: E501
+    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(name)s:%(lineno)d] [%(user_email)s] %(message)s"  # noqa: E501
 )
 
 console_handler.setFormatter(formatter)
@@ -145,7 +145,11 @@ def log_cmd(func):
         email_token = user_email_var.set(str(user))
         try:
             logger.info(log)
-            return await func(self, interaction, *args, **kwargs)
+            result = await func(self, interaction, *args, **kwargs)
+            return result
+        except Exception:
+            logger.exception(f"command=/{command_name} failed")
+            raise
         finally:
             user_email_var.reset(email_token)
             txn_id_var.reset(txn_token)
@@ -167,7 +171,13 @@ def log_job(func):
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         txn_token = txn_id_var.set(generate_txn_id())
         try:
-            return await func(*args, **kwargs)
+            logger.info(f"job={func.__name__} started")
+            result = await func(*args, **kwargs)
+            logger.info(f"job={func.__name__} completed")
+            return result
+        except Exception:
+            logger.exception(f"job={func.__name__} failed")
+            raise
         finally:
             txn_id_var.reset(txn_token)
 

@@ -1,5 +1,6 @@
 """Ask Rides API Routes."""
 
+import logging
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,11 +9,12 @@ from pydantic import BaseModel
 from api.auth import require_ride_coordinator
 from bot.api import get_bot
 from bot.core.enums import AskRidesMessage, CacheNamespace, JobName
-from bot.core.logger import logger
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.locations_service import LocationsService
 from bot.utils.cache import invalidate_namespace
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ask-rides", tags=["ask-rides"])
 
@@ -40,7 +42,7 @@ async def send_now():
         await run_ask_rides_all(bot)
         return {"success": True, "message": "Ask rides messages sent successfully"}
     except Exception as e:
-        logger.error(f"Error sending ask rides messages manually: {e}")
+        logger.exception("Error sending ask rides messages manually")
         raise HTTPException(status_code=500, detail=f"Failed to send messages: {e!s}") from e
 
 
@@ -233,5 +235,5 @@ async def get_ask_rides_reactions(message_type: str):
         }
 
     except Exception as e:
-        logger.error(f"Error fetching ask-rides reactions for {message_type}: {e}")
+        logger.exception(f"Error fetching ask-rides reactions for {message_type}")
         raise HTTPException(status_code=500, detail=str(e)) from e

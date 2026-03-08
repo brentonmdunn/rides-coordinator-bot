@@ -47,8 +47,8 @@ async def get_cloudflare_keys():
                 resp.raise_for_status()
                 _cloudflare_keys = resp.json()["keys"]
                 logger.info("Successfully fetched Cloudflare public keys")
-        except Exception as e:
-            logger.error(f"Failed to fetch Cloudflare keys from {url}: {e}")
+        except Exception:
+            logger.exception(f"Failed to fetch Cloudflare keys from {url}")
             return []
     return _cloudflare_keys
 
@@ -106,14 +106,14 @@ async def verify_cloudflare_token(request: Request):
         # Debug logging for troubleshooting 'Invalid audience' or 'Invalid issuer'
         try:
             unverified_payload = jwt.get_unverified_claims(token)
-            logger.error(
+            logger.exception(
                 f"Token verification failed for {request.url.path}: {e} | "
                 f"Token data -> aud: {unverified_payload.get('aud')} | "
                 f"iss: {unverified_payload.get('iss')}"
             )
         except Exception:
-            logger.error(
-                f"Token verification failed for {request.url.path}: {e} "
+            logger.exception(
+                f"Token verification failed for {request.url.path} "
                 "(could not parse unverified claims)"
             )
 

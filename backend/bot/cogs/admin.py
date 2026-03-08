@@ -1,12 +1,16 @@
 """Admin cog for administrative tasks."""
 
+import logging
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from bot.api import send_error_to_discord
-from bot.core.logger import log_cmd, logger
+from bot.core.logger import log_cmd
 from bot.services.admin_service import AdminService
+
+logger = logging.getLogger(__name__)
 
 
 class Admin(commands.Cog):

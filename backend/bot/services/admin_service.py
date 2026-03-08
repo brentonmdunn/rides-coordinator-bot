@@ -1,8 +1,12 @@
 """Service for admin-related operations."""
 
+import logging
+
 import discord
 
 from bot.utils.parsing import parse_discord_username
+
+logger = logging.getLogger(__name__)
 
 
 class AdminService:
@@ -29,6 +33,8 @@ class AdminService:
         success_count = 0
         failed_users = []
 
+        logger.info(f"assign_roles_from_csv: assigning role={role.name} to users from CSV input")
+
         for username in discord_usernames.split():
             # Clean username (remove @ if present)
             username = parse_discord_username(username)
@@ -49,4 +55,8 @@ class AdminService:
             except discord.HTTPException as e:
                 failed_users.append(f"{username} (HTTP Error: {e})")
 
+        logger.info(
+            f"assign_roles_from_csv: completed - {success_count} assigned, "
+            f"{len(failed_users)} failed"
+        )
         return success_count, failed_users

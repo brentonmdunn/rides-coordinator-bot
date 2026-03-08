@@ -1,9 +1,11 @@
 """Repository for event-related data access."""
 
+import logging
+
 import discord
 from discord.ext import commands
 
-from bot.core.logger import logger
+logger = logging.getLogger(__name__)
 
 
 class EventsRepository:

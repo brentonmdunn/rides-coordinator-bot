@@ -1,3 +1,5 @@
+import logging
+
 import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
@@ -9,10 +11,12 @@ from bot.core.enums import (
     FeatureFlagNames,
     JobName,
 )
-from bot.core.logger import logger
+from bot.core.logger import log_job
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.driver_service import DriverService
 from bot.utils.checks import feature_flag_enabled
+
+logger = logging.getLogger(__name__)
 
 
 async def _ask_drivers_template(
@@ -36,6 +40,7 @@ async def _ask_drivers_template(
         return None
 
 
+@log_job
 @feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_DRIVERS_JOB)
 async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO):
     if await MessageScheduleRepository.is_job_paused(JobName.FRIDAY):
@@ -48,6 +53,7 @@ async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     await _ask_drivers_template(bot, message, emojis, channel_id)
 
 
+@log_job
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_DRIVERS_JOB)
 async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO):
     if await MessageScheduleRepository.is_job_paused(JobName.SUNDAY):

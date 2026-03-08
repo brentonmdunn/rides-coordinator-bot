@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 from collections import defaultdict
 from datetime import datetime
@@ -10,7 +11,8 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from bot.core.enums import ChannelIds
-from bot.core.logger import logger
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 

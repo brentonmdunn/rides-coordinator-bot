@@ -1,5 +1,7 @@
 """Cog for handling reactions."""
 
+import logging
+
 import discord
 from discord.ext import commands
 
@@ -10,7 +12,7 @@ from bot.core.enums import (
     DaysOfWeek,
     FeatureFlagNames,
 )
-from bot.core.logger import generate_txn_id, logger, txn_id_var
+from bot.core.logger import generate_txn_id, txn_id_var
 from bot.core.reaction_enums import ReactionAction
 from bot.repositories.thread_repository import EventThreadRepository
 from bot.services.reaction_logging_service import ReactionLoggingService
@@ -19,6 +21,8 @@ from bot.services.thread_service import ThreadService
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.parsing import get_message_and_embed_content
 from bot.utils.time_helpers import is_during_target_window
+
+logger = logging.getLogger(__name__)
 
 
 class Reactions(commands.Cog):
@@ -90,11 +94,30 @@ class Reactions(commands.Cog):
         if not user:
             return
 
-        await self._late_rides_react(user, payload, message, channel, ReactionAction.ADD)
-        await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
-        await self._new_rides_helper(user, guild, payload.message_id)
-        await self._event_thread_add(payload, guild, user)
-        await self._check_if_ask_message(payload.message_id, payload.channel_id)
+        try:
+            await self._late_rides_react(user, payload, message, channel, ReactionAction.ADD)
+        except Exception:
+            logger.exception("_handle_reaction_add: error in _late_rides_react")
+
+        try:
+            await self._log_reactions(user, payload, message, channel, ReactionAction.ADD)
+        except Exception:
+            logger.exception("_handle_reaction_add: error in _log_reactions")
+
+        try:
+            await self._new_rides_helper(user, guild, payload.message_id)
+        except Exception:
+            logger.exception("_handle_reaction_add: error in _new_rides_helper")
+
+        try:
+            await self._event_thread_add(payload, guild, user)
+        except Exception:
+            logger.exception("_handle_reaction_add: error in _event_thread_add")
+
+        try:
+            await self._check_if_ask_message(payload.message_id, payload.channel_id)
+        except Exception:
+            logger.exception("_handle_reaction_add: error in _check_if_ask_message")
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -122,10 +145,25 @@ class Reactions(commands.Cog):
             logger.info(f"Ignoring bot reaction removal from {user.name}")
             return
 
-        await self._late_rides_react(user, payload, message, channel, ReactionAction.REMOVE)
-        await self._log_reactions(user, payload, message, channel, ReactionAction.REMOVE)
-        await self._event_thread_remove(payload, guild)
-        await self._check_if_ask_message(payload.message_id, payload.channel_id)
+        try:
+            await self._late_rides_react(user, payload, message, channel, ReactionAction.REMOVE)
+        except Exception:
+            logger.exception("_handle_reaction_remove: error in _late_rides_react")
+
+        try:
+            await self._log_reactions(user, payload, message, channel, ReactionAction.REMOVE)
+        except Exception:
+            logger.exception("_handle_reaction_remove: error in _log_reactions")
+
+        try:
+            await self._event_thread_remove(payload, guild)
+        except Exception:
+            logger.exception("_handle_reaction_remove: error in _event_thread_remove")
+
+        try:
+            await self._check_if_ask_message(payload.message_id, payload.channel_id)
+        except Exception:
+            logger.exception("_handle_reaction_remove: error in _check_if_ask_message")
 
     async def _check_if_ask_message(self, message_id, channel_id):
         from bot.services.locations_service import LocationsService

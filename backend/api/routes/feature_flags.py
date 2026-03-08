@@ -15,6 +15,7 @@ from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.utils.cache import invalidate_namespace
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -41,7 +42,7 @@ async def list_feature_flags():
             ]
         }
     except Exception as e:
-        logger.exception(f"Error fetching feature flags: {e}")
+        logger.exception("Error fetching feature flags")
         raise HTTPException(status_code=500, detail=f"Failed to fetch feature flags: {e!s}") from e
 
 
@@ -109,5 +110,5 @@ async def toggle_feature_flag(feature_name: str, update: FeatureFlagUpdate):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Error toggling feature flag: {e}")
+        logger.exception("Error toggling feature flag")
         raise HTTPException(status_code=500, detail=f"Failed to toggle feature flag: {e!s}") from e

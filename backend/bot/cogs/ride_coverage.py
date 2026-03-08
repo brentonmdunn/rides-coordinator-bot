@@ -1,13 +1,16 @@
 """Cog for ride coverage logic."""
 
+import logging
+
 import discord
 from discord.ext import commands
 
 from bot.api import send_error_to_discord
 from bot.core.enums import ChannelIds
-from bot.core.logger import logger
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
 from bot.utils.time_helpers import get_last_sunday
+
+logger = logging.getLogger(__name__)
 
 
 class RideCoverage(commands.Cog):

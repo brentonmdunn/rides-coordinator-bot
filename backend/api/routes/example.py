@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from bot.api import get_bot
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID", "916823070017204274"))
@@ -67,5 +68,5 @@ async def send_discord_message(request: Request):
             "user_email": user_email,
         }
     except Exception as e:
-        logger.error(f"Failed to send Discord message: {e}")
+        logger.exception("Failed to send Discord message")
         raise HTTPException(status_code=500, detail=f"Failed to send message: {e!s}") from e

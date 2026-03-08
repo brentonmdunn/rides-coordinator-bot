@@ -2,6 +2,7 @@
 
 import csv
 import io
+import logging
 import os
 
 import aiohttp
@@ -9,9 +10,10 @@ import discord
 from cogs_disabled.retreat import Col
 
 from bot.core.enums import ChannelIds
-from bot.core.logger import logger
 from bot.utils.constants import GUILD_ID
 from bot.utils.parsing import parse_discord_username
+
+logger = logging.getLogger(__name__)
 
 
 async def logic(reader, bot):

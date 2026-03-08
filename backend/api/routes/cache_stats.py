@@ -12,6 +12,8 @@ from api.auth import require_admin
 from bot.utils.cache import get_all_cache_stats, invalidate_all_namespaces
 
 logger = logging.getLogger(__name__)
+
+
 router = APIRouter()
 
 

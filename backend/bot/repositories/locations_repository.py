@@ -1,12 +1,15 @@
 """Repository for location data access."""
 
+import logging
+
 from sqlalchemy import delete, func, or_, select
 
 from bot.core.database import AsyncSessionLocal
-from bot.core.logger import logger
 from bot.core.models import Locations as LocationsModel
 from bot.core.models import NonDiscordRides
 from bot.utils.time_helpers import get_next_date_obj
+
+logger = logging.getLogger(__name__)
 
 
 class LocationsRepository:

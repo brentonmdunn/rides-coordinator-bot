@@ -1,6 +1,7 @@
 """Main entry point for the bot."""
 
 import asyncio
+import logging
 import os
 import traceback
 from pathlib import Path
@@ -21,9 +22,10 @@ from bot.core.database import (
     seed_message_schedule_pauses,
 )
 from bot.core.enums import ChannelIds
-from bot.core.logger import logger
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+
+logger = logging.getLogger(__name__)
 
 try:
     from bot.utils.constants import ERROR_CHANNEL_ID
@@ -204,7 +206,7 @@ async def on_error(event: str, *args, **kwargs) -> None:
         error_msg += f"```python\n{tb_text}\n```"
 
         # Log the error
-        logger.error(f"Uncaught exception in {event}: {tb_text}")
+        logger.exception(f"Uncaught exception in {event}")
 
         # Send to error channel
         try:

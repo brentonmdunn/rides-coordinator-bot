@@ -1,10 +1,13 @@
 """Service for handling ride requests."""
 
+import logging
+
 import discord
 
 from bot.api import send_error_to_discord
 from bot.core.enums import CategoryIds, ChannelIds, RoleIds
-from bot.core.logger import logger
+
+logger = logging.getLogger(__name__)
 
 
 class RideRequestService:

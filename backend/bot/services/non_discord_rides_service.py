@@ -1,5 +1,6 @@
 """Service for managing non-Discord rides."""
 
+import logging
 from datetime import date
 
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +9,8 @@ from bot.core.database import AsyncSessionLocal
 from bot.core.models import NonDiscordRides
 from bot.repositories.non_discord_rides_repository import NonDiscordRidesRepository
 from bot.utils.time_helpers import get_next_date_obj
+
+logger = logging.getLogger(__name__)
 
 
 class DuplicateRideError(Exception):

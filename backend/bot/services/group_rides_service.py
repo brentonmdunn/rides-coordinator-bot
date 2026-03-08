@@ -1,6 +1,7 @@
 """Service for group rides logic."""
 
 import asyncio
+import logging
 from datetime import datetime, time, timedelta
 
 import discord
@@ -16,7 +17,6 @@ from bot.core.enums import (
     JobName,
     PickupLocations,
 )
-from bot.core.logger import logger
 from bot.core.schemas import (
     Identity,
     # LLMOutputError, # Removed
@@ -37,6 +37,8 @@ from bot.utils.constants import MAP_LINKS
 # )
 from bot.utils.locations import LOCATIONS_MATRIX, lookup_time
 from bot.utils.parsing import get_message_and_embed_content, parse_time
+
+logger = logging.getLogger(__name__)
 
 # LLM_MODEL = "gemini-2.5-pro"
 # LLM_MODEL = "gemini-2.5-flash"
@@ -356,6 +358,10 @@ class GroupRidesService:
             ValueError: If invalid parameters or insufficient capacity
         """
         # Fetch locations and reactions
+        logger.info(
+            f"_process_ride_grouping: starting - message_id={message_id}, "
+            f"driver_capacity={driver_capacity}, channel_id={channel_id}"
+        )
         (
             locations_people,
             usernames_reacted,
@@ -441,6 +447,7 @@ class GroupRidesService:
         pickups = llm_input_pickups(passengers_by_location)
 
         try:
+            logger.info("_process_ride_grouping: calling LLM for ride grouping")
             llm_result = await asyncio.to_thread(
                 self.llm_service.generate_ride_groups,
                 pickups,
@@ -463,6 +470,7 @@ class GroupRidesService:
             raise ValueError(f"LLM returned with error: {llm_result}")
 
         output = create_output(llm_result, passengers_by_location, end_leave_time, off_campus)
+        logger.info(f"_process_ride_grouping: completed - generated {len(output)} output blocks")
         return output
 
     async def group_rides(
@@ -485,6 +493,11 @@ class GroupRidesService:
             custom_prompt (str | None, optional): Optional custom prompt to use. Defaults to None.
         """
         await interaction.response.defer()
+
+        logger.info(
+            f"group_rides: user action - day={day}, message_id={message_id}, "
+            f"driver_capacity={driver_capacity}, legacy_prompt={legacy_prompt}"
+        )
 
         if day:
             if day == JobName.FRIDAY:
@@ -649,6 +662,11 @@ class GroupRidesService:
         """
         if channel_id is None:
             channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+
+        logger.info(
+            f"group_rides_api: user action - day={day}, message_id={message_id}, "
+            f"driver_capacity={driver_capacity}, channel_id={channel_id}"
+        )
 
         # If day is provided, find the corresponding message
         if day:

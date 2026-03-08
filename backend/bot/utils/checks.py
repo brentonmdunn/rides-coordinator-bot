@@ -1,14 +1,16 @@
 """utils/checks.py"""
 
 import functools
+import logging
 from collections.abc import Callable
 from typing import Any
 
 import discord
 from discord import app_commands
 
-from bot.core.logger import logger
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+
+logger = logging.getLogger(__name__)
 
 
 def is_admin():

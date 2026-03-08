@@ -1,10 +1,12 @@
 """utils/locations.py"""
 
 import heapq
+import logging
 
 from bot.core.enums import PickupLocations
-from bot.core.logger import logger
 from bot.core.schemas import LocationQuery
+
+logger = logging.getLogger(__name__)
 
 LOCATIONS_MATRIX = {
     PickupLocations.MUIR: [(PickupLocations.SIXTH, 1), (PickupLocations.EIGHTH, 2)],

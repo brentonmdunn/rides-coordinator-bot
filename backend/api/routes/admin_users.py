@@ -15,6 +15,7 @@ from bot.core.enums import AccountRoles
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 

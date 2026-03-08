@@ -1,7 +1,11 @@
 """Repository for group rides data access."""
 
+import logging
+
 import discord
 from discord.ext import commands
+
+logger = logging.getLogger(__name__)
 
 
 class GroupRidesRepository:
@@ -28,9 +32,11 @@ class GroupRidesRepository:
             try:
                 channel = await self.bot.fetch_channel(channel_id)
             except discord.NotFound:
+                logger.warning(f"fetch_message: channel {channel_id} not found")
                 return None
 
         try:
             return await channel.fetch_message(message_id)
         except discord.NotFound:
+            logger.warning(f"fetch_message: message {message_id} not found in channel {channel_id}")
             return None
