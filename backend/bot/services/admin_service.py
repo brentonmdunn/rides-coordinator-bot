@@ -60,3 +60,53 @@ class AdminService:
             f"{len(failed_users)} failed"
         )
         return success_count, failed_users
+
+    @staticmethod
+    async def add_users_to_channel(
+        discord_usernames: str,
+        channel: discord.TextChannel,
+        guild: discord.Guild,
+    ) -> tuple[int, list[str]]:
+        """Grants read/write permissions in a channel to the specified users.
+
+        Args:
+            discord_usernames: Space-separated Discord usernames.
+            channel: The channel to grant access to.
+            guild: The guild to find members in.
+
+        Returns:
+            A tuple containing the count of successful grants and a list of failed usernames.
+        """
+        success_count = 0
+        failed_users = []
+
+        logger.info(
+            f"add_users_to_channel: granting access in channel={channel.name} to users from input"
+        )
+
+        for username in discord_usernames.split():
+            username = parse_discord_username(username)
+
+            member = guild.get_member_named(username)
+            if not member:
+                failed_users.append(username)
+                continue
+
+            try:
+                overwrites = discord.PermissionOverwrite(
+                    view_channel=True,
+                    read_messages=True,
+                    send_messages=True,
+                    read_message_history=True,
+                )
+                await channel.set_permissions(member, overwrite=overwrites)
+                success_count += 1
+            except discord.Forbidden:
+                failed_users.append(f"{username} (missing permissions)")
+            except discord.HTTPException as e:
+                failed_users.append(f"{username} (HTTP Error: {e})")
+
+        logger.info(
+            f"add_users_to_channel: completed - {success_count} granted, {len(failed_users)} failed"
+        )
+        return success_count, failed_users
