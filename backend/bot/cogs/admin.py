@@ -70,6 +70,58 @@ class Admin(commands.Cog):
             await send_error_to_discord("**Unexpected Error** in `/give-role`")
             await interaction.followup.send("An unexpected error occurred. Please try again later.")
 
+    @app_commands.command(
+        name="add-to-channel",
+        description="Grant users read/write access to the current channel.",
+    )
+    @app_commands.describe(
+        discord_usernames="Space-separated Discord usernames to grant access to.",
+    )
+    @app_commands.checks.has_permissions(manage_channels=True)
+    @log_cmd
+    async def add_to_channel(
+        self, interaction: discord.Interaction, discord_usernames: str
+    ) -> None:
+        """Grants read/write channel permissions to the specified users.
+
+        Args:
+            interaction: The Discord interaction.
+            discord_usernames: Space-separated Discord usernames.
+        """
+        await interaction.response.defer()
+
+        try:
+            success_count, failed_users = await AdminService.add_users_to_channel(
+                discord_usernames, interaction.channel, interaction.guild
+            )
+
+            embed = discord.Embed(
+                title="Channel Access Updated",
+                description=(
+                    f"Granted read/write access to {success_count} users "
+                    f"in {interaction.channel.mention}."
+                ),
+                color=discord.Color.green(),
+            )
+
+            if failed_users:
+                failed_list = ", ".join(failed_users)
+                if len(failed_list) > 1000:
+                    failed_list = failed_list[:1000] + "..."
+
+                embed.add_field(
+                    name=f"Failed to find/assign ({len(failed_users)})",
+                    value=failed_list,
+                    inline=False,
+                )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception:
+            logger.exception("Unexpected error in add_to_channel")
+            await send_error_to_discord("**Unexpected Error** in `/add-to-channel`")
+            await interaction.followup.send("An unexpected error occurred. Please try again later.")
+
 
 async def setup(bot: commands.Bot):
     """Sets up the Admin cog."""
