@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from bot.api import get_bot
 from bot.core.enums import PickupLocations
 from bot.services.group_rides_service import GroupRidesService
-from bot.utils.constants import MAP_LINKS
+from bot.utils.constants import MAP_LOCATIONS, get_map_links
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ class PickupLocationsResponse(BaseModel):
 
     locations: list[PickupLocationItem]
     map_links: dict[str, str]
+    coordinates: dict[str, dict[str, float]]
 
 
 @router.get("/api/pickup-locations", response_model=PickupLocationsResponse)
@@ -68,10 +69,17 @@ async def get_pickup_locations():
             for location in PickupLocations
         ]
 
-        # Convert MAP_LINKS to use location values as keys (string keys for JSON)
-        map_links = {location.value: url for location, url in MAP_LINKS.items()}
+        # Generate map links from coordinates
+        map_links = {loc.value: url for loc, url in get_map_links().items()}
 
-        return PickupLocationsResponse(locations=locations, map_links=map_links)
+        # Build coordinates dict keyed by location value
+        coordinates = {
+            loc.value: {"lat": lat, "lng": lng} for loc, (lat, lng) in MAP_LOCATIONS.items()
+        }
+
+        return PickupLocationsResponse(
+            locations=locations, map_links=map_links, coordinates=coordinates
+        )
 
     except Exception as e:
         logger.exception("Error fetching pickup locations")

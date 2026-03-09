@@ -81,6 +81,7 @@ export interface PickupLocation {
 export interface PickupLocationsResponse {
     locations: PickupLocation[]
     map_links: { [location: string]: string }
+    coordinates: { [location: string]: { lat: number; lng: number } }
 }
 
 export interface MakeRouteResponse {

@@ -8,7 +8,7 @@ from bot.core.logger import log_cmd
 from bot.services.locations_service import LocationsService
 from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from bot.utils.checks import feature_flag_enabled
-from bot.utils.constants import MAP_LINKS
+from bot.utils.constants import MAP_LOCATIONS, get_map_url
 
 
 class Locations(commands.Cog):
@@ -193,10 +193,11 @@ class Locations(commands.Cog):
             else "**All locations** (slight rate limit warning so all don't send at once)"
         )
         await interaction.response.send_message(header)
-        for loc_name, map_url in MAP_LINKS.items():
-            if search_term and search_term not in loc_name.lower():
+        for loc, _coords in MAP_LOCATIONS.items():
+            if search_term and search_term not in loc.value.lower():
                 continue
-            await interaction.channel.send(loc_name)
+            map_url = get_map_url(loc)
+            await interaction.channel.send(loc.value)
             await interaction.channel.send(f"([Google Maps]({map_url}))")
 
 
