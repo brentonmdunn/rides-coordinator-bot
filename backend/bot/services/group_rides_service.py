@@ -27,7 +27,7 @@ from bot.core.schemas import (
 from bot.repositories.group_rides_repository import GroupRidesRepository
 from bot.services.llm_service import LLMService
 from bot.services.locations_service import LocationsService
-from bot.utils.constants import MAP_LINKS
+from bot.utils.constants import get_map_url
 
 # from bot.utils.genai.prompt import (
 #     CUSTOM_INSTRUCTIONS,
@@ -265,8 +265,9 @@ def create_output(
             )
 
             # Add google maps link if we have it
-            if pickup_location in MAP_LINKS:
-                formatted_string = f"{base_string} ([Google Maps]({MAP_LINKS[pickup_location]}))"
+            map_url = get_map_url(pickup_location)
+            if map_url:
+                formatted_string = f"{base_string} ([Google Maps]({map_url}))"
             else:
                 formatted_string = base_string
 
@@ -620,8 +621,9 @@ class GroupRidesService:
             )
 
             # Add google maps link if we have it
-            if location in MAP_LINKS:
-                formatted_string = f"{base_string} ([Google Maps]({MAP_LINKS[location]}))"
+            map_url = get_map_url(location)
+            if map_url:
+                formatted_string = f"{base_string} ([Google Maps]({map_url}))"
             else:
                 formatted_string = base_string
 
