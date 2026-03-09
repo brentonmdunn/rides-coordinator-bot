@@ -8,6 +8,7 @@ import DriverReactions from '../components/DriverReactions'
 import ReactionDetails from '../components/ReactionDetails'
 import GroupRides from '../components/GroupRides'
 import RouteBuilder from '../components/RouteBuilder'
+import MapLinks from '../components/MapLinks'
 import AskRidesDashboard from '../components/AskRidesDashboard/AskRidesDashboard'
 import RideCoverageCheck from '../components/RideCoverageCheck'
 import RideCoverageWarning from '../components/RideCoverageWarning'
@@ -68,6 +69,7 @@ function Home() {
                         <PickupLocations />
                         <GroupRides />
                         <RouteBuilder />
+                        <MapLinks />
                         {isAdmin && <FeatureFlagsManager />}
                         {isAdmin && <UserManagement />}
                         {isAdmin && <CacheStats />}
