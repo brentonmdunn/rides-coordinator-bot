@@ -34,9 +34,12 @@ const UCSD_CENTER: [number, number] = [32.8801, -117.2340]
 // Component to recenter map when selected location changes
 function RecenterMap({ center }: { center: [number, number] }) {
     const map = useMap()
+    // Unpack coordinates so we can depend on primitive values instead of array identity
+    const [lat, lng] = center
+
     useEffect(() => {
-        map.flyTo(center, 16, { duration: 0.8 })
-    }, [center, map])
+        map.flyTo([lat, lng], 16, { duration: 0.8 })
+    }, [lat, lng, map])
     return null
 }
 
@@ -145,6 +148,7 @@ function MapInteractionGuard() {
         </div>
     ) : null
 }
+
 
 function MapLinks() {
     const [availableLocations, setAvailableLocations] =
@@ -289,7 +293,7 @@ function MapLinks() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => copyToClipboard(selectedMapUrl)}
-                                className={`transition-all duration-300 ${isCopied
+                                className={`min-w-[6.5rem] transition-colors duration-300 ${isCopied
                                     ? 'border-green-500 text-green-600 dark:text-green-400'
                                     : ''
                                     }`}
