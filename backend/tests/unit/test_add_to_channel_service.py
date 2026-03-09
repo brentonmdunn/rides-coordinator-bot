@@ -70,9 +70,7 @@ async def test_add_users_strips_at_symbol(guild, channel):
 
     guild.get_member_named.side_effect = lambda name: {"alice": alice}.get(name)
 
-    success_count, failed_users = await AdminService.add_users_to_channel(
-        "@alice", channel, guild
-    )
+    success_count, failed_users = await AdminService.add_users_to_channel("@alice", channel, guild)
 
     assert success_count == 1
     assert failed_users == []
@@ -87,9 +85,7 @@ async def test_add_users_forbidden_error(guild, channel):
         MagicMock(status=403), "Missing Permissions"
     )
 
-    success_count, failed_users = await AdminService.add_users_to_channel(
-        "alice", channel, guild
-    )
+    success_count, failed_users = await AdminService.add_users_to_channel("alice", channel, guild)
 
     assert success_count == 0
     assert len(failed_users) == 1
@@ -105,9 +101,7 @@ async def test_add_users_http_error(guild, channel):
         MagicMock(status=500), "Server Error"
     )
 
-    success_count, failed_users = await AdminService.add_users_to_channel(
-        "alice", channel, guild
-    )
+    success_count, failed_users = await AdminService.add_users_to_channel("alice", channel, guild)
 
     assert success_count == 0
     assert len(failed_users) == 1

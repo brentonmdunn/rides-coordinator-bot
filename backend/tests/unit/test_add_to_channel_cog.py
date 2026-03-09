@@ -32,9 +32,7 @@ async def test_add_to_channel_success(admin_cog):
     ) as mock_service:
         mock_service.return_value = (3, [])
 
-        await admin_cog.add_to_channel.callback(
-            admin_cog, interaction, "alice bob charlie"
-        )
+        await admin_cog.add_to_channel.callback(admin_cog, interaction, "alice bob charlie")
 
         mock_service.assert_called_once_with(
             "alice bob charlie", interaction.channel, interaction.guild
@@ -61,9 +59,7 @@ async def test_add_to_channel_with_failures(admin_cog):
     ) as mock_service:
         mock_service.return_value = (1, ["unknown_user"])
 
-        await admin_cog.add_to_channel.callback(
-            admin_cog, interaction, "alice unknown_user"
-        )
+        await admin_cog.add_to_channel.callback(admin_cog, interaction, "alice unknown_user")
 
         interaction.followup.send.assert_called_once()
         _, kwargs = interaction.followup.send.call_args
@@ -81,14 +77,15 @@ async def test_add_to_channel_service_exception(admin_cog):
     interaction.channel = MagicMock(spec=discord.TextChannel)
     interaction.guild = MagicMock(spec=discord.Guild)
 
-    with patch(
-        "bot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
-    ) as mock_service, patch("bot.cogs.admin.send_error_to_discord", new_callable=AsyncMock):
+    with (
+        patch(
+            "bot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
+        ) as mock_service,
+        patch("bot.cogs.admin.send_error_to_discord", new_callable=AsyncMock),
+    ):
         mock_service.side_effect = Exception("Unexpected")
 
-        await admin_cog.add_to_channel.callback(
-            admin_cog, interaction, "alice"
-        )
+        await admin_cog.add_to_channel.callback(admin_cog, interaction, "alice")
 
         interaction.followup.send.assert_called_once_with(
             "An unexpected error occurred. Please try again later."
