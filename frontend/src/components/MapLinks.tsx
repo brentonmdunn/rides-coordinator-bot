@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import L from 'leaflet'
+import { useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiFetch } from '../lib/api'
 import { useCopyToClipboard } from '../lib/utils'
@@ -16,138 +15,12 @@ import { Copy, Check, ExternalLink } from 'lucide-react'
 import { Button } from './ui/button'
 import type { PickupLocationsResponse } from '../types'
 
+import { RecenterMap, MapInteractionGuard, UCSD_CENTER, setupLeafletIcons } from './MapShared'
+
 // Fix default marker icon (Leaflet + bundlers lose the default icon paths)
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+setupLeafletIcons()
 
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: markerIcon2x,
-    iconUrl: markerIcon,
-    shadowUrl: markerShadow,
-})
 
-// UCSD campus center (fallback)
-const UCSD_CENTER: [number, number] = [32.8801, -117.2340]
-
-// Component to recenter map when selected location changes
-function RecenterMap({ center }: { center: [number, number] }) {
-    const map = useMap()
-    // Unpack coordinates so we can depend on primitive values instead of array identity
-    const [lat, lng] = center
-
-    useEffect(() => {
-        map.flyTo([lat, lng], 16, { duration: 0.8 })
-    }, [lat, lng, map])
-    return null
-}
-
-// Prevents accidental map interaction while scrolling the page.
-// Desktop: Cmd/Ctrl + scroll to zoom (dragging is free).
-// Mobile: Two-finger drag to pan, pinch-zoom works freely.
-//
-// To disable the guard:
-//   1. Remove <MapInteractionGuard /> from inside the MapContainer
-//   2. Change MapContainer props to: scrollWheelZoom={true} dragging={true}
-//      and remove the dragging={false} prop
-function MapInteractionGuard() {
-    const map = useMap()
-    const [hintMessage, setHintMessage] = useState<string | null>(null)
-
-    const isTouchDevice =
-        typeof window !== 'undefined' && 'ontouchstart' in window
-
-    const showHintTemporarily = useCallback(
-        (msg: string) => {
-            setHintMessage(msg)
-            const id = setTimeout(() => setHintMessage(null), 1500)
-            return () => clearTimeout(id)
-        },
-        [setHintMessage]
-    )
-
-    // Desktop: gate scroll-zoom behind Cmd/Ctrl, allow free dragging
-    useEffect(() => {
-        if (isTouchDevice) return
-
-        map.scrollWheelZoom.disable()
-        map.dragging.enable()
-
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.metaKey || e.ctrlKey) {
-                map.scrollWheelZoom.enable()
-                setHintMessage(null)
-            }
-        }
-        const onKeyUp = () => {
-            map.scrollWheelZoom.disable()
-        }
-
-        window.addEventListener('keydown', onKeyDown)
-        window.addEventListener('keyup', onKeyUp)
-        window.addEventListener('blur', () => map.scrollWheelZoom.disable())
-
-        return () => {
-            window.removeEventListener('keydown', onKeyDown)
-            window.removeEventListener('keyup', onKeyUp)
-        }
-    }, [map, isTouchDevice])
-
-    // Desktop: show hint on scroll without modifier
-    useEffect(() => {
-        if (isTouchDevice) return
-        const container = map.getContainer()
-
-        const onWheel = (e: WheelEvent) => {
-            if (!e.metaKey && !e.ctrlKey) {
-                showHintTemporarily('Use ⌘/Ctrl + scroll to zoom')
-            }
-        }
-
-        container.addEventListener('wheel', onWheel, { passive: true })
-        return () => container.removeEventListener('wheel', onWheel)
-    }, [map, isTouchDevice, showHintTemporarily])
-
-    // Mobile: require two-finger drag, allow pinch-zoom
-    useEffect(() => {
-        if (!isTouchDevice) return
-
-        map.dragging.disable()
-
-        const container = map.getContainer()
-
-        const onTouchStart = (e: TouchEvent) => {
-            if (e.touches.length >= 2) {
-                map.dragging.enable()
-            } else {
-                map.dragging.disable()
-                showHintTemporarily('Use two fingers to move the map')
-            }
-        }
-
-        const onTouchEnd = () => {
-            map.dragging.disable()
-        }
-
-        container.addEventListener('touchstart', onTouchStart, {
-            passive: true,
-        })
-        container.addEventListener('touchend', onTouchEnd, { passive: true })
-        return () => {
-            container.removeEventListener('touchstart', onTouchStart)
-            container.removeEventListener('touchend', onTouchEnd)
-        }
-    }, [map, isTouchDevice, showHintTemporarily])
-
-    return hintMessage ? (
-        <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
-            <div className="bg-black/70 text-white text-sm px-4 py-2 rounded-lg shadow-lg">
-                {hintMessage}
-            </div>
-        </div>
-    ) : null
-}
 
 
 function MapLinks() {
