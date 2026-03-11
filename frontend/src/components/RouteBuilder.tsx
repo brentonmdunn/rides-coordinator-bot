@@ -15,6 +15,9 @@ import ErrorMessage from './ErrorMessage'
 import EditableOutput from './EditableOutput'
 import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
 
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { RecenterMap, MapInteractionGuard, setupLeafletIcons, UCSD_CENTER } from './MapShared'
+
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { X, GripVertical } from 'lucide-react'
 
@@ -94,6 +97,8 @@ function SortableLocationItem({
     )
 }
 
+setupLeafletIcons()
+
 function RouteBuilder() {
     // State for available locations from API
     const [availableLocations, setAvailableLocations] = useState<PickupLocationsResponse | null>(null)
@@ -123,6 +128,10 @@ function RouteBuilder() {
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
     const [copiedRoute, setCopiedRoute] = useState(false)
+
+    // Map state
+    const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null)
+    const [mapBounds, setMapBounds] = useState<L.LatLngBoundsExpression | undefined>(undefined)
 
     // UI State
     const [showInfo, setShowInfo] = useState(false)
@@ -160,6 +169,68 @@ function RouteBuilder() {
     const getLocationValue = (key: string): string => {
         return availableLocations?.locations.find(loc => loc.key === key)?.value || key
     }
+
+    // Fetch routing geometry from OSRM whenever selected locations change
+    useEffect(() => {
+        if (!availableLocations || selectedLocationKeys.length < 2) {
+            setRouteGeometry(null)
+            if (selectedLocationKeys.length === 1 && availableLocations) {
+                const name = getLocationValue(selectedLocationKeys[0])
+                const singleCoord = availableLocations.coordinates[name]
+                if (singleCoord) {
+                    setMapBounds([
+                        [singleCoord.lat - 0.01, singleCoord.lng - 0.01],
+                        [singleCoord.lat + 0.01, singleCoord.lng + 0.01]
+                    ])
+                }
+            } else if (selectedLocationKeys.length === 0) {
+                setMapBounds(undefined)
+            }
+            return
+        }
+
+        const coords = selectedLocationKeys.map(key => {
+            const name = getLocationValue(key)
+            return availableLocations.coordinates[name]
+        }).filter(Boolean)
+
+        if (coords.length < 2) {
+            setRouteGeometry(null)
+            return
+        }
+
+        const coordsString = coords.map(c => `${c.lng},${c.lat}`).join(';')
+
+        // Set rough bounds from the markers to fit map
+        const lats = coords.map(c => c.lat)
+        const lngs = coords.map(c => c.lng)
+        // Add some padding to bounds calculation
+        const latPadding = (Math.max(...lats) - Math.min(...lats)) * 0.1 || 0.01
+        const lngPadding = (Math.max(...lngs) - Math.min(...lngs)) * 0.1 || 0.01
+
+        setMapBounds([
+            [Math.min(...lats) - latPadding, Math.min(...lngs) - lngPadding],
+            [Math.max(...lats) + latPadding, Math.max(...lngs) + lngPadding]
+        ])
+
+        const fetchRoute = async () => {
+            try {
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`)
+                if (!res.ok) return
+                const data = await res.json()
+                if (data.routes && data.routes.length > 0) {
+                    const feature = data.routes[0].geometry
+                    // OSRM returns [lng, lat], Leaflet Polyline needs [lat, lng]
+                    const latLngs = feature.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number])
+                    setRouteGeometry(latLngs)
+                }
+            } catch (err) {
+                console.error("Failed to fetch route geometry", err)
+            }
+        }
+
+        fetchRoute()
+    }, [selectedLocationKeys, availableLocations])
 
     // Add location to selected list from dropdown
     const addLocation = () => {
@@ -339,6 +410,8 @@ function RouteBuilder() {
                         </div>
                     )}
 
+
+
                     {/* Arrival Time Selection */}
                     <div>
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
@@ -450,6 +523,40 @@ function RouteBuilder() {
                         />
                     </div>
                 )}
+
+
+                {/* Interactive Map view of path */}
+                <div className="mt-6 rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 relative z-0">
+                    <MapContainer
+                        center={UCSD_CENTER}
+                        zoom={14}
+                        scrollWheelZoom={false}
+                        dragging={false}
+                        style={{ height: '350px', width: '100%' }}
+                    >
+                        <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <MapInteractionGuard />
+                        <RecenterMap bounds={mapBounds} />
+
+                        {selectedLocationKeys.map((key, i) => {
+                            const value = getLocationValue(key)
+                            const coords = availableLocations?.coordinates[value]
+                            if (!coords) return null
+                            return (
+                                <Marker key={`${key}-${i}`} position={[coords.lat, coords.lng]}>
+                                    <Popup><strong>{i + 1}.</strong> {value}</Popup>
+                                </Marker>
+                            )
+                        })}
+
+                        {routeGeometry && (
+                            <Polyline positions={routeGeometry} color="#10b981" weight={4} opacity={0.8} />
+                        )}
+                    </MapContainer>
+                </div>
             </CardContent>
         </Card>
     )
