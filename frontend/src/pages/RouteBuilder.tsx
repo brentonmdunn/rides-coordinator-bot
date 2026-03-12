@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MapContainer, TileLayer, Marker, Tooltip, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Tooltip, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { UCSD_CENTER, setupLeafletIcons } from '../components/MapShared'
@@ -103,6 +103,8 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
 // --- Main page component ---
 export default function RouteBuilder() {
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
+    const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null)
+
 
     const { data: locationsData } = useQuery<PickupLocationsResponse>({
         queryKey: ['pickup-locations'],
@@ -154,6 +156,49 @@ export default function RouteBuilder() {
         }
     }
 
+    // Fetch route geometry from OSRM when selected locations change
+    useEffect(() => {
+        if (!locationsData || selectedLocationKeys.length < 2) {
+            setRouteGeometry(null)
+            return
+        }
+
+        const coords = selectedLocationKeys
+            .map((key) => {
+                const name = getLocationValue(key)
+                return locationsData.coordinates[name]
+            })
+            .filter(Boolean)
+
+        if (coords.length < 2) {
+            setRouteGeometry(null)
+            return
+        }
+
+        const coordsString = coords.map((c) => `${c.lng},${c.lat}`).join(';')
+
+        const fetchRoute = async () => {
+            try {
+                const res = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`
+                )
+                if (!res.ok) return
+                const data = await res.json()
+                if (data.routes && data.routes.length > 0) {
+                    const feature = data.routes[0].geometry
+                    const latLngs = feature.coordinates.map(
+                        (c: [number, number]) => [c[1], c[0]] as [number, number]
+                    )
+                    setRouteGeometry(latLngs)
+                }
+            } catch (err) {
+                console.error('Failed to fetch route geometry', err)
+            }
+        }
+
+        fetchRoute()
+    }, [selectedLocationKeys, locationsData, getLocationValue])
+
     return (
         <div className="h-screen w-full relative">
             {/* Full-screen map */}
@@ -167,6 +212,7 @@ export default function RouteBuilder() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <MapClickHandler onMapClick={() => {}} />
+
 
                 {locationsData?.locations.map((loc) => {
                     const coords = locationsData.coordinates[loc.value]
@@ -195,6 +241,10 @@ export default function RouteBuilder() {
                         </Marker>
                     )
                 })}
+
+                {routeGeometry && (
+                    <Polyline positions={routeGeometry} color="#10b981" weight={4} opacity={0.8} />
+                )}
             </MapContainer>
 
             {/* Right-side route order panel */}
