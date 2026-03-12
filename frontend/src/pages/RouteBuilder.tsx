@@ -5,8 +5,12 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { UCSD_CENTER, setupLeafletIcons } from '../components/MapShared'
 import { apiFetch } from '../lib/api'
-import type { PickupLocationsResponse } from '../types'
+import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
 import { X, GripVertical } from 'lucide-react'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import EditableOutput from '../components/EditableOutput'
+import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
 
 import {
     DndContext,
@@ -105,7 +109,19 @@ export default function RouteBuilder() {
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
     const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null)
 
+    const defaultTimes: Record<'friday' | 'sunday', string> = {
+        friday: '7:10pm',
+        sunday: '10:10am',
+    }
+    const autoMode = getAutomaticDay()
+    const [leaveTime, setLeaveTime] = useState(defaultTimes[autoMode])
+    const [timeMode, setTimeMode] = useState<'friday' | 'sunday' | 'sunday_class' | 'discipleship' | 'custom'>(autoMode)
 
+    const [routeOutput, setRouteOutput] = useState('')
+    const [originalRouteOutput, setOriginalRouteOutput] = useState('')
+    const [routeLoading, setRouteLoading] = useState(false)
+    const [routeError, setRouteError] = useState('')
+    const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
     const { data: locationsData } = useQuery<PickupLocationsResponse>({
         queryKey: ['pickup-locations'],
         queryFn: async () => {
@@ -154,6 +170,42 @@ export default function RouteBuilder() {
                 return arrayMove(items, oldIndex, newIndex)
             })
         }
+    }
+
+    // Generate route via API
+    const generateRoute = async () => {
+        setRouteLoading(true)
+        setRouteError('')
+        setRouteOutput('')
+        setOriginalRouteOutput('')
+
+        try {
+            const response = await apiFetch('/api/make-route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    locations: selectedLocationKeys,
+                    leave_time: leaveTime,
+                }),
+            })
+
+            const result: MakeRouteResponse = await response.json()
+
+            if (result.success && result.route) {
+                setRouteOutput(result.route)
+                setOriginalRouteOutput(result.route)
+            } else {
+                setRouteError(result.error || 'Failed to generate route')
+            }
+        } catch (error) {
+            setRouteError(error instanceof Error ? error.message : 'Unknown error')
+        } finally {
+            setRouteLoading(false)
+        }
+    }
+
+    const revertRoute = () => {
+        setRouteOutput(originalRouteOutput)
     }
 
     // Fetch route geometry from OSRM when selected locations change
@@ -277,6 +329,81 @@ export default function RouteBuilder() {
                                 </div>
                             </SortableContext>
                         </DndContext>
+
+                        {/* Arrival Time Selection */}
+                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
+                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Arrival Time
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {[
+                                    { key: 'friday' as const, label: 'Fri (7:10pm)', time: '7:10pm' },
+                                    { key: 'sunday' as const, label: 'Sun (10:10am)', time: '10:10am' },
+                                    { key: 'sunday_class' as const, label: 'Class (8:40am)', time: '8:40am' },
+                                    { key: 'discipleship' as const, label: 'Disc (7:10am)', time: '7:10am' },
+                                    { key: 'custom' as const, label: 'Custom', time: '' },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.key}
+                                        type="button"
+                                        onClick={() => {
+                                            setTimeMode(opt.key)
+                                            setLeaveTime(opt.time)
+                                        }}
+                                        className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                                            timeMode === opt.key
+                                                ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-zinc-800 dark:text-slate-300 dark:border-zinc-600 dark:hover:bg-zinc-700'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {timeMode === 'custom' && (
+                                <Input
+                                    type="text"
+                                    value={leaveTime}
+                                    onChange={(e) => setLeaveTime(e.target.value)}
+                                    placeholder="e.g., 7:10pm"
+                                    className="mt-2 h-8 text-sm"
+                                />
+                            )}
+                        </div>
+
+                        {/* Generate Button */}
+                        <Button
+                            onClick={generateRoute}
+                            disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
+                            className="w-full mt-3"
+                        >
+                            {routeLoading ? 'Generating...' : 'Generate Route'}
+                        </Button>
+
+                        {/* Error */}
+                        {routeError && (
+                            <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                                {routeError}
+                            </div>
+                        )}
+
+                        {/* Route Output */}
+                        {routeOutput && (
+                            <div className="mt-3">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    Generated Route
+                                </div>
+                                <EditableOutput
+                                    value={routeOutput}
+                                    originalValue={originalRouteOutput}
+                                    onChange={setRouteOutput}
+                                    onCopy={() => copyToClipboard(routeOutput)}
+                                    onRevert={revertRoute}
+                                    copied={copiedText === routeOutput}
+                                    minHeight="min-h-[120px]"
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
