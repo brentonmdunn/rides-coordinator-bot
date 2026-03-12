@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import Home from './pages/Home.tsx'
 import Learn from './pages/Learn.tsx'
+import RouteBuilder from './pages/RouteBuilder.tsx'
 import { ThemeProvider } from "./components/theme-provider"
 
 const queryClient = new QueryClient()
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/learn" element={<Learn />} />
+            <Route path="/route-builder" element={<RouteBuilder />} />
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
