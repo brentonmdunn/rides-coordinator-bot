@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getAutomaticDay } from '../lib/utils'
+import { createPortal } from 'react-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Expand, Minimize2 } from 'lucide-react'
+import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
@@ -7,8 +10,10 @@ import ErrorMessage from './ErrorMessage'
 import EditableOutput from './EditableOutput'
 import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import '@luomus/leaflet-smooth-wheel-zoom'
 import { RecenterMap, MapInteractionGuard } from './MapShared'
 import { UCSD_CENTER, setupLeafletIcons } from './MapConstants'
 
@@ -31,12 +36,27 @@ import {
 
 setupLeafletIcons()
 
-function RouteBuilder() {
-    // State for available locations from API
-    const [availableLocations, setAvailableLocations] = useState<PickupLocationsResponse | null>(null)
-    const [locationsLoading, setLocationsLoading] = useState(true)
+// Green marker for selected pins in fullscreen mode
+const selectedIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+    iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+})
 
-    // State for location selection dropdown
+// Deselect handler for clicking empty map space
+function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
+    useMapEvents({
+        click: () => onMapClick(),
+    })
+    return null
+}
+
+function RouteBuilder() {
+    // State for location selection dropdown (widget mode)
     const [selectedLocation, setSelectedLocation] = useState<string>('')
 
     // State for selected locations — store keys (e.g., "SEVENTH") not full names
@@ -51,45 +71,38 @@ function RouteBuilder() {
     const [originalRouteOutput, setOriginalRouteOutput] = useState<string>('')
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
-    const [copiedRoute, setCopiedRoute] = useState(false)
+    const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
 
-    // Map bounds for auto-fit
+    // Map bounds for auto-fit (widget mode)
     const [mapBounds, setMapBounds] = useState<L.LatLngBoundsExpression | undefined>(undefined)
 
     // UI State
     const [showInfo, setShowInfo] = useState(false)
+    const [isFullscreen, setIsFullscreen] = useState(false)
 
-    // Fetch available pickup locations on mount
-    useEffect(() => {
-        const fetchLocations = async () => {
-            try {
-                const response = await apiFetch('/api/pickup-locations')
-                const data: PickupLocationsResponse = await response.json()
-                setAvailableLocations(data)
-            } catch (error) {
-                console.error('Failed to fetch pickup locations:', error)
-            } finally {
-                setLocationsLoading(false)
-            }
-        }
-
-        fetchLocations()
-    }, [])
+    // Fetch available pickup locations via react-query
+    const { data: locationsData, isLoading: locationsLoading } = useQuery<PickupLocationsResponse>({
+        queryKey: ['pickup-locations'],
+        queryFn: async () => {
+            const res = await apiFetch('/api/pickup-locations')
+            return res.json()
+        },
+    })
 
     // Helper function to get location value from key
     const getLocationValue = useCallback(
         (key: string): string => {
-            return availableLocations?.locations.find((loc) => loc.key === key)?.value || key
+            return locationsData?.locations.find((loc) => loc.key === key)?.value || key
         },
-        [availableLocations]
+        [locationsData]
     )
 
     // Fetch route geometry via the shared hook
-    const routeGeometry = useRouteGeometry(selectedLocationKeys, availableLocations, getLocationValue)
+    const routeGeometry = useRouteGeometry(selectedLocationKeys, locationsData, getLocationValue)
 
-    // Update map bounds whenever selected locations change
+    // Update map bounds whenever selected locations change (widget mode)
     useEffect(() => {
-        if (!availableLocations) return
+        if (!locationsData) return
 
         if (selectedLocationKeys.length === 0) {
             setMapBounds(undefined)
@@ -98,7 +111,7 @@ function RouteBuilder() {
 
         if (selectedLocationKeys.length === 1) {
             const name = getLocationValue(selectedLocationKeys[0])
-            const singleCoord = availableLocations.coordinates[name]
+            const singleCoord = locationsData.coordinates[name]
             if (singleCoord) {
                 setMapBounds([
                     [singleCoord.lat - 0.01, singleCoord.lng - 0.01],
@@ -109,7 +122,7 @@ function RouteBuilder() {
         }
 
         const coords = selectedLocationKeys
-            .map((key) => availableLocations.coordinates[getLocationValue(key)])
+            .map((key) => locationsData.coordinates[getLocationValue(key)])
             .filter(Boolean)
 
         if (coords.length < 2) return
@@ -123,9 +136,33 @@ function RouteBuilder() {
             [Math.min(...lats) - latPadding, Math.min(...lngs) - lngPadding],
             [Math.max(...lats) + latPadding, Math.max(...lngs) + lngPadding],
         ])
-    }, [selectedLocationKeys, availableLocations, getLocationValue])
+    }, [selectedLocationKeys, locationsData, getLocationValue])
 
-    // Add location to selected list from dropdown
+    // Close fullscreen on Escape key
+    useEffect(() => {
+        if (!isFullscreen) return
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsFullscreen(false)
+        }
+
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+    }, [isFullscreen])
+
+    // Prevent body scroll when fullscreen overlay is open
+    useEffect(() => {
+        if (isFullscreen) {
+            document.body.style.overflow = 'hidden'
+        } else {
+            document.body.style.overflow = ''
+        }
+        return () => {
+            document.body.style.overflow = ''
+        }
+    }, [isFullscreen])
+
+    // Add location to selected list from dropdown (widget mode)
     const addLocation = () => {
         if (selectedLocation && !selectedLocationKeys.includes(selectedLocation)) {
             setSelectedLocationKeys([...selectedLocationKeys, selectedLocation])
@@ -133,9 +170,19 @@ function RouteBuilder() {
         }
     }
 
+    // Toggle a location in or out of the route (fullscreen mode)
+    const toggleLocation = (key: string) => {
+        setSelectedLocationKeys((prev) => {
+            if (prev.includes(key)) {
+                return prev.filter((k) => k !== key)
+            }
+            return [...prev, key]
+        })
+    }
+
     // Generate route
-    const generateRoute = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const generateRoute = async (e?: React.FormEvent) => {
+        e?.preventDefault()
         setRouteLoading(true)
         setRouteError('')
         setRouteOutput('')
@@ -167,201 +214,353 @@ function RouteBuilder() {
         }
     }
 
-    // Copy route to clipboard
-    const copyRouteToClipboard = async () => {
-        try {
-            await navigator.clipboard.writeText(routeOutput)
-            setCopiedRoute(true)
-            setTimeout(() => setCopiedRoute(false), 5000)
-        } catch (error) {
-            console.error('Failed to copy:', error)
-            alert('Failed to copy to clipboard')
-        }
-    }
-
     // Revert route to original
     const revertRoute = () => {
         setRouteOutput(originalRouteOutput)
     }
 
-    return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                    <span>🗺️</span>
-                    <span>Route Builder</span>
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                    <InfoToggleButton
-                        isOpen={showInfo}
-                        onClick={() => setShowInfo(!showInfo)}
-                        title="How to use Route Builder"
-                    />
-                </div>
-            </CardHeader>
-            <CardContent>
-                <InfoPanel
-                    isOpen={showInfo}
-                    onClose={() => setShowInfo(false)}
-                    title="How to use Route Builder"
-                >
-                    <ol className="list-decimal list-inside space-y-1.5">
-                        <li>Select pickup locations from the dropdown in the order you want to visit them.</li>
-                        <li>Drag locations to reorder them if needed.</li>
-                        <li>Enter the final destination arrival time (e.g., "7:10pm").</li>
-                        <li>Click <span className="font-medium">Generate Route</span> to calculate pickup times.</li>
-                        <li>Copy the route and paste it into Discord.</li>
-                    </ol>
-                </InfoPanel>
+    // --- Fullscreen overlay (rendered via portal) ---
+    const fullscreenOverlay = isFullscreen
+        ? createPortal(
+              <div className="fixed inset-0 z-50 bg-white dark:bg-zinc-950">
+                  {/* Full-screen interactive map */}
+                  <MapContainer
+                      center={UCSD_CENTER}
+                      zoom={14}
+                      scrollWheelZoom={false}
+                      // @ts-expect-error - smoothWheelZoom is an extended option from the plugin
+                      smoothWheelZoom={true}
+                      smoothSensitivity={1.5}
+                      style={{ height: '100%', width: '100%' }}
+                  >
+                      <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <MapClickHandler onMapClick={() => {}} />
 
-                <form onSubmit={generateRoute} className="space-y-6">
-                    {/* Location Selection Dropdown */}
-                    <div>
-                        <label className="block">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                Select Locations
-                            </span>
-                            <div className="flex gap-2">
-                                <Select
-                                    value={selectedLocation}
-                                    onValueChange={setSelectedLocation}
-                                    disabled={locationsLoading}
-                                >
-                                    <SelectTrigger className="flex-1">
-                                        <SelectValue
-                                            placeholder={
-                                                locationsLoading ? 'Loading locations...' : 'Choose a location...'
-                                            }
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availableLocations?.locations
-                                            .filter((loc) => !selectedLocationKeys.includes(loc.key))
-                                            .map((location) => (
-                                                <SelectItem key={location.key} value={location.key}>
-                                                    {location.value}
-                                                </SelectItem>
-                                            ))}
-                                    </SelectContent>
-                                </Select>
-                                <Button
-                                    type="button"
-                                    onClick={addLocation}
-                                    disabled={!selectedLocation || locationsLoading}
-                                    variant="outline"
-                                    className="shrink-0"
-                                >
-                                    Add Location
-                                </Button>
+                      {locationsData?.locations.map((loc) => {
+                          const coords = locationsData.coordinates[loc.value]
+                          if (!coords) return null
+                          const isSelected = selectedLocationKeys.includes(loc.key)
+                          const orderIndex = selectedLocationKeys.indexOf(loc.key)
+
+                          return (
+                              <Marker
+                                  key={loc.key}
+                                  position={[coords.lat, coords.lng]}
+                                  icon={isSelected ? selectedIcon : new L.Icon.Default()}
+                                  eventHandlers={{
+                                      click: (e) => {
+                                          L.DomEvent.stopPropagation(e.originalEvent)
+                                          toggleLocation(loc.key)
+                                      },
+                                  }}
+                              >
+                                  <Tooltip permanent direction="top" offset={[0, -36]}>
+                                      <span className="font-medium">
+                                          {isSelected ? `${orderIndex + 1}. ` : ''}
+                                          {loc.value}
+                                      </span>
+                                  </Tooltip>
+                              </Marker>
+                          )
+                      })}
+
+                      {routeGeometry && (
+                          <Polyline positions={routeGeometry} color="#10b981" weight={4} opacity={0.8} />
+                      )}
+                  </MapContainer>
+
+                  {/* Collapse button (top-left) */}
+                  <button
+                      onClick={() => setIsFullscreen(false)}
+                      className="absolute top-20 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+                      title="Exit fullscreen (Esc)"
+                  >
+                      <Minimize2 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          Exit
+                      </span>
+                  </button>
+
+                  {/* Right-side route order panel */}
+                  {selectedLocationKeys.length > 0 && (
+                      <div className="absolute top-4 right-4 z-[1000] w-72 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-lg border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm shadow-xl">
+                          <div className="p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                  <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                      Route Order ({selectedLocationKeys.length} location
+                                      {selectedLocationKeys.length !== 1 ? 's' : ''})
+                                  </div>
+                                  <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSelectedLocationKeys([])}
+                                      className="h-6 px-2 text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                                  >
+                                      Clear All
+                                  </Button>
+                              </div>
+
+                              <SortableLocationList
+                                  locationKeys={selectedLocationKeys}
+                                  getLocationValue={getLocationValue}
+                                  onRemove={(index) =>
+                                      setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
+                                  }
+                                  onReorder={setSelectedLocationKeys}
+                              />
+
+                              {/* Arrival Time Selection */}
+                              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
+                                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                      Arrival Time
+                                  </div>
+                                  <ArrivalTimeSelector
+                                      timeMode={timeMode}
+                                      leaveTime={leaveTime}
+                                      onTimeModeChange={(mode, time) => {
+                                          setTimeMode(mode)
+                                          setLeaveTime(time)
+                                      }}
+                                      onLeaveTimeChange={setLeaveTime}
+                                      compact={true}
+                                  />
+                              </div>
+
+                              {/* Generate Button */}
+                              <Button
+                                  onClick={() => generateRoute()}
+                                  disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
+                                  className="w-full mt-3"
+                              >
+                                  {routeLoading ? 'Generating...' : 'Generate Route'}
+                              </Button>
+
+                              {/* Error */}
+                              {routeError && (
+                                  <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                                      {routeError}
+                                  </div>
+                              )}
+
+                              {/* Route Output */}
+                              {routeOutput && (
+                                  <div className="mt-3">
+                                      <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                          Generated Route
+                                      </div>
+                                      <EditableOutput
+                                          value={routeOutput}
+                                          originalValue={originalRouteOutput}
+                                          onChange={setRouteOutput}
+                                          onCopy={() => copyToClipboard(routeOutput)}
+                                          onRevert={revertRoute}
+                                          copied={copiedText === routeOutput}
+                                          minHeight="min-h-[120px]"
+                                      />
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  )}
+              </div>,
+              document.body
+          )
+        : null
+
+    // --- Widget card view ---
+    return (
+        <>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                        <span>🗺️</span>
+                        <span>Route Builder</span>
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <InfoToggleButton
+                            isOpen={showInfo}
+                            onClick={() => setShowInfo(!showInfo)}
+                            title="How to use Route Builder"
+                        />
+                        <button
+                            onClick={() => setIsFullscreen(true)}
+                            className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-zinc-800 transition-colors"
+                            title="Open fullscreen map view"
+                        >
+                            <Expand className="h-4 w-4" />
+                        </button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <InfoPanel
+                        isOpen={showInfo}
+                        onClose={() => setShowInfo(false)}
+                        title="How to use Route Builder"
+                    >
+                        <ol className="list-decimal list-inside space-y-1.5">
+                            <li>Select pickup locations from the dropdown in the order you want to visit them.</li>
+                            <li>Drag locations to reorder them if needed.</li>
+                            <li>Enter the final destination arrival time (e.g., "7:10pm").</li>
+                            <li>Click <span className="font-medium">Generate Route</span> to calculate pickup times.</li>
+                            <li>Copy the route and paste it into Discord.</li>
+                        </ol>
+                    </InfoPanel>
+
+                    <form onSubmit={generateRoute} className="space-y-6">
+                        {/* Location Selection Dropdown */}
+                        <div>
+                            <label className="block">
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                    Select Locations
+                                </span>
+                                <div className="flex gap-2">
+                                    <Select
+                                        value={selectedLocation}
+                                        onValueChange={setSelectedLocation}
+                                        disabled={locationsLoading}
+                                    >
+                                        <SelectTrigger className="flex-1">
+                                            <SelectValue
+                                                placeholder={
+                                                    locationsLoading ? 'Loading locations...' : 'Choose a location...'
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {locationsData?.locations
+                                                .filter((loc) => !selectedLocationKeys.includes(loc.key))
+                                                .map((location) => (
+                                                    <SelectItem key={location.key} value={location.key}>
+                                                        {location.value}
+                                                    </SelectItem>
+                                                ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button
+                                        type="button"
+                                        onClick={addLocation}
+                                        disabled={!selectedLocation || locationsLoading}
+                                        variant="outline"
+                                        className="shrink-0"
+                                    >
+                                        Add Location
+                                    </Button>
+                                </div>
+                            </label>
+                        </div>
+
+                        {/* Selected Locations with Drag & Drop */}
+                        {selectedLocationKeys.length > 0 && (
+                            <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                                    Route Order ({selectedLocationKeys.length} location
+                                    {selectedLocationKeys.length !== 1 ? 's' : ''})
+                                </div>
+                                <SortableLocationList
+                                    locationKeys={selectedLocationKeys}
+                                    getLocationValue={getLocationValue}
+                                    onRemove={(index) =>
+                                        setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
+                                    }
+                                    onReorder={setSelectedLocationKeys}
+                                />
                             </div>
-                        </label>
+                        )}
+
+                        {/* Arrival Time Selection */}
+                        <div>
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                                Arrival Time at Final Destination
+                            </span>
+                            <ArrivalTimeSelector
+                                timeMode={timeMode}
+                                leaveTime={leaveTime}
+                                onTimeModeChange={(mode, time) => {
+                                    setTimeMode(mode)
+                                    setLeaveTime(time)
+                                }}
+                                onLeaveTimeChange={setLeaveTime}
+                                compact={false}
+                            />
+                        </div>
+
+                        {/* Generate Button */}
+                        <div className="pt-2">
+                            <Button
+                                type="submit"
+                                disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
+                                className="w-full sm:w-auto px-8 py-2.5 text-base font-semibold"
+                            >
+                                {routeLoading ? 'Generating...' : 'Generate Route'}
+                            </Button>
+                        </div>
+                    </form>
+
+                    {/* Error Display */}
+                    <div className="mt-6">
+                        <ErrorMessage message={routeError} />
                     </div>
 
-                    {/* Selected Locations with Drag & Drop */}
-                    {selectedLocationKeys.length > 0 && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
-                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                                Route Order ({selectedLocationKeys.length} location
-                                {selectedLocationKeys.length !== 1 ? 's' : ''})
-                            </div>
-                            <SortableLocationList
-                                locationKeys={selectedLocationKeys}
-                                getLocationValue={getLocationValue}
-                                onRemove={(index) =>
-                                    setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
-                                }
-                                onReorder={setSelectedLocationKeys}
+                    {/* Route Output */}
+                    {routeOutput && (
+                        <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                                Generated Route
+                            </h3>
+                            <EditableOutput
+                                value={routeOutput}
+                                originalValue={originalRouteOutput}
+                                onChange={setRouteOutput}
+                                onCopy={() => copyToClipboard(routeOutput)}
+                                onRevert={revertRoute}
+                                copied={copiedText === routeOutput}
                             />
                         </div>
                     )}
 
-                    {/* Arrival Time Selection */}
-                    <div>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                            Arrival Time at Final Destination
-                        </span>
-                        <ArrivalTimeSelector
-                            timeMode={timeMode}
-                            leaveTime={leaveTime}
-                            onTimeModeChange={(mode, time) => {
-                                setTimeMode(mode)
-                                setLeaveTime(time)
-                            }}
-                            onLeaveTimeChange={setLeaveTime}
-                            compact={false}
-                        />
-                    </div>
-
-                    {/* Generate Button */}
-                    <div className="pt-2">
-                        <Button
-                            type="submit"
-                            disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
-                            className="w-full sm:w-auto px-8 py-2.5 text-base font-semibold"
+                    {/* Interactive Map view of path */}
+                    <div className="mt-6 rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 relative z-0">
+                        <MapContainer
+                            center={UCSD_CENTER}
+                            zoom={14}
+                            scrollWheelZoom={false}
+                            dragging={false}
+                            style={{ height: '350px', width: '100%' }}
                         >
-                            {routeLoading ? 'Generating...' : 'Generate Route'}
-                        </Button>
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            <MapInteractionGuard />
+                            <RecenterMap bounds={mapBounds} />
+
+                            {selectedLocationKeys.map((key, i) => {
+                                const value = getLocationValue(key)
+                                const coords = locationsData?.coordinates[value]
+                                if (!coords) return null
+                                return (
+                                    <Marker key={`${key}-${i}`} position={[coords.lat, coords.lng]}>
+                                        <Popup>
+                                            <strong>{i + 1}.</strong> {value}
+                                        </Popup>
+                                    </Marker>
+                                )
+                            })}
+
+                            {routeGeometry && (
+                                <Polyline positions={routeGeometry} color="#10b981" weight={4} opacity={0.8} />
+                            )}
+                        </MapContainer>
                     </div>
-                </form>
+                </CardContent>
+            </Card>
 
-                {/* Error Display */}
-                <div className="mt-6">
-                    <ErrorMessage message={routeError} />
-                </div>
-
-                {/* Route Output */}
-                {routeOutput && (
-                    <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                            Generated Route
-                        </h3>
-                        <EditableOutput
-                            value={routeOutput}
-                            originalValue={originalRouteOutput}
-                            onChange={setRouteOutput}
-                            onCopy={copyRouteToClipboard}
-                            onRevert={revertRoute}
-                            copied={copiedRoute}
-                        />
-                    </div>
-                )}
-
-                {/* Interactive Map view of path */}
-                <div className="mt-6 rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 relative z-0">
-                    <MapContainer
-                        center={UCSD_CENTER}
-                        zoom={14}
-                        scrollWheelZoom={false}
-                        dragging={false}
-                        style={{ height: '350px', width: '100%' }}
-                    >
-                        <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <MapInteractionGuard />
-                        <RecenterMap bounds={mapBounds} />
-
-                        {selectedLocationKeys.map((key, i) => {
-                            const value = getLocationValue(key)
-                            const coords = availableLocations?.coordinates[value]
-                            if (!coords) return null
-                            return (
-                                <Marker key={`${key}-${i}`} position={[coords.lat, coords.lng]}>
-                                    <Popup>
-                                        <strong>{i + 1}.</strong> {value}
-                                    </Popup>
-                                </Marker>
-                            )
-                        })}
-
-                        {routeGeometry && (
-                            <Polyline positions={routeGeometry} color="#10b981" weight={4} opacity={0.8} />
-                        )}
-                    </MapContainer>
-                </div>
-            </CardContent>
-        </Card>
+            {fullscreenOverlay}
+        </>
     )
 }
 
