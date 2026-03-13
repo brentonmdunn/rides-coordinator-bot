@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Marker, Tooltip, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import '@luomus/leaflet-smooth-wheel-zoom'
 import { UCSD_CENTER, setupLeafletIcons } from '../components/MapShared'
 import { apiFetch } from '../lib/api'
 import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
@@ -257,6 +258,10 @@ export default function RouteBuilder() {
             <MapContainer
                 center={UCSD_CENTER}
                 zoom={14}
+                scrollWheelZoom={false}
+                // @ts-expect-error - smoothWheelZoom is an extended option from the plugin
+                smoothWheelZoom={true}
+                smoothSensitivity={1.5}
                 style={{ height: '100%', width: '100%' }}
             >
                 <TileLayer
