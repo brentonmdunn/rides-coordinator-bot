@@ -308,9 +308,20 @@ export default function RouteBuilder() {
             {selectedLocationKeys.length > 0 && (
                 <div className="absolute top-4 right-4 z-[1000] w-72 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-lg border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm shadow-xl">
                     <div className="p-4">
-                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                            Route Order ({selectedLocationKeys.length} location
-                            {selectedLocationKeys.length !== 1 ? 's' : ''})
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                Route Order ({selectedLocationKeys.length} location
+                                {selectedLocationKeys.length !== 1 ? 's' : ''})
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedLocationKeys([])}
+                                className="h-6 px-2 text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                            >
+                                Clear All
+                            </Button>
                         </div>
                         <DndContext
                             sensors={sensors}
