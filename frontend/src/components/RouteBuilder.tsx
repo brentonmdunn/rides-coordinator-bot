@@ -14,6 +14,9 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMapEvents
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import '@luomus/leaflet-smooth-wheel-zoom'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { RecenterMap, MapInteractionGuard } from './MapShared'
 import { UCSD_CENTER, setupLeafletIcons } from './MapConstants'
 
@@ -41,6 +44,17 @@ const selectedIcon = new L.Icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
     iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+})
+
+// Default blue marker with explicit sizing to prevent tooltip misalignment on initial render
+const defaultIcon = new L.Icon({
+    iconUrl: markerIcon,
+    iconRetinaUrl: markerIcon2x,
+    shadowUrl: markerShadow,
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
@@ -249,7 +263,7 @@ function RouteBuilder() {
                               <Marker
                                   key={loc.key}
                                   position={[coords.lat, coords.lng]}
-                                  icon={isSelected ? selectedIcon : new L.Icon.Default()}
+                                  icon={isSelected ? selectedIcon : defaultIcon}
                                   eventHandlers={{
                                       click: (e) => {
                                           L.DomEvent.stopPropagation(e.originalEvent)
