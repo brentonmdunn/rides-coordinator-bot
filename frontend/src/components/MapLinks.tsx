@@ -15,7 +15,8 @@ import { Copy, Check, ExternalLink } from 'lucide-react'
 import { Button } from './ui/button'
 import type { PickupLocationsResponse } from '../types'
 
-import { RecenterMap, MapInteractionGuard, UCSD_CENTER, setupLeafletIcons } from './MapShared'
+import { RecenterMap, MapInteractionGuard } from './MapShared'
+import { UCSD_CENTER, setupLeafletIcons } from './MapConstants'
 
 // Fix default marker icon (Leaflet + bundlers lose the default icon paths)
 setupLeafletIcons()
