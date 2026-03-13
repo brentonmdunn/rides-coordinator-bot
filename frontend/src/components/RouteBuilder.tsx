@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Expand, Minimize2 } from 'lucide-react'
@@ -92,7 +92,36 @@ function RouteBuilder() {
 
     // UI State
     const [showInfo, setShowInfo] = useState(false)
-    const [isFullscreen, setIsFullscreen] = useState(false)
+
+    // Fullscreen transition: two-phase mount/animate pattern
+    const [isFullscreenMounted, setIsFullscreenMounted] = useState(false)
+    const [isFullscreenVisible, setIsFullscreenVisible] = useState(false)
+    const fullscreenTransitionRef = useRef<number | null>(null)
+
+    const openFullscreen = useCallback(() => {
+        setIsFullscreenMounted(true)
+        // Wait one frame so the browser paints the initial (hidden) state,
+        // then apply the visible class to trigger the CSS transition.
+        fullscreenTransitionRef.current = requestAnimationFrame(() => {
+            fullscreenTransitionRef.current = requestAnimationFrame(() => {
+                setIsFullscreenVisible(true)
+            })
+        })
+    }, [])
+
+    const closeFullscreen = useCallback(() => {
+        setIsFullscreenVisible(false)
+        // Keep mounted until the transition finishes, then unmount.
+    }, [])
+
+    // Clean up rAF on unmount
+    useEffect(() => {
+        return () => {
+            if (fullscreenTransitionRef.current !== null) {
+                cancelAnimationFrame(fullscreenTransitionRef.current)
+            }
+        }
+    }, [])
 
     // Fetch available pickup locations via react-query
     const { data: locationsData, isLoading: locationsLoading } = useQuery<PickupLocationsResponse>({
@@ -154,19 +183,19 @@ function RouteBuilder() {
 
     // Close fullscreen on Escape key
     useEffect(() => {
-        if (!isFullscreen) return
+        if (!isFullscreenMounted) return
 
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setIsFullscreen(false)
+            if (e.key === 'Escape') closeFullscreen()
         }
 
         window.addEventListener('keydown', onKeyDown)
         return () => window.removeEventListener('keydown', onKeyDown)
-    }, [isFullscreen])
+    }, [isFullscreenMounted, closeFullscreen])
 
     // Prevent body scroll when fullscreen overlay is open
     useEffect(() => {
-        if (isFullscreen) {
+        if (isFullscreenMounted) {
             document.body.style.overflow = 'hidden'
         } else {
             document.body.style.overflow = ''
@@ -174,7 +203,7 @@ function RouteBuilder() {
         return () => {
             document.body.style.overflow = ''
         }
-    }, [isFullscreen])
+    }, [isFullscreenMounted])
 
     // Add location to selected list from dropdown (widget mode)
     const addLocation = () => {
@@ -234,9 +263,21 @@ function RouteBuilder() {
     }
 
     // --- Fullscreen overlay (rendered via portal) ---
-    const fullscreenOverlay = isFullscreen
+    const fullscreenOverlay = isFullscreenMounted
         ? createPortal(
-              <div className="fixed inset-0 z-50 bg-white dark:bg-zinc-950">
+              <div
+                  className={`fixed inset-0 z-50 bg-white dark:bg-zinc-950 transition-all duration-300 ease-out ${
+                      isFullscreenVisible
+                          ? 'opacity-100 scale-100'
+                          : 'opacity-0 scale-[0.97]'
+                  }`}
+                  onTransitionEnd={(e) => {
+                      // After the exit transition finishes, unmount the portal
+                      if (e.propertyName === 'opacity' && !isFullscreenVisible) {
+                          setIsFullscreenMounted(false)
+                      }
+                  }}
+              >
                   {/* Full-screen interactive map */}
                   <MapContainer
                       center={UCSD_CENTER}
@@ -288,7 +329,7 @@ function RouteBuilder() {
 
                   {/* Collapse button (top-left) */}
                   <button
-                      onClick={() => setIsFullscreen(false)}
+                      onClick={closeFullscreen}
                       className="absolute top-20 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
                       title="Exit fullscreen (Esc)"
                   >
@@ -401,7 +442,7 @@ function RouteBuilder() {
                             title="How to use Route Builder"
                         />
                         <button
-                            onClick={() => setIsFullscreen(true)}
+                            onClick={openFullscreen}
                             className="hidden sm:inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-zinc-800 transition-colors"
                             title="Open fullscreen map view"
                         >
