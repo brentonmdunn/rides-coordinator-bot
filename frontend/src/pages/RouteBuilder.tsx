@@ -1,35 +1,22 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Marker, Tooltip, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import '@luomus/leaflet-smooth-wheel-zoom'
-import { UCSD_CENTER, setupLeafletIcons } from '../components/MapShared'
+import { UCSD_CENTER, setupLeafletIcons } from '../components/MapConstants'
 import { apiFetch } from '../lib/api'
 import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
-import { X, GripVertical } from 'lucide-react'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
 import EditableOutput from '../components/EditableOutput'
 import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
-
 import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+    PRESET_TIME_MAP,
+    type TimeModeKey,
+    SortableLocationList,
+    ArrivalTimeSelector,
+    useRouteGeometry,
+} from '../components/routeBuilderShared'
 
 // Fix default marker icon
 setupLeafletIcons()
@@ -45,58 +32,6 @@ const selectedIcon = new L.Icon({
     shadowSize: [41, 41],
 })
 
-// --- Sortable drag-and-drop item ---
-interface SortableLocationItemProps {
-    id: string
-    index: number
-    locationValue: string
-    onRemove: () => void
-}
-
-function SortableLocationItem({ id, index, locationValue, onRemove }: SortableLocationItemProps) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id })
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    }
-
-    return (
-        <div
-            ref={setNodeRef}
-            style={style}
-            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-md transition-all"
-        >
-            <div
-                {...attributes}
-                {...listeners}
-                className="cursor-grab active:cursor-grabbing touch-none"
-            >
-                <GripVertical className="h-4 w-4 text-slate-400" />
-            </div>
-            <span className="flex-1 text-sm text-slate-900 dark:text-slate-100">
-                {index + 1}. {locationValue}
-            </span>
-            <button
-                type="button"
-                onClick={onRemove}
-                className="text-slate-400 hover:text-red-500 transition-colors"
-                title="Remove location"
-            >
-                <X className="h-4 w-4" />
-            </button>
-        </div>
-    )
-}
-
 // --- Component to deselect pins by clicking empty map space ---
 function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
     useMapEvents({
@@ -108,21 +43,17 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
 // --- Main page component ---
 export default function RouteBuilder() {
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
-    const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null)
 
-    const defaultTimes: Record<'friday' | 'sunday', string> = {
-        friday: '7:10pm',
-        sunday: '10:10am',
-    }
     const autoMode = getAutomaticDay()
-    const [leaveTime, setLeaveTime] = useState(defaultTimes[autoMode])
-    const [timeMode, setTimeMode] = useState<'friday' | 'sunday' | 'sunday_class' | 'discipleship' | 'custom'>(autoMode)
+    const [leaveTime, setLeaveTime] = useState(PRESET_TIME_MAP[autoMode])
+    const [timeMode, setTimeMode] = useState<TimeModeKey>(autoMode)
 
     const [routeOutput, setRouteOutput] = useState('')
     const [originalRouteOutput, setOriginalRouteOutput] = useState('')
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState('')
     const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
+
     const { data: locationsData } = useQuery<PickupLocationsResponse>({
         queryKey: ['pickup-locations'],
         queryFn: async () => {
@@ -148,30 +79,8 @@ export default function RouteBuilder() {
         })
     }
 
-    const removeLocation = (index: number) => {
-        setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
-    }
-
-    // Drag and drop sensors
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { distance: 8 },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    )
-
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event
-        if (over && active.id !== over.id) {
-            setSelectedLocationKeys((items) => {
-                const oldIndex = items.indexOf(active.id as string)
-                const newIndex = items.indexOf(over.id as string)
-                return arrayMove(items, oldIndex, newIndex)
-            })
-        }
-    }
+    // Fetch route geometry via the shared hook
+    const routeGeometry = useRouteGeometry(selectedLocationKeys, locationsData, getLocationValue)
 
     // Generate route via API
     const generateRoute = async () => {
@@ -209,49 +118,6 @@ export default function RouteBuilder() {
         setRouteOutput(originalRouteOutput)
     }
 
-    // Fetch route geometry from OSRM when selected locations change
-    useEffect(() => {
-        if (!locationsData || selectedLocationKeys.length < 2) {
-            setRouteGeometry(null)
-            return
-        }
-
-        const coords = selectedLocationKeys
-            .map((key) => {
-                const name = getLocationValue(key)
-                return locationsData.coordinates[name]
-            })
-            .filter(Boolean)
-
-        if (coords.length < 2) {
-            setRouteGeometry(null)
-            return
-        }
-
-        const coordsString = coords.map((c) => `${c.lng},${c.lat}`).join(';')
-
-        const fetchRoute = async () => {
-            try {
-                const res = await fetch(
-                    `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`
-                )
-                if (!res.ok) return
-                const data = await res.json()
-                if (data.routes && data.routes.length > 0) {
-                    const feature = data.routes[0].geometry
-                    const latLngs = feature.coordinates.map(
-                        (c: [number, number]) => [c[1], c[0]] as [number, number]
-                    )
-                    setRouteGeometry(latLngs)
-                }
-            } catch (err) {
-                console.error('Failed to fetch route geometry', err)
-            }
-        }
-
-        fetchRoute()
-    }, [selectedLocationKeys, locationsData, getLocationValue])
-
     return (
         <div className="h-screen w-full relative">
             {/* Full-screen map */}
@@ -269,7 +135,6 @@ export default function RouteBuilder() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <MapClickHandler onMapClick={() => {}} />
-
 
                 {locationsData?.locations.map((loc) => {
                     const coords = locationsData.coordinates[loc.value]
@@ -323,68 +188,31 @@ export default function RouteBuilder() {
                                 Clear All
                             </Button>
                         </div>
-                        <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={handleDragEnd}
-                        >
-                            <SortableContext
-                                items={selectedLocationKeys}
-                                strategy={verticalListSortingStrategy}
-                            >
-                                <div className="space-y-2">
-                                    {selectedLocationKeys.map((locationKey, index) => (
-                                        <SortableLocationItem
-                                            key={locationKey}
-                                            id={locationKey}
-                                            index={index}
-                                            locationValue={getLocationValue(locationKey)}
-                                            onRemove={() => removeLocation(index)}
-                                        />
-                                    ))}
-                                </div>
-                            </SortableContext>
-                        </DndContext>
+
+                        <SortableLocationList
+                            locationKeys={selectedLocationKeys}
+                            getLocationValue={getLocationValue}
+                            onRemove={(index) =>
+                                setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
+                            }
+                            onReorder={setSelectedLocationKeys}
+                        />
 
                         {/* Arrival Time Selection */}
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
                             <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                 Arrival Time
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {[
-                                    { key: 'friday' as const, label: 'Fri (7:10pm)', time: '7:10pm' },
-                                    { key: 'sunday' as const, label: 'Sun (10:10am)', time: '10:10am' },
-                                    { key: 'sunday_class' as const, label: 'Class (8:40am)', time: '8:40am' },
-                                    { key: 'discipleship' as const, label: 'Disc (7:10am)', time: '7:10am' },
-                                    { key: 'custom' as const, label: 'Custom', time: '' },
-                                ].map((opt) => (
-                                    <button
-                                        key={opt.key}
-                                        type="button"
-                                        onClick={() => {
-                                            setTimeMode(opt.key)
-                                            setLeaveTime(opt.time)
-                                        }}
-                                        className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
-                                            timeMode === opt.key
-                                                ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
-                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-zinc-800 dark:text-slate-300 dark:border-zinc-600 dark:hover:bg-zinc-700'
-                                        }`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
-                            {timeMode === 'custom' && (
-                                <Input
-                                    type="text"
-                                    value={leaveTime}
-                                    onChange={(e) => setLeaveTime(e.target.value)}
-                                    placeholder="e.g., 7:10pm"
-                                    className="mt-2 h-8 text-sm"
-                                />
-                            )}
+                            <ArrivalTimeSelector
+                                timeMode={timeMode}
+                                leaveTime={leaveTime}
+                                onTimeModeChange={(mode, time) => {
+                                    setTimeMode(mode)
+                                    setLeaveTime(time)
+                                }}
+                                onLeaveTimeChange={setLeaveTime}
+                                compact={true}
+                            />
                         </div>
 
                         {/* Generate Button */}

@@ -2,23 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useMap } from 'react-leaflet'
 import L from 'leaflet'
 
-// Fix default marker icon (Leaflet + bundlers lose the default icon paths)
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-
-export function setupLeafletIcons() {
-    delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
-    L.Icon.Default.mergeOptions({
-        iconRetinaUrl: markerIcon2x,
-        iconUrl: markerIcon,
-        shadowUrl: markerShadow,
-    })
-}
-
-// UCSD campus center (fallback)
-export const UCSD_CENTER: [number, number] = [32.8801, -117.2340]
-
 // Component to recenter map when selected location changes
 export function RecenterMap({ center, zoom = 16, bounds }: { center?: [number, number], zoom?: number, bounds?: L.LatLngBoundsExpression }) {
     const map = useMap()
@@ -54,26 +37,40 @@ export function MapInteractionGuard() {
     useEffect(() => {
         if (isTouchDevice) return
 
-        map.scrollWheelZoom.disable()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smoothZoom = (map as any).smoothWheelZoom as { enable(): void; disable(): void } | undefined
+
+        const disableZoom = () => {
+            map.scrollWheelZoom.disable()
+            smoothZoom?.disable()
+        }
+        const enableZoom = () => {
+            map.scrollWheelZoom.enable()
+            smoothZoom?.enable()
+        }
+
+        disableZoom()
         map.dragging.enable()
 
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.metaKey || e.ctrlKey) {
-                map.scrollWheelZoom.enable()
+                enableZoom()
                 setHintMessage(null)
             }
         }
         const onKeyUp = () => {
-            map.scrollWheelZoom.disable()
+            disableZoom()
         }
+        const onBlur = () => disableZoom()
 
         window.addEventListener('keydown', onKeyDown)
         window.addEventListener('keyup', onKeyUp)
-        window.addEventListener('blur', () => map.scrollWheelZoom.disable())
+        window.addEventListener('blur', onBlur)
 
         return () => {
             window.removeEventListener('keydown', onKeyDown)
             window.removeEventListener('keyup', onKeyUp)
+            window.removeEventListener('blur', onBlur)
         }
     }, [map, isTouchDevice])
 
