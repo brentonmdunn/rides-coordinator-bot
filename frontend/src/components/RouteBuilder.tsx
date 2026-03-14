@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Expand, Minimize2 } from 'lucide-react'
+import { Expand, Minimize2, MousePointerClick } from 'lucide-react'
 import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
@@ -330,7 +330,7 @@ function RouteBuilder() {
                   {/* Collapse button (top-left) */}
                   <button
                       onClick={closeFullscreen}
-                      className="absolute top-20 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+                      className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
                       title="Exit fullscreen (Esc)"
                   >
                       <Minimize2 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
@@ -339,88 +339,106 @@ function RouteBuilder() {
                       </span>
                   </button>
 
-                  {/* Right-side route order panel */}
-                  {selectedLocationKeys.length > 0 && (
-                      <div className="absolute top-4 right-4 z-[1000] w-72 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-lg border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm shadow-xl">
-                          <div className="p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                  <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                      Route Order ({selectedLocationKeys.length} location
-                                      {selectedLocationKeys.length !== 1 ? 's' : ''})
+                  {/* Always-visible floating route panel (right side) */}
+                  <div className="absolute top-4 right-4 z-[1000] w-72 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-lg border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm shadow-xl">
+                      <div className="p-4">
+                          {selectedLocationKeys.length === 0 ? (
+                              /* Empty state guidance */
+                              <div className="flex flex-col items-center text-center py-4">
+                                  <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+                                      <MousePointerClick className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                                   </div>
-                                  <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setSelectedLocationKeys([])}
-                                      className="h-6 px-2 text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
-                                  >
-                                      Clear All
-                                  </Button>
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                                      Click pins to build your route
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                      Click on map markers to add stops. Selected pins turn{' '}
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">green</span>{' '}
+                                      and are numbered in order.
+                                  </p>
                               </div>
-
-                              <SortableLocationList
-                                  locationKeys={selectedLocationKeys}
-                                  getLocationValue={getLocationValue}
-                                  onRemove={(index) =>
-                                      setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
-                                  }
-                                  onReorder={setSelectedLocationKeys}
-                              />
-
-                              {/* Arrival Time Selection */}
-                              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
-                                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                      Arrival Time
-                                  </div>
-                                  <ArrivalTimeSelector
-                                      timeMode={timeMode}
-                                      leaveTime={leaveTime}
-                                      onTimeModeChange={(mode, time) => {
-                                          setTimeMode(mode)
-                                          setLeaveTime(time)
-                                      }}
-                                      onLeaveTimeChange={setLeaveTime}
-                                      compact={true}
-                                  />
-                              </div>
-
-                              {/* Generate Button */}
-                              <Button
-                                  onClick={() => generateRoute()}
-                                  disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
-                                  className="w-full mt-3"
-                              >
-                                  {routeLoading ? 'Generating...' : 'Generate Route'}
-                              </Button>
-
-                              {/* Error */}
-                              {routeError && (
-                                  <div className="mt-2 text-xs text-red-600 dark:text-red-400">
-                                      {routeError}
-                                  </div>
-                              )}
-
-                              {/* Route Output */}
-                              {routeOutput && (
-                                  <div className="mt-3">
-                                      <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                          Generated Route
+                          ) : (
+                              /* Route controls */
+                              <>
+                                  <div className="flex items-center justify-between mb-3">
+                                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                          Route Order ({selectedLocationKeys.length} location
+                                          {selectedLocationKeys.length !== 1 ? 's' : ''})
                                       </div>
-                                      <EditableOutput
-                                          value={routeOutput}
-                                          originalValue={originalRouteOutput}
-                                          onChange={setRouteOutput}
-                                          onCopy={() => copyToClipboard(routeOutput)}
-                                          onRevert={revertRoute}
-                                          copied={copiedText === routeOutput}
-                                          minHeight="min-h-[120px]"
+                                      <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setSelectedLocationKeys([])}
+                                          className="h-6 px-2 text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                                      >
+                                          Clear All
+                                      </Button>
+                                  </div>
+
+                                  <SortableLocationList
+                                      locationKeys={selectedLocationKeys}
+                                      getLocationValue={getLocationValue}
+                                      onRemove={(index) =>
+                                          setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
+                                      }
+                                      onReorder={setSelectedLocationKeys}
+                                  />
+
+                                  {/* Arrival Time Selection */}
+                                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
+                                      <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                          Arrival Time
+                                      </div>
+                                      <ArrivalTimeSelector
+                                          timeMode={timeMode}
+                                          leaveTime={leaveTime}
+                                          onTimeModeChange={(mode, time) => {
+                                              setTimeMode(mode)
+                                              setLeaveTime(time)
+                                          }}
+                                          onLeaveTimeChange={setLeaveTime}
+                                          compact={true}
                                       />
                                   </div>
-                              )}
-                          </div>
+
+                                  {/* Generate Button */}
+                                  <Button
+                                      onClick={() => generateRoute()}
+                                      disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
+                                      className="w-full mt-3"
+                                  >
+                                      {routeLoading ? 'Generating...' : 'Generate Route'}
+                                  </Button>
+
+                                  {/* Error */}
+                                  {routeError && (
+                                      <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                                          {routeError}
+                                      </div>
+                                  )}
+
+                                  {/* Route Output */}
+                                  {routeOutput && (
+                                      <div className="mt-3">
+                                          <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                              Generated Route
+                                          </div>
+                                          <EditableOutput
+                                              value={routeOutput}
+                                              originalValue={originalRouteOutput}
+                                              onChange={setRouteOutput}
+                                              onCopy={() => copyToClipboard(routeOutput)}
+                                              onRevert={revertRoute}
+                                              copied={copiedText === routeOutput}
+                                              minHeight="min-h-[120px]"
+                                          />
+                                      </div>
+                                  )}
+                              </>
+                          )}
                       </div>
-                  )}
+                  </div>
               </div>,
               document.body
           )
