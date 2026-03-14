@@ -39,16 +39,17 @@ import {
 
 setupLeafletIcons()
 
-// Green marker for selected pins in fullscreen mode
-const selectedIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-    iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-})
+// Numbered circle marker for selected pins in fullscreen mode
+function createNumberedIcon(num: number, isNewlyToggled: boolean): L.DivIcon {
+    const animationClass = isNewlyToggled ? ' animate-[marker-bounce_0.35s_ease-out]' : ''
+    return new L.DivIcon({
+        html: `<div class="numbered-marker${animationClass}">${num}</div>`,
+        className: '',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -16],
+    })
+}
 
 // Default blue marker with explicit sizing to prevent tooltip misalignment on initial render
 const defaultIcon = new L.Icon({
@@ -75,6 +76,7 @@ function RouteBuilder() {
 
     // State for selected locations — store keys (e.g., "SEVENTH") not full names
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
+    const [lastToggledLocation, setLastToggledLocation] = useState<string | null>(null)
 
     const autoMode = getAutomaticDay()
     const [leaveTime, setLeaveTime] = useState(PRESET_TIME_MAP[autoMode])
@@ -215,6 +217,7 @@ function RouteBuilder() {
 
     // Toggle a location in or out of the route (fullscreen mode)
     const toggleLocation = (key: string) => {
+        setLastToggledLocation(key)
         setSelectedLocationKeys((prev) => {
             if (prev.includes(key)) {
                 return prev.filter((k) => k !== key)
@@ -304,7 +307,7 @@ function RouteBuilder() {
                               <Marker
                                   key={loc.key}
                                   position={[coords.lat, coords.lng]}
-                                  icon={isSelected ? selectedIcon : defaultIcon}
+                                  icon={isSelected ? createNumberedIcon(orderIndex + 1, lastToggledLocation === loc.key) : defaultIcon}
                                   eventHandlers={{
                                       click: (e) => {
                                           L.DomEvent.stopPropagation(e.originalEvent)
@@ -312,9 +315,8 @@ function RouteBuilder() {
                                       },
                                   }}
                               >
-                                  <Tooltip permanent direction="top" offset={[0, -36]}>
+                                  <Tooltip permanent direction="top" offset={[0, isSelected ? -10 : -36]}>
                                       <span className="font-medium">
-                                          {isSelected ? `${orderIndex + 1}. ` : ''}
                                           {loc.value}
                                       </span>
                                   </Tooltip>
