@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Expand, Minimize2, MousePointerClick } from 'lucide-react'
+import { Expand, ArrowLeft, MousePointerClick, ChevronRight, ChevronLeft } from 'lucide-react'
 import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
@@ -329,16 +329,15 @@ function RouteBuilder() {
                       )}
                   </MapContainer>
 
-                  {/* Collapse button (top-left) */}
+                  {/* Collapse button (top-left near zoom controls) */}
                   <button
                       onClick={closeFullscreen}
-                      className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-lg hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+                      className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-slate-700 dark:text-slate-300"
                       title="Exit fullscreen (Esc)"
                   >
-                      <Minimize2 className="h-4 w-4 text-slate-700 dark:text-slate-300" />
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                          Exit
-                      </span>
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="text-sm font-semibold">Back</span>
+                      <span className="text-[10px] font-bold tracking-wider text-slate-400 dark:text-zinc-500 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded ml-1">ESC</span>
                   </button>
 
                   {/* Always-visible floating route panel (right side) */}
