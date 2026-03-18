@@ -99,6 +99,9 @@ function RouteBuilder() {
 
     // Mobile bottom sheet state
     const [isSheetExpanded, setIsSheetExpanded] = useState(false)
+    const touchStartYRef = useRef<number | null>(null)
+    // Suppress the synthetic click that mobile Safari fires after touchend
+    const suppressNextClickRef = useRef(false)
 
     const autoMode = getAutomaticDay()
     const [leaveTime, setLeaveTime] = useState(PRESET_TIME_MAP[autoMode])
@@ -513,7 +516,31 @@ function RouteBuilder() {
                           <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200 dark:border-zinc-700 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.12)] overflow-hidden h-full flex flex-col">
                               {/* Drag handle & summary – always visible */}
                               <button
-                                  onClick={() => setIsSheetExpanded((v) => !v)}
+                                  onTouchStart={(e) => {
+                                      touchStartYRef.current = e.touches[0].clientY
+                                  }}
+                                  onTouchEnd={(e) => {
+                                      const startY = touchStartYRef.current
+                                      if (startY === null) return
+                                      const deltaY = startY - e.changedTouches[0].clientY
+                                      touchStartYRef.current = null
+                                      suppressNextClickRef.current = true
+                                      // If swipe distance is significant, treat as directional gesture
+                                      if (Math.abs(deltaY) > 30) {
+                                          setIsSheetExpanded(deltaY > 0) // swipe up → expand, swipe down → collapse
+                                      } else {
+                                          // Small movement = tap → toggle
+                                          setIsSheetExpanded((v) => !v)
+                                      }
+                                  }}
+                                  onClick={() => {
+                                      // Suppress the synthetic click Safari fires after touchend
+                                      if (suppressNextClickRef.current) {
+                                          suppressNextClickRef.current = false
+                                          return
+                                      }
+                                      setIsSheetExpanded((v) => !v)
+                                  }}
                                   className="w-full flex flex-col items-center pt-2.5 pb-2 px-4 active:bg-slate-50 dark:active:bg-zinc-800 transition-colors"
                               >
                                   <div className="bottom-sheet-handle mb-2" />
