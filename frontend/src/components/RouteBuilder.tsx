@@ -8,6 +8,7 @@ import { Button } from './ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from './ErrorMessage'
 import EditableOutput from './EditableOutput'
+import { useTheme } from './use-theme'
 import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMapEvents } from 'react-leaflet'
@@ -71,6 +72,8 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
 }
 
 function RouteBuilder() {
+    const { theme } = useTheme()
+
     // State for location selection dropdown (widget mode)
     const [selectedLocation, setSelectedLocation] = useState<string>('')
 
@@ -292,10 +295,17 @@ function RouteBuilder() {
                       smoothSensitivity={1.5}
                       style={{ height: '100%', width: '100%' }}
                   >
-                      <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
+                      {theme === 'dark' ? (
+                          <TileLayer
+                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                          />
+                      ) : (
+                          <TileLayer
+                              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                      )}
                       <MapClickHandler onMapClick={() => {}} />
 
                       {locationsData?.locations.map((loc) => {
@@ -627,10 +637,17 @@ function RouteBuilder() {
                             dragging={false}
                             style={{ height: '350px', width: '100%' }}
                         >
-                            <TileLayer
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            />
+                            {theme === 'dark' ? (
+                                <TileLayer
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                                />
+                            ) : (
+                                <TileLayer
+                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                />
+                            )}
                             <MapInteractionGuard />
                             <RecenterMap bounds={mapBounds} />
 
