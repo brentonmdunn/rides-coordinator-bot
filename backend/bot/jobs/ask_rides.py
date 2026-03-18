@@ -276,19 +276,26 @@ async def run_ask_rides_header(
             await FeatureFlagsRepository.get_feature_flag_status(
                 FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
             )
+            and not await MessageScheduleRepository.is_job_paused(JobName.SUNDAY)
             and _should_send_ask_rides_sun()
         )
         or (
             await FeatureFlagsRepository.get_feature_flag_status(
                 FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
             )
+            and not await MessageScheduleRepository.is_job_paused(JobName.SUNDAY_CLASS)
             and _should_send_ask_rides_sun_class()
         )
-        or await FeatureFlagsRepository.get_feature_flag_status(
-            FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+        or (
+            await FeatureFlagsRepository.get_feature_flag_status(
+                FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+            )
+            and not await MessageScheduleRepository.is_job_paused(JobName.FRIDAY)
         )
-        or await FeatureFlagsRepository.get_feature_flag_status(
-            FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+        or (
+            await FeatureFlagsRepository.get_feature_flag_status(
+                FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+            )
         )
     ):
         await channel.send(
