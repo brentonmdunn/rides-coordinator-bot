@@ -243,3 +243,25 @@ svg {
   /* Override Leaflet's default shadow for DivIcon markers */
   display: none !important;
 }
+
+/* Bottom sheet (mobile fullscreen map) */
+@keyframes bottom-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.bottom-sheet-enter {
+  animation: bottom-sheet-up 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.bottom-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: oklch(0.7 0.02 260);
+  margin: 0 auto;
+}
+
+.dark .bottom-sheet-handle {
+  background: oklch(0.5 0.02 260);
+}

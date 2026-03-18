@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Expand, ArrowLeft, MousePointerClick, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Expand, ArrowLeft, MousePointerClick, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, MapPin } from 'lucide-react'
 import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { Button } from './ui/button'
@@ -71,8 +71,23 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
     return null
 }
 
+// Lightweight media-query hook
+function useIsMobile(breakpoint = 640) {
+    const [isMobile, setIsMobile] = useState(
+        typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+    )
+    useEffect(() => {
+        const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+        mql.addEventListener('change', handler)
+        return () => mql.removeEventListener('change', handler)
+    }, [breakpoint])
+    return isMobile
+}
+
 function RouteBuilder() {
     const { theme } = useTheme()
+    const isMobile = useIsMobile()
 
     // State for location selection dropdown (widget mode)
     const [selectedLocation, setSelectedLocation] = useState<string>('')
@@ -81,6 +96,9 @@ function RouteBuilder() {
     const [selectedLocationKeys, setSelectedLocationKeys] = useState<string[]>([])
     const [lastToggledLocation, setLastToggledLocation] = useState<string | null>(null)
     const [isPanelExpanded, setIsPanelExpanded] = useState(true)
+
+    // Mobile bottom sheet state
+    const [isSheetExpanded, setIsSheetExpanded] = useState(false)
 
     const autoMode = getAutomaticDay()
     const [leaveTime, setLeaveTime] = useState(PRESET_TIME_MAP[autoMode])
@@ -269,11 +287,112 @@ function RouteBuilder() {
         setRouteOutput(originalRouteOutput)
     }
 
+    // Shared panel contents (used by both desktop side panel and mobile bottom sheet)
+    const panelContents = (
+        <>
+            {selectedLocationKeys.length === 0 ? (
+                /* Empty state guidance */
+                <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+                        <MousePointerClick className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                        Tap pins to build your route
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        Tap on map markers to add stops. Selected pins turn{' '}
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">green</span>{' '}
+                        and are numbered in order.
+                    </p>
+                </div>
+            ) : (
+                /* Route controls */
+                <>
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            Route Order ({selectedLocationKeys.length} location
+                            {selectedLocationKeys.length !== 1 ? 's' : ''})
+                        </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedLocationKeys([])}
+                            className="h-6 px-2 text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
+                        >
+                            Clear All
+                        </Button>
+                    </div>
+
+                    <SortableLocationList
+                        locationKeys={selectedLocationKeys}
+                        getLocationValue={getLocationValue}
+                        onRemove={(index) =>
+                            setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
+                        }
+                        onReorder={setSelectedLocationKeys}
+                    />
+
+                    {/* Arrival Time Selection */}
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
+                        <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Arrival Time
+                        </div>
+                        <ArrivalTimeSelector
+                            timeMode={timeMode}
+                            leaveTime={leaveTime}
+                            onTimeModeChange={(mode, time) => {
+                                setTimeMode(mode)
+                                setLeaveTime(time)
+                            }}
+                            onLeaveTimeChange={setLeaveTime}
+                            compact={true}
+                        />
+                    </div>
+
+                    {/* Generate Button */}
+                    <Button
+                        onClick={() => generateRoute()}
+                        disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
+                        className="w-full mt-3"
+                    >
+                        {routeLoading ? 'Generating...' : 'Generate Route'}
+                    </Button>
+
+                    {/* Error */}
+                    {routeError && (
+                        <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                            {routeError}
+                        </div>
+                    )}
+
+                    {/* Route Output */}
+                    {routeOutput && (
+                        <div className="mt-3">
+                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Generated Route
+                            </div>
+                            <EditableOutput
+                                value={routeOutput}
+                                originalValue={originalRouteOutput}
+                                onChange={setRouteOutput}
+                                onCopy={() => copyToClipboard(routeOutput)}
+                                onRevert={revertRoute}
+                                copied={copiedText === routeOutput}
+                                minHeight="min-h-[120px]"
+                            />
+                        </div>
+                    )}
+                </>
+            )}
+        </>
+    )
+
     // --- Fullscreen overlay (rendered via portal) ---
     const fullscreenOverlay = isFullscreenMounted
         ? createPortal(
               <div
-                  className={`fixed inset-0 z-50 bg-white dark:bg-zinc-950 transition-all duration-300 ease-out ${
+                  className={`fixed inset-0 z-50 bg-white dark:bg-zinc-950 overflow-hidden transition-all duration-300 ease-out ${
                       isFullscreenVisible
                           ? 'opacity-100 scale-100'
                           : 'opacity-0 scale-[0.97]'
@@ -282,6 +401,7 @@ function RouteBuilder() {
                       // After the exit transition finishes, unmount the portal
                       if (e.propertyName === 'opacity' && !isFullscreenVisible) {
                           setIsFullscreenMounted(false)
+                          setIsSheetExpanded(false)
                       }
                   }}
               >
@@ -340,7 +460,7 @@ function RouteBuilder() {
                       )}
                   </MapContainer>
 
-                  {/* Collapse button (top-left near zoom controls) */}
+                  {/* Back button (top-left near zoom controls) */}
                   <button
                       onClick={closeFullscreen}
                       className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-slate-700 dark:text-slate-300"
@@ -348,130 +468,79 @@ function RouteBuilder() {
                   >
                       <ArrowLeft className="h-4 w-4" />
                       <span className="text-sm font-semibold">Back</span>
-                      <span className="text-[10px] font-bold tracking-wider text-slate-400 dark:text-zinc-500 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded ml-1">ESC</span>
+                      {!isMobile && (
+                          <span className="text-[10px] font-bold tracking-wider text-slate-400 dark:text-zinc-500 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded ml-1">ESC</span>
+                      )}
                   </button>
 
-                  {/* Right side panel container */}
-                  <div className={`absolute top-4 right-4 z-[1000] flex transition-all duration-300 ease-in-out ${
-                      isPanelExpanded ? 'w-80' : 'w-10'
-                  }`}>
-                      
-                      {/* Toggle button that hangs off the left edge of the panel */}
-                      <button
-                          onClick={() => setIsPanelExpanded(!isPanelExpanded)}
-                          className={`absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-10 flex items-center justify-center bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg shadow-md hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors z-[1001]
-                               ${isPanelExpanded ? '' : 'shadow-lg bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}
-                          title={isPanelExpanded ? 'Collapse panel' : 'Expand panel'}
-                      >
-                          {isPanelExpanded ? (
-                              <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                          ) : (
-                              <ChevronLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          )}
-                      </button>
-
-                      <div className={`w-full max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl transition-opacity duration-300 ${
-                          isPanelExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                  {/* Desktop: Right side panel */}
+                  {!isMobile && (
+                      <div className={`absolute top-4 right-4 z-[1000] flex transition-all duration-300 ease-in-out ${
+                          isPanelExpanded ? 'w-80' : 'w-10'
                       }`}>
-                          <div className="p-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
-                          {selectedLocationKeys.length === 0 ? (
-                              /* Empty state guidance */
-                              <div className="flex flex-col items-center text-center py-4">
-                                  <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
-                                      <MousePointerClick className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                                  </div>
-                                  <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
-                                      Click pins to build your route
-                                  </div>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                      Click on map markers to add stops. Selected pins turn{' '}
-                                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">green</span>{' '}
-                                      and are numbered in order.
-                                  </p>
+                          {/* Toggle button that hangs off the left edge of the panel */}
+                          <button
+                              onClick={() => setIsPanelExpanded(!isPanelExpanded)}
+                              className={`absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-10 flex items-center justify-center bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg shadow-md hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors z-[1001]
+                                   ${isPanelExpanded ? '' : 'shadow-lg bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}
+                              title={isPanelExpanded ? 'Collapse panel' : 'Expand panel'}
+                          >
+                              {isPanelExpanded ? (
+                                  <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                              ) : (
+                                  <ChevronLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                              )}
+                          </button>
+
+                          <div className={`w-full max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl transition-opacity duration-300 ${
+                              isPanelExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                          }`}>
+                              <div className="p-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
+                                  {panelContents}
                               </div>
-                          ) : (
-                              /* Route controls */
-                              <>
-                                  <div className="flex items-center justify-between mb-3">
-                                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                          Route Order ({selectedLocationKeys.length} location
-                                          {selectedLocationKeys.length !== 1 ? 's' : ''})
-                                      </div>
-                                      <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => setSelectedLocationKeys([])}
-                                          className="h-6 px-2 text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
-                                      >
-                                          Clear All
-                                      </Button>
-                                  </div>
-
-                                  <SortableLocationList
-                                      locationKeys={selectedLocationKeys}
-                                      getLocationValue={getLocationValue}
-                                      onRemove={(index) =>
-                                          setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
-                                      }
-                                      onReorder={setSelectedLocationKeys}
-                                  />
-
-                                  {/* Arrival Time Selection */}
-                                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
-                                      <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                          Arrival Time
-                                      </div>
-                                      <ArrivalTimeSelector
-                                          timeMode={timeMode}
-                                          leaveTime={leaveTime}
-                                          onTimeModeChange={(mode, time) => {
-                                              setTimeMode(mode)
-                                              setLeaveTime(time)
-                                          }}
-                                          onLeaveTimeChange={setLeaveTime}
-                                          compact={true}
-                                      />
-                                  </div>
-
-                                  {/* Generate Button */}
-                                  <Button
-                                      onClick={() => generateRoute()}
-                                      disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
-                                      className="w-full mt-3"
-                                  >
-                                      {routeLoading ? 'Generating...' : 'Generate Route'}
-                                  </Button>
-
-                                  {/* Error */}
-                                  {routeError && (
-                                      <div className="mt-2 text-xs text-red-600 dark:text-red-400">
-                                          {routeError}
-                                      </div>
-                                  )}
-
-                                  {/* Route Output */}
-                                  {routeOutput && (
-                                      <div className="mt-3">
-                                          <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                              Generated Route
-                                          </div>
-                                          <EditableOutput
-                                              value={routeOutput}
-                                              originalValue={originalRouteOutput}
-                                              onChange={setRouteOutput}
-                                              onCopy={() => copyToClipboard(routeOutput)}
-                                              onRevert={revertRoute}
-                                              copied={copiedText === routeOutput}
-                                              minHeight="min-h-[120px]"
-                                          />
-                                      </div>
-                                  )}
-                              </>
-                          )}
                           </div>
                       </div>
-                  </div>
+                  )}
+
+                  {/* Mobile: Bottom sheet */}
+                  {isMobile && (
+                      <div
+                          className={`absolute left-0 right-0 bottom-0 z-[1000] bottom-sheet-enter transition-[max-height] duration-300 ease-in-out ${
+                              isSheetExpanded ? 'max-h-[70vh]' : 'max-h-[4.5rem]'
+                          }`}
+                          style={{ willChange: 'max-height' }}
+                      >
+                          <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200 dark:border-zinc-700 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.12)] overflow-hidden h-full flex flex-col">
+                              {/* Drag handle & summary – always visible */}
+                              <button
+                                  onClick={() => setIsSheetExpanded((v) => !v)}
+                                  className="w-full flex flex-col items-center pt-2.5 pb-2 px-4 active:bg-slate-50 dark:active:bg-zinc-800 transition-colors"
+                              >
+                                  <div className="bottom-sheet-handle mb-2" />
+                                  <div className="flex items-center justify-between w-full">
+                                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                          <MapPin className="h-4 w-4 text-emerald-500" />
+                                          {selectedLocationKeys.length === 0
+                                              ? 'Tap pins to add stops'
+                                              : `${selectedLocationKeys.length} location${selectedLocationKeys.length !== 1 ? 's' : ''} selected`}
+                                      </div>
+                                      {isSheetExpanded ? (
+                                          <ChevronDown className="h-5 w-5 text-slate-400 dark:text-zinc-500" />
+                                      ) : (
+                                          <ChevronUp className="h-5 w-5 text-slate-400 dark:text-zinc-500" />
+                                      )}
+                                  </div>
+                              </button>
+
+                              {/* Expanded content */}
+                              <div className={`overflow-y-auto overscroll-contain px-4 pb-6 transition-opacity duration-200 ${
+                                  isSheetExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                              }`}>
+                                  {panelContents}
+                              </div>
+                          </div>
+                      </div>
+                  )}
               </div>,
               document.body
           )
@@ -494,7 +563,7 @@ function RouteBuilder() {
                         />
                         <button
                             onClick={openFullscreen}
-                            className="hidden sm:inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-zinc-800 transition-colors"
+                            className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-zinc-800 transition-colors"
                             title="Open fullscreen map view"
                         >
                             <Expand className="h-4 w-4" />
