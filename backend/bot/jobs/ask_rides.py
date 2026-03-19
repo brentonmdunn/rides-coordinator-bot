@@ -271,33 +271,53 @@ async def run_ask_rides_header(
         logger.info("Error channel not found")
         return
 
-    if (
-        (
-            await FeatureFlagsRepository.get_feature_flag_status(
-                FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
-            )
-            and not await MessageScheduleRepository.is_job_paused(JobName.SUNDAY)
-            and _should_send_ask_rides_sun()
-        )
-        or (
-            await FeatureFlagsRepository.get_feature_flag_status(
-                FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
-            )
-            and not await MessageScheduleRepository.is_job_paused(JobName.SUNDAY_CLASS)
-            and _should_send_ask_rides_sun_class()
-        )
-        or (
-            await FeatureFlagsRepository.get_feature_flag_status(
-                FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
-            )
-            and not await MessageScheduleRepository.is_job_paused(JobName.FRIDAY)
-        )
-        or (
-            await FeatureFlagsRepository.get_feature_flag_status(
-                FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
-            )
-        )
-    ):
+    sun_flag = await FeatureFlagsRepository.get_feature_flag_status(
+        FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
+    )
+    sun_paused = await MessageScheduleRepository.is_job_paused(JobName.SUNDAY)
+    sun_should_send = _should_send_ask_rides_sun()
+    sun_condition = sun_flag and not sun_paused and sun_should_send
+
+    sun_class_flag = await FeatureFlagsRepository.get_feature_flag_status(
+        FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
+    )
+    sun_class_paused = await MessageScheduleRepository.is_job_paused(JobName.SUNDAY_CLASS)
+    sun_class_should_send = _should_send_ask_rides_sun_class()
+    sun_class_condition = sun_class_flag and not sun_class_paused and sun_class_should_send
+
+    fri_flag = await FeatureFlagsRepository.get_feature_flag_status(
+        FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+    )
+    fri_paused = await MessageScheduleRepository.is_job_paused(JobName.FRIDAY)
+    fri_condition = fri_flag and not fri_paused
+
+    wed_flag = await FeatureFlagsRepository.get_feature_flag_status(
+        FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+    )
+    wed_condition = wed_flag
+
+    logger.info(
+        "run_ask_rides_header condition check | "
+        "sun=[flag=%s, paused=%s, should_send=%s, result=%s] | "
+        "sun_class=[flag=%s, paused=%s, should_send=%s, result=%s] | "
+        "fri=[flag=%s, paused=%s, result=%s] | "
+        "wed=[flag=%s, result=%s]",
+        sun_flag,
+        sun_paused,
+        sun_should_send,
+        sun_condition,
+        sun_class_flag,
+        sun_class_paused,
+        sun_class_should_send,
+        sun_class_condition,
+        fri_flag,
+        fri_paused,
+        fri_condition,
+        wed_flag,
+        wed_condition,
+    )
+
+    if sun_condition or sun_class_condition or fri_condition or wed_condition:
         await channel.send(
             _format_message("for this week!"),
             allowed_mentions=discord.AllowedMentions(roles=True),
