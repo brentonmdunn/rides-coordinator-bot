@@ -99,3 +99,19 @@ class UserAccount(Base):
     role_edited_by = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class UserPreferences(Base):
+    """Model representing per-user UI/app preferences.
+
+    Keyed by email (matching user_accounts.email).
+    New preference columns can be added here without touching user_accounts.
+    """
+
+    __tablename__ = "user_preferences"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String, nullable=False, unique=True, index=True)
+    show_map_labels = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

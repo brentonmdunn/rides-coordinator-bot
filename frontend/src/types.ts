@@ -98,3 +98,7 @@ export interface AskRidesReactionsData {
 }
 
 export type AccountRole = 'admin' | 'ride_coordinator' | 'viewer'
+
+export interface UserPreferences {
+    show_map_labels: boolean
+}

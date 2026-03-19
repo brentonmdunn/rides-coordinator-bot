@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Expand, ArrowLeft, MousePointerClick, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, MapPin } from 'lucide-react'
 import { getAutomaticDay, useCopyToClipboard } from '../lib/utils'
 import { apiFetch } from '../lib/api'
@@ -9,7 +9,7 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from './ErrorMessage'
 import EditableOutput from './EditableOutput'
 import { useTheme } from './use-theme'
-import type { PickupLocationsResponse, MakeRouteResponse } from '../types'
+import type { PickupLocationsResponse, MakeRouteResponse, UserPreferences } from '../types'
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
@@ -113,6 +113,50 @@ function RouteBuilder() {
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
     const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
+
+    // --- User preferences ---
+    const queryClient = useQueryClient()
+
+    const { data: prefsData } = useQuery<UserPreferences>({
+        queryKey: ['user-preferences'],
+        queryFn: async () => {
+            const res = await apiFetch('/api/me/preferences')
+            if (!res.ok) throw new Error('Failed to load preferences')
+            return res.json()
+        },
+        // Keep the preference indefinitely; it only changes when the user toggles
+        staleTime: Infinity,
+    })
+
+    // Local state mirrors the server value; defaults to true until the API responds
+    const [showLocationLabels, setShowLocationLabels] = useState(true)
+
+    // Sync server value into local state once loaded
+    useEffect(() => {
+        if (prefsData !== undefined) {
+            setShowLocationLabels(prefsData.show_map_labels)
+        }
+    }, [prefsData])
+
+    const prefsMutation = useMutation({
+        mutationFn: async (value: boolean) => {
+            const res = await apiFetch('/api/me/preferences', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ show_map_labels: value }),
+            })
+            if (!res.ok) throw new Error('Failed to save preference')
+            return res.json() as Promise<UserPreferences>
+        },
+        onSuccess: (data) => {
+            queryClient.setQueryData(['user-preferences'], data)
+        },
+    })
+
+    const toggleShowLabels = (value: boolean) => {
+        setShowLocationLabels(value)
+        prefsMutation.mutate(value)
+    }
 
     // Map bounds for auto-fit (widget mode)
     const [mapBounds, setMapBounds] = useState<L.LatLngBoundsExpression | undefined>(undefined)
@@ -449,11 +493,13 @@ function RouteBuilder() {
                                       },
                                   }}
                               >
-                                  <Tooltip permanent direction="top" offset={[0, isSelected ? -10 : -36]}>
-                                      <span className="font-medium">
-                                          {loc.value}
-                                      </span>
-                                  </Tooltip>
+                                  {showLocationLabels && (
+                                      <Tooltip permanent direction="top" offset={[0, isSelected ? -10 : -36]}>
+                                          <span className="font-medium">
+                                              {loc.value}
+                                          </span>
+                                      </Tooltip>
+                                  )}
                               </Marker>
                           )
                       })}
@@ -499,6 +545,18 @@ function RouteBuilder() {
                               isPanelExpanded ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                           }`}>
                               <div className="p-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
+                                  {/* Show labels toggle */}
+                                  <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                                      <input
+                                          type="checkbox"
+                                          checked={showLocationLabels}
+                                          onChange={(e) => toggleShowLabels(e.target.checked)}
+                                          className="w-4 h-4 rounded accent-emerald-600"
+                                      />
+                                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                          Show labels
+                                      </span>
+                                  </label>
                                   {panelContents}
                               </div>
                           </div>
@@ -551,11 +609,28 @@ function RouteBuilder() {
                                               ? 'Tap pins to add stops'
                                               : `${selectedLocationKeys.length} location${selectedLocationKeys.length !== 1 ? 's' : ''} selected`}
                                       </div>
-                                      {isSheetExpanded ? (
-                                          <ChevronDown className="h-5 w-5 text-slate-400 dark:text-zinc-500" />
-                                      ) : (
-                                          <ChevronUp className="h-5 w-5 text-slate-400 dark:text-zinc-500" />
-                                      )}
+                                      <div className="flex items-center gap-3">
+                                          {/* Show labels toggle (mobile) */}
+                                          <label
+                                              className="flex items-center gap-1.5 cursor-pointer select-none"
+                                              onClick={(e) => e.stopPropagation()}
+                                          >
+                                              <input
+                                                  type="checkbox"
+                                                  checked={showLocationLabels}
+                                                  onChange={(e) => toggleShowLabels(e.target.checked)}
+                                                  className="w-4 h-4 rounded accent-emerald-600"
+                                              />
+                                              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                  Labels
+                                              </span>
+                                          </label>
+                                          {isSheetExpanded ? (
+                                              <ChevronDown className="h-5 w-5 text-slate-400 dark:text-zinc-500" />
+                                          ) : (
+                                              <ChevronUp className="h-5 w-5 text-slate-400 dark:text-zinc-500" />
+                                          )}
+                                      </div>
                                   </div>
                               </button>
 
