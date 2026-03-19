@@ -15,8 +15,8 @@
 
 import { useEffect, useState } from 'react'
 import { X, GripVertical } from 'lucide-react'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import {
     DndContext,
     closestCenter,
@@ -34,18 +34,18 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { PickupLocationsResponse } from '../types'
+import type { PickupLocationsResponse } from '../../types'
 
 // ---------------------------------------------------------------------------
 // Preset times — single source of truth
 // ---------------------------------------------------------------------------
 
 export const PRESET_TIMES = [
-    { key: 'friday',       label: 'Friday Fellowship', shortLabel: 'Fri (7:10pm)',    time: '7:10pm'  },
-    { key: 'sunday',       label: 'Sunday Service',    shortLabel: 'Sun (10:10am)',   time: '10:10am' },
-    { key: 'sunday_class', label: 'Sunday Class',      shortLabel: 'Class (8:40am)',  time: '8:40am'  },
-    { key: 'discipleship', label: 'Discipleship',      shortLabel: 'Disc (7:10am)',   time: '7:10am'  },
-    { key: 'custom',       label: 'Custom',            shortLabel: 'Custom',          time: ''        },
+    { key: 'friday', label: 'Friday Fellowship', shortLabel: 'Fri (7:10pm)', time: '7:10pm' },
+    { key: 'sunday', label: 'Sunday Service', shortLabel: 'Sun (10:10am)', time: '10:10am' },
+    { key: 'sunday_class', label: 'Sunday Class', shortLabel: 'Class (8:40am)', time: '8:40am' },
+    { key: 'discipleship', label: 'Discipleship', shortLabel: 'Disc (7:10am)', time: '7:10am' },
+    { key: 'custom', label: 'Custom', shortLabel: 'Custom', time: '' },
 ] as const
 
 export type TimeModeKey = typeof PRESET_TIMES[number]['key']
@@ -199,11 +199,10 @@ export function ArrivalTimeSelector({
                             key={opt.key}
                             type="button"
                             onClick={() => onTimeModeChange(opt.key, opt.time)}
-                            className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
-                                timeMode === opt.key
-                                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-zinc-800 dark:text-slate-300 dark:border-zinc-600 dark:hover:bg-zinc-700'
-                            }`}
+                            className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${timeMode === opt.key
+                                ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-zinc-800 dark:text-slate-300 dark:border-zinc-600 dark:hover:bg-zinc-700'
+                                }`}
                         >
                             {opt.shortLabel}
                         </button>
