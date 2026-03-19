@@ -36,7 +36,7 @@ import {
     SortableLocationList,
     ArrivalTimeSelector,
     useRouteGeometry,
-} from './routeBuilderShared'
+} from './RouteBuilder/routeBuilderShared'
 
 setupLeafletIcons()
 
@@ -374,7 +374,7 @@ function RouteBuilder() {
                     <SortableLocationList
                         locationKeys={selectedLocationKeys}
                         getLocationValue={getLocationValue}
-                        onRemove={(index) =>
+                        onRemove={(index: number) =>
                             setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
                         }
                         onReorder={setSelectedLocationKeys}
@@ -388,7 +388,7 @@ function RouteBuilder() {
                         <ArrivalTimeSelector
                             timeMode={timeMode}
                             leaveTime={leaveTime}
-                            onTimeModeChange={(mode, time) => {
+                            onTimeModeChange={(mode: TimeModeKey, time: string) => {
                                 setTimeMode(mode)
                                 setLeaveTime(time)
                             }}
@@ -740,7 +740,7 @@ function RouteBuilder() {
                                 <SortableLocationList
                                     locationKeys={selectedLocationKeys}
                                     getLocationValue={getLocationValue}
-                                    onRemove={(index) =>
+                                    onRemove={(index: number) =>
                                         setSelectedLocationKeys((prev) => prev.filter((_, i) => i !== index))
                                     }
                                     onReorder={setSelectedLocationKeys}
@@ -756,7 +756,7 @@ function RouteBuilder() {
                             <ArrivalTimeSelector
                                 timeMode={timeMode}
                                 leaveTime={leaveTime}
-                                onTimeModeChange={(mode, time) => {
+                                onTimeModeChange={(mode: TimeModeKey, time: string) => {
                                     setTimeMode(mode)
                                     setLeaveTime(time)
                                 }}
