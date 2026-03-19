@@ -28,6 +28,7 @@ from api.routes.list_pickups import router as list_pickups_router
 from api.routes.locations import router as locations_router
 from api.routes.me import router as me_router
 from api.routes.route_builder import router as route_builder_router
+from api.routes.user_preferences import router as user_preferences_router
 from bot.api import bot_lifespan
 
 # Configure logging
@@ -106,6 +107,7 @@ app.include_router(list_pickups_router)
 app.include_router(check_pickups_router)
 app.include_router(route_builder_router)
 app.include_router(admin_users_router)
+app.include_router(user_preferences_router)
 
 # Mount static files for React SPA (if directory exists)
 admin_ui_path = Path("admin_ui")
