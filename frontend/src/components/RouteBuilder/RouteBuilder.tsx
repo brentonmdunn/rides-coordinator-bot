@@ -241,6 +241,9 @@ function RouteBuilder() {
         setSelectedLocationKeys((prev) =>
             prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
         )
+        // Clear after the 0.35s bounce animation so any unrelated re-render
+        // (e.g. changing the preset time) doesn't replay the animation.
+        setTimeout(() => setLastToggledLocation(null), 400)
     }
 
     const generateRoute = async (e?: React.FormEvent) => {
