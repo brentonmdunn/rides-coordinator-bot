@@ -24,7 +24,8 @@ import 'leaflet/dist/leaflet.css'
 import '@luomus/leaflet-smooth-wheel-zoom'
 import { setupLeafletIcons } from '../MapConstants'
 
-import { PRESET_TIME_MAP, type TimeModeKey, useRouteGeometry } from './routeBuilderShared'
+import { PRESET_TIME_MAP, type TimeModeKey } from './routeBuilderConstants'
+import { useRouteGeometry } from './useRouteGeometry'
 
 import { RouteBuilderWidget } from './RouteBuilderWidget'
 import { RouteBuilderFullscreenMap } from './RouteBuilderFullscreenMap'

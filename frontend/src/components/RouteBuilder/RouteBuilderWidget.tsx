@@ -26,7 +26,7 @@ import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 import ErrorMessage from '../ErrorMessage'
 import EditableOutput from '../EditableOutput'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
-import type { TimeModeKey } from './routeBuilderShared'
+import type { TimeModeKey } from './routeBuilderConstants'
 import type { PickupLocationsResponse } from '../../types'
 
 export interface RouteBuilderWidgetProps {
