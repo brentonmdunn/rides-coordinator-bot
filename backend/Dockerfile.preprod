@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Install system dependencies needed for building
 RUN apt update && apt install -y curl && \
@@ -16,7 +16,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --no-cache --no-dev
 
 # Final stage - much smaller
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Install only runtime dependencies
 RUN apt update && apt install -y sqlite3 tzdata && \
