@@ -10,8 +10,20 @@ A comprehensive Discord bot and web dashboard for coordinating ride pickups, man
 
 This project is a monorepo consisting of:
 
-- **Backened (`backend/`)**: A Python application using `discord.py` for the bot and `FastAPI` for the web API and admin interface.
+- **Backend (`backend/`)**: A Python application using `discord.py` for the bot and `FastAPI` for the web API and admin interface. See the [Backend Architecture Guide](backend/docs/architecture.md) for more structural details.
 - **Frontend (`frontend/`)**: A React SPA built with Vite and TailwindCSS for the user dashboard.
+
+**High-Level Flow:**
+- The Discord bot acts as the primary interface for users to interact with features (slash commands, buttons, reactions).
+- The FastAPI application serves as the system's brain and database interface, securely communicating with the frontend React SPA.
+- The React SPA serves as an admin dashboard to visualize and manipulate the data (e.g., viewing pickups, feature flags, group rides).
+
+## 📚 Documentation & Guides
+
+- [Documentation Hub](docs/README.md)
+- [Contributing Guide](CONTRIBUTING.md)
+- [CI/CD Strategy](docs/CI_CD.md)
+- [Frontend Config](frontend/ENV_CONFIG.md)
 
 ## 🚀 Quick Start
 
