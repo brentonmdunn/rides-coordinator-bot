@@ -66,5 +66,8 @@ ignore = [
   "D100", # Missing docstring in public module
   "D104", # Missing docstring in public package
   "D107", # Missing docstring in __init__
-  "COM812", # warning...
+  "COM812", # May cause conflicts with formatter
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D"]
