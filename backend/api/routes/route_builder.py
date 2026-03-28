@@ -24,7 +24,9 @@ router = APIRouter()
 class MakeRouteRequest(BaseModel):
     """Request model for making a route."""
 
-    locations: list[str] = Field(description="List of pickup location IDs/names to include in the route")
+    locations: list[str] = Field(
+        description="List of pickup location IDs/names to include in the route"
+    )
     leave_time: str = Field(description="Desired departure time from campus (e.g. '1:30 PM')")
 
 
@@ -32,7 +34,9 @@ class MakeRouteResponse(BaseModel):
     """Response model for making a route."""
 
     success: bool = Field(description="Whether the route generation was successful")
-    route: str | None = Field(default=None, description="The formatted Google Maps route URL or text")
+    route: str | None = Field(
+        default=None, description="The formatted Google Maps route URL or text"
+    )
     error: str | None = Field(default=None, description="Error message if the request failed")
 
 
@@ -46,12 +50,23 @@ class PickupLocationItem(BaseModel):
 class PickupLocationsResponse(BaseModel):
     """Response model for pickup locations."""
 
-    locations: list[PickupLocationItem] = Field(description="List of all available pickup locations")
-    map_links: dict[str, str] = Field(description="Mapping of location display names to Google Maps URLs")
-    coordinates: dict[str, dict[str, float]] = Field(description="Mapping of location display names to lat/lng objects")
+    locations: list[PickupLocationItem] = Field(
+        description="List of all available pickup locations"
+    )
+    map_links: dict[str, str] = Field(
+        description="Mapping of location display names to Google Maps URLs"
+    )
+    coordinates: dict[str, dict[str, float]] = Field(
+        description="Mapping of location display names to lat/lng objects"
+    )
 
 
-@router.get("/api/pickup-locations", response_model=PickupLocationsResponse, summary="Get Pickup Locations", description="Get all available pickup locations, their map links, and physical coordinates.")
+@router.get(
+    "/api/pickup-locations",
+    response_model=PickupLocationsResponse,
+    summary="Get Pickup Locations",
+    description="Get all available pickup locations, their map links, and physical coordinates.",
+)
 async def get_pickup_locations():
     """
     Get all available pickup locations and their Google Maps links.
@@ -88,7 +103,12 @@ async def get_pickup_locations():
         ) from e
 
 
-@router.post("/api/make-route", response_model=MakeRouteResponse, summary="Generate Route", description="Generate an optimized driving route via Google Maps based on specified locations and a leaving time.")
+@router.post(
+    "/api/make-route",
+    response_model=MakeRouteResponse,
+    summary="Generate Route",
+    description="Generate an optimized driving route via Google Maps based on specified locations and a leaving time.",
+)
 async def make_route(request: MakeRouteRequest):
     """
     Generate a route based on specified locations and leave time.

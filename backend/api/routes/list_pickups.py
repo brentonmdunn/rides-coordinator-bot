@@ -18,20 +18,33 @@ router = APIRouter(prefix="/api/list-pickups", tags=["list-pickups"])
 class ListPickupsRequest(BaseModel):
     """Request model for listing pickups."""
 
-    ride_type: str = Field(description="Type of ride to lookup. Allowed values: 'friday', 'sunday', or 'message_id'")
-    message_id: str | None = Field(default=None, description="Required only when ride_type is 'message_id'")
-    channel_id: str = Field(default="939950319721406464", description="Default to rides announcements channel")
+    ride_type: str = Field(
+        description="Type of ride to lookup. Allowed values: 'friday', 'sunday', or 'message_id'"
+    )
+    message_id: str | None = Field(
+        default=None, description="Required only when ride_type is 'message_id'"
+    )
+    channel_id: str = Field(
+        default="939950319721406464", description="Default to rides announcements channel"
+    )
 
 
 class ListPickupsResponse(BaseModel):
     """Response model for pickup locations."""
 
     success: bool = Field(description="Whether the query was successful")
-    data: dict | None = Field(default=None, description="The returned housing groups and unknown users")
+    data: dict | None = Field(
+        default=None, description="The returned housing groups and unknown users"
+    )
     error: str | None = Field(default=None, description="Error message if the request failed")
 
 
-@router.post("", response_model=ListPickupsResponse, summary="List Pickups", description="Extracts and categorizes pickup locations from user reactions on a requested Discord message.")
+@router.post(
+    "",
+    response_model=ListPickupsResponse,
+    summary="List Pickups",
+    description="Extracts and categorizes pickup locations from user reactions on a requested Discord message.",
+)
 async def list_pickups(request: ListPickupsRequest):
     """
     List pickup locations based on ride type (Friday, Sunday, or custom message ID).

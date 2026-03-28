@@ -39,11 +39,18 @@ class SyncCoverageResponse(BaseModel):
 class DriverReactionResponse(BaseModel):
     day: str = Field(description="The day requested")
     reactions: dict[str, list[str]] = Field(description="Mapping of emoji to list of usernames")
-    username_to_name: dict[str, str] = Field(description="Mapping of discord usernames to real names")
+    username_to_name: dict[str, str] = Field(
+        description="Mapping of discord usernames to real names"
+    )
     message_found: bool = Field(description="Whether the driver chat message was found")
 
 
-@router.get("/{ride_type}", response_model=PickupCoverageResponse, summary="Get Pickup Coverage", description="Check ride assignment coverage for users who requested a ride.")
+@router.get(
+    "/{ride_type}",
+    response_model=PickupCoverageResponse,
+    summary="Get Pickup Coverage",
+    description="Check ride assignment coverage for users who requested a ride.",
+)
 async def get_pickup_coverage(ride_type: str):
     """
     Check ride coverage for users who reacted to a ride message.
@@ -140,7 +147,12 @@ async def get_pickup_coverage(ride_type: str):
         raise HTTPException(status_code=500, detail=f"Failed to fetch ride coverage: {e!s}") from e
 
 
-@router.post("/sync", response_model=SyncCoverageResponse, summary="Sync Ride Coverage", description="Force sync ride coverage by scanning recent messages for assignments.")
+@router.post(
+    "/sync",
+    response_model=SyncCoverageResponse,
+    summary="Sync Ride Coverage",
+    description="Force sync ride coverage by scanning recent messages for assignments.",
+)
 async def sync_ride_coverage():
     """
     Force sync ride coverage by scanning recent messages.
@@ -169,7 +181,12 @@ async def sync_ride_coverage():
         raise HTTPException(status_code=500, detail=f"Failed to sync ride coverage: {e!s}") from e
 
 
-@router.get("/driver-reactions/{day}", response_model=DriverReactionResponse, summary="Get Driver Reactions", description="Get emoji reactions from drivers offering rides in the driver chat.")
+@router.get(
+    "/driver-reactions/{day}",
+    response_model=DriverReactionResponse,
+    summary="Get Driver Reactions",
+    description="Get emoji reactions from drivers offering rides in the driver chat.",
+)
 async def get_driver_reactions(day: str):
     """
     Get emoji reactions for driver messages.
