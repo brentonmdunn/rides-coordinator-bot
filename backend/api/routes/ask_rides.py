@@ -4,7 +4,7 @@ import logging
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
 from bot.api import get_bot
@@ -22,11 +22,11 @@ router = APIRouter(prefix="/api/ask-rides", tags=["ask-rides"])
 class PauseRequest(BaseModel):
     """Request body for setting a pause."""
 
-    is_paused: bool
-    resume_after_date: date | None = None
+    is_paused: bool = Field(description="Whether to pause the job")
+    resume_after_date: date | None = Field(default=None, description="Optional date after which the job should automatically resume")
 
 
-@router.post("/send-now", dependencies=[Depends(require_ride_coordinator)])
+@router.post("/send-now", dependencies=[Depends(require_ride_coordinator)], summary="Manually Trigger Ask Rides", description="Manually trigger all ask rides messages immediately.")
 async def send_now():
     """
     Manually trigger all ask rides messages immediately.
@@ -46,7 +46,7 @@ async def send_now():
         raise HTTPException(status_code=500, detail=f"Failed to send messages: {e!s}") from e
 
 
-@router.get("/status")
+@router.get("/status", summary="Get Ask Rides Status", description="Get the status of all automated ask rides jobs.")
 async def get_status():
     """
     Get status for all ask rides jobs.
@@ -62,7 +62,7 @@ async def get_status():
     return status
 
 
-@router.get("/pauses")
+@router.get("/pauses", summary="Get Pause Statuses", description="Get the pause status configurations for all ask rides jobs.")
 async def get_pauses():
     """Get pause status for all ask rides jobs."""
     pauses = await MessageScheduleRepository.get_all_pause_statuses()
@@ -83,7 +83,7 @@ async def get_pauses():
     return result
 
 
-@router.put("/pauses/{job_name}", dependencies=[Depends(require_ride_coordinator)])
+@router.put("/pauses/{job_name}", dependencies=[Depends(require_ride_coordinator)], summary="Set Pause Status", description="Set or release the pause state for a specific job.")
 async def set_pause(job_name: str, request: PauseRequest):
     """Set the pause state for a specific job.
 
@@ -139,7 +139,7 @@ async def set_pause(job_name: str, request: PauseRequest):
     }
 
 
-@router.get("/upcoming-dates/{job_name}")
+@router.get("/upcoming-dates/{job_name}", summary="Get Upcoming Dates", description="Get the mathematically projected upcoming event dates for a given job type.")
 async def get_upcoming_dates(job_name: str, count: int = 6, offset: int = 0):
     """Get upcoming event dates for a job type.
 
@@ -185,7 +185,7 @@ async def get_upcoming_dates(job_name: str, count: int = 6, offset: int = 0):
     return {"dates": dates, "has_more": True}
 
 
-@router.get("/reactions/{message_type}")
+@router.get("/reactions/{message_type}", summary="Get Reaction Breakdown", description="Get a detailed breakdown of user reactions on the target ask rides message.")
 async def get_ask_rides_reactions(message_type: str):
     """
     Get detailed reaction breakdown for ask-rides messages.

@@ -3,7 +3,7 @@
 import logging
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from bot.api import get_bot, send_error_to_discord
 from bot.core.enums import JobName
@@ -17,22 +17,22 @@ router = APIRouter(prefix="/api/group-rides", tags=["group-rides"])
 class GroupRidesRequest(BaseModel):
     """Request model for grouping rides."""
 
-    ride_type: str  # "friday", "sunday", or "message_id"
-    message_id: str | None = None  # Required only when ride_type is "message_id"
-    driver_capacity: str = "44444"
-    channel_id: str = "939950319721406464"  # Default to rides announcements channel
+    ride_type: str = Field(description="Type of ride (e.g. 'friday', 'sunday', or 'message_id')")
+    message_id: str | None = Field(default=None, description="Required only when ride_type is 'message_id'")
+    driver_capacity: str = Field(default="44444", description="String of integers representing seats per driver")
+    channel_id: str = Field(default="939950319721406464", description="Default to rides announcements channel")
 
 
 class GroupRidesResponse(BaseModel):
     """Response model for grouped rides."""
 
-    success: bool
-    summary: str | None = None
-    groupings: list[str] | None = None
-    error: str | None = None
+    success: bool = Field(description="Whether the grouping was successful")
+    summary: str | None = Field(default=None, description="String summary of the total drivers and passengers")
+    groupings: list[str] | None = Field(default=None, description="List of formatted strings representing each car grouping")
+    error: str | None = Field(default=None, description="Error message if the request failed")
 
 
-@router.post("", response_model=GroupRidesResponse)
+@router.post("", response_model=GroupRidesResponse, summary="Group Rides", description="Automatically group people from pickup locations into cars based on driver capacity.")
 async def group_rides(request: GroupRidesRequest):
     """
     Group rides based on ride type (Friday, Sunday, or custom message ID).
