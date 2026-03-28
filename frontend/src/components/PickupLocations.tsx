@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { apiFetch } from '../lib/api'
 import { useCopyToClipboard } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -7,57 +6,33 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import PickupGroup from './PickupGroup'
 import ErrorMessage from "./ErrorMessage"
-import type { LocationData } from '../types'
+import { usePickups } from '../hooks/usePickups'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Settings } from 'lucide-react'
 
+/**
+ * A dashboard component that allows admins to lookup and display grouping locations 
+ * for a specific ride event (Friday, Sunday, or via a specific Discord message ID).
+ */
 function PickupLocations() {
     const [pickupRideType, setPickupRideType] = useState<RideType>('friday')
     const [messageId, setMessageId] = useState('')
     const [channelId, setChannelId] = useState('')
     const [showSettings, setShowSettings] = useState(false)
-    const [pickupData, setPickupData] = useState<LocationData | null>(null)
-    const [pickupError, setPickupError] = useState<string>('')
-    const [pickupLoading, setPickupLoading] = useState(false)
     const { copiedText: copiedUsername, copyToClipboard } = useCopyToClipboard()
     const [showInfo, setShowInfo] = useState(false)
 
-    const fetchPickups = async (e: React.FormEvent) => {
+    const { 
+        data: pickupData, 
+        error: pickupError, 
+        isLoading: pickupLoading, 
+        fetchPickups 
+    } = usePickups()
+
+    const handleFetchPickups = async (e: React.FormEvent) => {
         e.preventDefault()
-        setPickupLoading(true)
-        setPickupError('')
-        setPickupData(null)
-
-        try {
-            const body: Record<string, unknown> = {
-                ride_type: pickupRideType,
-                message_id: pickupRideType === 'message_id' ? messageId : null,
-            }
-
-            if (channelId) {
-                body.channel_id = channelId
-            }
-
-            const response = await apiFetch('/api/list-pickups', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            })
-
-            const result = await response.json()
-
-            if (result.success && result.data) {
-                setPickupData(result.data)
-            } else {
-                setPickupError(result.error || 'Failed to fetch pickups')
-            }
-        } catch (error) {
-            setPickupError(error instanceof Error ? error.message : 'Unknown error')
-            console.error('Pickup fetch error:', error)
-        } finally {
-            setPickupLoading(false)
-        }
+        await fetchPickups(pickupRideType, messageId, channelId)
     }
 
     return (
@@ -101,7 +76,7 @@ function PickupLocations() {
                     </ol>
                 </InfoPanel>
 
-                <form onSubmit={fetchPickups} className="space-y-6">
+                <form onSubmit={handleFetchPickups} className="space-y-6">
                     {/* Ride Type Selection */}
                     <RideTypeSelector value={pickupRideType} onChange={setPickupRideType} />
 
