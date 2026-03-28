@@ -13,7 +13,7 @@
 import { MousePointerClick } from 'lucide-react'
 import { Button } from '../ui/button'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
-import type { TimeModeKey } from './routeBuilderShared'
+import type { TimeModeKey } from './routeBuilderConstants'
 import EditableOutput from '../EditableOutput'
 
 export interface RouteBuilderPanelContentsProps {

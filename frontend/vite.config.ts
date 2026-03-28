@@ -11,4 +11,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          map: ['leaflet', 'react-leaflet'],
+          ui: ['lucide-react', '@radix-ui/react-slot', '@dnd-kit/core', '@dnd-kit/sortable']
+        },
+      },
+    },
+  },
 })

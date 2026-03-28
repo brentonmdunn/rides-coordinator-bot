@@ -31,12 +31,14 @@ import {
 } from './ui/select'
 
 import {
-    PRESET_TIME_MAP,
-    type TimeModeKey,
     SortableLocationList,
     ArrivalTimeSelector,
-    useRouteGeometry,
 } from './RouteBuilder/routeBuilderShared'
+import {
+    PRESET_TIME_MAP,
+    type TimeModeKey,
+} from './RouteBuilder/routeBuilderConstants'
+import { useRouteGeometry } from './RouteBuilder/useRouteGeometry'
 
 setupLeafletIcons()
 
