@@ -1,4 +1,5 @@
-"""Database models.
+"""
+Database models.
 
 This module defines the SQLAlchemy models for the application's database tables.
 """
@@ -73,7 +74,8 @@ class RideCoverage(Base):
 
 
 class MessageSchedulePause(Base):
-    """Model representing a pause/delay for a scheduled ask-rides job.
+    """
+    Model representing a pause/delay for a scheduled ask-rides job.
 
     Each job (friday, sunday, sunday_class) can be independently paused
     either indefinitely or until a specific event date.
@@ -102,7 +104,8 @@ class UserAccount(Base):
 
 
 class UserPreferences(Base):
-    """Model representing per-user UI/app preferences.
+    """
+    Model representing per-user UI/app preferences.
 
     Keyed by email (matching user_accounts.email).
     New preference columns can be added here without touching user_accounts.

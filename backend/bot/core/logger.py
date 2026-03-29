@@ -1,4 +1,5 @@
-"""Logger configuration.
+"""
+Logger configuration.
 
 This module sets up the logging configuration for the application, including
 console handlers, file handlers with rotation, formatters, and log levels for
@@ -65,7 +66,7 @@ console_handler.addFilter(UserEmailFilter())
 console_handler.addFilter(TransactionIdFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(name)s:%(lineno)d] [%(user_email)s] %(message)s"  # noqa: E501
+    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(name)s:%(lineno)d] [%(user_email)s] %(message)s"
 )
 
 console_handler.setFormatter(formatter)
@@ -113,7 +114,8 @@ logger.addHandler(file_handler)
 # Decorators
 # ------------------------------
 def log_cmd(func):
-    """A decorator that logs Discord slash commands, including their arguments.
+    """
+    A decorator that logs Discord slash commands, including their arguments.
 
     Args:
         func: The command function to wrap.
@@ -158,7 +160,8 @@ def log_cmd(func):
 
 
 def log_job(func):
-    """A decorator that assigns a transaction ID to a scheduled job execution.
+    """
+    A decorator that assigns a transaction ID to a scheduled job execution.
 
     Args:
         func: The job function to wrap.

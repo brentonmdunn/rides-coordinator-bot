@@ -67,7 +67,17 @@ ignore = [
   "D104", # Missing docstring in public package
   "D107", # Missing docstring in __init__
   "D203", # 1 blank line required before class docstring (incompatible with D211)
-  "D213", # Multi-line docstring summary should start at the second line (incompatible with D212)
+  "D212", # Multi-line docstring summary should start at the first line (incompatible with D213)
+  "D413", # Missing blank line after last section
+  "D204", # 1 blank line required after class docstring
+  "D401", # First line of docstring should be in imperative mood
+  "D400", # First line should end with a period
+  "D415", # First line should end with punctuation
+  "D205", # 1 blank line required between summary line and description
+  "D200", # One-line docstring should fit on one line
+  "D417", # Missing argument descriptions in the docstring
+  "E501", # Line too long
+  "RUF001", # String contains ambiguous character
   "COM812", # May cause conflicts with formatter
 ]
 

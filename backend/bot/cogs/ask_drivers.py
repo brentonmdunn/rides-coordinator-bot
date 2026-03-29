@@ -32,7 +32,6 @@ class AskDrivers(commands.Cog):
 
     def __init__(self, bot: commands.Bot, driver_service):
         """Initialize the AskDrivers cog."""
-
         self.bot = bot
         self.driver_service = driver_service
 
@@ -44,7 +43,8 @@ class AskDrivers(commands.Cog):
     @log_cmd
     @feature_flag_enabled(FeatureFlagNames.BOT)
     async def ask_drivers(self, interaction: discord.Interaction, day: str, message: str) -> None:
-        """Pings the driver role with a custom message.
+        """
+        Pings the driver role with a custom message.
 
         Args:
             interaction: The Discord interaction.

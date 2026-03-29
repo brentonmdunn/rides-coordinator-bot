@@ -56,12 +56,12 @@ class LocationsService:
 
     def __init__(self, bot):
         """Initialize the LocationsService."""
-
         self.bot = bot
         self.repo = LocationsRepository()
 
     async def sync_locations(self):
-        """Syncs the Google Sheet with database table `locations`.
+        """
+        Syncs the Google Sheet with database table `locations`.
 
         Raises:
             Exception: If LSCC_PPL_CSV_URL is not set or data retrieval fails.
@@ -117,7 +117,8 @@ class LocationsService:
         logger.info("Finished syncing locations csv with table.")
 
     def _verify_year(self, year: str) -> bool:
-        """Verifies if the year is valid.
+        """
+        Verifies if the year is valid.
 
         Args:
             year: The year string to verify.
@@ -128,7 +129,8 @@ class LocationsService:
         return year in [year.value for year in ClassYear]
 
     def _verify_driver(self, driver: str) -> bool:
-        """Verifies if the driver status is valid.
+        """
+        Verifies if the driver status is valid.
 
         Args:
             driver: The driver status string.
@@ -139,7 +141,8 @@ class LocationsService:
         return driver in [driver.value for driver in CanBeDriver]
 
     def _get_info(self, data: dict, key: str, verify_schema: Callable | None = None) -> str | None:
-        """Extracts and verifies information from a dictionary.
+        """
+        Extracts and verifies information from a dictionary.
 
         Args:
             data: The dictionary containing data.
@@ -162,7 +165,8 @@ class LocationsService:
     async def get_location(
         self, name: str, discord_only: bool = False
     ) -> list[tuple[str, str]] | None:
-        """Retrieves location information for a given name.
+        """
+        Retrieves location information for a given name.
 
         Args:
             name: The name to search for.
@@ -192,7 +196,8 @@ class LocationsService:
         return possible_people if possible_people else None
 
     async def get_name_location_no_sync(self, discord_username: str) -> tuple[str, str] | None:
-        """Retrieves name and location for a Discord username without syncing.
+        """
+        Retrieves name and location for a Discord username without syncing.
 
         Args:
             discord_username: The Discord username to search for.
@@ -205,7 +210,8 @@ class LocationsService:
         return person
 
     async def pickup_location(self, name: str) -> str:
-        """Formats pickup location information for a given name.
+        """
+        Formats pickup location information for a given name.
 
         Args:
             name: The name to search for.
@@ -226,7 +232,8 @@ class LocationsService:
         channel_id: int = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
         option=None,
     ):
-        """Wrapper for listing locations, handling interaction responses and errors.
+        """
+        Wrapper for listing locations, handling interaction responses and errors.
 
         Args:
             interaction: The Discord interaction.
@@ -282,7 +289,8 @@ class LocationsService:
         channel_id: int = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
         option=None,
     ):
-        """Lists locations based on reactions to a message.
+        """
+        Lists locations based on reactions to a message.
 
         Args:
             day: The day to list locations for.
@@ -337,7 +345,8 @@ class LocationsService:
 
     @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID)
     async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
-        """Finds the most recent message matching the criteria.
+        """
+        Finds the most recent message matching the criteria.
 
         Delegates to the batch method `_find_all_messages` which scans
         channel history once for all AskRidesMessage variants and populates
@@ -354,7 +363,8 @@ class LocationsService:
         return results.get(ask_rides_message)
 
     async def _find_all_messages(self, channel_id) -> dict[AskRidesMessage, int | None]:
-        """Scans channel history once and finds all AskRidesMessage matches.
+        """
+        Scans channel history once and finds all AskRidesMessage matches.
 
         Populates the per-key `_find_correct_message` cache for each variant
         so subsequent individual lookups are O(1) cache hits.
@@ -392,7 +402,8 @@ class LocationsService:
     async def _find_driver_message(
         self, event: AskRidesMessage, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
     ):
-        """Finds the most recent driver message matching the keyword.
+        """
+        Finds the most recent driver message matching the keyword.
 
         Delegates to the batch method `_find_all_driver_messages` which scans
         channel history once for all events and populates the per-key cache.
@@ -413,7 +424,8 @@ class LocationsService:
         self,
         channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
     ) -> dict[AskRidesMessage, int | None]:
-        """Scans driver channel history once and finds all driver message matches.
+        """
+        Scans driver channel history once and finds all driver message matches.
 
         Populates the per-key `_find_driver_message` cache for each variant
         so subsequent individual lookups are O(1) cache hits.
@@ -463,7 +475,8 @@ class LocationsService:
         ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS
     )
     async def get_ask_rides_reactions(self, event: AskRidesMessage):
-        """Retrieves reaction breakdown for an ask-rides message.
+        """
+        Retrieves reaction breakdown for an ask-rides message.
 
         Args:
             event: The AskRidesMessage type to look up.
@@ -503,7 +516,8 @@ class LocationsService:
         namespace=CacheNamespace.ASK_DRIVERS_REACTIONS,
     )
     async def get_driver_reactions(self, event: AskRidesMessage):
-        """Retrieves reaction breakdown for a driver message.
+        """
+        Retrieves reaction breakdown for a driver message.
 
         Args:
             event: AskRidesMessage.FRIDAY_FELLOWSHIP or AskRidesMessage.SUNDAY_SERVICE
@@ -548,7 +562,8 @@ class LocationsService:
         ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS
     )
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
-        """Retrieves a set of usernames who reacted to a message.
+        """
+        Retrieves a set of usernames who reacted to a message.
 
         Args:
             channel_id: The channel ID.
@@ -580,7 +595,8 @@ class LocationsService:
         return usernames_reacted
 
     async def _sort_locations(self, usernames_reacted):
-        """Sorts users into locations based on their database records.
+        """
+        Sorts users into locations based on their database records.
 
         Args:
             usernames_reacted: A set of usernames to sort.
@@ -608,7 +624,8 @@ class LocationsService:
         return locations_people, location_found
 
     def group_locations_by_housing(self, locations_people, usernames_reacted, location_found):
-        """Groups locations into housing categories.
+        """
+        Groups locations into housing categories.
 
         Args:
             locations_people: Dictionary mapping locations to people.
@@ -670,7 +687,8 @@ class LocationsService:
     def _build_embed(
         self, locations_people, usernames_reacted, location_found, option=None, custom_title=None
     ):
-        """Builds a Discord embed displaying location breakdowns.
+        """
+        Builds a Discord embed displaying location breakdowns.
 
         Args:
             locations_people: Dictionary mapping locations to people.

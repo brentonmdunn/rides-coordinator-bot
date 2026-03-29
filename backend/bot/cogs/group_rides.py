@@ -16,7 +16,6 @@ class GroupRides(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         """Initialize the GroupRides cog."""
-
         self.bot = bot
         self.service = GroupRidesService(bot)
 
@@ -26,7 +25,7 @@ class GroupRides(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @discord.app_commands.describe(
-        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
     )
     @log_cmd
     async def group_rides_friday(
@@ -36,7 +35,8 @@ class GroupRides(commands.Cog):
         custom_prompt: str | None = None,
         legacy_prompt: bool = False,
     ):
-        """Groups riders with drivers for Friday fellowship.
+        """
+        Groups riders with drivers for Friday fellowship.
 
         Args:
             interaction: The Discord interaction.
@@ -62,7 +62,7 @@ class GroupRides(commands.Cog):
     )
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @discord.app_commands.describe(
-        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
     )
     @log_cmd
     async def group_rides_sunday(
@@ -72,7 +72,8 @@ class GroupRides(commands.Cog):
         custom_prompt: str | None = None,
         legacy_prompt: bool = False,
     ):
-        """Groups riders with drivers for Sunday service.
+        """
+        Groups riders with drivers for Sunday service.
 
         Args:
             interaction: The Discord interaction.
@@ -98,7 +99,7 @@ class GroupRides(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @discord.app_commands.describe(
         message_id="The message ID to fetch pickups from",
-        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",  # noqa: E501
+        driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
     )
     @log_cmd
     async def group_rides_message_id(
@@ -108,7 +109,8 @@ class GroupRides(commands.Cog):
         driver_capacity: str = "44444",
         legacy_prompt: bool = False,
     ):
-        """Groups riders with drivers based on a specific message ID.
+        """
+        Groups riders with drivers based on a specific message ID.
 
         Args:
             interaction: The Discord interaction.
@@ -149,7 +151,8 @@ class GroupRides(commands.Cog):
         locations: str,
         leave_time: str,
     ):
-        """Makes route based on specified locations.
+        """
+        Makes route based on specified locations.
 
         Args:
             interaction: The Discord interaction.

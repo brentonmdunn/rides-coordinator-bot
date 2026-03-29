@@ -1,4 +1,5 @@
-"""User accounts service.
+"""
+User accounts service.
 
 Business logic for user account management and role-based access control.
 """
@@ -19,7 +20,8 @@ class UserAccountsService:
 
     @staticmethod
     async def get_or_create_account(email: str):
-        """Get or create a user account with default viewer role.
+        """
+        Get or create a user account with default viewer role.
 
         Args:
             email: The email address of the user.
@@ -31,7 +33,8 @@ class UserAccountsService:
 
     @staticmethod
     async def has_minimum_role(email: str, minimum_role: AccountRoles) -> bool:
-        """Check if a user has at least the specified role level.
+        """
+        Check if a user has at least the specified role level.
 
         Args:
             email: The email address to check.

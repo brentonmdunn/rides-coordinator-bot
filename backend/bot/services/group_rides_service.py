@@ -65,7 +65,8 @@ PassengersByLocation = dict[PickupLocations, list[Passenger]]
 
 
 def parse_numbers(s: str) -> list[int]:
-    """Parses a string of single-digit numbers and returns a list of integers.
+    """
+    Parses a string of single-digit numbers and returns a list of integers.
 
     The input string can have numbers separated by spaces or no spaces at all.
     Each number in the input string must be a single digit from 0 to 9.
@@ -85,7 +86,8 @@ def parse_numbers(s: str) -> list[int]:
 
 
 def find_passenger(locations_people: PassengersByLocation, person: str, location: str) -> Passenger:
-    """Finds a passenger object by name and location.
+    """
+    Finds a passenger object by name and location.
 
     Args:
         locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
@@ -104,7 +106,8 @@ def find_passenger(locations_people: PassengersByLocation, person: str, location
 
 
 def count_tuples(data_dict: PassengersByLocation) -> int:
-    """Counts the total number of passengers across all locations.
+    """
+    Counts the total number of passengers across all locations.
 
     Args:
         data_dict (PassengersByLocation): Dictionary of passengers grouped by location.
@@ -118,7 +121,8 @@ def count_tuples(data_dict: PassengersByLocation) -> int:
 def is_enough_capacity(
     driver_capacity_list: list[int], locations_people: PassengersByLocation
 ) -> bool:
-    """Checks if there is enough driver capacity for all passengers.
+    """
+    Checks if there is enough driver capacity for all passengers.
 
     Args:
         driver_capacity_list (list[int]): List of capacities for each driver.
@@ -134,7 +138,8 @@ def is_enough_capacity(
 def calculate_pickup_time(
     curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int
 ) -> datetime.time:
-    """Calculates the pickup time based on the previous location and travel time.
+    """
+    Calculates the pickup time based on the previous location and travel time.
 
     Args:
         curr_leave_time (datetime.time): The leave time from the previous location.
@@ -159,7 +164,8 @@ def calculate_pickup_time(
 
 
 def llm_input_drivers(driver_capacity: list[int]) -> str:
-    """Formats driver capacity data for LLM input.
+    """
+    Formats driver capacity data for LLM input.
 
     Args:
         driver_capacity (list[int]): List of driver capacities.
@@ -173,7 +179,8 @@ def llm_input_drivers(driver_capacity: list[int]) -> str:
 
 
 def llm_input_pickups(locations_people: PassengersByLocation) -> str:
-    """Formats pickup location data for LLM input.
+    """
+    Formats pickup location data for LLM input.
 
     Args:
         locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
@@ -193,7 +200,8 @@ def create_output(
     end_leave_time: datetime.time,
     off_campus: LocationsPeopleType,
 ) -> list[str]:
-    """Creates the final output messages based on the LLM result.
+    """
+    Creates the final output messages based on the LLM result.
 
     Args:
         llm_result (dict[str, list[dict[str, str]]]): The result from the LLM.
@@ -287,7 +295,7 @@ def create_output(
     if len(off_campus) != 0:
         overall_summary += "- TODO: off campus\n"
         for key in off_campus:
-            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (`@{person[1]}`)" for person in off_campus[key]])}\n"""  # noqa: E501
+            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (`@{person[1]}`)" for person in off_campus[key]])}\n"""
 
     overall_summary += "================="
     output_list.insert(0, overall_summary)
@@ -299,7 +307,6 @@ class GroupRidesService:
 
     def __init__(self, bot):
         """Initialize the GroupRidesService."""
-
         self.bot = bot
         # self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
         self.llm_service = LLMService()
@@ -308,7 +315,8 @@ class GroupRidesService:
 
     @staticmethod
     def _get_living_location(location: str) -> CampusLivingLocations:
-        """Convert location string to CampusLivingLocations enum.
+        """
+        Convert location string to CampusLivingLocations enum.
 
         Args:
             location (str): The location string.
@@ -324,7 +332,8 @@ class GroupRidesService:
 
     @staticmethod
     def _get_pickup_location(living_location: CampusLivingLocations) -> PickupLocations:
-        """Get pickup location from living location.
+        """
+        Get pickup location from living location.
 
         Args:
             living_location (CampusLivingLocations): The living location enum.
@@ -483,7 +492,8 @@ class GroupRidesService:
         legacy_prompt: bool = False,
         custom_prompt: str | None = None,
     ):
-        """Orchestrates the group rides process.
+        """
+        Orchestrates the group rides process.
 
         Args:
             interaction (discord.Interaction): The Discord interaction.
@@ -534,7 +544,8 @@ class GroupRidesService:
             await interaction.channel.send(message)
 
     def get_pickup_location_fuzzy(self, input_loc: str) -> PickupLocations | None:
-        """Get the fuzzy matched pickup location from an input string.
+        """
+        Get the fuzzy matched pickup location from an input string.
 
         Args:
             input_loc (str): The input location string.
@@ -542,7 +553,6 @@ class GroupRidesService:
         Returns:
             PickupLocations | None: The matched pickup location or None if no match is found.
         """
-
         choices = {e.value: e for e in PickupLocations}
 
         # --- PASS 1: High Precision ---
@@ -575,7 +585,8 @@ class GroupRidesService:
         return None
 
     def make_route(self, locations: str, leave_time: str) -> str:
-        """Makes route based on specified locations.
+        """
+        Makes route based on specified locations.
 
         Args:
             locations: The locations to make a route for.
@@ -584,7 +595,6 @@ class GroupRidesService:
         Returns:
             The route as a string.
         """
-
         curr_leave_time = parse_time(leave_time)
         locations_list = locations.split()
         locations_list_actual = []

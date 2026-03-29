@@ -16,7 +16,8 @@ class LocationsRepository:
     """Handles database operations for locations."""
 
     async def get_non_discord_pickups(self, day):
-        """Retrieves non-Discord pickups for a specific day.
+        """
+        Retrieves non-Discord pickups for a specific day.
 
         Args:
             day: The day to filter by.
@@ -36,7 +37,8 @@ class LocationsRepository:
                 return []
 
     async def get_location_check_discord(self, session, name):
-        """Checks for location based on Discord username.
+        """
+        Checks for location based on Discord username.
 
         Args:
             session: The database session.
@@ -55,7 +57,8 @@ class LocationsRepository:
         return possible_people
 
     async def get_location_check_name_and_discord(self, session, name):
-        """Checks for location based on name or Discord username.
+        """
+        Checks for location based on name or Discord username.
 
         Args:
             session: The database session.
@@ -75,7 +78,8 @@ class LocationsRepository:
         return possible_people
 
     async def get_discord_username(self, session, name: str) -> str | None:
-        """Retrieves the Discord username for a given name.
+        """
+        Retrieves the Discord username for a given name.
 
         Args:
             session: The database session.
@@ -92,7 +96,8 @@ class LocationsRepository:
         return discord_username
 
     async def get_name(self, session, discord_username: str) -> str | None:
-        """Retrieves the name for a given Discord username.
+        """
+        Retrieves the name for a given Discord username.
 
         Args:
             session: The database session.
@@ -109,7 +114,8 @@ class LocationsRepository:
         return name
 
     async def get_names_for_usernames(self, session, discord_usernames: set[str]) -> dict[str, str]:
-        """Retrieves names for multiple Discord usernames in a batch.
+        """
+        Retrieves names for multiple Discord usernames in a batch.
 
         Args:
             session: The database session.
@@ -144,7 +150,8 @@ class LocationsRepository:
         return username_to_name
 
     async def get_name_location(self, session, discord_username: str) -> tuple[str, str] | None:
-        """Retrieves name and location for a Discord username.
+        """
+        Retrieves name and location for a Discord username.
 
         Args:
             session: The database session.
@@ -161,7 +168,8 @@ class LocationsRepository:
         return person
 
     async def sync_locations(self, session, locations_to_add: list[LocationsModel]):
-        """Syncs the locations table with new data.
+        """
+        Syncs the locations table with new data.
 
         Args:
             session: The database session.

@@ -1,4 +1,5 @@
-"""jobs/ask_rides.py
+"""
+jobs/ask_rides.py
 
 Scheduled jobs for asking for rides.
 """
@@ -69,7 +70,7 @@ def _make_wednesday_msg() -> str | None:
     if formatted_date in WILDCARD_DATES:
         return None
     return (
-        f"React to this message if you need a ride for Wednesday night Bible study {formatted_date} "  # noqa
+        f"React to this message if you need a ride for Wednesday night Bible study {formatted_date} "
         "(leave between 7 and 7:10pm)!"
     )
 
@@ -91,7 +92,7 @@ def _make_sunday_msg() -> str | None:
     if formatted_date in WILDCARD_DATES:
         return None
     return (
-        f"React to this message if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10am)!\n\n"  # noqa
+        f"React to this message if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10am)!\n\n"
         "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
         "🏠 = ride to church and back to campus/apt (arrive back ~1:00pm)\n"
         f"✳️ = something else (please DM {ping_user(os.getenv('MAIN_RIDES_COORD_USER_ID'))})"
@@ -265,7 +266,6 @@ async def run_ask_rides_header(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Run the job to send the ask rides header."""
-
     channel: Messageable | None = bot.get_channel(channel_id)
     if not channel:
         logger.info("Error channel not found")
@@ -331,7 +331,6 @@ async def run_ask_rides_all(
     drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
 ) -> None:
     """Run the job to send all ask rides messages."""
-
     await run_ask_rides_header(bot, rides_channel_id)
     await run_ask_rides_fri(bot, rides_channel_id)
     await run_ask_rides_sun_class(bot, rides_channel_id)
@@ -353,7 +352,8 @@ _periodic_warmer_idx = 0
 
 @log_job
 async def run_periodic_cache_warming(bot: Bot) -> None:
-    """Rotates through the 2 reaction namespaces, warming one every time it runs.
+    """
+    Rotates through the 2 reaction namespaces, warming one every time it runs.
 
     Skips warming during off-hours (1 AM - 7 AM PT) to avoid unnecessary API calls.
     """

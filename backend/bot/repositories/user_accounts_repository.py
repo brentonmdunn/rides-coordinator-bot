@@ -1,4 +1,5 @@
-"""User accounts repository.
+"""
+User accounts repository.
 
 Data access layer for user account management.
 """
@@ -19,7 +20,8 @@ class UserAccountsRepository:
 
     @staticmethod
     async def get_all_accounts() -> list[UserAccount]:
-        """Get all user accounts, ordered by email.
+        """
+        Get all user accounts, ordered by email.
 
         Returns:
             List of all UserAccount records.
@@ -30,7 +32,8 @@ class UserAccountsRepository:
 
     @staticmethod
     async def get_by_email(email: str) -> UserAccount | None:
-        """Get a user account by email.
+        """
+        Get a user account by email.
 
         Args:
             email: The email address to look up.
@@ -44,7 +47,8 @@ class UserAccountsRepository:
 
     @staticmethod
     async def create_account(email: str, role: AccountRoles = AccountRoles.VIEWER) -> UserAccount:
-        """Create a new user account.
+        """
+        Create a new user account.
 
         Args:
             email: The email address for the account.
@@ -65,7 +69,8 @@ class UserAccountsRepository:
     async def get_or_create(
         email: str, default_role: AccountRoles = AccountRoles.VIEWER
     ) -> UserAccount:
-        """Get an existing account or create a new one.
+        """
+        Get an existing account or create a new one.
 
         Args:
             email: The email address to look up or create.
@@ -83,7 +88,8 @@ class UserAccountsRepository:
     async def update_role(
         email: str, role: AccountRoles, role_edited_by: str | None = None
     ) -> UserAccount | None:
-        """Update the role of an existing account.
+        """
+        Update the role of an existing account.
 
         Args:
             email: The email address of the account to update.

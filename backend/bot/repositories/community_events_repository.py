@@ -13,11 +13,11 @@ class EventsRepository:
 
     def __init__(self, bot: commands.Bot):
         """Initialize the CommunityEventsRepository."""
-
         self.bot = bot
 
     def get_guild(self, guild_id: int) -> discord.Guild | None:
-        """Fetches a guild by its ID from the bot's cache.
+        """
+        Fetches a guild by its ID from the bot's cache.
 
         Args:
             guild_id: The ID of the guild.
@@ -28,7 +28,8 @@ class EventsRepository:
         return self.bot.get_guild(guild_id)
 
     def get_text_channel(self, guild: discord.Guild, channel_id: int) -> discord.TextChannel | None:
-        """Fetches a text channel by its ID from a guild's cache.
+        """
+        Fetches a text channel by its ID from a guild's cache.
 
         Args:
             guild: The Discord guild.
@@ -45,7 +46,8 @@ class EventsRepository:
     async def fetch_message(
         self, channel: discord.TextChannel, message_id: int
     ) -> discord.Message | None:
-        """Fetches a specific message from a channel, or None if not found.
+        """
+        Fetches a specific message from a channel, or None if not found.
 
         Args:
             channel: The Discord text channel.
@@ -60,7 +62,8 @@ class EventsRepository:
             return None
 
     def get_role_by_name(self, guild: discord.Guild, role_name: str) -> discord.Role | None:
-        """Finds a role in a guild by its exact name.
+        """
+        Finds a role in a guild by its exact name.
 
         Args:
             guild: The Discord guild.
@@ -74,7 +77,8 @@ class EventsRepository:
     async def get_reacting_members(
         self, message: discord.Message, guild: discord.Guild
     ) -> set[discord.Member]:
-        """Gathers a unique set of valid members who reacted to a message.
+        """
+        Gathers a unique set of valid members who reacted to a message.
 
         Args:
             message: The Discord message.
@@ -98,7 +102,8 @@ class EventsRepository:
     async def add_role_to_member(
         self, member: discord.Member, role: discord.Role, reason: str
     ) -> bool:
-        """Adds a role to a member.
+        """
+        Adds a role to a member.
 
         Args:
             member: The Discord member.

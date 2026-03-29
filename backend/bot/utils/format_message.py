@@ -1,4 +1,5 @@
-"""utils/format_message.py
+"""
+utils/format_message.py
 
 Helper functions to format messages.
 """
@@ -7,7 +8,8 @@ from bot.core.enums import ChannelIds, RoleIds
 
 
 def ping_role(role_id: RoleIds) -> str:
-    """Returns formatted message that pings a role.
+    """
+    Returns formatted message that pings a role.
 
     Args:
         role_id (RoleIds): The ID of the role to ping.
@@ -19,7 +21,8 @@ def ping_role(role_id: RoleIds) -> str:
 
 
 def ping_role_with_message(role_id: RoleIds, message: str) -> str:
-    """Adds @role to message.
+    """
+    Adds @role to message.
 
     Args:
         role_id (RoleIds): The ID of the role to ping.
@@ -32,7 +35,8 @@ def ping_role_with_message(role_id: RoleIds, message: str) -> str:
 
 
 def ping_channel(channel_id: ChannelIds) -> str:
-    """Returns formatted message that pings a channel.
+    """
+    Returns formatted message that pings a channel.
 
     Args:
         channel_id (ChannelIds): The ID of the channel to ping.
@@ -44,7 +48,8 @@ def ping_channel(channel_id: ChannelIds) -> str:
 
 
 def ping_user(user_id: int) -> str:
-    """Returns formatted message that pings a user.
+    """
+    Returns formatted message that pings a user.
 
     Args:
         user_id (int): The ID of the user to ping.
@@ -56,7 +61,8 @@ def ping_user(user_id: int) -> str:
 
 
 def message_link(guild_id: int, channel_id: int, message_id: int) -> str:
-    """Generates a link to a specific Discord message.
+    """
+    Generates a link to a specific Discord message.
 
     Args:
         guild_id (int): The ID of the guild.

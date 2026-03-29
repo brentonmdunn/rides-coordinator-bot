@@ -17,7 +17,8 @@ class ReactionLoggingService:
     """Business logic for logging reaction events."""
 
     def __init__(self, bot):
-        """Initialize the service with a bot instance.
+        """
+        Initialize the service with a bot instance.
 
         Args:
             bot: The Discord bot instance.
@@ -32,7 +33,8 @@ class ReactionLoggingService:
         channel: discord.TextChannel,
         action: ReactionAction,
     ) -> bool:
-        """Log a reaction event to the bot logs channel.
+        """
+        Log a reaction event to the bot logs channel.
 
         Args:
             user: The user who reacted.
@@ -68,7 +70,8 @@ class ReactionLoggingService:
         message: discord.Message,
         action: ReactionAction,
     ) -> bool:
-        """Log a late ride reaction to the driver bot spam channel.
+        """
+        Log a late ride reaction to the driver bot spam channel.
 
         Args:
             user: The user who reacted.
@@ -104,7 +107,8 @@ class ReactionLoggingService:
         channel: discord.TextChannel,
         action: ReactionAction,
     ) -> str:
-        """Formats a reaction log message.
+        """
+        Formats a reaction log message.
 
         Args:
             user: The user who reacted.
@@ -131,7 +135,7 @@ class ReactionLoggingService:
         # Handle empty message content (e.g., embeds, images)
         content = message.content or "[No Content/Embed]"
 
-        return f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"  # noqa E501
+        return f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"
 
     def _format_reaction_log_late_rides(
         self,
@@ -140,7 +144,8 @@ class ReactionLoggingService:
         message: discord.Message,
         action: ReactionAction,
     ) -> str:
-        """Format a log message for late ride reactions.
+        """
+        Format a log message for late ride reactions.
 
         Creates a human-readable log message indicating which user reacted to which
         event (Friday Fellowship or Sunday Service) during a late time window.

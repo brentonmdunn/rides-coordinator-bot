@@ -11,7 +11,8 @@ class DriverService:
     """Service for handling driver-related logic."""
 
     def get_emojis(self, day: DaysOfWeek) -> list[str]:
-        """Lists emoji reactions for driver availability.
+        """
+        Lists emoji reactions for driver availability.
 
         Args:
             day (DaysOfWeek): The day of the week.
@@ -25,7 +26,8 @@ class DriverService:
             return ["👍", "❌", "➡️", "⬅️", "✳️"]
 
     def format_message(self, message: str) -> str:
-        """Adds @driver ping before message.
+        """
+        Adds @driver ping before message.
 
         Args:
             message (str): The message to ping.

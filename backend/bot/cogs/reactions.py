@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 
 
 class Reactions(commands.Cog):
-    """Cog for handling reaction events on Discord messages.
+    """
+    Cog for handling reaction events on Discord messages.
 
     This cog monitors reaction additions and removals to trigger various automated
     behaviors such as logging reactions, managing event threads, creating ride
@@ -47,7 +48,8 @@ class Reactions(commands.Cog):
         logging_service: ReactionLoggingService,
         ride_request_service: RideRequestService,
     ):
-        """Initialize the Reactions cog.
+        """
+        Initialize the Reactions cog.
 
         Args:
             bot: The Discord bot instance.
@@ -192,7 +194,8 @@ class Reactions(commands.Cog):
     async def _event_thread_add(
         self, payload: discord.RawReactionActionEvent, guild: discord.Guild, user: discord.Member
     ):
-        """Add a user to an event thread when they react to the thread's starter message.
+        """
+        Add a user to an event thread when they react to the thread's starter message.
 
         This method checks if the reacted message is associated with an event thread.
         If so, it automatically adds the reacting user to that thread.
@@ -211,7 +214,8 @@ class Reactions(commands.Cog):
     async def _event_thread_remove(
         self, payload: discord.RawReactionActionEvent, guild: discord.Guild
     ):
-        """Remove a user from an event thread when they remove all their reactions.
+        """
+        Remove a user from an event thread when they remove all their reactions.
 
         This method checks if the reacted message is associated with an event thread.
         If the user has no remaining reactions on the message, they are removed from
@@ -236,7 +240,8 @@ class Reactions(commands.Cog):
         channel: discord.TextChannel,
         action: ReactionAction,
     ):
-        """Log late ride reactions during specific time windows.
+        """
+        Log late ride reactions during specific time windows.
 
         Monitors reactions to ride announcement messages during target time windows
         (Friday, Sunday, or Wednesday) and logs them to the driver bot spam channel.
@@ -269,7 +274,8 @@ class Reactions(commands.Cog):
         channel: discord.TextChannel,
         action: ReactionAction,
     ):
-        """Log all reaction events to the bot logs channel.
+        """
+        Log all reaction events to the bot logs channel.
 
         Sends a formatted log message to the bot logs channel whenever a reaction
         is added or removed from any message.
@@ -288,7 +294,8 @@ class Reactions(commands.Cog):
 
     @feature_flag_enabled(FeatureFlagNames.NEW_RIDES_MSG)
     async def _new_rides_helper(self, user: discord.Member, guild: discord.Guild, message_id: int):
-        """Create a private channel for new riders who need location information.
+        """
+        Create a private channel for new riders who need location information.
 
         When a user without a registered location reacts to a ride announcement,
         this creates a private channel where ride coordinators can collect their
@@ -333,7 +340,8 @@ class Reactions(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    """Add the Reactions cog to the bot.
+    """
+    Add the Reactions cog to the bot.
 
     Args:
         bot: The Discord bot instance to add the cog to.

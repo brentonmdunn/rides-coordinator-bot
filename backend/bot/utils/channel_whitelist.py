@@ -25,7 +25,8 @@ async def cmd_is_allowed(
     channel_id: int,
     whitelisted_channels: set[int] = BOT_TESTING_CHANNELS,
 ) -> bool:
-    """Checks if a command is allowed in the current channel.
+    """
+    Checks if a command is allowed in the current channel.
 
     Args:
         interaction (discord.Interaction): The interaction object.

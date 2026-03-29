@@ -29,7 +29,8 @@ class FeatureFlagsRepository:
 
     @classmethod
     async def get_feature_flag_status(cls, feature_flag: FeatureFlagNames) -> bool | None:
-        """Return whether a feature flag is enabled or None if it doesn't exist.
+        """
+        Return whether a feature flag is enabled or None if it doesn't exist.
 
         Checks the local cache first before falling back to the database.
 
@@ -59,7 +60,8 @@ class FeatureFlagsRepository:
 
     @staticmethod
     async def get_feature_flag(feature_name: str):
-        """Retrieve a feature flag model by its name.
+        """
+        Retrieve a feature flag model by its name.
 
         Args:
             feature_name: The name of the feature flag.
@@ -74,7 +76,8 @@ class FeatureFlagsRepository:
 
     @classmethod
     async def update_feature_flag(cls, feature_name: str, enabled: bool) -> None:
-        """Update a feature flag's enabled state in both the database and cache.
+        """
+        Update a feature flag's enabled state in both the database and cache.
 
         Args:
             feature_name: The name of the feature flag.
@@ -94,7 +97,8 @@ class FeatureFlagsRepository:
 
     @staticmethod
     async def get_all_feature_flags() -> list[FeatureFlagsModel]:
-        """Return all feature flags, ordered with 'BOT' first then alphabetically.
+        """
+        Return all feature flags, ordered with 'BOT' first then alphabetically.
 
         Returns:
             A list of FeatureFlagsModel objects.

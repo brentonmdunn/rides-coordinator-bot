@@ -13,11 +13,11 @@ class GroupRidesRepository:
 
     def __init__(self, bot: commands.Bot):
         """Initialize the GroupRidesRepository."""
-
         self.bot = bot
 
     async def fetch_message(self, channel_id: int, message_id: int) -> discord.Message:
-        """Fetches a message from a channel.
+        """
+        Fetches a message from a channel.
 
         Args:
             channel_id: The ID of the channel.

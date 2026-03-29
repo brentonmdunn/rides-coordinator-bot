@@ -15,7 +15,6 @@ class HelpCog(commands.Cog):
 
     def __init__(self, bot: commands.Bot, help_service: HelpService):
         """Initialize the Help cog."""
-
         self.bot = bot
         self.help_service = help_service
 
@@ -26,7 +25,8 @@ class HelpCog(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def help(self, interaction: discord.Interaction):
-        """Show a list of all available commands.
+        """
+        Show a list of all available commands.
 
         Args:
             interaction: The Discord interaction.

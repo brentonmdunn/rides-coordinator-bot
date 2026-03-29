@@ -20,7 +20,8 @@ class MessageScheduleRepository:
 
     @staticmethod
     async def get_pause_status(job_name: str) -> MessageSchedulePause | None:
-        """Get the pause status for a specific job.
+        """
+        Get the pause status for a specific job.
 
         Args:
             job_name: A JobName value ("friday", "sunday", "sunday_class").
@@ -35,7 +36,8 @@ class MessageScheduleRepository:
 
     @staticmethod
     async def get_all_pause_statuses() -> list[MessageSchedulePause]:
-        """Get pause statuses for all jobs.
+        """
+        Get pause statuses for all jobs.
 
         Returns:
             A list of MessageSchedulePause rows.
@@ -51,7 +53,8 @@ class MessageScheduleRepository:
         is_paused: bool,
         resume_after_date: date | None = None,
     ) -> MessageSchedulePause | None:
-        """Set the pause state for a job.
+        """
+        Set the pause state for a job.
 
         Args:
             job_name: A JobName value ("friday", "sunday", "sunday_class").
@@ -87,7 +90,8 @@ class MessageScheduleRepository:
 
     @staticmethod
     async def clear_pause(job_name: str) -> None:
-        """Clear the pause for a job (resume immediately).
+        """
+        Clear the pause for a job (resume immediately).
 
         Args:
             job_name: A JobName value ("friday", "sunday", "sunday_class").
@@ -107,7 +111,8 @@ class MessageScheduleRepository:
 
     @staticmethod
     async def is_job_paused(job_name: str) -> bool:
-        """Check if a job is currently paused.
+        """
+        Check if a job is currently paused.
 
         A job is paused if:
         - is_paused=True and resume_after_date is None (indefinite)
@@ -162,7 +167,8 @@ class MessageScheduleRepository:
 
     @staticmethod
     def get_send_wednesday(event_date: date) -> date:
-        """Calculate the Wednesday send-day before an event date.
+        """
+        Calculate the Wednesday send-day before an event date.
 
         Args:
             event_date: The event date (a Friday or Sunday).

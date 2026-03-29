@@ -13,7 +13,8 @@ class CacheBackend(Protocol):
     """Protocol that all cache backends must implement."""
 
     async def get(self, namespace: str, key: str) -> tuple[bool, Any]:
-        """Retrieve a value from the cache.
+        """
+        Retrieve a value from the cache.
 
         Args:
             namespace: Cache namespace.
@@ -25,7 +26,8 @@ class CacheBackend(Protocol):
         ...
 
     async def set(self, namespace: str, key: str, value: Any, ttl: int | float | None) -> None:
-        """Store a value in the cache.
+        """
+        Store a value in the cache.
 
         Args:
             namespace: Cache namespace.
@@ -36,7 +38,8 @@ class CacheBackend(Protocol):
         ...
 
     async def delete(self, namespace: str, key: str) -> None:
-        """Remove a single entry from the cache.
+        """
+        Remove a single entry from the cache.
 
         Args:
             namespace: Cache namespace.
@@ -45,7 +48,8 @@ class CacheBackend(Protocol):
         ...
 
     async def clear_namespace(self, namespace: str) -> int:
-        """Delete every entry in *namespace*.
+        """
+        Delete every entry in *namespace*.
 
         Returns:
             Number of entries removed.
@@ -53,7 +57,8 @@ class CacheBackend(Protocol):
         ...
 
     async def clear_all(self) -> int:
-        """Delete every entry across all namespaces.
+        """
+        Delete every entry across all namespaces.
 
         Returns:
             Number of entries removed.

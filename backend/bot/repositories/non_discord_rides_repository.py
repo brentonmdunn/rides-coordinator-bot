@@ -13,11 +13,11 @@ class NonDiscordRidesRepository:
 
     def __init__(self, session: AsyncSession):
         """Initialize the NonDiscordRidesRepository."""
-
         self.session = session
 
     async def create_ride(self, ride: NonDiscordRides) -> NonDiscordRides:
-        """Creates a new non-Discord ride.
+        """
+        Creates a new non-Discord ride.
 
         Args:
             ride: The NonDiscordRides object to create.
@@ -30,7 +30,8 @@ class NonDiscordRidesRepository:
         return ride
 
     async def get_ride(self, name: str, ride_date: date) -> NonDiscordRides | None:
-        """Retrieves a ride by name and date.
+        """
+        Retrieves a ride by name and date.
 
         Args:
             name: The name of the person.
@@ -46,7 +47,8 @@ class NonDiscordRidesRepository:
         return result.scalar_one_or_none()
 
     async def delete_ride(self, ride: NonDiscordRides) -> None:
-        """Deletes a ride.
+        """
+        Deletes a ride.
 
         Args:
             ride: The NonDiscordRides object to delete.
@@ -55,7 +57,8 @@ class NonDiscordRidesRepository:
         await self.session.commit()
 
     async def get_rides_by_date(self, ride_date: date) -> list[NonDiscordRides]:
-        """Retrieves all rides for a specific date.
+        """
+        Retrieves all rides for a specific date.
 
         Args:
             ride_date: The date to filter by.
@@ -68,7 +71,8 @@ class NonDiscordRidesRepository:
         return list(result.scalars().all())
 
     async def delete_past_rides(self, date_limit: date) -> int:
-        """Deletes rides before a specific date.
+        """
+        Deletes rides before a specific date.
 
         Args:
             date_limit: The date limit.

@@ -15,7 +15,8 @@ router = APIRouter()
 
 @router.get("/api/me/preferences")
 async def get_preferences(request: Request):
-    """Return the current user's preferences.
+    """
+    Return the current user's preferences.
 
     Creates a default preferences row on the first call so callers always
     receive a valid object.
@@ -34,7 +35,8 @@ async def get_preferences(request: Request):
 
 
 class UpdatePreferencesRequest(BaseModel):
-    """Request body for PATCH /api/me/preferences.
+    """
+    Request body for PATCH /api/me/preferences.
 
     All fields are optional — only supplied fields are updated.
     """
@@ -44,7 +46,8 @@ class UpdatePreferencesRequest(BaseModel):
 
 @router.patch("/api/me/preferences")
 async def update_preferences(request: Request, body: UpdatePreferencesRequest):
-    """Update one or more preference fields for the current user.
+    """
+    Update one or more preference fields for the current user.
 
     Args:
         body: Preference fields to update (any subset).

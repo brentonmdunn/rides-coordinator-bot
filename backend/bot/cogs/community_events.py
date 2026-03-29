@@ -31,7 +31,6 @@ class CommunityEventsCog(commands.Cog):
 
     def __init__(self, bot: commands.Bot, events_service: CommunityEventsService):
         """Initialize the CommunityEvents cog."""
-
         self.bot = bot
         self.events_service = events_service
 
@@ -54,7 +53,8 @@ class CommunityEventsCog(commands.Cog):
         channel_id: str,
         role_name: str,
     ):
-        """Assigns a role to everyone who reacted to a specific message.
+        """
+        Assigns a role to everyone who reacted to a specific message.
 
         Args:
             interaction: The Discord interaction.
@@ -124,7 +124,8 @@ class CommunityEventsCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    """Sets up the CommunityEventsCog.
+    """
+    Sets up the CommunityEventsCog.
 
     Performs dependency injection for the repository and service.
     """

@@ -105,7 +105,8 @@ async def get_pauses():
     description="Set or release the pause state for a specific job.",
 )
 async def set_pause(job_name: str, request: PauseRequest):
-    """Set the pause state for a specific job.
+    """
+    Set the pause state for a specific job.
 
     Args:
         job_name: One of "friday", "sunday", "sunday_class".
@@ -165,7 +166,8 @@ async def set_pause(job_name: str, request: PauseRequest):
     description="Get the mathematically projected upcoming event dates for a given job type.",
 )
 async def get_upcoming_dates(job_name: str, count: int = 6, offset: int = 0):
-    """Get upcoming event dates for a job type.
+    """
+    Get upcoming event dates for a job type.
 
     Args:
         job_name: One of "friday", "sunday", "sunday_class".

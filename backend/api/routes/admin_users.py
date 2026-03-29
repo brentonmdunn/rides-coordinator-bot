@@ -27,7 +27,8 @@ class UpdateRoleRequest(BaseModel):
 
 @router.get("/users", dependencies=[Depends(require_admin)])
 async def list_users(request: Request):
-    """List all user accounts (admin only).
+    """
+    List all user accounts (admin only).
 
     Returns:
         JSON with list of all user accounts.
@@ -55,7 +56,8 @@ async def list_users(request: Request):
 
 @router.put("/users/{email}/role", dependencies=[Depends(require_admin)])
 async def update_user_role(email: str, body: UpdateRoleRequest, request: Request):
-    """Update a user's role (admin only).
+    """
+    Update a user's role (admin only).
 
     Args:
         email: The email of the user to update.

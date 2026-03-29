@@ -24,12 +24,12 @@ class NonDiscordRidesService:
 
     def __init__(self):
         """Initialize the NonDiscordRidesService."""
-
         # No dependencies needed in init for now, as we create session per method
         pass
 
     async def add_pickup(self, name: str, day: str, location: str) -> NonDiscordRides:
-        """Adds a pickup for a non-Discord user.
+        """
+        Adds a pickup for a non-Discord user.
 
         Args:
             name: Name of the person.
@@ -52,7 +52,8 @@ class NonDiscordRidesService:
                 raise DuplicateRideError(f"Pickup for {name} on {day} already exists.")  # noqa B904
 
     async def remove_pickup(self, name: str, day: str) -> bool:
-        """Removes a pickup for a non-Discord user.
+        """
+        Removes a pickup for a non-Discord user.
 
         Args:
             name: Name of the person.
@@ -71,7 +72,8 @@ class NonDiscordRidesService:
             return False
 
     async def list_pickups(self, day: str) -> list[NonDiscordRides]:
-        """Lists all pickups for a specific day.
+        """
+        Lists all pickups for a specific day.
 
         Args:
             day: The day to list pickups for.
@@ -85,7 +87,8 @@ class NonDiscordRidesService:
             return await repo.get_rides_by_date(ride_date)
 
     async def delete_past_pickups(self) -> int:
-        """Deletes all pickups from past dates.
+        """
+        Deletes all pickups from past dates.
 
         Returns:
             The number of deleted pickups.
