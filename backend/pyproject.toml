@@ -83,3 +83,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["D"]
+"bot/cogs_disabled/**/*.py" = ["D"]
+"bot/cogs_testing/**/*.py" = ["D"]
+"bot/jobs_disabled/**/*.py" = ["D"]
