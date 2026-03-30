@@ -43,6 +43,11 @@ async def _ask_drivers_template(
 @log_job
 @feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_DRIVERS_JOB)
 async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO):
+    """
+    Send the Friday driver ask message to the driver chat channel.
+
+    Skips sending if the Friday job is currently paused.
+    """
     if await MessageScheduleRepository.is_job_paused(JobName.FRIDAY):
         logger.info("Blocking run_ask_drivers_fri - job is paused")
         return
@@ -56,6 +61,11 @@ async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 @log_job
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_DRIVERS_JOB)
 async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO):
+    """
+    Send the Sunday driver ask message to the driver chat channel.
+
+    Skips sending if the Sunday job is paused or the ask-rides window is not active.
+    """
     if await MessageScheduleRepository.is_job_paused(JobName.SUNDAY):
         logger.info("Blocking run_ask_drivers_sun - job is paused")
         return

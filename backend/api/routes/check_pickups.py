@@ -17,11 +17,15 @@ router = APIRouter(prefix="/api/check-pickups", tags=["check-pickups"])
 
 
 class PickupCoverageUser(BaseModel):
+    """A single user's ride-assignment status."""
+
     discord_username: str = Field(description="The user's Discord username")
     has_ride: bool = Field(description="Whether the user has been assigned a ride")
 
 
 class PickupCoverageResponse(BaseModel):
+    """Response payload for the pickup-coverage endpoint."""
+
     users: list[PickupCoverageUser] = Field(description="List of users needing rides")
     total: int = Field(description="Total number of users who reacted")
     assigned: int = Field(description="Number of users who have been grouped into rides")
@@ -30,6 +34,8 @@ class PickupCoverageResponse(BaseModel):
 
 
 class SyncCoverageResponse(BaseModel):
+    """Response payload for the sync-coverage endpoint."""
+
     success: bool = Field(description="Whether the sync was successful")
     message: str = Field(description="Status message")
     synced: int | None = Field(default=None, description="Number of usernames synced")
@@ -37,6 +43,8 @@ class SyncCoverageResponse(BaseModel):
 
 
 class DriverReactionResponse(BaseModel):
+    """Response payload for the driver-reactions endpoint."""
+
     day: str = Field(description="The day requested")
     reactions: dict[str, list[str]] = Field(description="Mapping of emoji to list of usernames")
     username_to_name: dict[str, str] = Field(

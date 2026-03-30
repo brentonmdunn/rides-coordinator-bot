@@ -39,6 +39,12 @@ class UserEmailFilter(logging.Filter):
     """Injects the current user's email into the log record."""
 
     def filter(self, record):
+        """
+        Inject the current user email into the log record.
+
+        Returns:
+            True always (never drops the record).
+        """
         record.user_email = user_email_var.get()
         return True
 
@@ -47,6 +53,12 @@ class TransactionIdFilter(logging.Filter):
     """Injects the current transaction ID into the log record."""
 
     def filter(self, record):
+        """
+        Inject the current transaction ID into the log record.
+
+        Returns:
+            True always (never drops the record).
+        """
         record.txn_id = txn_id_var.get()
         return True
 
