@@ -24,7 +24,6 @@ class NonDiscordRidesCog(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         """Initialize the NonDiscordRides cog."""
-
         self.bot = bot
         self.service = NonDiscordRidesService()
 
@@ -39,7 +38,8 @@ class NonDiscordRidesCog(commands.Cog):
     async def add_pickup(
         self, interaction: discord.Interaction, name: str, day: str, location: str
     ):
-        """Adds a pickup for a non-Discord user.
+        """
+        Adds a pickup for a non-Discord user.
 
         Args:
             interaction: The Discord interaction.
@@ -77,7 +77,8 @@ class NonDiscordRidesCog(commands.Cog):
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def remove_pickup(self, interaction: discord.Interaction, name: str, day: str):
-        """Removes a non-Discord user's pickup entry.
+        """
+        Removes a non-Discord user's pickup entry.
 
         Args:
             interaction: The Discord interaction.
@@ -119,7 +120,8 @@ class NonDiscordRidesCog(commands.Cog):
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def list_added_pickups(self, interaction: discord.Interaction, day: str):
-        """Lists all non-Discord user pickups for a given day.
+        """
+        Lists all non-Discord user pickups for a given day.
 
         Args:
             interaction: The Discord interaction.

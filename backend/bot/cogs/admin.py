@@ -18,7 +18,6 @@ class Admin(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         """Initialize the Admin cog."""
-
         self.bot = bot
 
     @app_commands.command(name="give-role", description="Assign a role to users from a CSV file.")
@@ -31,7 +30,8 @@ class Admin(commands.Cog):
     async def give_role(
         self, interaction: discord.Interaction, role: discord.Role, discord_usernames: str
     ) -> None:
-        """Assigns a role to users listed in a CSV column.
+        """
+        Assigns a role to users listed in a CSV column.
 
         Args:
             interaction: The Discord interaction.
@@ -82,7 +82,8 @@ class Admin(commands.Cog):
     async def add_to_channel(
         self, interaction: discord.Interaction, discord_usernames: str
     ) -> None:
-        """Grants read/write channel permissions to the specified users.
+        """
+        Grants read/write channel permissions to the specified users.
 
         Args:
             interaction: The Discord interaction.

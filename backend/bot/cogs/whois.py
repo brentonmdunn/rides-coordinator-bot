@@ -14,7 +14,6 @@ class Whois(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         """Initialize the WhoIs cog."""
-
         self.bot = bot
 
     @discord.app_commands.command(
@@ -24,7 +23,8 @@ class Whois(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def whois(self, interaction: discord.Interaction, name: str) -> None:
-        """Fetch and parse names from CSV.
+        """
+        Fetch and parse names from CSV.
 
         Args:
             interaction: The Discord interaction.

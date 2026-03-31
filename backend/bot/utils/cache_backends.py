@@ -13,7 +13,8 @@ class CacheBackend(Protocol):
     """Protocol that all cache backends must implement."""
 
     async def get(self, namespace: str, key: str) -> tuple[bool, Any]:
-        """Retrieve a value from the cache.
+        """
+        Retrieve a value from the cache.
 
         Args:
             namespace: Cache namespace.
@@ -25,7 +26,8 @@ class CacheBackend(Protocol):
         ...
 
     async def set(self, namespace: str, key: str, value: Any, ttl: int | float | None) -> None:
-        """Store a value in the cache.
+        """
+        Store a value in the cache.
 
         Args:
             namespace: Cache namespace.
@@ -36,7 +38,8 @@ class CacheBackend(Protocol):
         ...
 
     async def delete(self, namespace: str, key: str) -> None:
-        """Remove a single entry from the cache.
+        """
+        Remove a single entry from the cache.
 
         Args:
             namespace: Cache namespace.
@@ -45,7 +48,8 @@ class CacheBackend(Protocol):
         ...
 
     async def clear_namespace(self, namespace: str) -> int:
-        """Delete every entry in *namespace*.
+        """
+        Delete every entry in *namespace*.
 
         Returns:
             Number of entries removed.
@@ -53,7 +57,8 @@ class CacheBackend(Protocol):
         ...
 
     async def clear_all(self) -> int:
-        """Delete every entry across all namespaces.
+        """
+        Delete every entry across all namespaces.
 
         Returns:
             Number of entries removed.
@@ -80,6 +85,7 @@ class InMemoryBackend:
         return self._stores[namespace]
 
     async def get(self, namespace: str, key: str) -> tuple[bool, Any]:
+        """Return (hit, value) for the given key, evicting expired entries."""
         store = self._ns(namespace)
         if key not in store:
             return False, None
@@ -91,6 +97,7 @@ class InMemoryBackend:
         return True, value
 
     async def set(self, namespace: str, key: str, value: Any, ttl: int | float | None) -> None:
+        """Store value under key in namespace, evicting LRU entries when full."""
         store = self._ns(namespace)
         store[key] = (value, time.time(), ttl)
         store.move_to_end(key)
@@ -98,16 +105,19 @@ class InMemoryBackend:
             store.popitem(last=False)
 
     async def delete(self, namespace: str, key: str) -> None:
+        """Remove key from the given namespace if it exists."""
         store = self._ns(namespace)
         store.pop(key, None)
 
     async def clear_namespace(self, namespace: str) -> int:
+        """Clear all entries in namespace and return the count removed."""
         store = self._stores.get(namespace, OrderedDict())
         count = len(store)
         store.clear()
         return count
 
     async def clear_all(self) -> int:
+        """Clear every entry across all namespaces and return the total count removed."""
         total = 0
         for store in self._stores.values():
             total += len(store)
@@ -139,12 +149,14 @@ class RedisBackend:
         return f"{self._KEY_PREFIX}:{namespace}:*"
 
     async def get(self, namespace: str, key: str) -> tuple[bool, Any]:
+        """Return (hit, value) for the given key from Redis."""
         raw = await self._redis.get(self._make_key(namespace, key))
         if raw is None:
             return False, None
         return True, pickle.loads(raw)
 
     async def set(self, namespace: str, key: str, value: Any, ttl: int | float | None) -> None:
+        """Pickle and store value in Redis, with optional TTL."""
         data = pickle.dumps(value)
         rkey = self._make_key(namespace, key)
         if ttl is not None:
@@ -153,9 +165,11 @@ class RedisBackend:
             await self._redis.set(rkey, data)
 
     async def delete(self, namespace: str, key: str) -> None:
+        """Delete a single key from Redis."""
         await self._redis.delete(self._make_key(namespace, key))
 
     async def clear_namespace(self, namespace: str) -> int:
+        """Delete all Redis keys matching the namespace prefix and return count."""
         keys: list[bytes] = []
         async for k in self._redis.scan_iter(match=self._ns_pattern(namespace)):
             keys.append(k)
@@ -164,6 +178,7 @@ class RedisBackend:
         return len(keys)
 
     async def clear_all(self) -> int:
+        """Delete all cache keys from Redis and return total count removed."""
         pattern = f"{self._KEY_PREFIX}:*"
         keys: list[bytes] = []
         async for k in self._redis.scan_iter(match=pattern):

@@ -12,7 +12,8 @@ class WhoisRepo:
 
     @staticmethod
     async def fetch_data_by_name(session: AsyncSession, name: str) -> list[Row]:
-        """Fetches 'name' and 'discord_username' from the database based on a partial match.
+        """
+        Fetches 'name' and 'discord_username' from the database based on a partial match.
 
         The search is case-insensitive and checks against both the 'name' and
         'discord_username' columns in the Locations model.

@@ -243,7 +243,6 @@ async def bot_lifespan():
         error: AppCommandError,
     ) -> None:
         """Handle errors for app commands."""
-
         if isinstance(error, CheckFailure):
             await interaction.response.send_message(
                 "❌ You must be a server admin to use this command.",

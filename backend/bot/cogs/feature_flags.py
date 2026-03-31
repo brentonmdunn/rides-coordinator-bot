@@ -14,7 +14,8 @@ from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_all
 async def feature_name_autocomplete(
     interaction: discord.Interaction, current: str
 ) -> list[app_commands.Choice[str]]:
-    """Autocompletes feature flag names based on current user input.
+    """
+    Autocompletes feature flag names based on current user input.
 
     Args:
         interaction: The Discord interaction.
@@ -36,7 +37,6 @@ class FeatureFlagsCog(commands.Cog):
 
     def __init__(self, bot: commands.Bot, feature_flags_service: FeatureFlagsService):
         """Initialize the FeatureFlags cog."""
-
         self.bot = bot
         self.feature_flags_service = feature_flags_service
 
@@ -46,7 +46,8 @@ class FeatureFlagsCog(commands.Cog):
     async def modify_feature_flag(
         self, interaction: discord.Interaction, feature_name: str, enabled: bool
     ) -> None:
-        """Slash command for enabling/disabling a feature flag.
+        """
+        Slash command for enabling/disabling a feature flag.
 
         Args:
             interaction: The Discord interaction.
@@ -77,7 +78,8 @@ class FeatureFlagsCog(commands.Cog):
     )
     @log_cmd
     async def list_feature_flags(self, interaction: discord.Interaction) -> None:
-        """Slash command to list all feature flags in an embed.
+        """
+        Slash command to list all feature flags in an embed.
 
         Args:
             interaction: The Discord interaction.
@@ -92,7 +94,8 @@ class FeatureFlagsCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    """Add the FeatureFlagsCog to the Discord bot.
+    """
+    Add the FeatureFlagsCog to the Discord bot.
 
     Args:
         bot: The Discord bot instance.

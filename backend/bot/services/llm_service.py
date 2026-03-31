@@ -26,7 +26,8 @@ prev_response = None
 
 
 def log_retry_attempt(retry_state):
-    """Logs a warning when a retry attempt is made.
+    """
+    Logs a warning when a retry attempt is made.
 
     Args:
         retry_state (tenacity.RetryCallState): The current state of the retry call.
@@ -60,7 +61,8 @@ class LLMService:
         legacy_prompt: bool = False,
         custom_prompt: str | None = None,
     ) -> dict:
-        """Invokes the LLM to group rides.
+        """
+        Invokes the LLM to group rides.
 
         Args:
             pickups_str (str): Formatted string of pickups.

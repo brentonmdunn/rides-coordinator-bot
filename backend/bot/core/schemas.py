@@ -1,4 +1,5 @@
-"""Pydantic schemas.
+"""
+Pydantic schemas.
 
 This module defines the Pydantic models used for data validation and serialization.
 """
@@ -30,7 +31,8 @@ class Identity(BaseModel):
 
 
 class RidesUser(BaseModel):
-    """Schema representing a user needing a ride.
+    """
+    Schema representing a user needing a ride.
 
     Attributes:
         identity: The user's identity (name and username).
@@ -49,7 +51,8 @@ class LLMPassenger(BaseModel):
 
 
 class LLMOutputNominal(RootModel[dict[str, list[LLMPassenger]]]):
-    """A root model representing the entire assignment structure.
+    """
+    A root model representing the entire assignment structure.
 
     The root of this model is a dictionary mapping driver names to lists of passengers.
     """

@@ -1,4 +1,5 @@
-"""User preferences repository.
+"""
+User preferences repository.
 
 Data access layer for per-user UI/app preference management.
 """
@@ -18,7 +19,8 @@ class UserPreferencesRepository:
 
     @staticmethod
     async def get_by_email(email: str) -> UserPreferences | None:
-        """Get user preferences by email.
+        """
+        Get user preferences by email.
 
         Args:
             email: The email address to look up.
@@ -34,7 +36,8 @@ class UserPreferencesRepository:
 
     @staticmethod
     async def get_or_create(email: str) -> UserPreferences:
-        """Get existing preferences or create a new row with defaults.
+        """
+        Get existing preferences or create a new row with defaults.
 
         Args:
             email: The email address to look up or create.
@@ -59,7 +62,8 @@ class UserPreferencesRepository:
 
     @staticmethod
     async def update_preferences(email: str, **kwargs) -> UserPreferences | None:
-        """Update one or more preference fields for a user.
+        """
+        Update one or more preference fields for a user.
 
         Args:
             email: The email address of the user to update.

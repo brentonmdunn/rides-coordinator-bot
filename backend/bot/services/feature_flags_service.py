@@ -15,11 +15,11 @@ class FeatureFlagsService:
 
     def __init__(self, repository: FeatureFlagsRepository):
         """Initialize the FeatureFlagsService."""
-
         self.repository = repository
 
     async def validate_feature_name(self, feature_name: str) -> FeatureFlagNames | None:
-        """Validate and convert a feature name to an enum member.
+        """
+        Validate and convert a feature name to an enum member.
 
         Args:
             feature_name (str): The name of the feature flag to validate.
@@ -34,7 +34,8 @@ class FeatureFlagsService:
             return None
 
     async def modify_feature_flag(self, feature_name: str, enabled: bool) -> tuple[bool, str]:
-        """Modify a feature flag state and return a message tuple (success, message).
+        """
+        Modify a feature flag state and return a message tuple (success, message).
 
         Args:
             feature_name (str): The name of the feature flag to modify.
@@ -50,7 +51,7 @@ class FeatureFlagsService:
 
         if flag.enabled == enabled:
             state = "enabled" if enabled else "disabled"
-            return False, f"ℹ️ Feature flag `{feature_name}` is already **{state}**."  # noqa
+            return False, f"ℹ️ Feature flag `{feature_name}` is already **{state}**."
 
         await FeatureFlagsRepository.update_feature_flag(feature_name, enabled)
         new_state = "enabled" if enabled else "disabled"
@@ -58,7 +59,8 @@ class FeatureFlagsService:
         return True, f"✅ Feature flag `{feature_name}` is now **{new_state}**."
 
     async def list_feature_flags_embed(self) -> discord.Embed:
-        """Return a Discord embed listing all feature flags and their current states.
+        """
+        Return a Discord embed listing all feature flags and their current states.
 
         Returns:
             discord.Embed: A Discord Embed object containing the list of feature flags.

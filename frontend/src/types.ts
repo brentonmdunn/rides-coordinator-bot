@@ -1,6 +1,12 @@
+/**
+ * Represents a group of pickup locations logically tied together (e.g. by campus area).
+ */
 export interface HousingGroup {
+    /** Emoji to represent the group visually */
     emoji: string
+    /** Total number of people awaiting pickup in this group */
     count: number
+    /** Dictionary mapping a specific location string to the list of people there */
     locations: {
         [location: string]: Array<{
             name: string
@@ -9,13 +15,21 @@ export interface HousingGroup {
     }
 }
 
+/**
+ * Response structure when fetching all pickup locations for a ride event.
+ */
 export interface LocationData {
+    /** Housing groups keyed by an identifier (e.g. "Scholars", "Off Campus") */
     housing_groups: {
         [groupName: string]: HousingGroup
     }
+    /** List of discord usernames whose locations are unknown */
     unknown_users: string[]
 }
 
+/**
+ * Represents a boolean configuration toggle downloaded from the backend.
+ */
 export interface FeatureFlag {
     id: number
     feature: string
@@ -97,6 +111,9 @@ export interface AskRidesReactionsData {
     message_found: boolean
 }
 
+/**
+ * Represents the access tier of the authenticated user.
+ */
 export type AccountRole = 'admin' | 'ride_coordinator' | 'viewer'
 
 export interface UserPreferences {

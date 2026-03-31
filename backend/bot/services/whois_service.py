@@ -11,7 +11,8 @@ class WhoisService:
 
     @staticmethod
     async def get_whois_data(name: str) -> str | None:
-        """Retrieves matching user data from the database and formats it into a display message.
+        """
+        Retrieves matching user data from the database and formats it into a display message.
 
         This method handles opening and closing the database session, calls the repository
         to fetch data, and transforms the resulting rows into a readable string.

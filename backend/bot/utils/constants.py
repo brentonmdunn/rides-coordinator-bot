@@ -25,7 +25,8 @@ MAP_LOCATIONS: dict[PickupLocations, tuple[float, float]] = {
 
 
 def get_map_url(location: PickupLocations) -> str | None:
-    """Generate a Google Maps URL for a pickup location.
+    """
+    Generate a Google Maps URL for a pickup location.
 
     Args:
         location: The pickup location enum member.
@@ -41,7 +42,8 @@ def get_map_url(location: PickupLocations) -> str | None:
 
 
 def get_map_links() -> dict[PickupLocations, str]:
-    """Generate a dict of all pickup locations to their Google Maps URLs.
+    """
+    Generate a dict of all pickup locations to their Google Maps URLs.
 
     Returns:
         Dictionary mapping PickupLocations to Google Maps URL strings.

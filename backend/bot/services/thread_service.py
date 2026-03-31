@@ -33,11 +33,11 @@ class ThreadService:
 
     def __init__(self, repository: EventThreadRepository):
         """Initialize the ThreadService."""
-
         self.repository = repository
 
     async def end_event_thread(self, thread_id: str) -> None:
-        """Stops tracking an event thread.
+        """
+        Stops tracking an event thread.
 
         Args:
             thread_id: The ID of the thread to stop tracking.
@@ -59,7 +59,8 @@ class ThreadService:
     async def create_event_thread(
         self, thread: discord.Thread
     ) -> tuple[list[discord.Member], list[str]]:
-        """Creates and registers a new event thread, then bulk-adds reactors.
+        """
+        Creates and registers a new event thread, then bulk-adds reactors.
 
         Args:
             thread: The Discord thread object.
@@ -95,7 +96,8 @@ class ThreadService:
     async def bulk_add_reactors_to_thread(
         self, thread: discord.Thread
     ) -> tuple[list[discord.Member], list[str]]:
-        """Adds all users who reacted to the thread's starter message.
+        """
+        Adds all users who reacted to the thread's starter message.
 
         Args:
             thread: The Discord thread object.
@@ -166,7 +168,8 @@ class ThreadService:
     async def add_reactor_to_thread(
         self, payload: discord.RawReactionActionEvent, guild: discord.Guild, user: discord.Member
     ) -> bool:
-        """Add a user to an event thread when they react to the thread's starter message.
+        """
+        Add a user to an event thread when they react to the thread's starter message.
 
         This method checks if the reacted message is associated with an event thread.
         If so, it automatically adds the reacting user to that thread.
@@ -212,7 +215,8 @@ class ThreadService:
         guild: discord.Guild,
         bot,
     ) -> bool:
-        """Remove a user from an event thread when they remove all their reactions.
+        """
+        Remove a user from an event thread when they remove all their reactions.
 
         This method checks if the reacted message is associated with an event thread.
         If the user has no remaining reactions on the message, they are removed from

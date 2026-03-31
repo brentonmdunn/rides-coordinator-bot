@@ -7,7 +7,8 @@ import discord
 
 
 def parse_name(text: str) -> tuple[str, str | None]:
-    """Parse the input string to extract the name and username in the form "name (username)".
+    """
+    Parse the input string to extract the name and username in the form "name (username)".
 
     Args:
         text (str): The input string to parse.
@@ -22,7 +23,8 @@ def parse_name(text: str) -> tuple[str, str | None]:
 
 
 def parse_discord_username(username: str) -> str:
-    """Returns username without @ symbol.
+    """
+    Returns username without @ symbol.
 
     Args:
         username (str): The username to parse.
@@ -100,7 +102,8 @@ def get_message_and_embed_content(
 
 
 def parse_time(time_str: str) -> time:
-    """Parses a flexible string into a datetime.time object.
+    """
+    Parses a flexible string into a datetime.time object.
 
     Handles weird spacing, capitalization, and both 12-hour (AM/PM/A/P)
     and 24-hour formats. If AM/PM (or A/P) is missing, 24-hour time is assumed.
@@ -145,7 +148,8 @@ def parse_time(time_str: str) -> time:
 
 
 def column_letter_to_index(letter: str) -> int:
-    """Converts a column letter (e.g., "A", "AB") to a 0-based index.
+    """
+    Converts a column letter (e.g., "A", "AB") to a 0-based index.
 
     Args:
         letter: The column letter(s).

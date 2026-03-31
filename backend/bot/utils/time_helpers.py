@@ -18,7 +18,8 @@ days_of_week_to_number = {
 
 
 def is_during_target_window(day: str) -> bool:
-    """Checks if the current time in LA is within the target window for the given day.
+    """
+    Checks if the current time in LA is within the target window for the given day.
 
     The windows are:
     - Tuesday 7 PM to Wednesday 7 PM (for Wednesday)
@@ -63,7 +64,8 @@ def is_during_target_window(day: str) -> bool:
 
 
 def get_next_date(day: DaysOfWeekNumber) -> str:
-    """Gets the next `day` and returns it in mm/dd form.
+    """
+    Gets the next `day` and returns it in mm/dd form.
 
     Args:
         day (DaysOfWeekNumber): The day of the week to find the next date for.
@@ -82,7 +84,8 @@ def get_next_date(day: DaysOfWeekNumber) -> str:
 
 
 def get_next_date_obj(day: DaysOfWeek) -> date:
-    """Gets the next `day` as a date object.
+    """
+    Gets the next `day` as a date object.
 
     Args:
         day (DaysOfWeek): The day of the week to find the next date for.
@@ -101,7 +104,8 @@ def get_next_date_obj(day: DaysOfWeek) -> date:
 
 
 def get_last_sunday() -> datetime:
-    """Calculates the date of the last Sunday.
+    """
+    Calculates the date of the last Sunday.
 
     Returns:
         datetime: The datetime object for the last Sunday.
@@ -114,7 +118,8 @@ def get_last_sunday() -> datetime:
 
 
 def is_active_hours() -> bool:
-    """Check if current time is within active hours (7 AM - 1 AM Pacific).
+    """
+    Check if current time is within active hours (7 AM - 1 AM Pacific).
 
     Active hours: 7:00 AM through 12:59 AM (i.e. hour >= 7 or hour < 1).
     Off-hours: 1:00 AM through 6:59 AM.

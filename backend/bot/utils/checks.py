@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 def is_admin():
-    """A decorator that checks if the user has administrator permissions.
+    """
+    A decorator that checks if the user has administrator permissions.
 
     Returns:
         Callable: The decorated command.

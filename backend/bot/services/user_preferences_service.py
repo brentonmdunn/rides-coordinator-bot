@@ -1,4 +1,5 @@
-"""User preferences service.
+"""
+User preferences service.
 
 Business logic layer for per-user UI/app preferences.
 """
@@ -12,7 +13,8 @@ class UserPreferencesService:
 
     @staticmethod
     async def get_preferences(email: str) -> UserPreferences:
-        """Get preferences for a user, creating defaults on first access.
+        """
+        Get preferences for a user, creating defaults on first access.
 
         Args:
             email: The user's email address.
@@ -24,7 +26,8 @@ class UserPreferencesService:
 
     @staticmethod
     async def set_show_map_labels(email: str, value: bool) -> UserPreferences | None:
-        """Update the show_map_labels preference for a user.
+        """
+        Update the show_map_labels preference for a user.
 
         Args:
             email: The user's email address.

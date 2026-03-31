@@ -18,7 +18,6 @@ class RideCoverage(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         """Initialize the RideCoverage cog."""
-
         self.bot = bot
         self.repo = RideCoverageRepository()
         self._synced_on_startup = False

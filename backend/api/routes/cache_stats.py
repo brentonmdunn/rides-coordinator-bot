@@ -30,7 +30,8 @@ async def cache_stats():
 
 @router.post("/api/cache/invalidate", dependencies=[Depends(require_admin)])
 async def invalidate_cache():
-    """Invalidate all cache entries across every namespace (admin only).
+    """
+    Invalidate all cache entries across every namespace (admin only).
 
     Returns:
         JSON with success message.

@@ -4,7 +4,8 @@ from enum import StrEnum
 
 
 class ReactionAction(StrEnum):
-    """Enum representing the type of reaction action.
+    """
+    Enum representing the type of reaction action.
 
     Attributes:
         ADD: Represents adding a reaction to a message.

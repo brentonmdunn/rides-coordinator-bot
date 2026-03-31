@@ -16,7 +16,6 @@ class Locations(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         """Initialize the Locations cog."""
-
         self.bot = bot
         self.service = LocationsService(bot)
 
@@ -27,7 +26,8 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def sync_locations(self, interaction: discord.Interaction):
-        """Syncs Google Sheets data with the database.
+        """
+        Syncs Google Sheets data with the database.
 
         Args:
             interaction: The Discord interaction.
@@ -42,7 +42,8 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def pickup_location(self, interaction: discord.Interaction, name: str):
-        """Gets the pickup location for a person.
+        """
+        Gets the pickup location for a person.
 
         Args:
             interaction: The Discord interaction.
@@ -62,7 +63,8 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_pickups_sunday(self, interaction: discord.Interaction):
-        """Lists pickups for Sunday service.
+        """
+        Lists pickups for Sunday service.
 
         Args:
             interaction: The Discord interaction.
@@ -82,7 +84,8 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_dropoffs_sunday_back(self, interaction: discord.Interaction):
-        """Lists dropoffs after Sunday service (no lunch).
+        """
+        Lists dropoffs after Sunday service (no lunch).
 
         Args:
             interaction: The Discord interaction.
@@ -102,7 +105,8 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_dropoffs_sunday_lunch(self, interaction: discord.Interaction):
-        """Lists dropoffs after Sunday service (with lunch).
+        """
+        Lists dropoffs after Sunday service (with lunch).
 
         Args:
             interaction: The Discord interaction.
@@ -122,7 +126,8 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def list_locations_friday(self, interaction: discord.Interaction):
-        """Lists pickups for Friday fellowship.
+        """
+        Lists pickups for Friday fellowship.
 
         Args:
             interaction: The Discord interaction.
@@ -149,7 +154,8 @@ class Locations(commands.Cog):
         message_id: str,
         channel_id: str | None = str(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS),
     ):
-        """Lists pickups based on a specific message ID.
+        """
+        Lists pickups based on a specific message ID.
 
         Args:
             interaction: The Discord interaction.
@@ -180,7 +186,8 @@ class Locations(commands.Cog):
     @feature_flag_enabled(FeatureFlagNames.BOT)
     @log_cmd
     async def map_links(self, interaction: discord.Interaction, location: str | None):
-        """Provides Google Maps links for pickup locations.
+        """
+        Provides Google Maps links for pickup locations.
 
         Args:
             interaction: The Discord interaction.

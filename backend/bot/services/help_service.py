@@ -8,7 +8,8 @@ class HelpService:
     """Service for generating help embeds."""
 
     def build_help_embed(self, bot) -> discord.Embed:
-        """Generate an embed showing all slash commands and their parameters.
+        """
+        Generate an embed showing all slash commands and their parameters.
 
         Args:
             bot: The Discord bot instance.
