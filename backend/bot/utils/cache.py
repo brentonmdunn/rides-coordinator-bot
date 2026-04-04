@@ -204,18 +204,6 @@ async def invalidate_all_namespaces() -> None:
         logger.info(f"Invalidated all namespaces: cleared {total_cleared} entries")
 
 
-def get_all_cache_stats() -> dict[str, list[dict]]:
-    """
-    Return cache stats for every registered function, grouped by namespace.
-
-    Returns:
-        Dictionary mapping namespace names to lists of per-function stat dicts.
-    """
-    return {
-        ns_key: [stats_fn() for _, stats_fn in funcs] for ns_key, funcs in _func_registry.items()
-    }
-
-
 # ============================================================================
 # Cache Warming Helpers
 # ============================================================================

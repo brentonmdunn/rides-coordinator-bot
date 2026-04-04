@@ -13,7 +13,7 @@ import AskRidesDashboard from '../components/AskRidesDashboard/AskRidesDashboard
 import RideCoverageCheck from '../components/RideCoverageCheck'
 import RideCoverageWarning from '../components/RideCoverageWarning'
 import FeatureFlagsManager from '../components/FeatureFlagsManager'
-import CacheStats from '../components/CacheStats'
+import SystemActions from '../components/SystemActions'
 import UserManagement from '../components/UserManagement'
 import RoleSwitcher from '../components/RoleSwitcher'
 import { ModeToggle } from '../components/mode-toggle'
@@ -72,7 +72,7 @@ function Home() {
                         <MapLinks />
                         {isAdmin && <FeatureFlagsManager />}
                         {isAdmin && <UserManagement />}
-                        {isAdmin && <CacheStats />}
+                        {isAdmin && <SystemActions />}
                     </div>
                 </div>
             </div>

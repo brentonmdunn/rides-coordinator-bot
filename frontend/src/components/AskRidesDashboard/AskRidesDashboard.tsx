@@ -8,6 +8,7 @@ import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
+import ConfirmDialog from '../ConfirmDialog'
 
 interface AskRidesDashboardProps {
     canManage: boolean
@@ -155,33 +156,14 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                 )}
             </CardContent>
 
-            {/* Confirmation Modal */}
-            {showConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowConfirm(false)}>
-                    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                            Send rides messages now?
-                        </h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">
-                            This will immediately send the ask rides messages to the announcements channel. This action cannot be undone.
-                        </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowConfirm(false)}
-                                className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSendNow}
-                                className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                            >
-                                Yes, send now
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                isOpen={showConfirm}
+                title="Send rides messages now?"
+                description="This will immediately send the ask rides messages to the announcements channel. This action cannot be undone."
+                confirmText="Yes, send now"
+                onConfirm={handleSendNow}
+                onCancel={() => setShowConfirm(false)}
+            />
         </Card>
     )
 }
