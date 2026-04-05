@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import Home from './pages/Home.tsx'
 import Learn from './pages/Learn.tsx'
+import CarGroups from './pages/CarGroups.tsx'
 import { ThemeProvider } from "./components/theme-provider"
 
 const queryClient = new QueryClient()
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/learn" element={<Learn />} />
+            <Route path="/car-groups" element={<CarGroups />} />
           </Routes>
         </BrowserRouter>
       </ThemeProvider>

@@ -50,6 +50,12 @@ function Home() {
                         </div>
                         <div className="flex items-center gap-3 justify-center md:justify-end">
                             <Link
+                                to="/car-groups"
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                            >
+                                🚙 Car Groups 
+                            </Link>
+                            <Link
                                 to="/learn"
                                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors"
                             >
