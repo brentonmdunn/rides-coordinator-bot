@@ -631,9 +631,10 @@ class GroupRidesService:
             )
 
             # Add google maps link if we have it
+            # Wrapping URL in <> suppresses Discord link embeds
             map_url = get_map_url(location)
             if map_url:
-                formatted_string = f"{base_string} ([Google Maps]({map_url}))"
+                formatted_string = f"{base_string} (<{map_url}>)"
             else:
                 formatted_string = base_string
 
