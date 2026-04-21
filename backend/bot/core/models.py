@@ -4,8 +4,6 @@ Database models.
 This module defines the SQLAlchemy models for the application's database tables.
 """
 
-import datetime
-
 from sqlalchemy import Boolean, Column, Date, DateTime, Integer, PrimaryKeyConstraint, String, func
 
 from bot.core.base import Base
@@ -69,7 +67,7 @@ class RideCoverage(Base):
     __tablename__ = "ride_coverage"
     __table_args__ = (PrimaryKeyConstraint("discord_username", "message_id"),)
     discord_username = Column(String, nullable=False)
-    datetime_detected = Column(DateTime, nullable=False, default=datetime.datetime.now())
+    datetime_detected = Column(DateTime, nullable=False, server_default=func.now())
     message_id = Column(String, nullable=False)
 
 
