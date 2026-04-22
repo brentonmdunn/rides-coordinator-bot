@@ -31,12 +31,12 @@ from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import (
-    get_current_week_start,
-    get_next_date,
+    get_current_cycle_start,
     get_next_date_obj,
+    get_next_date_str,
     get_next_wednesday_noon,
     get_send_wednesday,
-    is_sent_window,
+    is_ride_cycle_active,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ def _get_dynamic_ttl() -> int:
 
 def _make_wednesday_msg() -> str | None:
     """Create message for Wednesday rides."""
-    formatted_date: str = get_next_date(DaysOfWeekNumber.WEDNESDAY)
+    formatted_date: str = get_next_date_str(DaysOfWeekNumber.WEDNESDAY)
     if formatted_date in WILDCARD_DATES:
         return None
     return (
@@ -84,7 +84,7 @@ def _make_wednesday_msg() -> str | None:
 
 def _make_friday_msg() -> str | None:
     """Create message for Friday rides."""
-    formatted_date: str = get_next_date(DaysOfWeekNumber.FRIDAY)
+    formatted_date: str = get_next_date_str(DaysOfWeekNumber.FRIDAY)
     if formatted_date in WILDCARD_DATES:
         return None
     return (
@@ -95,7 +95,7 @@ def _make_friday_msg() -> str | None:
 
 def _make_sunday_msg() -> str | None:
     """Create message for Sunday service rides."""
-    formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
+    formatted_date: str = get_next_date_str(DaysOfWeekNumber.SUNDAY)
     if formatted_date in WILDCARD_DATES:
         return None
     return (
@@ -108,7 +108,7 @@ def _make_sunday_msg() -> str | None:
 
 def _make_sunday_msg_class() -> str | None:
     """Create message for Sunday class rides."""
-    formatted_date: str = get_next_date(DaysOfWeekNumber.SUNDAY)
+    formatted_date: str = get_next_date_str(DaysOfWeekNumber.SUNDAY)
     return (
         f"React to this message if you need a ride to Bible Theology Class on Sunday "
         f"{formatted_date} (leave between 8:30 and 8:40am). "
@@ -456,7 +456,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     Returns:
         Dictionary with status for friday, sunday, and sunday_class jobs
     """
-    sent_window = is_sent_window()
+    sent_window = is_ride_cycle_active()
 
     # Check feature flags
     friday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
@@ -490,7 +490,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     try:
         channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
         if channel:
-            current_week_start = get_current_week_start()
+            current_week_start = get_current_cycle_start()
 
             # Fetch recent messages (last 20)
             messages = [msg async for msg in channel.history(limit=20)]

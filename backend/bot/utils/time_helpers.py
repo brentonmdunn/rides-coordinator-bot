@@ -17,7 +17,7 @@ days_of_week_to_number = {
 }
 
 
-def is_during_target_window(day: str) -> bool:
+def is_in_ride_day_window(day: str) -> bool:
     """
     Checks if the current time in LA is within the target window for the given day.
 
@@ -63,7 +63,7 @@ def is_during_target_window(day: str) -> bool:
     return False
 
 
-def get_next_date(day: DaysOfWeekNumber) -> str:
+def get_next_date_str(day: DaysOfWeekNumber) -> str:
     """
     Gets the next `day` and returns it in mm/dd form.
 
@@ -132,7 +132,7 @@ def is_active_hours() -> bool:
     return hour >= 7 or hour < 1
 
 
-def is_sent_window() -> bool:
+def is_ride_cycle_active() -> bool:
     """
     Check if the current time is within the ask-rides "sent this week" window.
 
@@ -147,7 +147,7 @@ def is_sent_window() -> bool:
     return (now.weekday() == 2 and now.hour >= 12) or (3 <= now.weekday() <= 6)
 
 
-def get_current_week_start() -> datetime:
+def get_current_cycle_start() -> datetime:
     """
     Return the start of the current ask-rides cycle: the most recent Wednesday at noon.
 
@@ -194,9 +194,9 @@ def is_during_late_reaction_window(message_content: str) -> bool:
     """
     content = message_content.lower()
     return (
-        ("friday" in content and is_during_target_window(DaysOfWeek.FRIDAY))
-        or ("sunday" in content and is_during_target_window(DaysOfWeek.SUNDAY))
-        or ("wednesday" in content and is_during_target_window(DaysOfWeek.WEDNESDAY))
+        ("friday" in content and is_in_ride_day_window(DaysOfWeek.FRIDAY))
+        or ("sunday" in content and is_in_ride_day_window(DaysOfWeek.SUNDAY))
+        or ("wednesday" in content and is_in_ride_day_window(DaysOfWeek.WEDNESDAY))
     )
 
 
