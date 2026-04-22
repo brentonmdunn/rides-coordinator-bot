@@ -16,6 +16,15 @@ days_of_week_to_number = {
     DaysOfWeek.SUNDAY: DaysOfWeekNumber.SUNDAY,
 }
 
+DAYS_IN_WEEK = 7
+
+# Hour thresholds
+HOUR_1AM = 1
+HOUR_7AM = 7
+HOUR_10AM = 10
+HOUR_NOON = 12
+HOUR_7PM = 19
+
 
 def is_in_ride_day_window(day: str) -> bool:
     """
@@ -46,18 +55,18 @@ def is_in_ride_day_window(day: str) -> bool:
         return False  # Invalid day passed in
 
     if day_enum == DaysOfWeek.WEDNESDAY:
-        return (weekday_enum == DaysOfWeek.TUESDAY and hour >= 19) or (
-            weekday_enum == DaysOfWeek.WEDNESDAY and hour < 19
+        return (weekday_enum == DaysOfWeek.TUESDAY and hour >= HOUR_7PM) or (
+            weekday_enum == DaysOfWeek.WEDNESDAY and hour < HOUR_7PM
         )
 
     if day_enum == DaysOfWeek.FRIDAY:
-        return (weekday_enum == DaysOfWeek.THURSDAY and hour >= 19) or (
-            weekday_enum == DaysOfWeek.FRIDAY and hour < 19
+        return (weekday_enum == DaysOfWeek.THURSDAY and hour >= HOUR_7PM) or (
+            weekday_enum == DaysOfWeek.FRIDAY and hour < HOUR_7PM
         )
 
     if day_enum == DaysOfWeek.SUNDAY:
-        return (weekday_enum == DaysOfWeek.SATURDAY and hour >= 10) or (
-            weekday_enum == DaysOfWeek.SUNDAY and hour < 10
+        return (weekday_enum == DaysOfWeek.SATURDAY and hour >= HOUR_10AM) or (
+            weekday_enum == DaysOfWeek.SUNDAY and hour < HOUR_10AM
         )
 
     return False
@@ -74,9 +83,9 @@ def get_next_date_str(day: DaysOfWeekNumber) -> str:
         str: The formatted date string (mm/dd).
     """
     today = datetime.today()
-    days_ahead = (day - today.weekday() + 7) % 7
+    days_ahead = (day - today.weekday() + DAYS_IN_WEEK) % DAYS_IN_WEEK
     if days_ahead == 0:
-        days_ahead = 7  # Skip to next day if `day` is current day
+        days_ahead = DAYS_IN_WEEK  # Skip to next day if `day` is current day
 
     next_day = today + timedelta(days=days_ahead)
     formatted_date = next_day.strftime("%-m/%-d")
@@ -95,9 +104,9 @@ def get_next_date_obj(day: DaysOfWeek) -> date:
     """
     day_num = days_of_week_to_number[day]
     today = datetime.today()
-    days_ahead = (day_num - today.weekday() + 7) % 7
+    days_ahead = (day_num - today.weekday() + DAYS_IN_WEEK) % DAYS_IN_WEEK
     if days_ahead == 0:
-        days_ahead = 7  # Skip to next day if `day` is current day
+        days_ahead = DAYS_IN_WEEK  # Skip to next day if `day` is current day
 
     # The key change is here: we convert the final datetime object to a date object
     return (today + timedelta(days=days_ahead)).date()
@@ -111,9 +120,9 @@ def get_last_sunday() -> datetime:
         datetime: The datetime object for the last Sunday.
     """
     now = datetime.now()
-    days_to_subtract = (now.weekday() + 1) % 7
+    days_to_subtract = (now.weekday() + 1) % DAYS_IN_WEEK
     if days_to_subtract == 0:
-        days_to_subtract = 7
+        days_to_subtract = DAYS_IN_WEEK
     return now - timedelta(days=days_to_subtract)
 
 
@@ -129,7 +138,7 @@ def is_active_hours() -> bool:
     """
     la_tz = pytz.timezone("America/Los_Angeles")
     hour = datetime.now().astimezone(la_tz).hour
-    return hour >= 7 or hour < 1
+    return hour >= HOUR_7AM or hour < HOUR_1AM
 
 
 def is_ride_cycle_active() -> bool:
@@ -144,7 +153,9 @@ def is_ride_cycle_active() -> bool:
         True from Wednesday 12:00 PM through Sunday 11:59 PM, False otherwise.
     """
     now = datetime.now()
-    return (now.weekday() == 2 and now.hour >= 12) or (3 <= now.weekday() <= 6)
+    return (now.weekday() == DaysOfWeekNumber.WEDNESDAY and now.hour >= HOUR_NOON) or (
+        DaysOfWeekNumber.THURSDAY <= now.weekday() <= DaysOfWeekNumber.SUNDAY
+    )
 
 
 def get_current_cycle_start() -> datetime:
@@ -158,11 +169,11 @@ def get_current_cycle_start() -> datetime:
         datetime of the most recent Wednesday at 12:00:00.
     """
     now = datetime.now()
-    days_since_wednesday = (now.weekday() - 2) % 7
-    if now.weekday() < 2:  # Monday or Tuesday — back to previous cycle
-        days_since_wednesday += 7
+    days_since_wednesday = (now.weekday() - DaysOfWeekNumber.WEDNESDAY) % DAYS_IN_WEEK
+    if now.weekday() < DaysOfWeekNumber.WEDNESDAY:  # Monday or Tuesday — back to previous cycle
+        days_since_wednesday += DAYS_IN_WEEK
     week_start = now - timedelta(days=days_since_wednesday)
-    return week_start.replace(hour=12, minute=0, second=0, microsecond=0)
+    return week_start.replace(hour=HOUR_NOON, minute=0, second=0, microsecond=0)
 
 
 def get_send_wednesday(event_date: date) -> date:
@@ -175,9 +186,9 @@ def get_send_wednesday(event_date: date) -> date:
     Returns:
         The Wednesday immediately before the event date.
     """
-    days_to_subtract = (event_date.weekday() - 2) % 7
-    if days_to_subtract == 0 and event_date.weekday() != 2:
-        days_to_subtract = 7
+    days_to_subtract = (event_date.weekday() - DaysOfWeekNumber.WEDNESDAY) % DAYS_IN_WEEK
+    if days_to_subtract == 0 and event_date.weekday() != DaysOfWeekNumber.WEDNESDAY:
+        days_to_subtract = DAYS_IN_WEEK
     return event_date - timedelta(days=days_to_subtract)
 
 
@@ -211,8 +222,8 @@ def get_next_wednesday_noon() -> datetime:
         datetime of the next ask-rides send time.
     """
     now = datetime.now()
-    days_until_wednesday = (2 - now.weekday()) % 7
-    if days_until_wednesday == 0 and now.hour >= 12:
-        days_until_wednesday = 7
+    days_until_wednesday = (DaysOfWeekNumber.WEDNESDAY - now.weekday()) % DAYS_IN_WEEK
+    if days_until_wednesday == 0 and now.hour >= HOUR_NOON:
+        days_until_wednesday = DAYS_IN_WEEK
     next_run = now + timedelta(days=days_until_wednesday)
-    return next_run.replace(hour=12, minute=0, second=0, microsecond=0)
+    return next_run.replace(hour=HOUR_NOON, minute=0, second=0, microsecond=0)
