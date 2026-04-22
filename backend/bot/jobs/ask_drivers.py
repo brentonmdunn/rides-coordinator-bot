@@ -4,13 +4,13 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from bot.api import send_error_to_discord
 from bot.core.enums import (
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
     JobName,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.driver_service import DriverService

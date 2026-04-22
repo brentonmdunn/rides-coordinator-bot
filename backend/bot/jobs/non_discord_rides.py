@@ -2,7 +2,7 @@
 
 import logging
 
-from bot.api import send_error_to_discord
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.services.non_discord_rides_service import NonDiscordRidesService
 

@@ -12,7 +12,6 @@ import discord
 import requests
 from dotenv import load_dotenv
 
-from bot.api import send_error_to_discord
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     AskRidesMessage,
@@ -24,6 +23,7 @@ from bot.core.enums import (
     RideOption,
     RoleIds,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
 from bot.utils.cache import _get_reaction_cache_ttl, alru_cache

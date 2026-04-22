@@ -12,7 +12,6 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from bot.api import send_error_to_discord
 from bot.core.enums import (
     CacheNamespace,
     ChannelIds,
@@ -22,6 +21,7 @@ from bot.core.enums import (
     JobName,
     RoleIds,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun
 from bot.repositories.calendar_repository import CalendarRepository

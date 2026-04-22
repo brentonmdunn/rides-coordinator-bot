@@ -5,9 +5,10 @@ import logging
 import discord
 from discord.ext import commands
 
-# Your original imports
-from bot.api import send_error_to_discord
 from bot.core.enums import FeatureFlagNames
+
+# Your original imports
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_cmd
 from bot.repositories.community_events_repository import (
     EventsRepository as CommunityEventsRepository,

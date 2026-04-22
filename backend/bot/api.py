@@ -1,8 +1,8 @@
 """
 Bot API Access Layer
 
-This module provides access to the Discord bot instance for the FastAPI application.
-It manages the bot lifecycle and allows API endpoints to interact with Discord.
+This module provides the bot lifecycle context manager for the FastAPI application.
+Bot instance access is in bot.core.bot_instance; error reporting is in bot.core.error_reporter.
 """
 
 import asyncio
@@ -20,6 +20,7 @@ from discord.ext.commands import Bot
 from dotenv import load_dotenv
 from sqlalchemy import or_, update
 
+from bot.core.bot_instance import set_bot_instance
 from bot.core.database import (
     AsyncSessionLocal,
     init_db,
@@ -27,82 +28,15 @@ from bot.core.database import (
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-TOKEN: str | None = os.getenv("TOKEN")
 APP_ENV: str = os.getenv("APP_ENV", "local")
-_error_channel_id = os.getenv("ERROR_CHANNEL_ID")
-ERROR_CHANNEL_ID: int | None = int(_error_channel_id) if _error_channel_id else None
-
-if ERROR_CHANNEL_ID:
-    logger.info(f"✅ Error channel configured: {ERROR_CHANNEL_ID}")
-else:
-    logger.warning("⚠️  Error channel not configured - errors will only be logged")
-
-# Global bot instance
-_bot_instance: Bot | None = None
-
-
-def get_bot() -> Bot | None:
-    """
-    Get the running Discord bot instance.
-
-    Returns:
-        The bot instance if running and ready, None otherwise.
-    """
-    return _bot_instance if _bot_instance and _bot_instance.is_ready() else None
-
-
-async def send_error_to_discord(
-    error_msg: str, error: Exception | None = None, tb_text: str | None = None
-) -> None:
-    """
-    Send an error message and optional traceback to the configured Discord error channel.
-    If `error` is provided, it extracts the traceback directly from the Exception object.
-    If neither `error` nor `tb_text` is provided, it attempts to extract the traceback
-    from sys.exc_info().
-    """
-    if APP_ENV == "local" or ERROR_CHANNEL_ID is None:
-        return
-
-    bot = get_bot()
-    if not bot:
-        logger.warning("Could not send error to Discord: Bot is not ready")
-        return
-
-    if tb_text is None:
-        if error is not None:
-            tb_lines = traceback.format_exception(type(error), error, error.__traceback__)
-            tb_text = "".join(tb_lines)
-        else:
-            import sys
-
-            exc_info = sys.exc_info()
-            if exc_info[0] is not None:
-                tb_lines = traceback.format_exception(*exc_info)
-                tb_text = "".join(tb_lines)
-
-    try:
-        channel = bot.get_channel(ERROR_CHANNEL_ID)
-        if channel and isinstance(channel, discord.TextChannel):
-            if tb_text and len(error_msg) + len(tb_text) > 1900:
-                await channel.send(error_msg)
-                chunks = [tb_text[i : i + 1900] for i in range(0, len(tb_text), 1900)]
-                for chunk in chunks:
-                    await channel.send(f"```python\n{chunk}\n```")
-            else:
-                full_msg = error_msg
-                if tb_text:
-                    full_msg += f"\n```python\n{tb_text}\n```"
-                await channel.send(full_msg)
-        else:
-            logger.warning(f"Error channel {ERROR_CHANNEL_ID} not found or not a text channel")
-    except Exception as e:
-        logger.error(f"Failed to send error to Discord channel {ERROR_CHANNEL_ID}: {e}")
+TOKEN: str | None = os.getenv("TOKEN")
 
 
 async def _load_extensions(bot: Bot) -> None:
@@ -190,8 +124,6 @@ async def bot_lifespan():
             pass
         # Bot is shutdown
     """
-    global _bot_instance
-
     # Setup bot intents
     intents: discord.Intents = discord.Intents.default()
     intents.message_content = True
@@ -220,7 +152,6 @@ async def bot_lifespan():
     @bot.event
     async def on_error(event: str, *args, **kwargs) -> None:
         """Handle uncaught exceptions and send them to the error channel."""
-        # Get exception info
         import sys
 
         exc_info = sys.exc_info()
@@ -229,10 +160,7 @@ async def bot_lifespan():
             tb_lines = traceback.format_exception(*exc_info)
             tb_text = "".join(tb_lines)
 
-            # Log the error
             logger.error(f"Uncaught exception in {event}: {tb_text}")
-
-            # Send to error channel
             await send_error_to_discord(f"**Uncaught Exception in Event: `{event}`**", tb_text)
         else:
             logger.error(f"Unknown error in event {event}")
@@ -249,10 +177,8 @@ async def bot_lifespan():
                 ephemeral=True,
             )
         else:
-            # Log the error
             logger.error(f"App command error: {error}", exc_info=error)
 
-            # Send error to the user
             try:
                 if not interaction.response.is_done():
                     await interaction.response.send_message(
@@ -265,7 +191,7 @@ async def bot_lifespan():
                         ephemeral=True,
                     )
             except Exception:
-                pass  # Fail silently if we can't respond to the user
+                pass
 
             cmd_name = interaction.command.name if interaction.command else "Unknown"
             channel_mention = interaction.channel.mention if interaction.channel else "Unknown"
@@ -300,11 +226,10 @@ async def bot_lifespan():
         await _load_extensions(bot)
 
     # Start bot in background
-    _bot_instance = bot
+    set_bot_instance(bot)
     bot_task = asyncio.create_task(bot.start(TOKEN))
 
     try:
-        # Wait for bot to be ready
         while not bot.is_ready():
             await asyncio.sleep(0.1)
 
@@ -312,9 +237,8 @@ async def bot_lifespan():
         yield bot
 
     finally:
-        # Cleanup
         logger.info("🛑 Shutting down Discord bot...")
         await bot.close()
         await bot_task
-        _bot_instance = None
+        set_bot_instance(None)
         logger.info("✅ Discord bot shutdown complete")
