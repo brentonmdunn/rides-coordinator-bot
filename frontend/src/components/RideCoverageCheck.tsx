@@ -299,7 +299,7 @@ function RideCoverageCheck() {
                 </InfoPanel>
 
                 <div className="space-y-4">
-                    {showSunday ? (
+                    {currentRideType === 'sunday' ? (
                         <RideDay rideType="sunday" title="Sunday Service" emoji="⛪" />
                     ) : (
                         <RideDay rideType="friday" title="Friday Fellowship" emoji="🎉" />
