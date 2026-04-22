@@ -7,6 +7,7 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw, MoreVertical, CloudDownload, Check } from 'lucide-react'
+import { getAutomaticDay } from '../lib/utils'
 
 interface RideDayProps {
     rideType: 'friday' | 'sunday'
@@ -130,17 +131,7 @@ function RideCoverageCheck() {
     const [showMenu, setShowMenu] = useState(false)
     const queryClient = useQueryClient()
 
-    // Determine which ride type to check based on current time
-    const now = new Date()
-    const day = now.getDay()
-    const hour = now.getHours()
-
-    // Show Sunday coverage if:
-    // - Friday after 10pm (22:00)
-    // - Saturday (all day)
-    // - Sunday (all day)
-    const showSunday = (day === 5 && hour >= 22) || day === 6 || day === 0
-    const currentRideType = showSunday ? 'sunday' : 'friday'
+    const currentRideType = getAutomaticDay()
 
     // Check if a message exists for the current ride type
     const {
