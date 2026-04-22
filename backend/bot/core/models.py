@@ -4,10 +4,16 @@ Database models.
 This module defines the SQLAlchemy models for the application's database tables.
 """
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, PrimaryKeyConstraint, String, func
+from __future__ import annotations
+
+from datetime import date, datetime
+
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.core.base import Base
-from bot.core.enums import AccountRoles
+from bot.core.enums import AccountRoles, JobName
 
 
 class DiscordUsers(Base):
@@ -15,10 +21,10 @@ class DiscordUsers(Base):
 
     __tablename__ = "discord_usernames"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    discord_username = Column(String, nullable=False)
-    first_name = Column(String, nullable=False)
-    last_name = Column(String, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    discord_username: Mapped[str]
+    first_name: Mapped[str]
+    last_name: Mapped[str]
 
 
 class FeatureFlags(Base):
@@ -26,9 +32,9 @@ class FeatureFlags(Base):
 
     __tablename__ = "feature_flags"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    feature = Column(String, nullable=False, unique=True)
-    enabled = Column(Boolean, nullable=False, default=False)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    feature: Mapped[str] = mapped_column(unique=True)
+    enabled: Mapped[bool] = mapped_column(default=False)
 
 
 class Locations(Base):
@@ -36,39 +42,40 @@ class Locations(Base):
 
     __tablename__ = "locations"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name = Column(String, nullable=False)
-    discord_username = Column(String)
-    year = Column(String)
-    location = Column(String)
-    driver = Column(String)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    name: Mapped[str]
+    discord_username: Mapped[str | None]
+    year: Mapped[str | None]
+    location: Mapped[str | None]
+    driver: Mapped[str | None]
 
 
 class EventThreads(Base):
     """Model representing a thread associated with an event."""
 
     __tablename__ = "event_threads"
-    message_id = Column(String, primary_key=True)
+
+    message_id: Mapped[str] = mapped_column(primary_key=True)
 
 
 class NonDiscordRides(Base):
     """Model representing a ride request from a non-Discord user."""
 
     __tablename__ = "non_discord_rides"
-    __table_args__ = (PrimaryKeyConstraint("name", "date"),)
-    name = Column(String, nullable=False)
-    date = Column(Date, nullable=False)
-    location = Column(String)
+
+    name: Mapped[str] = mapped_column(primary_key=True)
+    date: Mapped[date] = mapped_column(primary_key=True)
+    location: Mapped[str | None]
 
 
 class RideCoverage(Base):
     """Model representing a ride coverage entry."""
 
     __tablename__ = "ride_coverage"
-    __table_args__ = (PrimaryKeyConstraint("discord_username", "message_id"),)
-    discord_username = Column(String, nullable=False)
-    datetime_detected = Column(DateTime, nullable=False, server_default=func.now())
-    message_id = Column(String, nullable=False)
+
+    discord_username: Mapped[str] = mapped_column(primary_key=True)
+    message_id: Mapped[str] = mapped_column(primary_key=True)
+    datetime_detected: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
 class MessageSchedulePause(Base):
@@ -81,11 +88,11 @@ class MessageSchedulePause(Base):
 
     __tablename__ = "message_schedule_pauses"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    job_name = Column(String, nullable=False, unique=True)
-    is_paused = Column(Boolean, nullable=False, default=False)
-    resume_after_date = Column(Date, nullable=True)
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    job_name: Mapped[JobName] = mapped_column(SQLEnum(JobName), unique=True)
+    is_paused: Mapped[bool] = mapped_column(default=False)
+    resume_after_date: Mapped[date | None]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
 
 class UserAccount(Base):
@@ -93,12 +100,12 @@ class UserAccount(Base):
 
     __tablename__ = "user_accounts"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String, nullable=False, unique=True, index=True)
-    role = Column(String, nullable=False, default=AccountRoles.VIEWER)
-    role_edited_by = Column(String, nullable=True)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    role: Mapped[AccountRoles] = mapped_column(SQLEnum(AccountRoles), default=AccountRoles.VIEWER)
+    role_edited_by: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
 
 class UserPreferences(Base):
@@ -111,8 +118,8 @@ class UserPreferences(Base):
 
     __tablename__ = "user_preferences"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String, nullable=False, unique=True, index=True)
-    show_map_labels = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    show_map_labels: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
