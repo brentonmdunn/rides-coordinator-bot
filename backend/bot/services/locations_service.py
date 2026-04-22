@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from bot.api import send_error_to_discord
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
+    DAY_TO_ASK_RIDES_MESSAGE,
     AskRidesMessage,
     CacheNamespace,
     CanBeDriver,
@@ -302,11 +303,8 @@ class LocationsService:
             A tuple containing (locations_people, usernames_reacted, location_found).
         """
         if day:
-            if day == JobName.SUNDAY:
-                ask_rides_message = AskRidesMessage.SUNDAY_SERVICE
-            elif day == JobName.FRIDAY:
-                ask_rides_message = AskRidesMessage.FRIDAY_FELLOWSHIP
-            else:
+            ask_rides_message = DAY_TO_ASK_RIDES_MESSAGE.get(JobName(day))
+            if ask_rides_message is None:
                 raise ValueError(f"Invalid day: {day}")
             message_id = await self._find_correct_message(ask_rides_message, channel_id)
             if message_id is None:
