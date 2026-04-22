@@ -10,7 +10,8 @@ async def lscc_day_autocomplete(
     _,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    """Command autocomplete for LSCC event days (currently Friday and Sunday).
+    """
+    Command autocomplete for LSCC event days (currently Friday and Sunday).
 
     Args:
         _: The interaction object (unused).
@@ -30,7 +31,8 @@ async def location_autocomplete(
     _,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    """Command autocomplete for campus living locations.
+    """
+    Command autocomplete for campus living locations.
 
     Args:
         _: The interaction object (unused).

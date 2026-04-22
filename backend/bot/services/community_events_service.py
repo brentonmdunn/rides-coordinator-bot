@@ -22,7 +22,6 @@ class EventsService:
 
     def __init__(self, repository: CommunityEventsRepository):
         """Initialize the CommunityEventsService."""
-
         self.repository = repository
 
     async def assign_role_to_reactors(

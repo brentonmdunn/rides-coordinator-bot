@@ -21,7 +21,8 @@ APP_ENV = os.getenv("APP_ENV", "local")
 
 @router.get("/api/me")
 async def get_current_user(request: Request):
-    """Return the current authenticated user's email and role.
+    """
+    Return the current authenticated user's email and role.
 
     Auto-creates the account with default viewer role if not found.
 
@@ -46,7 +47,8 @@ class RoleSwitchRequest(BaseModel):
 
 @router.put("/api/me/role")
 async def switch_role(request: Request, body: RoleSwitchRequest):
-    """Switch the current user's role (local development only).
+    """
+    Switch the current user's role (local development only).
 
     Args:
         body: Contains the new role to switch to.

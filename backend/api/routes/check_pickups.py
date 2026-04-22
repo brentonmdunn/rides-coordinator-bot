@@ -3,6 +3,7 @@
 import logging
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from bot.api import get_bot
 from bot.core.enums import AskRidesMessage, ChannelIds, JobName
@@ -15,7 +16,49 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/check-pickups", tags=["check-pickups"])
 
 
-@router.get("/{ride_type}")
+class PickupCoverageUser(BaseModel):
+    """A single user's ride-assignment status."""
+
+    discord_username: str = Field(description="The user's Discord username")
+    has_ride: bool = Field(description="Whether the user has been assigned a ride")
+
+
+class PickupCoverageResponse(BaseModel):
+    """Response payload for the pickup-coverage endpoint."""
+
+    users: list[PickupCoverageUser] = Field(description="List of users needing rides")
+    total: int = Field(description="Total number of users who reacted")
+    assigned: int = Field(description="Number of users who have been grouped into rides")
+    message_found: bool = Field(description="Whether the original ask-rides message was found")
+    has_coverage_entries: bool = Field(description="Whether coverage data exists for this week")
+
+
+class SyncCoverageResponse(BaseModel):
+    """Response payload for the sync-coverage endpoint."""
+
+    success: bool = Field(description="Whether the sync was successful")
+    message: str = Field(description="Status message")
+    synced: int | None = Field(default=None, description="Number of usernames synced")
+    errors: list[str] | None = Field(default=None, description="List of errors during sync")
+
+
+class DriverReactionResponse(BaseModel):
+    """Response payload for the driver-reactions endpoint."""
+
+    day: str = Field(description="The day requested")
+    reactions: dict[str, list[str]] = Field(description="Mapping of emoji to list of usernames")
+    username_to_name: dict[str, str] = Field(
+        description="Mapping of discord usernames to real names"
+    )
+    message_found: bool = Field(description="Whether the driver chat message was found")
+
+
+@router.get(
+    "/{ride_type}",
+    response_model=PickupCoverageResponse,
+    summary="Get Pickup Coverage",
+    description="Check ride assignment coverage for users who requested a ride.",
+)
 async def get_pickup_coverage(ride_type: str):
     """
     Check ride coverage for users who reacted to a ride message.
@@ -112,7 +155,12 @@ async def get_pickup_coverage(ride_type: str):
         raise HTTPException(status_code=500, detail=f"Failed to fetch ride coverage: {e!s}") from e
 
 
-@router.post("/sync")
+@router.post(
+    "/sync",
+    response_model=SyncCoverageResponse,
+    summary="Sync Ride Coverage",
+    description="Force sync ride coverage by scanning recent messages for assignments.",
+)
 async def sync_ride_coverage():
     """
     Force sync ride coverage by scanning recent messages.
@@ -141,7 +189,12 @@ async def sync_ride_coverage():
         raise HTTPException(status_code=500, detail=f"Failed to sync ride coverage: {e!s}") from e
 
 
-@router.get("/driver-reactions/{day}")
+@router.get(
+    "/driver-reactions/{day}",
+    response_model=DriverReactionResponse,
+    summary="Get Driver Reactions",
+    description="Get emoji reactions from drivers offering rides in the driver chat.",
+)
 async def get_driver_reactions(day: str):
     """
     Get emoji reactions for driver messages.

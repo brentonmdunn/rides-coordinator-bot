@@ -16,7 +16,8 @@ class AdminService:
     async def assign_roles_from_csv(
         role: discord.Role, discord_usernames: str, guild: discord.Guild
     ) -> tuple[int, list[str]]:
-        """Assigns a role to users listed in a CSV column.
+        """
+        Assigns a role to users listed in a CSV column.
 
         Args:
             role: The role to assign.
@@ -29,7 +30,6 @@ class AdminService:
         Raises:
             Exception: If CSV retrieval fails or other errors occur.
         """
-
         success_count = 0
         failed_users = []
 
@@ -67,7 +67,8 @@ class AdminService:
         channel: discord.TextChannel,
         guild: discord.Guild,
     ) -> tuple[int, list[str]]:
-        """Grants read/write permissions in a channel to the specified users.
+        """
+        Grants read/write permissions in a channel to the specified users.
 
         Args:
             discord_usernames: Space-separated Discord usernames.

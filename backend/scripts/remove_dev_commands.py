@@ -1,4 +1,5 @@
-"""Removes `await load_extensions()` from main.py and runs the bot, which makes
+"""
+Removes `await load_extensions()` from main.py and runs the bot, which makes
 it so that dev bot loads 0 extensions. Users will not have the option to select
 dev bot commands.
 """
@@ -14,7 +15,6 @@ TARGET_LINE = "await load_extensions()"
 
 def comment_out_line(path: Path, target: str):
     """Comment out a line containing the target string in the given file."""
-
     lines = path.read_text().splitlines(keepends=True)
 
     for i, line in enumerate(lines):
@@ -27,7 +27,6 @@ def comment_out_line(path: Path, target: str):
 
 def uncomment_line(path: Path, target: str):
     """Uncomment a line containing the target string in the given file."""
-
     lines = path.read_text().splitlines(keepends=True)
 
     for i, line in enumerate(lines):

@@ -158,7 +158,8 @@ async def cloudflare_access_middleware(request: Request, call_next):
 
 
 def require_role(minimum_role: AccountRoles) -> Callable:
-    """Factory that returns a FastAPI dependency enforcing a minimum role.
+    """
+    Factory that returns a FastAPI dependency enforcing a minimum role.
 
     Role hierarchy: admin (3) > ride_coordinator (2) > viewer (1).
 

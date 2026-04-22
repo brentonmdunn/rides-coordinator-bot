@@ -14,7 +14,8 @@ class RideRequestService:
     """Business logic for handling ride request channel creation."""
 
     def __init__(self, bot):
-        """Initialize the service with a bot instance.
+        """
+        Initialize the service with a bot instance.
 
         Args:
             bot: The Discord bot instance.
@@ -26,7 +27,8 @@ class RideRequestService:
         user: discord.Member,
         guild: discord.Guild,
     ) -> bool:
-        """Handle a new rider reaction by creating a private channel.
+        """
+        Handle a new rider reaction by creating a private channel.
 
         When a user without a registered location reacts to a ride announcement,
         this creates a private channel where ride coordinators can collect their
@@ -77,9 +79,9 @@ class RideRequestService:
         # Send welcome message
         try:
             await new_channel.send(
-                f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "  # noqa E501
+                f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
                 "We don't yet know where to pick you up. "
-                "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "  # noqa E501
+                "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "
                 "If you live **off campus**, please share your apartment complex or address. "
                 "One of our ride coordinators will check in with you shortly!",
                 allowed_mentions=discord.AllowedMentions(users=True),
@@ -96,7 +98,8 @@ class RideRequestService:
     def _build_channel_permissions(
         self, guild: discord.Guild, user: discord.Member
     ) -> dict[discord.Role | discord.Member, discord.PermissionOverwrite]:
-        """Build permission overwrites for a new ride channel.
+        """
+        Build permission overwrites for a new ride channel.
 
         Args:
             guild: The Discord guild.

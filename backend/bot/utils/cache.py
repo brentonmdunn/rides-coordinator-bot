@@ -1,4 +1,5 @@
-"""Simple async LRU cache with TTL and namespace support.
+"""
+Simple async LRU cache with TTL and namespace support.
 
 Storage is delegated to a pluggable ``CacheBackend`` (see
 ``cache_backends.py``).  The default backend is ``InMemoryBackend``; call
@@ -32,7 +33,8 @@ OFF_HOURS_REACTION_TTL = 7 * 60 * 60  # 7 hours
 
 
 def _get_reaction_cache_ttl() -> int:
-    """Return dynamic TTL for reaction caches based on time of day.
+    """
+    Return dynamic TTL for reaction caches based on time of day.
 
     Active hours (7 AM - 1 AM PT): 65 minutes
     Off-hours (1 AM - 7 AM PT): 7 hours
@@ -124,7 +126,8 @@ def alru_cache(
             logger.info(f"Cache cleared for {func.__name__}")
 
         async def cache_set(*args, result):
-            """Inject a value into the cache for the given arguments.
+            """
+            Inject a value into the cache for the given arguments.
 
             Args are the function arguments (excluding self if ignore_self is True).
             This allows batch methods to populate individual cache entries.
@@ -135,7 +138,8 @@ def alru_cache(
             await backend.set(ns_key, key, result, current_ttl)
 
         async def cache_invalidate(*args):
-            """Invalidate a specific cache entry without touching the rest of the namespace.
+            """
+            Invalidate a specific cache entry without touching the rest of the namespace.
 
             Args are the function arguments (excluding self if ignore_self is True).
             """
@@ -180,7 +184,8 @@ def alru_cache(
 
 
 async def invalidate_namespace(namespace: CacheNamespace) -> None:
-    """Clear all caches registered under a namespace.
+    """
+    Clear all caches registered under a namespace.
 
     Args:
         namespace: The namespace to invalidate.
@@ -199,24 +204,14 @@ async def invalidate_all_namespaces() -> None:
         logger.info(f"Invalidated all namespaces: cleared {total_cleared} entries")
 
 
-def get_all_cache_stats() -> dict[str, list[dict]]:
-    """Return cache stats for every registered function, grouped by namespace.
-
-    Returns:
-        Dictionary mapping namespace names to lists of per-function stat dicts.
-    """
-    return {
-        ns_key: [stats_fn() for _, stats_fn in funcs] for ns_key, funcs in _func_registry.items()
-    }
-
-
 # ============================================================================
 # Cache Warming Helpers
 # ============================================================================
 
 
 async def warm_ask_rides_message_cache(bot, channel_id=None) -> None:
-    """Invalidate and re-populate the ask-rides message ID cache.
+    """
+    Invalidate and re-populate the ask-rides message ID cache.
 
     Call this after sending new ask-rides messages.
 
@@ -239,7 +234,8 @@ async def warm_ask_rides_message_cache(bot, channel_id=None) -> None:
 
 
 async def warm_ask_drivers_message_cache(bot, event=None) -> None:
-    """Invalidate and re-populate the ask-drivers message ID cache.
+    """
+    Invalidate and re-populate the ask-drivers message ID cache.
 
     Call this after sending a new ask-drivers message.
     If event is None, warms all events in a single pass.
@@ -258,7 +254,8 @@ async def warm_ask_drivers_message_cache(bot, event=None) -> None:
 
 
 async def warm_ask_rides_reactions_cache(bot, event) -> None:
-    """Invalidate and warm the ask-rides reactions cache for a specific event.
+    """
+    Invalidate and warm the ask-rides reactions cache for a specific event.
 
     Args:
         bot: The Discord bot instance.
@@ -276,7 +273,8 @@ async def warm_ask_rides_reactions_cache(bot, event) -> None:
 
 
 async def warm_ask_drivers_reactions_cache(bot, event=None) -> None:
-    """Invalidate and warm the ask-drivers reactions cache for a specific event.
+    """
+    Invalidate and warm the ask-drivers reactions cache for a specific event.
 
     Args:
         bot: The Discord bot instance.

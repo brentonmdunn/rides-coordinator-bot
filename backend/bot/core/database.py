@@ -1,4 +1,5 @@
-"""Database configuration and initialization.
+"""
+Database configuration and initialization.
 
 This module handles the database connection, session creation, and initialization routines.
 """
@@ -30,7 +31,8 @@ async def init_db():
 
 
 async def seed_feature_flags(session: AsyncSession):
-    """Ensures that all feature flags defined in the enum exist in the database.
+    """
+    Ensures that all feature flags defined in the enum exist in the database.
 
     If a flag doesn't exist, it's created with a default 'disabled' state.
 
@@ -52,7 +54,8 @@ async def seed_feature_flags(session: AsyncSession):
 
 
 async def seed_message_schedule_pauses(session: AsyncSession):
-    """Ensures that all message schedule pause rows exist in the database.
+    """
+    Ensures that all message schedule pause rows exist in the database.
 
     If a row doesn't exist for a job, it's created with a default un-paused state.
 
@@ -74,7 +77,8 @@ async def seed_message_schedule_pauses(session: AsyncSession):
 
 
 async def seed_admin_accounts(session: AsyncSession):
-    """Seeds admin accounts from the ADMIN_EMAILS environment variable.
+    """
+    Seeds admin accounts from the ADMIN_EMAILS environment variable.
 
     Also seeds dev@example.com as admin in local environments.
     If an email already exists, its role is updated to admin.

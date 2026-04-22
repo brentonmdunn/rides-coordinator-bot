@@ -15,7 +15,8 @@ class EventThreadRepository:
     """Handles database operations for EventThreads."""
 
     async def get_by_id(self, session: AsyncSession, thread_id: str) -> EventThreads | None:
-        """Fetches an EventThread by its ID (which is the message_id).
+        """
+        Fetches an EventThread by its ID (which is the message_id).
 
         Args:
             session: The database session.
@@ -29,7 +30,8 @@ class EventThreadRepository:
     async def get_by_message_id(
         self, session: AsyncSession, message_id: str
     ) -> EventThreads | None:
-        """Fetches an EventThread by its message_id.
+        """
+        Fetches an EventThread by its message_id.
 
         Args:
             session: The database session.
@@ -42,7 +44,8 @@ class EventThreadRepository:
         return result.scalar_one_or_none()
 
     async def create(self, session: AsyncSession, thread_id: str) -> EventThreads:
-        """Creates and adds a new EventThread to the session.
+        """
+        Creates and adds a new EventThread to the session.
 
         Args:
             session: The database session.
@@ -56,7 +59,8 @@ class EventThreadRepository:
         return new_thread
 
     async def delete(self, session: AsyncSession, event_thread: EventThreads) -> None:
-        """Deletes an EventThread from the session.
+        """
+        Deletes an EventThread from the session.
 
         Args:
             session: The database session.
@@ -65,7 +69,8 @@ class EventThreadRepository:
         await session.delete(event_thread)
 
     async def is_event_thread(self, session: AsyncSession, message_id: str) -> bool:
-        """Check if a message ID corresponds to an event thread.
+        """
+        Check if a message ID corresponds to an event thread.
 
         Args:
             session: The database session.
@@ -78,7 +83,8 @@ class EventThreadRepository:
         return result is not None
 
     async def get_thread_members(self, thread: discord.Thread) -> set[int]:
-        """Get all member IDs in a thread.
+        """
+        Get all member IDs in a thread.
 
         Args:
             thread: The Discord thread.
@@ -97,7 +103,8 @@ class EventThreadRepository:
             return set()
 
     async def add_user_to_thread(self, thread: discord.Thread, user: discord.Member) -> bool:
-        """Add a user to a Discord thread.
+        """
+        Add a user to a Discord thread.
 
         Args:
             thread: The Discord thread.
@@ -121,7 +128,8 @@ class EventThreadRepository:
             return False
 
     async def remove_user_from_thread(self, thread: discord.Thread, user: discord.Member) -> bool:
-        """Remove a user from a Discord thread.
+        """
+        Remove a user from a Discord thread.
 
         Args:
             thread: The Discord thread.
@@ -147,7 +155,8 @@ class EventThreadRepository:
             return False
 
     async def count_user_reactions(self, message: discord.Message, user_id: int) -> int:
-        """Count how many reactions a user has on a message.
+        """
+        Count how many reactions a user has on a message.
 
         Args:
             message: The Discord message.

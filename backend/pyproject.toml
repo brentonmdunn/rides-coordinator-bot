@@ -13,7 +13,7 @@ dependencies = [
     "httpx>=0.28.1",
     "invoke>=2.2.0",
     "langchain>=0.3.27",
-    "langchain-google-genai>=2.1.10",
+    "langchain-google-genai>=4.2.1",
     "python-dotenv>=1.1.1",
     "python-jose[cryptography]>=3.3.0",
     "pytz>=2025.2",
@@ -33,3 +33,56 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.13.0",
 ]
+
+[tool.ruff]
+line-length = 100
+exclude = [
+    "alembic", 
+    ".git",
+    "__pycache__",
+    "migrations",
+    "venv",
+    ".venv",
+    "build",
+    "dist"
+]
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle (errors)
+  "F",  # pyflakes (logic errors, undefined names)
+  "B",  # flake8-bugbear (risky patterns)
+  "I",  # isort (import sorting)
+  "UP", # pyupgrade (auto modernize syntax)
+  "C4", # flake8-comprehensions
+  "SIM",# flake8-simplify
+  "N",  # pep8-naming
+  "D",  # pydocstyle (docstring style)
+  "RUF",# Ruff-specific rules,
+  "COM", # Trailing comma
+  "PTH"
+]
+ignore = [
+  "D100", # Missing docstring in public module
+  "D104", # Missing docstring in public package
+  "D107", # Missing docstring in __init__
+  "D203", # 1 blank line required before class docstring (incompatible with D211)
+  "D212", # Multi-line docstring summary should start at the first line (incompatible with D213)
+  "D413", # Missing blank line after last section
+  "D204", # 1 blank line required after class docstring
+  "D401", # First line of docstring should be in imperative mood
+  "D400", # First line should end with a period
+  "D415", # First line should end with punctuation
+  "D205", # 1 blank line required between summary line and description
+  "D200", # One-line docstring should fit on one line
+  "D417", # Missing argument descriptions in the docstring
+  "E501", # Line too long
+  "RUF001", # String contains ambiguous character
+  "COM812", # May cause conflicts with formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D"]
+"bot/cogs_disabled/**/*.py" = ["D"]
+"bot/cogs_testing/**/*.py" = ["D"]
+"bot/jobs_disabled/**/*.py" = ["D"]
