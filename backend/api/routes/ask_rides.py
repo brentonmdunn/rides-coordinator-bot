@@ -8,11 +8,12 @@ from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
 from bot.api import get_bot
-from bot.core.enums import AskRidesMessage, CacheNamespace, JobName
+from bot.core.enums import AskRidesMessage, CacheNamespace, DaysOfWeek, JobName
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.locations_service import LocationsService
 from bot.utils.cache import invalidate_namespace
+from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +86,7 @@ async def get_pauses():
     for pause in pauses:
         send_date = None
         if pause.resume_after_date:
-            send_date = MessageScheduleRepository.get_send_wednesday(
-                pause.resume_after_date
-            ).isoformat()
+            send_date = get_send_wednesday(pause.resume_after_date).isoformat()
         result[pause.job_name] = {
             "is_paused": pause.is_paused,
             "resume_after_date": pause.resume_after_date.isoformat()
@@ -135,9 +134,7 @@ async def set_pause(job_name: str, request: PauseRequest):
 
     send_date = None
     if updated.resume_after_date:
-        send_date = MessageScheduleRepository.get_send_wednesday(
-            updated.resume_after_date
-        ).isoformat()
+        send_date = get_send_wednesday(updated.resume_after_date).isoformat()
 
     msg = f"Paused {job_name}"
     if updated.resume_after_date:
@@ -181,24 +178,13 @@ async def get_upcoming_dates(job_name: str, count: int = 6, offset: int = 0):
             detail=f"job_name must be one of: {', '.join(valid_jobs)}",
         )
 
-    # Determine which weekday to compute
-    # Friday = weekday 4, Sunday = weekday 6
-    target_weekday = 4 if job_name == JobName.FRIDAY else 6
-
-    today = date.today()
+    target_day = DaysOfWeek.FRIDAY if job_name == JobName.FRIDAY else DaysOfWeek.SUNDAY
     dates = []
 
-    # Find the next occurrence
-    days_ahead = (target_weekday - today.weekday()) % 7
-    if days_ahead == 0:
-        days_ahead = 7  # Skip today
-    next_date = today + timedelta(days=days_ahead)
-
-    # Skip 'offset' dates
-    next_date += timedelta(weeks=offset)
+    next_date = get_next_date_obj(target_day) + timedelta(weeks=offset)
 
     for _ in range(count):
-        send_wednesday = MessageScheduleRepository.get_send_wednesday(next_date)
+        send_wednesday = get_send_wednesday(next_date)
         dates.append(
             {
                 "event_date": next_date.isoformat(),

@@ -130,3 +130,89 @@ def is_active_hours() -> bool:
     la_tz = pytz.timezone("America/Los_Angeles")
     hour = datetime.now().astimezone(la_tz).hour
     return hour >= 7 or hour < 1
+
+
+def is_sent_window() -> bool:
+    """
+    Check if the current time is within the ask-rides "sent this week" window.
+
+    The window opens Wednesday at noon (when messages go out) and closes at
+    end of Sunday. Monday and Tuesday (and Wednesday before noon) are outside
+    the window because the new cycle has not started yet.
+
+    Returns:
+        True from Wednesday 12:00 PM through Sunday 11:59 PM, False otherwise.
+    """
+    now = datetime.now()
+    return (now.weekday() == 2 and now.hour >= 12) or (3 <= now.weekday() <= 6)
+
+
+def get_current_week_start() -> datetime:
+    """
+    Return the start of the current ask-rides cycle: the most recent Wednesday at noon.
+
+    On Monday or Tuesday the new cycle has not started, so this steps back to
+    the previous week's Wednesday.
+
+    Returns:
+        datetime of the most recent Wednesday at 12:00:00.
+    """
+    now = datetime.now()
+    days_since_wednesday = (now.weekday() - 2) % 7
+    if now.weekday() < 2:  # Monday or Tuesday — back to previous cycle
+        days_since_wednesday += 7
+    week_start = now - timedelta(days=days_since_wednesday)
+    return week_start.replace(hour=12, minute=0, second=0, microsecond=0)
+
+
+def get_send_wednesday(event_date: date) -> date:
+    """
+    Calculate the Wednesday send-day before an event date.
+
+    Args:
+        event_date: The event date (a Friday or Sunday).
+
+    Returns:
+        The Wednesday immediately before the event date.
+    """
+    days_to_subtract = (event_date.weekday() - 2) % 7
+    if days_to_subtract == 0 and event_date.weekday() != 2:
+        days_to_subtract = 7
+    return event_date - timedelta(days=days_to_subtract)
+
+
+def is_during_late_reaction_window(message_content: str) -> bool:
+    """
+    Check if the current time is within a late-reaction window for any ride
+    announcement day (Wednesday, Friday, Sunday) mentioned in the message.
+
+    Args:
+        message_content: The text of the ride announcement message.
+
+    Returns:
+        True if we're inside the target window for a day named in the message.
+    """
+    content = message_content.lower()
+    return (
+        ("friday" in content and is_during_target_window(DaysOfWeek.FRIDAY))
+        or ("sunday" in content and is_during_target_window(DaysOfWeek.SUNDAY))
+        or ("wednesday" in content and is_during_target_window(DaysOfWeek.WEDNESDAY))
+    )
+
+
+def get_next_wednesday_noon() -> datetime:
+    """
+    Return the next Wednesday at 12:00:00 (the next ask-rides send time).
+
+    If today is Wednesday before noon, returns today at noon.
+    If today is Wednesday at or after noon, returns next Wednesday at noon.
+
+    Returns:
+        datetime of the next ask-rides send time.
+    """
+    now = datetime.now()
+    days_until_wednesday = (2 - now.weekday()) % 7
+    if days_until_wednesday == 0 and now.hour >= 12:
+        days_until_wednesday = 7
+    next_run = now + timedelta(days=days_until_wednesday)
+    return next_run.replace(hour=12, minute=0, second=0, microsecond=0)

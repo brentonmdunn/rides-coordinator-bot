@@ -30,7 +30,14 @@ from bot.repositories.message_schedule_repository import MessageScheduleReposito
 from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.format_message import ping_role_with_message, ping_user
-from bot.utils.time_helpers import get_next_date, get_next_date_obj
+from bot.utils.time_helpers import (
+    get_current_week_start,
+    get_next_date,
+    get_next_date_obj,
+    get_next_wednesday_noon,
+    get_send_wednesday,
+    is_sent_window,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -394,31 +401,14 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
 # ============================================================================
 
 
-def get_next_run_time(job_name: str) -> str:
+def get_next_run_time() -> str:
     """
-    Calculate the next scheduled run time for a job.
-
-    Args:
-        job_name: A JobName value ("friday", "sunday", or "sunday_class")
+    Return the ISO datetime string of the next ask-rides send time (next Wednesday at noon).
 
     Returns:
         ISO format datetime string of next run time
     """
-    from datetime import datetime, timedelta
-
-    # All jobs currently run Wednesday at 12:00 PM (from job_scheduler.py)
-    now = datetime.now()
-
-    # Find next Wednesday
-    days_until_wednesday = (2 - now.weekday()) % 7  # 2 = Wednesday (0=Monday)
-    if days_until_wednesday == 0 and now.hour >= 12:
-        # If it's Wednesday but past 12 PM, go to next Wednesday
-        days_until_wednesday = 7
-
-    next_run = now + timedelta(days=days_until_wednesday)
-    next_run = next_run.replace(hour=12, minute=0, second=0, microsecond=0)
-
-    return next_run.isoformat()
+    return get_next_wednesday_noon().isoformat()
 
 
 async def find_message_in_history(
@@ -466,12 +456,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     Returns:
         Dictionary with status for friday, sunday, and sunday_class jobs
     """
-    from datetime import datetime, timedelta
-
-    now = datetime.now()
-
-    # Sent status is active from Wednesday 12:00 PM to Sunday 11:59 PM
-    is_sent_window = (now.weekday() == 2 and now.hour >= 12) or (3 <= now.weekday() <= 6)
+    sent_window = is_sent_window()
 
     # Check feature flags
     friday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
@@ -490,9 +475,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     for p in pause_statuses:
         send_date = None
         if p.resume_after_date:
-            send_date = MessageScheduleRepository.get_send_wednesday(
-                p.resume_after_date
-            ).isoformat()
+            send_date = get_send_wednesday(p.resume_after_date).isoformat()
         pause_map[p.job_name] = {
             "is_paused": p.is_paused,
             "resume_after_date": p.resume_after_date.isoformat() if p.resume_after_date else None,
@@ -507,15 +490,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     try:
         channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
         if channel:
-            # Calculate the start of current week (last Wednesday at noon when jobs run)
-            days_since_wednesday = (now.weekday() - 2) % 7  # 2 = Wednesday
-            if now.weekday() < 2:  # Monday or Tuesday
-                days_since_wednesday += 7  # Go back to previous week's Wednesday
-
-            current_week_start = now - timedelta(days=days_since_wednesday)
-            current_week_start = current_week_start.replace(
-                hour=12, minute=0, second=0, microsecond=0
-            )
+            current_week_start = get_current_week_start()
 
             # Fetch recent messages (last 20)
             messages = [msg async for msg in channel.history(limit=20)]
@@ -550,32 +525,32 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         JobName.FRIDAY: {
             "enabled": friday_enabled,
             "will_send": friday_enabled,
-            "sent_this_week": is_sent_window and friday_last_msg is not None,
+            "sent_this_week": sent_window and friday_last_msg is not None,
             "reason": None if friday_enabled else "feature_flag_disabled",
-            "next_run": get_next_run_time(JobName.FRIDAY),
-            "last_message": friday_last_msg,
+            "next_run": get_next_run_time(),
+            "last_message": friday_last_msg if sent_window else None,
             "pause": pause_map.get(JobName.FRIDAY, default_pause),
         },
         JobName.SUNDAY: {
             "enabled": sunday_enabled,
             "will_send": sunday_will_send,
-            "sent_this_week": is_sent_window and sunday_last_msg is not None,
+            "sent_this_week": sent_window and sunday_last_msg is not None,
             "reason": None
             if sunday_enabled and sunday_will_send
             else ("feature_flag_disabled" if not sunday_enabled else "wildcard_detected"),
-            "next_run": get_next_run_time(JobName.SUNDAY),
-            "last_message": sunday_last_msg,
+            "next_run": get_next_run_time(),
+            "last_message": sunday_last_msg if sent_window else None,
             "pause": pause_map.get(JobName.SUNDAY, default_pause),
         },
         JobName.SUNDAY_CLASS: {
             "enabled": sunday_class_enabled,
             "will_send": sunday_class_will_send,
-            "sent_this_week": is_sent_window and sunday_class_last_msg is not None,
+            "sent_this_week": sent_window and sunday_class_last_msg is not None,
             "reason": None
             if sunday_class_enabled and sunday_class_will_send
             else ("feature_flag_disabled" if not sunday_class_enabled else "no_class_scheduled"),
-            "next_run": get_next_run_time(JobName.SUNDAY_CLASS),
-            "last_message": sunday_class_last_msg,
+            "next_run": get_next_run_time(),
+            "last_message": sunday_class_last_msg if sent_window else None,
             "pause": pause_map.get(JobName.SUNDAY_CLASS, default_pause),
         },
     }

@@ -1,13 +1,14 @@
 """Data access layer for message schedule pause operations."""
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from sqlalchemy import select, update
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import JobName
 from bot.core.models import MessageSchedulePause
+from bot.utils.time_helpers import get_send_wednesday
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ class MessageScheduleRepository:
 
             # Date-based pause: paused until the Wednesday before the event date
             today = date.today()
-            send_wednesday = MessageScheduleRepository.get_send_wednesday(pause.resume_after_date)
+            send_wednesday = get_send_wednesday(pause.resume_after_date)
 
             if today >= send_wednesday:
                 # Auto-clear the pause since we've reached the send day
@@ -164,19 +165,3 @@ class MessageScheduleRepository:
                 return False
 
             return True
-
-    @staticmethod
-    def get_send_wednesday(event_date: date) -> date:
-        """
-        Calculate the Wednesday send-day before an event date.
-
-        Args:
-            event_date: The event date (a Friday or Sunday).
-
-        Returns:
-            The Wednesday before the event date.
-        """
-        days_to_subtract = (event_date.weekday() - 2) % 7
-        if days_to_subtract == 0 and event_date.weekday() != 2:
-            days_to_subtract = 7
-        return event_date - timedelta(days=days_to_subtract)
