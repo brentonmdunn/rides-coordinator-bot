@@ -9,7 +9,6 @@ import discord
 # from langchain_google_genai import ChatGoogleGenerativeAI # Removed
 from rapidfuzz import fuzz, process
 
-from bot.api import send_error_to_discord
 from bot.core.enums import (
     AskRidesMessage,
     CampusLivingLocations,
@@ -17,6 +16,7 @@ from bot.core.enums import (
     JobName,
     PickupLocations,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.schemas import (
     Identity,
     # LLMOutputError, # Removed

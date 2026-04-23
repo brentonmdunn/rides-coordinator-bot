@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.api import send_error_to_discord
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_cmd
 from bot.services.admin_service import AdminService
 

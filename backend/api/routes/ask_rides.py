@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
-from bot.api import get_bot
+from bot.core.bot_instance import get_bot
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, CacheNamespace, JobName
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
@@ -80,7 +81,8 @@ async def get_status():
 )
 async def get_pauses():
     """Get pause status for all ask rides jobs."""
-    pauses = await MessageScheduleRepository.get_all_pause_statuses()
+    async with AsyncSessionLocal() as session:
+        pauses = await MessageScheduleRepository.get_all_pause_statuses(session)
     result = {}
     for pause in pauses:
         send_date = None
@@ -121,15 +123,17 @@ async def set_pause(job_name: str, request: PauseRequest):
 
     if not request.is_paused:
         # Resuming — clear the pause
-        await MessageScheduleRepository.clear_pause(job_name)
+        async with AsyncSessionLocal() as session:
+            await MessageScheduleRepository.clear_pause(session, job_name)
         await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
         logger.info(f"⏸️ Cleared pause for '{job_name}'")
         return {"success": True, "message": f"Resumed {job_name}"}
 
     # Setting a pause
-    updated = await MessageScheduleRepository.set_pause(
-        job_name, request.is_paused, request.resume_after_date
-    )
+    async with AsyncSessionLocal() as session:
+        updated = await MessageScheduleRepository.set_pause(
+            session, job_name, request.is_paused, request.resume_after_date
+        )
     if not updated:
         raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
 

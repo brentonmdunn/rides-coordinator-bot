@@ -4,6 +4,7 @@ import logging
 
 import discord
 
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import FeatureFlagNames
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
@@ -12,10 +13,6 @@ logger = logging.getLogger(__name__)
 
 class FeatureFlagsService:
     """Handles feature flag business logic between the Cog and Repository."""
-
-    def __init__(self, repository: FeatureFlagsRepository):
-        """Initialize the FeatureFlagsService."""
-        self.repository = repository
 
     async def validate_feature_name(self, feature_name: str) -> FeatureFlagNames | None:
         """
@@ -44,16 +41,21 @@ class FeatureFlagsService:
         Returns:
             tuple[bool, str]: A tuple containing a boolean indicating success and a status message.
         """
-        flag = await FeatureFlagsRepository.get_feature_flag(feature_name)
+        async with AsyncSessionLocal() as session:
+            flag = await FeatureFlagsRepository.get_feature_flag(session, feature_name)
 
-        if not flag:
-            return False, f"❓ Flag `{feature_name}` not found. It should be seeded automatically."
+            if not flag:
+                return (
+                    False,
+                    f"❓ Flag `{feature_name}` not found. It should be seeded automatically.",
+                )
 
-        if flag.enabled == enabled:
-            state = "enabled" if enabled else "disabled"
-            return False, f"ℹ️ Feature flag `{feature_name}` is already **{state}**."
+            if flag.enabled == enabled:
+                state = "enabled" if enabled else "disabled"
+                return False, f"ℹ️ Feature flag `{feature_name}` is already **{state}**."
 
-        await FeatureFlagsRepository.update_feature_flag(feature_name, enabled)
+            await FeatureFlagsRepository.update_feature_flag(session, feature_name, enabled)
+
         new_state = "enabled" if enabled else "disabled"
         logger.info(f"modify_feature_flag: {feature_name} set to {new_state}")
         return True, f"✅ Feature flag `{feature_name}` is now **{new_state}**."
@@ -65,7 +67,8 @@ class FeatureFlagsService:
         Returns:
             discord.Embed: A Discord Embed object containing the list of feature flags.
         """
-        all_flags = await FeatureFlagsRepository.get_all_feature_flags()
+        async with AsyncSessionLocal() as session:
+            all_flags = await FeatureFlagsRepository.get_all_feature_flags(session)
 
         embed = discord.Embed(
             title="⚙️ Feature Flag Status",

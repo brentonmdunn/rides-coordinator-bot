@@ -12,7 +12,6 @@ import discord
 import requests
 from dotenv import load_dotenv
 
-from bot.api import send_error_to_discord
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     AskRidesMessage,
@@ -24,6 +23,7 @@ from bot.core.enums import (
     RideOption,
     RoleIds,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
 from bot.utils.cache import _get_reaction_cache_ttl, alru_cache
@@ -57,7 +57,6 @@ class LocationsService:
     def __init__(self, bot):
         """Initialize the LocationsService."""
         self.bot = bot
-        self.repo = LocationsRepository()
 
     async def sync_locations(self):
         """
@@ -109,7 +108,7 @@ class LocationsService:
             )
 
         async with AsyncSessionLocal() as session:
-            await self.repo.sync_locations(session, locations_to_add)
+            await LocationsRepository.sync_locations(session, locations_to_add)
 
         reader = None
         locations_to_add = None
@@ -177,9 +176,9 @@ class LocationsService:
         """
         async with AsyncSessionLocal() as session:
             possible_people = (
-                await self.repo.get_location_check_discord(session, name)
+                await LocationsRepository.get_location_check_discord(session, name)
                 if discord_only
-                else await self.repo.get_location_check_name_and_discord(session, name)
+                else await LocationsRepository.get_location_check_name_and_discord(session, name)
             )
         if possible_people:
             return possible_people
@@ -189,9 +188,9 @@ class LocationsService:
 
         async with AsyncSessionLocal() as session:
             possible_people = (
-                await self.repo.get_location_check_discord(session, name)
+                await LocationsRepository.get_location_check_discord(session, name)
                 if discord_only
-                else await self.repo.get_location_check_name_and_discord(session, name)
+                else await LocationsRepository.get_location_check_name_and_discord(session, name)
             )
         return possible_people if possible_people else None
 
@@ -206,7 +205,7 @@ class LocationsService:
             A tuple containing (name, location) if found, otherwise None.
         """
         async with AsyncSessionLocal() as session:
-            person = await self.repo.get_name_location(session, discord_username)
+            person = await LocationsRepository.get_name_location(session, discord_username)
         return person
 
     async def pickup_location(self, name: str) -> str:
@@ -250,7 +249,8 @@ class LocationsService:
             args = await self.list_locations(day, message_id, channel_id, option)
             embed = self._build_embed(*args, option=option)
             if day and option and "dropoff" in option.lower():
-                non_discord = await self.repo.get_non_discord_pickups(day)
+                async with AsyncSessionLocal() as session:
+                    non_discord = await LocationsRepository.get_non_discord_pickups(session, day)
                 if non_discord:
                     non_discord_locations_people = defaultdict(list)
                     for pickup in non_discord:
@@ -337,7 +337,8 @@ class LocationsService:
         locations_people, location_found = await self._sort_locations(usernames_reacted)
 
         if day and (option is None or "dropoff" not in option.lower()):
-            pickups = await self.repo.get_non_discord_pickups(day)
+            async with AsyncSessionLocal() as session:
+                pickups = await LocationsRepository.get_non_discord_pickups(session, day)
             for pickup in pickups:
                 locations_people[pickup.location].append((pickup.name, None))
 
@@ -503,7 +504,9 @@ class LocationsService:
                     all_usernames.add(username)
 
         async with AsyncSessionLocal() as session:
-            username_to_name = await self.repo.get_names_for_usernames(session, all_usernames)
+            username_to_name = await LocationsRepository.get_names_for_usernames(
+                session, all_usernames
+            )
 
         return {
             "reactions": dict(reactions_by_emoji),
@@ -551,7 +554,9 @@ class LocationsService:
 
         # Get name mappings for all usernames using repository
         async with AsyncSessionLocal() as session:
-            username_to_name = await self.repo.get_names_for_usernames(session, all_usernames)
+            username_to_name = await LocationsRepository.get_names_for_usernames(
+                session, all_usernames
+            )
 
         return {
             "reactions": dict(reactions_by_emoji),

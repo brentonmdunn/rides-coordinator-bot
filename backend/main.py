@@ -6,8 +6,8 @@ import os
 
 from dotenv import load_dotenv
 
-import bot.api as _bot_api
-from bot.api import send_error_to_discord
+from bot.core.bot_instance import set_bot_instance
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ async def main() -> None:
     """Build and run the bot."""
     bot = build_bot()
     attach_event_handlers(bot, send_error_to_discord)
-    _bot_api._bot_instance = bot
+    set_bot_instance(bot)
 
     async with bot:
         await startup()

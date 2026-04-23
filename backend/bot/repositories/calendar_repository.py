@@ -16,7 +16,8 @@ ICAL_URL = getenv("ICAL_URL")
 class CalendarRepository:
     """Repository for accessing calendar events."""
 
-    def get_events_on_date(self, target_date: datetime.date) -> list:
+    @staticmethod
+    def get_events_on_date(target_date: datetime.date) -> list:
         """
         Downloads iCal data from a URL and extracts all events on a specific date.
 
@@ -31,15 +32,12 @@ class CalendarRepository:
             return []
 
         try:
-            # 1. Download the iCal content
             response = requests.get(ICAL_URL)
-            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+            response.raise_for_status()
             ical_data = response.text
 
-            # 2. Parse the iCal data
             calendar = Calendar.from_ical(ical_data)
 
-            # 3. Get events for the specific date, handling recurrences
             events = recurring_ical_events.of(calendar).at(target_date)
 
             return events
@@ -51,7 +49,8 @@ class CalendarRepository:
             logger.warning(f"Error parsing iCal data: {e}")
             return []
 
-    def get_event_summaries(self, target_date: datetime.date) -> list[str]:
+    @staticmethod
+    def get_event_summaries(target_date: datetime.date) -> list[str]:
         """
         Get a list of event summaries for a specific date.
 
@@ -61,7 +60,7 @@ class CalendarRepository:
         Returns:
             A list of event summary strings.
         """
-        events_for_day = self.get_events_on_date(target_date)
+        events_for_day = CalendarRepository.get_events_on_date(target_date)
 
         if events_for_day:
             event_summary = []

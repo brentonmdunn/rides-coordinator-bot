@@ -5,8 +5,9 @@ import logging
 import discord
 from discord.ext import commands
 
-from bot.api import send_error_to_discord
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import ChannelIds
+from bot.core.error_reporter import send_error_to_discord
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
 from bot.utils.time_helpers import get_last_sunday
 
@@ -19,7 +20,6 @@ class RideCoverage(commands.Cog):
     def __init__(self, bot: commands.Bot):
         """Initialize the RideCoverage cog."""
         self.bot = bot
-        self.repo = RideCoverageRepository()
         self._synced_on_startup = False
         logger.info("RideCoverage cog initialized")
 
@@ -52,7 +52,6 @@ class RideCoverage(commands.Cog):
         total_entries_removed = 0
         since = get_last_sunday()
 
-        # Collect all valid message IDs we find during scan
         valid_message_ids = set()
 
         for channel_id in channels_to_scan:
@@ -81,9 +80,10 @@ class RideCoverage(commands.Cog):
 
                     if passenger_usernames:
                         try:
-                            await self.repo.add_coverage_entries(
-                                passenger_usernames, str(message.id)
-                            )
+                            async with AsyncSessionLocal() as session:
+                                await RideCoverageRepository.add_coverage_entries(
+                                    session, passenger_usernames, str(message.id)
+                                )
                             total_entries_added += len(passenger_usernames)
                         except Exception as e:
                             # Likely duplicate key error, which is fine
@@ -95,17 +95,20 @@ class RideCoverage(commands.Cog):
                     f"**Unexpected Error** in `sync_ride_coverage` scanning channel `{channel_id}`"
                 )
 
-        # Clean up entries for messages that no longer exist
         logger.info("sync_ride_coverage: Checking for orphaned entries...")
         try:
-            db_message_ids = await self.repo.get_unique_message_ids(since)
+            async with AsyncSessionLocal() as session:
+                db_message_ids = await RideCoverageRepository.get_unique_message_ids(session, since)
             orphaned_ids = db_message_ids - valid_message_ids
 
             for orphaned_id in orphaned_ids:
                 logger.info(
                     f"sync_ride_coverage: Removing entries for deleted message {orphaned_id}"
                 )
-                deleted = await self.repo.delete_all_entries_by_message(orphaned_id)
+                async with AsyncSessionLocal() as session:
+                    deleted = await RideCoverageRepository.delete_all_entries_by_message(
+                        session, orphaned_id
+                    )
                 total_entries_removed += deleted
 
             if orphaned_ids:
@@ -134,7 +137,6 @@ class RideCoverage(commands.Cog):
 
     def _is_grouping_message(self, message: discord.Message) -> bool:
         """Checks if a message is a ride grouping message."""
-        # Check if it's in a relevant channel and has the grouping prefix
         if message.channel.id not in [
             ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
             ChannelIds.BOT_STUFF__BOT_SPAM_2,  # For testing
@@ -158,7 +160,6 @@ class RideCoverage(commands.Cog):
         logger.debug(f"Message {message.id}: Found {len(message.mentions)} mentions")
 
         for user in message.mentions:
-            # Handle both <@id> and <@!id>
             if any(m in content[drive_idx:] for m in (f"<@{user.id}>", f"<@!{user.id}>")):
                 passengers.append(str(user))
                 logger.debug(f"Message {message.id}: Added passenger {user}")
@@ -190,7 +191,10 @@ class RideCoverage(commands.Cog):
             )
 
             try:
-                await self.repo.add_coverage_entries(passenger_usernames, str(message.id))
+                async with AsyncSessionLocal() as session:
+                    await RideCoverageRepository.add_coverage_entries(
+                        session, passenger_usernames, str(message.id)
+                    )
                 logger.info(
                     f"on_message: Successfully added {len(passenger_usernames)} coverage entries"
                 )
@@ -234,7 +238,10 @@ class RideCoverage(commands.Cog):
             )
 
             try:
-                await self.repo.add_coverage_entries(list(added), str(after.id))
+                async with AsyncSessionLocal() as session:
+                    await RideCoverageRepository.add_coverage_entries(
+                        session, list(added), str(after.id)
+                    )
                 logger.info(f"on_message_edit: Successfully added {len(added)} coverage entries")
             except Exception:
                 logger.exception("on_message_edit: Failed to add ride coverage on edit")
@@ -249,7 +256,10 @@ class RideCoverage(commands.Cog):
             )
 
             try:
-                await self.repo.delete_coverage_entries(list(removed), str(after.id))
+                async with AsyncSessionLocal() as session:
+                    await RideCoverageRepository.delete_coverage_entries(
+                        session, list(removed), str(after.id)
+                    )
                 logger.info(
                     f"on_message_edit: Successfully removed {len(removed)} coverage entries"
                 )
@@ -267,17 +277,17 @@ class RideCoverage(commands.Cog):
         """Listener for message delete events to remove ride coverage."""
         logger.debug(f"on_message_delete: Message {message.id} deleted by {message.author}")
 
-        # Check if this was potentially a grouping message
-        # Note: We check all channels since we can't verify content after deletion
         if message.channel.id not in [
             ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
             ChannelIds.BOT_STUFF__BOT_SPAM_2,  # For testing
         ]:
             return
 
-        # Try to delete any coverage entries for this message
         try:
-            deleted_count = await self.repo.delete_all_entries_by_message(str(message.id))
+            async with AsyncSessionLocal() as session:
+                deleted_count = await RideCoverageRepository.delete_all_entries_by_message(
+                    session, str(message.id)
+                )
             if deleted_count > 0:
                 logger.info(
                     f"on_message_delete: Removed {deleted_count} coverage entries "

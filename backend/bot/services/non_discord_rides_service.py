@@ -22,11 +22,6 @@ class DuplicateRideError(Exception):
 class NonDiscordRidesService:
     """Service for handling non-Discord ride logic."""
 
-    def __init__(self):
-        """Initialize the NonDiscordRidesService."""
-        # No dependencies needed in init for now, as we create session per method
-        pass
-
     async def add_pickup(self, name: str, day: str, location: str) -> NonDiscordRides:
         """
         Adds a pickup for a non-Discord user.
@@ -44,10 +39,9 @@ class NonDiscordRidesService:
         """
         ride_date = get_next_date_obj(day)
         async with AsyncSessionLocal() as session:
-            repo = NonDiscordRidesRepository(session)
             try:
                 ride = NonDiscordRides(name=name, date=ride_date, location=location)
-                return await repo.create_ride(ride)
+                return await NonDiscordRidesRepository.create_ride(session, ride)
             except IntegrityError:
                 raise DuplicateRideError(f"Pickup for {name} on {day} already exists.")  # noqa B904
 
@@ -64,10 +58,9 @@ class NonDiscordRidesService:
         """
         ride_date = get_next_date_obj(day)
         async with AsyncSessionLocal() as session:
-            repo = NonDiscordRidesRepository(session)
-            ride = await repo.get_ride(name, ride_date)
+            ride = await NonDiscordRidesRepository.get_ride(session, name, ride_date)
             if ride:
-                await repo.delete_ride(ride)
+                await NonDiscordRidesRepository.delete_ride(session, ride)
                 return True
             return False
 
@@ -83,8 +76,7 @@ class NonDiscordRidesService:
         """
         ride_date = get_next_date_obj(day)
         async with AsyncSessionLocal() as session:
-            repo = NonDiscordRidesRepository(session)
-            return await repo.get_rides_by_date(ride_date)
+            return await NonDiscordRidesRepository.get_rides_by_date(session, ride_date)
 
     async def delete_past_pickups(self) -> int:
         """
@@ -95,5 +87,4 @@ class NonDiscordRidesService:
         """
         today = date.today()
         async with AsyncSessionLocal() as session:
-            repo = NonDiscordRidesRepository(session)
-            return await repo.delete_past_rides(today)
+            return await NonDiscordRidesRepository.delete_past_rides(session, today)
