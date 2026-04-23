@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from api.auth import require_admin
 from api.constants import ADMIN_EMAILS
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 
@@ -33,7 +34,8 @@ async def list_users(request: Request):
     Returns:
         JSON with list of all user accounts.
     """
-    accounts = await UserAccountsRepository.get_all_accounts()
+    async with AsyncSessionLocal() as session:
+        accounts = await UserAccountsRepository.get_all_accounts(session)
 
     user = getattr(request.state, "user", None) or {}
     current_user_email = user.get("email", "")
@@ -89,9 +91,10 @@ async def update_user_role(email: str, body: UpdateRoleRequest, request: Request
             detail=f"role must be one of: {', '.join(valid_roles)}",
         )
 
-    updated = await UserAccountsRepository.update_role(
-        email, body.role, role_edited_by=current_user_email
-    )
+    async with AsyncSessionLocal() as session:
+        updated = await UserAccountsRepository.update_role(
+            session, email, body.role, role_edited_by=current_user_email
+        )
     if not updated:
         raise HTTPException(status_code=404, detail=f"User '{email}' not found")
 

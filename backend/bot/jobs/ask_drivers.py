@@ -4,6 +4,7 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     ChannelIds,
     DaysOfWeek,
@@ -48,7 +49,9 @@ async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 
     Skips sending if the Friday job is currently paused.
     """
-    if await MessageScheduleRepository.is_job_paused(JobName.FRIDAY):
+    async with AsyncSessionLocal() as session:
+        paused = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+    if paused:
         logger.info("Blocking run_ask_drivers_fri - job is paused")
         return
 
@@ -66,7 +69,9 @@ async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 
     Skips sending if the Sunday job is paused or the ask-rides window is not active.
     """
-    if await MessageScheduleRepository.is_job_paused(JobName.SUNDAY):
+    async with AsyncSessionLocal() as session:
+        paused = await MessageScheduleRepository.is_job_paused(session, JobName.SUNDAY)
+    if paused:
         logger.info("Blocking run_ask_drivers_sun - job is paused")
         return
 

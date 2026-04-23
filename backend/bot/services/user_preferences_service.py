@@ -4,6 +4,7 @@ User preferences service.
 Business logic layer for per-user UI/app preferences.
 """
 
+from bot.core.database import AsyncSessionLocal
 from bot.core.models import UserPreferences
 from bot.repositories.user_preferences_repository import UserPreferencesRepository
 
@@ -22,7 +23,8 @@ class UserPreferencesService:
         Returns:
             The user's UserPreferences (never None — defaults are created if missing).
         """
-        return await UserPreferencesRepository.get_or_create(email)
+        async with AsyncSessionLocal() as session:
+            return await UserPreferencesRepository.get_or_create(session, email)
 
     @staticmethod
     async def set_show_map_labels(email: str, value: bool) -> UserPreferences | None:
@@ -36,4 +38,7 @@ class UserPreferencesService:
         Returns:
             The updated UserPreferences, or None if the user has no preferences row yet.
         """
-        return await UserPreferencesRepository.update_preferences(email, show_map_labels=value)
+        async with AsyncSessionLocal() as session:
+            return await UserPreferencesRepository.update_preferences(
+                session, email, show_map_labels=value
+            )

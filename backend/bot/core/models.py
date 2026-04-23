@@ -89,7 +89,11 @@ class MessageSchedulePause(Base):
     __tablename__ = "message_schedule_pauses"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
-    job_name: Mapped[JobName] = mapped_column(SQLEnum(JobName), unique=True)
+    # values_callable stores StrEnum .value (lowercase string) instead of the default .name
+    # (uppercase), matching what was written when role was a plain String column.
+    job_name: Mapped[JobName] = mapped_column(
+        SQLEnum(JobName, values_callable=lambda obj: [e.value for e in obj]), unique=True
+    )
     is_paused: Mapped[bool] = mapped_column(default=False)
     resume_after_date: Mapped[date | None]
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
@@ -102,7 +106,12 @@ class UserAccount(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(unique=True, index=True)
-    role: Mapped[AccountRoles] = mapped_column(SQLEnum(AccountRoles), default=AccountRoles.VIEWER)
+    # values_callable stores StrEnum .value (lowercase string) instead of the default .name
+    # (uppercase), matching what was written when role was a plain String column.
+    role: Mapped[AccountRoles] = mapped_column(
+        SQLEnum(AccountRoles, values_callable=lambda obj: [e.value for e in obj]),
+        default=AccountRoles.VIEWER,
+    )
     role_edited_by: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

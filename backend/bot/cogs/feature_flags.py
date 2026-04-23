@@ -6,7 +6,6 @@ from discord.ext import commands
 
 from bot.core.enums import FeatureFlagNames
 from bot.core.logger import log_cmd
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.services.feature_flags_service import FeatureFlagsService
 from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 
@@ -100,6 +99,5 @@ async def setup(bot: commands.Bot):
     Args:
         bot: The Discord bot instance.
     """
-    repo = FeatureFlagsRepository()
-    service = FeatureFlagsService(repository=repo)
+    service = FeatureFlagsService()
     await bot.add_cog(FeatureFlagsCog(bot, feature_flags_service=service))

@@ -3,7 +3,7 @@
 from sqlalchemy.engine import Row
 
 from bot.core.database import AsyncSessionLocal
-from bot.repositories.whois_repo import WhoisRepo
+from bot.repositories.whois_repository import WhoisRepository
 
 
 class WhoisService:
@@ -25,7 +25,7 @@ class WhoisService:
             matches, separated by a horizontal rule (---). Returns None if no matches are found.
         """
         async with AsyncSessionLocal() as session:
-            possible_people: list[Row] = await WhoisRepo.fetch_data_by_name(session, name)
+            possible_people: list[Row] = await WhoisRepository.fetch_data_by_name(session, name)
 
         if not possible_people:
             return None
