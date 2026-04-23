@@ -31,7 +31,7 @@ async def test_pickup_location_none():
 
 @pytest.mark.asyncio
 async def test_sync_locations(monkeypatch):
-    """Should call repo.sync_locations() exactly once."""
+    """Should call LocationsRepository.sync_locations() exactly once."""
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.content = (
@@ -41,11 +41,23 @@ async def test_sync_locations(monkeypatch):
     monkeypatch.setattr("requests.get", MagicMock(return_value=mock_response))
     monkeypatch.setattr("bot.services.locations_service.LSCC_PPL_CSV_URL", "http://example.com")
 
-    svc = LocationsService(bot=None)
-    svc.repo.sync_locations = AsyncMock()
+    mock_sync = AsyncMock()
+    monkeypatch.setattr(
+        "bot.services.locations_service.LocationsRepository.sync_locations", mock_sync
+    )
 
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+    monkeypatch.setattr(
+        "bot.services.locations_service.AsyncSessionLocal",
+        MagicMock(return_value=mock_session_cm),
+    )
+
+    svc = LocationsService(bot=None)
     await svc.sync_locations()
-    svc.repo.sync_locations.assert_awaited_once()
+    mock_sync.assert_awaited_once()
 
 
 @pytest.mark.asyncio
