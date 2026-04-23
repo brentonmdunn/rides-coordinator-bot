@@ -3,8 +3,8 @@
 import logging
 
 from sqlalchemy import delete, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.database import AsyncSessionLocal
 from bot.core.models import Locations as LocationsModel
 from bot.core.models import NonDiscordRides
 from bot.utils.time_helpers import get_next_date_obj
@@ -15,28 +15,30 @@ logger = logging.getLogger(__name__)
 class LocationsRepository:
     """Handles database operations for locations."""
 
-    async def get_non_discord_pickups(self, day):
+    @staticmethod
+    async def get_non_discord_pickups(session: AsyncSession, day):
         """
         Retrieves non-Discord pickups for a specific day.
 
         Args:
+            session: The database session.
             day: The day to filter by.
 
         Returns:
             A list of NonDiscordRides objects.
         """
         date_to_list = get_next_date_obj(day.title())
-        async with AsyncSessionLocal() as session:
-            try:
-                stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
-                result = await session.execute(stmt)
-                pickups = result.scalars().all()
-                return pickups or []
-            except Exception:
-                logger.exception("An error occurred while listing pickups")
-                return []
+        try:
+            stmt = select(NonDiscordRides).where(NonDiscordRides.date == date_to_list)
+            result = await session.execute(stmt)
+            pickups = result.scalars().all()
+            return pickups or []
+        except Exception:
+            logger.exception("An error occurred while listing pickups")
+            return []
 
-    async def get_location_check_discord(self, session, name):
+    @staticmethod
+    async def get_location_check_discord(session: AsyncSession, name):
         """
         Checks for location based on Discord username.
 
@@ -56,7 +58,8 @@ class LocationsRepository:
         possible_people = result.all()
         return possible_people
 
-    async def get_location_check_name_and_discord(self, session, name):
+    @staticmethod
+    async def get_location_check_name_and_discord(session: AsyncSession, name):
         """
         Checks for location based on name or Discord username.
 
@@ -77,7 +80,8 @@ class LocationsRepository:
         possible_people = result.all()
         return possible_people
 
-    async def get_discord_username(self, session, name: str) -> str | None:
+    @staticmethod
+    async def get_discord_username(session: AsyncSession, name: str) -> str | None:
         """
         Retrieves the Discord username for a given name.
 
@@ -95,7 +99,8 @@ class LocationsRepository:
         discord_username = result.scalars().first()
         return discord_username
 
-    async def get_name(self, session, discord_username: str) -> str | None:
+    @staticmethod
+    async def get_name(session: AsyncSession, discord_username: str) -> str | None:
         """
         Retrieves the name for a given Discord username.
 
@@ -113,7 +118,10 @@ class LocationsRepository:
         name = result.scalars().first()
         return name
 
-    async def get_names_for_usernames(self, session, discord_usernames: set[str]) -> dict[str, str]:
+    @staticmethod
+    async def get_names_for_usernames(
+        session: AsyncSession, discord_usernames: set[str]
+    ) -> dict[str, str]:
         """
         Retrieves names for multiple Discord usernames in a batch.
 
@@ -128,7 +136,6 @@ class LocationsRepository:
         if not discord_usernames:
             return {}
 
-        # Convert all usernames to lowercase for case-insensitive matching
         lowercase_usernames = {username.lower() for username in discord_usernames}
 
         stmt = select(LocationsModel.discord_username, LocationsModel.name).where(
@@ -137,11 +144,8 @@ class LocationsRepository:
         result = await session.execute(stmt)
         rows = result.all()
 
-        # Build mapping from original usernames to names
-        # Need to match case-insensitively
         username_to_name = {}
         for db_username, name in rows:
-            # Find the original username with matching case-insensitive comparison
             for original_username in discord_usernames:
                 if original_username.lower() == db_username.lower():
                     username_to_name[original_username] = name
@@ -149,7 +153,10 @@ class LocationsRepository:
 
         return username_to_name
 
-    async def get_name_location(self, session, discord_username: str) -> tuple[str, str] | None:
+    @staticmethod
+    async def get_name_location(
+        session: AsyncSession, discord_username: str
+    ) -> tuple[str, str] | None:
         """
         Retrieves name and location for a Discord username.
 
@@ -167,7 +174,8 @@ class LocationsRepository:
         person = result.first()
         return person
 
-    async def sync_locations(self, session, locations_to_add: list[LocationsModel]):
+    @staticmethod
+    async def sync_locations(session: AsyncSession, locations_to_add: list[LocationsModel]):
         """
         Syncs the locations table with new data.
 

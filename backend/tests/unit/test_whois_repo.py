@@ -5,10 +5,10 @@ from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.models import Locations as LocationsModel
-from bot.repositories.whois_repo import WhoisRepo
+from bot.repositories.whois_repository import WhoisRepository
 
 
-@patch("bot.repositories.whois_repo.select")
+@patch("bot.repositories.whois_repository.select")
 @pytest.mark.asyncio
 async def test_fetch_data_by_name_found(mock_select):  # Renamed to mock_select
     """Tests the repository returns data when matches are found."""
@@ -35,7 +35,7 @@ async def test_fetch_data_by_name_found(mock_select):  # Renamed to mock_select
     mock_session.execute = AsyncMock(return_value=mock_result)
 
     # Act
-    results = await WhoisRepo.fetch_data_by_name(mock_session, test_name)
+    results = await WhoisRepository.fetch_data_by_name(mock_session, test_name)
 
     # Assert
     # 1. Assert that the select function was called with the correct columns
@@ -50,7 +50,7 @@ async def test_fetch_data_by_name_found(mock_select):  # Renamed to mock_select
 
 
 # --- Test Case 2 ---
-@patch("bot.repositories.whois_repo.select")
+@patch("bot.repositories.whois_repository.select")
 @pytest.mark.asyncio
 async def test_fetch_data_by_name_not_found(mock_select):  # Renamed to mock_select
     """Tests the repository returns an empty list when no matches are found."""
@@ -69,7 +69,7 @@ async def test_fetch_data_by_name_not_found(mock_select):  # Renamed to mock_sel
     mock_session.execute = AsyncMock(return_value=mock_result)
 
     # Act
-    results = await WhoisRepo.fetch_data_by_name(mock_session, test_name)
+    results = await WhoisRepository.fetch_data_by_name(mock_session, test_name)
 
     # Assert
     mock_select.assert_called_once_with(LocationsModel.name, LocationsModel.discord_username)

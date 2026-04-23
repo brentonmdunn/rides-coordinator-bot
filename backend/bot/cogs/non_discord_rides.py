@@ -6,10 +6,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.api import send_error_to_discord
 from bot.core.enums import (
     FeatureFlagNames,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_cmd
 from bot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
 from bot.utils.autocomplete import location_autocomplete, lscc_day_autocomplete

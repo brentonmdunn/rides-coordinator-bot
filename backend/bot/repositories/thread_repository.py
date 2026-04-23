@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 class EventThreadRepository:
     """Handles database operations for EventThreads."""
 
-    async def get_by_id(self, session: AsyncSession, thread_id: str) -> EventThreads | None:
+    @staticmethod
+    async def get_by_id(session: AsyncSession, thread_id: str) -> EventThreads | None:
         """
         Fetches an EventThread by its ID (which is the message_id).
 
@@ -27,9 +28,8 @@ class EventThreadRepository:
         """
         return await session.get(EventThreads, thread_id)
 
-    async def get_by_message_id(
-        self, session: AsyncSession, message_id: str
-    ) -> EventThreads | None:
+    @staticmethod
+    async def get_by_message_id(session: AsyncSession, message_id: str) -> EventThreads | None:
         """
         Fetches an EventThread by its message_id.
 
@@ -43,7 +43,8 @@ class EventThreadRepository:
         result = await session.execute(select(EventThreads).filter_by(message_id=message_id))
         return result.scalar_one_or_none()
 
-    async def create(self, session: AsyncSession, thread_id: str) -> EventThreads:
+    @staticmethod
+    async def create(session: AsyncSession, thread_id: str) -> EventThreads:
         """
         Creates and adds a new EventThread to the session.
 
@@ -58,7 +59,8 @@ class EventThreadRepository:
         session.add(new_thread)
         return new_thread
 
-    async def delete(self, session: AsyncSession, event_thread: EventThreads) -> None:
+    @staticmethod
+    async def delete(session: AsyncSession, event_thread: EventThreads) -> None:
         """
         Deletes an EventThread from the session.
 
@@ -68,7 +70,8 @@ class EventThreadRepository:
         """
         await session.delete(event_thread)
 
-    async def is_event_thread(self, session: AsyncSession, message_id: str) -> bool:
+    @staticmethod
+    async def is_event_thread(session: AsyncSession, message_id: str) -> bool:
         """
         Check if a message ID corresponds to an event thread.
 
@@ -79,10 +82,11 @@ class EventThreadRepository:
         Returns:
             True if the message is an event thread, False otherwise.
         """
-        result = await self.get_by_message_id(session, message_id)
+        result = await EventThreadRepository.get_by_message_id(session, message_id)
         return result is not None
 
-    async def get_thread_members(self, thread: discord.Thread) -> set[int]:
+    @staticmethod
+    async def get_thread_members(thread: discord.Thread) -> set[int]:
         """
         Get all member IDs in a thread.
 
@@ -102,7 +106,8 @@ class EventThreadRepository:
             logger.error(f"Failed to fetch thread members: {e}")
             return set()
 
-    async def add_user_to_thread(self, thread: discord.Thread, user: discord.Member) -> bool:
+    @staticmethod
+    async def add_user_to_thread(thread: discord.Thread, user: discord.Member) -> bool:
         """
         Add a user to a Discord thread.
 
@@ -127,7 +132,8 @@ class EventThreadRepository:
             logger.error(f"An unexpected error occurred while adding user to thread: {e}")
             return False
 
-    async def remove_user_from_thread(self, thread: discord.Thread, user: discord.Member) -> bool:
+    @staticmethod
+    async def remove_user_from_thread(thread: discord.Thread, user: discord.Member) -> bool:
         """
         Remove a user from a Discord thread.
 
@@ -154,7 +160,8 @@ class EventThreadRepository:
             logger.error(f"An unexpected error occurred while removing user from thread: {e}")
             return False
 
-    async def count_user_reactions(self, message: discord.Message, user_id: int) -> int:
+    @staticmethod
+    async def count_user_reactions(message: discord.Message, user_id: int) -> int:
         """
         Count how many reactions a user has on a message.
 

@@ -12,7 +12,7 @@ import discord
 from discord.abc import Messageable
 from discord.ext.commands import Bot
 
-from bot.api import send_error_to_discord
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     CacheNamespace,
     ChannelIds,
@@ -22,6 +22,7 @@ from bot.core.enums import (
     JobName,
     RoleIds,
 )
+from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun
 from bot.repositories.calendar_repository import CalendarRepository
@@ -205,7 +206,9 @@ async def run_ask_rides_fri(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Friday rides message."""
-    if await MessageScheduleRepository.is_job_paused(JobName.FRIDAY):
+    async with AsyncSessionLocal() as session:
+        paused = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+    if paused:
         logger.info("Blocking run_ask_rides_fri - job is paused")
         return
     sent_message = await _ask_rides_template(bot, _make_friday_msg, channel_id)
@@ -215,8 +218,9 @@ async def run_ask_rides_fri(
 
 def _should_send_ask_rides_sun() -> bool:
     """Helper method to determine if we should send the Sunday rides message."""
-    repo = CalendarRepository()
-    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    gcal_event_summaries = CalendarRepository.get_event_summaries(
+        get_next_date_obj(DaysOfWeek.SUNDAY)
+    )
     return all("wildcard" not in event.lower() for event in gcal_event_summaries)
 
 
@@ -225,7 +229,9 @@ async def run_ask_rides_sun(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday service rides message."""
-    if await MessageScheduleRepository.is_job_paused(JobName.SUNDAY):
+    async with AsyncSessionLocal() as session:
+        paused = await MessageScheduleRepository.is_job_paused(session, JobName.SUNDAY)
+    if paused:
         logger.info("Blocking run_ask_rides_sun - job is paused")
         return
     if not _should_send_ask_rides_sun():
@@ -248,8 +254,9 @@ async def run_ask_rides_sun(
 
 def _should_send_ask_rides_sun_class() -> bool:
     """Helper method to determine if we should send the Sunday class rides message."""
-    repo = CalendarRepository()
-    gcal_event_summaries = repo.get_event_summaries(get_next_date_obj(DaysOfWeek.SUNDAY))
+    gcal_event_summaries = CalendarRepository.get_event_summaries(
+        get_next_date_obj(DaysOfWeek.SUNDAY)
+    )
     return any("sunday school" in event.lower() for event in gcal_event_summaries)
 
 
@@ -258,7 +265,9 @@ async def run_ask_rides_sun_class(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Runner for Sunday class rides message."""
-    if await MessageScheduleRepository.is_job_paused(JobName.SUNDAY_CLASS):
+    async with AsyncSessionLocal() as session:
+        paused = await MessageScheduleRepository.is_job_paused(session, JobName.SUNDAY_CLASS)
+    if paused:
         logger.info("Blocking run_ask_rides_sun_class - job is paused")
         return
     if not _should_send_ask_rides_sun_class():
@@ -278,29 +287,30 @@ async def run_ask_rides_header(
         logger.info("Error channel not found")
         return
 
-    sun_flag = await FeatureFlagsRepository.get_feature_flag_status(
-        FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
-    )
-    sun_paused = await MessageScheduleRepository.is_job_paused(JobName.SUNDAY)
+    async with AsyncSessionLocal() as session:
+        sun_flag = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
+        )
+        sun_paused = await MessageScheduleRepository.is_job_paused(session, JobName.SUNDAY)
+        sun_class_flag = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
+        )
+        sun_class_paused = await MessageScheduleRepository.is_job_paused(
+            session, JobName.SUNDAY_CLASS
+        )
+        fri_flag = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+        )
+        fri_paused = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+        wed_flag = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+        )
+
     sun_should_send = _should_send_ask_rides_sun()
     sun_condition = sun_flag and not sun_paused and sun_should_send
-
-    sun_class_flag = await FeatureFlagsRepository.get_feature_flag_status(
-        FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
-    )
-    sun_class_paused = await MessageScheduleRepository.is_job_paused(JobName.SUNDAY_CLASS)
     sun_class_should_send = _should_send_ask_rides_sun_class()
     sun_class_condition = sun_class_flag and not sun_class_paused and sun_class_should_send
-
-    fri_flag = await FeatureFlagsRepository.get_feature_flag_status(
-        FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
-    )
-    fri_paused = await MessageScheduleRepository.is_job_paused(JobName.FRIDAY)
     fri_condition = fri_flag and not fri_paused
-
-    wed_flag = await FeatureFlagsRepository.get_feature_flag_status(
-        FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
-    )
     wed_condition = wed_flag
 
     logger.info(
@@ -458,19 +468,19 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     """
     sent_window = is_ride_cycle_active()
 
-    # Check feature flags
-    friday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
-        FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
-    )
-    sunday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
-        FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
-    )
-    sunday_class_enabled = await FeatureFlagsRepository.get_feature_flag_status(
-        FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
-    )
+    async with AsyncSessionLocal() as session:
+        friday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+        )
+        sunday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_SUNDAY_RIDES_JOB
+        )
+        sunday_class_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB
+        )
+        pause_statuses = await MessageScheduleRepository.get_all_pause_statuses(session)
 
     # Check pause statuses
-    pause_statuses = await MessageScheduleRepository.get_all_pause_statuses()
     pause_map = {}
     for p in pause_statuses:
         send_date = None

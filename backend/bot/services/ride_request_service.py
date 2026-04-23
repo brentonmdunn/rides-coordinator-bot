@@ -4,8 +4,8 @@ import logging
 
 import discord
 
-from bot.api import send_error_to_discord
 from bot.core.enums import CategoryIds, ChannelIds, RoleIds
+from bot.core.error_reporter import send_error_to_discord
 
 logger = logging.getLogger(__name__)
 
