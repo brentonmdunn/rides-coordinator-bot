@@ -11,6 +11,13 @@
 
 import { MousePointerClick } from 'lucide-react'
 import { Button } from '../ui/button'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '../ui/select'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
 import type { TimeModeKey } from './routeBuilderConstants'
 import EditableOutput from '../EditableOutput'
@@ -38,6 +45,12 @@ export interface RouteBuilderPanelContentsProps {
     onCopyRoute: () => void
     onRevertRoute: () => void
     copied: boolean
+
+    // Driver state
+    drivers: string[]
+    driverUsernameToName: Record<string, string>
+    selectedDriver: string
+    onSelectDriver: (driver: string) => void
 }
 
 export function RouteBuilderPanelContents({
@@ -58,6 +71,10 @@ export function RouteBuilderPanelContents({
     onCopyRoute,
     onRevertRoute,
     copied,
+    drivers,
+    driverUsernameToName,
+    selectedDriver,
+    onSelectDriver,
 }: RouteBuilderPanelContentsProps) {
     if (selectedLocationKeys.length === 0) {
         return (
@@ -130,23 +147,55 @@ export function RouteBuilderPanelContents({
                 <div className="mt-2 text-xs text-red-600 dark:text-red-400">{routeError}</div>
             )}
 
-            {/* Route Output */}
-            {routeOutput && (
-                <div className="mt-3">
+            {/* Driver selector */}
+            {routeOutput && drivers.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-zinc-700">
                     <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Generated Route
+                        Driver
                     </div>
-                    <EditableOutput
-                        value={routeOutput}
-                        originalValue={originalRouteOutput}
-                        onChange={onChangeRouteOutput}
-                        onCopy={onCopyRoute}
-                        onRevert={onRevertRoute}
-                        copied={copied}
-                        minHeight="min-h-[120px]"
-                    />
+                    <Select
+                        value={selectedDriver || '__none__'}
+                        onValueChange={(v) => onSelectDriver(v === '__none__' ? '' : v)}
+                    >
+                        <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__none__">No driver</SelectItem>
+                            {drivers.map((username) => (
+                                <SelectItem key={username} value={username}>
+                                    {driverUsernameToName[username] || `@${username}`}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             )}
+
+            {/* Route Output */}
+            {routeOutput && (() => {
+                const prefix = selectedDriver ? `@${selectedDriver} drive: ` : ''
+                const displayValue = prefix + routeOutput
+                const displayOriginal = prefix + originalRouteOutput
+                return (
+                    <div className="mt-3">
+                        <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Generated Route
+                        </div>
+                        <EditableOutput
+                            value={displayValue}
+                            originalValue={displayOriginal}
+                            onChange={(v) =>
+                                onChangeRouteOutput(prefix && v.startsWith(prefix) ? v.slice(prefix.length) : v)
+                            }
+                            onCopy={onCopyRoute}
+                            onRevert={onRevertRoute}
+                            copied={copied}
+                            minHeight="min-h-[120px]"
+                        />
+                    </div>
+                )
+            })()}
         </>
     )
 }
