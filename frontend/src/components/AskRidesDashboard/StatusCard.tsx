@@ -79,7 +79,7 @@ function StatusCard({ title, jobName, job, canManage }: StatusCardProps) {
                 </div>
             )}
 
-            {job.last_message && (
+            {job.sent_this_week && job.last_message && (
                 <div className="pt-3 border-t border-border text-sm">
                     <strong className="block text-muted-foreground mb-2">Message reactions</strong>
                     <div className="flex flex-wrap gap-3">

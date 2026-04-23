@@ -46,3 +46,15 @@ export function getAutomaticDay(): 'friday' | 'sunday' {
   }
   return 'friday'
 }
+
+// Friday after noon — show warning that Friday rides need drivers
+export function isFridayWarningWindow(): boolean {
+  const now = new Date()
+  return now.getDay() === 5 && now.getHours() >= 12
+}
+
+// Saturday after 5 PM — show warning that Sunday rides need drivers
+export function isSundayWarningWindow(): boolean {
+  const now = new Date()
+  return now.getDay() === 6 && now.getHours() >= 17
+}
