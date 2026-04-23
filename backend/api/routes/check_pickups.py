@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.api import get_bot
+from bot.core.bot_instance import get_bot
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, ChannelIds, JobName
 from bot.repositories.ride_coverage_repository import RideCoverageRepository

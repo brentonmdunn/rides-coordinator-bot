@@ -11,7 +11,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.api import get_bot
+from bot.core.bot_instance import get_bot
 from bot.core.enums import PickupLocations
 from bot.services.group_rides_service import GroupRidesService
 from bot.utils.constants import MAP_LOCATIONS, get_map_links

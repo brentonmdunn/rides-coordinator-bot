@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
-from bot.api import get_bot
+from bot.core.bot_instance import get_bot
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, CacheNamespace, JobName
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
