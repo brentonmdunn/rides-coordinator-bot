@@ -31,10 +31,6 @@ class StarterMessageError(EventThreadError):
 class ThreadService:
     """Manages the business logic for event threads."""
 
-    def __init__(self, repository: EventThreadRepository):
-        """Initialize the ThreadService."""
-        self.repository = repository
-
     async def end_event_thread(self, thread_id: str) -> None:
         """
         Stops tracking an event thread.
@@ -46,13 +42,12 @@ class ThreadService:
             EventThreadNotFoundError: If no matching thread is found in the DB.
         """
         async with AsyncSessionLocal() as session:
-            # Use get_by_message_id as the ID is the thread/message ID
-            thread_to_delete = await self.repository.get_by_message_id(session, thread_id)
+            thread_to_delete = await EventThreadRepository.get_by_message_id(session, thread_id)
 
             if not thread_to_delete:
                 raise EventThreadNotFoundError("No active event thread found.")
 
-            await self.repository.delete(session, thread_to_delete)
+            await EventThreadRepository.delete(session, thread_to_delete)
             await session.commit()
             logger.info(f"end_event_thread: ended event thread {thread_id}")
 
@@ -76,15 +71,14 @@ class ThreadService:
         thread_id = str(thread.id)
         logger.info(f"create_event_thread: creating event thread for thread_id={thread_id}")
         async with AsyncSessionLocal() as session:
-            existing_thread = await self.repository.get_by_id(session, thread_id)
+            existing_thread = await EventThreadRepository.get_by_id(session, thread_id)
             if existing_thread:
                 raise EventThreadAlreadyExistsError("Event thread has already been created.")
 
-        # Perform bulk add *before* committing to DB, as per original logic
         added, failed = await self.bulk_add_reactors_to_thread(thread)
 
         async with AsyncSessionLocal() as session:
-            await self.repository.create(session, thread_id)
+            await EventThreadRepository.create(session, thread_id)
             await session.commit()
 
         logger.info(
@@ -122,7 +116,7 @@ class ThreadService:
             )
 
         if not starter_message.reactions:
-            return [], []  # No reactions, return empty lists
+            return [], []
 
         reactors = set()
         for reaction in starter_message.reactions:
@@ -131,7 +125,7 @@ class ThreadService:
                     reactors.add(user)
 
         if not reactors:
-            return [], []  # No users reacted
+            return [], []
 
         added_users = []
         failed_users = []
@@ -140,8 +134,6 @@ class ThreadService:
             thread_members = await thread.fetch_members()
             thread_member_ids = {member.id for member in thread_members}
         except discord.Forbidden:
-            # This can happen if the bot was removed from the thread
-            # after creation but before this command is run.
             logger.warning(
                 f"Failed to fetch members for thread {thread.id}. "
                 "Proceeding, but may try to add existing members."
@@ -155,9 +147,8 @@ class ThreadService:
             try:
                 await thread.add_user(user)
                 added_users.append(user)
-                await asyncio.sleep(0.25)  # Avoid rate limits
+                await asyncio.sleep(0.25)
             except discord.Forbidden:
-                # This is a critical failure, bot can't add anyone
                 raise
             except Exception:
                 logger.exception(f"Failed to add {user.name} to thread {thread.name}")
@@ -171,9 +162,6 @@ class ThreadService:
         """
         Add a user to an event thread when they react to the thread's starter message.
 
-        This method checks if the reacted message is associated with an event thread.
-        If so, it automatically adds the reacting user to that thread.
-
         Args:
             payload: The raw reaction event payload containing message and emoji info.
             guild: The Discord guild where the reaction occurred.
@@ -183,26 +171,22 @@ class ThreadService:
             True if user was added to a thread, False otherwise.
         """
         async with AsyncSessionLocal() as session:
-            # Check if this message is an event thread
-            is_event = await self.repository.is_event_thread(session, str(payload.message_id))
+            is_event = await EventThreadRepository.is_event_thread(session, str(payload.message_id))
 
             if not is_event:
                 return False
 
-            # Get the thread object
             thread = guild.get_thread(payload.message_id)
             if not thread:
                 logger.error(f"Could not find thread with ID {payload.message_id}")
                 return False
 
-            # Check if user is already in the thread
-            thread_member_ids = await self.repository.get_thread_members(thread)
+            thread_member_ids = await EventThreadRepository.get_thread_members(thread)
 
             if user.id in thread_member_ids:
-                return False  # User already in thread
+                return False
 
-            # Add the user to the thread
-            result = await self.repository.add_user_to_thread(thread, user)
+            result = await EventThreadRepository.add_user_to_thread(thread, user)
             if result:
                 logger.info(
                     f"add_reactor_to_thread: added user={user.name} to thread={payload.message_id}"
@@ -218,10 +202,6 @@ class ThreadService:
         """
         Remove a user from an event thread when they remove all their reactions.
 
-        This method checks if the reacted message is associated with an event thread.
-        If the user has no remaining reactions on the message, they are removed from
-        the thread.
-
         Args:
             payload: The raw reaction event payload containing message and emoji info.
             guild: The Discord guild where the reaction was removed.
@@ -231,13 +211,11 @@ class ThreadService:
             True if user was removed from thread, False otherwise.
         """
         async with AsyncSessionLocal() as session:
-            # Check if this message is an event thread
-            is_event = await self.repository.is_event_thread(session, str(payload.message_id))
+            is_event = await EventThreadRepository.is_event_thread(session, str(payload.message_id))
 
             if not is_event:
                 return False
 
-        # We need to fetch the full message to check for remaining reactions
         channel = bot.get_channel(payload.channel_id)
         if not isinstance(channel, discord.TextChannel):
             return False
@@ -248,10 +226,8 @@ class ThreadService:
             logger.error(f"Could not find message with ID {payload.message_id}")
             return False
 
-        # Count the user's remaining reactions
-        user_reactions = await self.repository.count_user_reactions(message, payload.user_id)
+        user_reactions = await EventThreadRepository.count_user_reactions(message, payload.user_id)
 
-        # Only proceed to remove the user if they have no reactions left
         if user_reactions > 0:
             return False
 
@@ -265,14 +241,12 @@ class ThreadService:
             logger.error(f"Could not find thread with ID {payload.message_id}")
             return False
 
-        # Check if the user is a member of the thread before attempting to remove
-        thread_member_ids = await self.repository.get_thread_members(thread)
+        thread_member_ids = await EventThreadRepository.get_thread_members(thread)
 
         if user.id not in thread_member_ids:
-            return False  # User not in thread
+            return False
 
-        # Remove the user from the thread
-        result = await self.repository.remove_user_from_thread(thread, user)
+        result = await EventThreadRepository.remove_user_from_thread(thread, user)
         if result:
             logger.info(
                 f"remove_reactor_from_thread: removed user={user.name} "
