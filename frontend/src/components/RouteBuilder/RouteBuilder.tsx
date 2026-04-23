@@ -247,8 +247,7 @@ function RouteBuilder() {
         setTimeout(() => setLastToggledLocation(null), 400)
     }
 
-    const generateRoute = async (e?: React.FormEvent) => {
-        e?.preventDefault()
+    const generateRoute = useCallback(async () => {
         setRouteLoading(true)
         setRouteError('')
         setRouteOutput('')
@@ -275,7 +274,19 @@ function RouteBuilder() {
         } finally {
             setRouteLoading(false)
         }
-    }
+    }, [selectedLocationKeys, leaveTime])
+
+    // Auto-generate route whenever locations or leave time change
+    useEffect(() => {
+        if (selectedLocationKeys.length === 0 || !leaveTime) {
+            setRouteOutput('')
+            setOriginalRouteOutput('')
+            setRouteError('')
+            return
+        }
+        const timer = setTimeout(() => generateRoute(), 300)
+        return () => clearTimeout(timer)
+    }, [selectedLocationKeys, leaveTime, generateRoute])
 
     const revertRoute = () => setRouteOutput(originalRouteOutput)
 
@@ -298,7 +309,6 @@ function RouteBuilder() {
         routeError,
         routeOutput,
         originalRouteOutput,
-        onGenerateRoute: generateRoute,
         onChangeRouteOutput: setRouteOutput,
         onCopyRoute: () => copyToClipboard(routeOutput),
         onRevertRoute: revertRoute,
@@ -400,7 +410,6 @@ function RouteBuilder() {
                 routeError={routeError}
                 routeOutput={routeOutput}
                 originalRouteOutput={originalRouteOutput}
-                onGenerateRoute={generateRoute}
                 onChangeRouteOutput={setRouteOutput}
                 onCopyRoute={() => copyToClipboard(routeOutput)}
                 onRevertRoute={revertRoute}

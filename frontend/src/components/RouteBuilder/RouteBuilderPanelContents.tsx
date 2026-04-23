@@ -6,8 +6,7 @@
  * (RouteBuilderMobileSheet).
  *
  * Shows either an empty-state prompt or the full route-building controls:
- * sortable location list, arrival time selector, generate button, error, and
- * route output.
+ * sortable location list, arrival time selector, error, and route output.
  */
 
 import { MousePointerClick } from 'lucide-react'
@@ -35,7 +34,6 @@ export interface RouteBuilderPanelContentsProps {
     routeError: string
     routeOutput: string
     originalRouteOutput: string
-    onGenerateRoute: () => void
     onChangeRouteOutput: (value: string) => void
     onCopyRoute: () => void
     onRevertRoute: () => void
@@ -56,7 +54,6 @@ export function RouteBuilderPanelContents({
     routeError,
     routeOutput,
     originalRouteOutput,
-    onGenerateRoute,
     onChangeRouteOutput,
     onCopyRoute,
     onRevertRoute,
@@ -120,14 +117,13 @@ export function RouteBuilderPanelContents({
                 />
             </div>
 
-            {/* Generate */}
-            <Button
-                onClick={onGenerateRoute}
-                disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
-                className="w-full mt-3"
-            >
-                {routeLoading ? 'Generating...' : 'Generate Route'}
-            </Button>
+            {/* Loading indicator */}
+            {routeLoading && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                    Generating route…
+                </div>
+            )}
 
             {/* Error */}
             {routeError && (
