@@ -134,6 +134,7 @@ class PickupLocations(StrEnum):
     EIGHTH = "Eighth basketball courts"
     PANGEA = "Pangea"
     VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
+    # Not a bug, I want pickup location to be the same as eighth
     REVELLE = "Eighth basketball courts"
     GEISEL_LOOP = "Geisel Loop"
     PCYN_LOOP = "Pepper Canyon Loop"
@@ -184,3 +185,10 @@ class AccountRoles(StrEnum):
     ADMIN = "admin"
     VIEWER = "viewer"
     RIDE_COORDINATOR = "ride_coordinator"
+
+
+DAY_TO_ASK_RIDES_MESSAGE: dict[JobName, AskRidesMessage] = {
+    JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
+    JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
+    JobName.SUNDAY_CLASS: AskRidesMessage.SUNDAY_CLASS,
+}

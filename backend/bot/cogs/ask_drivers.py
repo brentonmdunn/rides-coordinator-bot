@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from bot.core.enums import (
-    AskRidesMessage,
+    DAY_TO_ASK_RIDES_MESSAGE,
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
@@ -20,11 +20,6 @@ from bot.utils.channel_whitelist import (
     cmd_is_allowed,
 )
 from bot.utils.checks import feature_flag_enabled
-
-DAY_TO_EVENT: dict[str, AskRidesMessage] = {
-    JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
-    JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
-}
 
 
 class AskDrivers(commands.Cog):
@@ -71,7 +66,7 @@ class AskDrivers(commands.Cog):
             await sent_message.add_reaction(emoji)
 
         # Invalidate and warm the driver message ID cache
-        event = DAY_TO_EVENT.get(day.lower())
+        event = DAY_TO_ASK_RIDES_MESSAGE.get(JobName(day.lower()))
         if event:
             await warm_ask_drivers_message_cache(self.bot, event)
 
