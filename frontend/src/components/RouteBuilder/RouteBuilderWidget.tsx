@@ -3,8 +3,8 @@
  *
  * The card / widget view of the Route Builder — the default display when not
  * in fullscreen mode. Contains the location dropdown, sortable stop list,
- * arrival time selector, generate button, error message, route output, and
- * the static mini-map preview.
+ * arrival time selector, error message, route output, and the static
+ * mini-map preview. Route is generated automatically as locations change.
  */
 
 import { Expand } from 'lucide-react'
@@ -61,7 +61,6 @@ export interface RouteBuilderWidgetProps {
     routeError: string
     routeOutput: string
     originalRouteOutput: string
-    onGenerateRoute: (e?: React.FormEvent) => void
     onChangeRouteOutput: (value: string) => void
     onCopyRoute: () => void
     onRevertRoute: () => void
@@ -94,7 +93,6 @@ export function RouteBuilderWidget({
     routeError,
     routeOutput,
     originalRouteOutput,
-    onGenerateRoute,
     onChangeRouteOutput,
     onCopyRoute,
     onRevertRoute,
@@ -134,13 +132,12 @@ export function RouteBuilderWidget({
                     <ol className="list-decimal list-inside space-y-1.5">
                         <li>Select pickup locations from the dropdown in the order you want to visit them.</li>
                         <li>Drag locations to reorder them if needed.</li>
-                        <li>Enter the final destination arrival time (e.g., "7:10pm").</li>
-                        <li>Click <span className="font-medium">Generate Route</span> to calculate pickup times.</li>
+                        <li>Enter the final destination arrival time — the route generates automatically.</li>
                         <li>Copy the route and paste it into Discord.</li>
                     </ol>
                 </InfoPanel>
 
-                <form onSubmit={onGenerateRoute} className="space-y-6">
+                <div className="space-y-6">
                     {/* Location Selection Dropdown */}
                     <div>
                         <label className="block">
@@ -213,17 +210,14 @@ export function RouteBuilderWidget({
                         />
                     </div>
 
-                    {/* Generate Button */}
-                    <div className="pt-2">
-                        <Button
-                            type="submit"
-                            disabled={routeLoading || selectedLocationKeys.length === 0 || !leaveTime}
-                            className="w-full sm:w-auto px-8 py-2.5 text-base font-semibold"
-                        >
-                            {routeLoading ? 'Generating...' : 'Generate Route'}
-                        </Button>
-                    </div>
-                </form>
+                    {/* Loading indicator */}
+                    {routeLoading && (
+                        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                            Generating route…
+                        </div>
+                    )}
+                </div>
 
                 {/* Error Display */}
                 <div className="mt-6">

@@ -80,6 +80,33 @@ function RouteBuilder() {
     const [routeError, setRouteError] = useState<string>('')
     const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
 
+    // --- Driver state ---
+    const [selectedDriver, setSelectedDriver] = useState('')
+    const driverDay: 'friday' | 'sunday' =
+        timeMode === 'sunday' || timeMode === 'sunday_class' ? 'sunday' : 'friday'
+
+    const { data: driverData } = useQuery<{
+        reactions: Record<string, string[]>
+        username_to_name: Record<string, string>
+    }>({
+        queryKey: ['driver-reactions', driverDay],
+        queryFn: async () => {
+            const res = await apiFetch(`/api/check-pickups/driver-reactions/${driverDay}`)
+            if (!res.ok) throw new Error('Failed to load driver reactions')
+            return res.json()
+        },
+        staleTime: 5 * 60 * 1000,
+    })
+
+    const uniqueDrivers = driverData
+        ? [...new Set(Object.values(driverData.reactions).flat())]
+        : []
+
+    // Reset driver selection when the day switches (driver lists differ)
+    useEffect(() => {
+        setSelectedDriver('')
+    }, [driverDay])
+
     // --- User preferences ---
     const queryClient = useQueryClient()
 
@@ -247,8 +274,7 @@ function RouteBuilder() {
         setTimeout(() => setLastToggledLocation(null), 400)
     }
 
-    const generateRoute = async (e?: React.FormEvent) => {
-        e?.preventDefault()
+    const generateRoute = useCallback(async () => {
         setRouteLoading(true)
         setRouteError('')
         setRouteOutput('')
@@ -275,9 +301,26 @@ function RouteBuilder() {
         } finally {
             setRouteLoading(false)
         }
-    }
+    }, [selectedLocationKeys, leaveTime])
+
+    // Auto-generate route whenever locations or leave time change
+    useEffect(() => {
+        if (selectedLocationKeys.length === 0 || !leaveTime) {
+            setRouteOutput('')
+            setOriginalRouteOutput('')
+            setRouteError('')
+            setSelectedDriver('')
+            return
+        }
+        const timer = setTimeout(() => generateRoute(), 300)
+        return () => clearTimeout(timer)
+    }, [selectedLocationKeys, leaveTime, generateRoute])
 
     const revertRoute = () => setRouteOutput(originalRouteOutput)
+
+    const routeCopyContent = selectedDriver
+        ? `@${selectedDriver} drive: ${routeOutput}`
+        : routeOutput
 
     // --- Shared panel props (forwarded to both desktop panel and mobile sheet) ---
     const panelProps = {
@@ -298,11 +341,14 @@ function RouteBuilder() {
         routeError,
         routeOutput,
         originalRouteOutput,
-        onGenerateRoute: generateRoute,
         onChangeRouteOutput: setRouteOutput,
-        onCopyRoute: () => copyToClipboard(routeOutput),
+        onCopyRoute: () => copyToClipboard(routeCopyContent),
         onRevertRoute: revertRoute,
-        copied: copiedText === routeOutput,
+        copied: copiedText === routeCopyContent,
+        drivers: uniqueDrivers,
+        driverUsernameToName: driverData?.username_to_name ?? {},
+        selectedDriver,
+        onSelectDriver: setSelectedDriver,
     }
 
     // --- Fullscreen overlay (rendered via portal) ---
@@ -400,7 +446,6 @@ function RouteBuilder() {
                 routeError={routeError}
                 routeOutput={routeOutput}
                 originalRouteOutput={originalRouteOutput}
-                onGenerateRoute={generateRoute}
                 onChangeRouteOutput={setRouteOutput}
                 onCopyRoute={() => copyToClipboard(routeOutput)}
                 onRevertRoute={revertRoute}
