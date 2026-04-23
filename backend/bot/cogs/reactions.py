@@ -14,7 +14,6 @@ from bot.core.enums import (
 )
 from bot.core.logger import generate_txn_id, txn_id_var
 from bot.core.reaction_enums import ReactionAction
-from bot.repositories.thread_repository import EventThreadRepository
 from bot.services.reaction_logging_service import ReactionLoggingService
 from bot.services.ride_request_service import RideRequestService
 from bot.services.thread_service import ThreadService
@@ -346,11 +345,7 @@ async def setup(bot: commands.Bot):
     Args:
         bot: The Discord bot instance to add the cog to.
     """
-    # Initialize repository (only for database operations)
-    thread_repository = EventThreadRepository()
-
-    # Initialize services
-    thread_service = ThreadService(thread_repository)
+    thread_service = ThreadService()
     logging_service = ReactionLoggingService(bot)
     ride_request_service = RideRequestService(bot)
 

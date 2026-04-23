@@ -5,7 +5,6 @@ from discord.ext import commands
 
 from bot.core.enums import FeatureFlagNames
 from bot.core.logger import log_cmd
-from bot.repositories.thread_repository import EventThreadRepository
 from bot.services.thread_service import (
     EventThreadAlreadyExistsError,
     EventThreadNotFoundError,
@@ -188,7 +187,5 @@ class Threads(commands.Cog):
 
 async def setup(bot: commands.Bot):
     """Sets up the Threads cog."""
-    # This is where Dependency Injection happens
-    repo = EventThreadRepository()
-    service = ThreadService(repository=repo)
+    service = ThreadService()
     await bot.add_cog(Threads(bot, thread_service=service))

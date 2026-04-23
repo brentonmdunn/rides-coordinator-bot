@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.models import Locations as LocationsModel
 
 
-class WhoisRepo:
+class WhoisRepository:
     """Handles database operations for whois lookups."""
 
     @staticmethod

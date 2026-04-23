@@ -4,10 +4,10 @@ User accounts service.
 Business logic for user account management and role-based access control.
 """
 
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 
-# Role hierarchy levels (higher = more permissions)
 ROLE_LEVELS: dict[str, int] = {
     AccountRoles.VIEWER: 1,
     AccountRoles.RIDE_COORDINATOR: 2,
@@ -29,7 +29,8 @@ class UserAccountsService:
         Returns:
             The existing or newly created UserAccount.
         """
-        return await UserAccountsRepository.get_or_create(email)
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.get_or_create(session, email)
 
     @staticmethod
     async def has_minimum_role(email: str, minimum_role: AccountRoles) -> bool:
@@ -43,7 +44,8 @@ class UserAccountsService:
         Returns:
             True if the user's role meets or exceeds the minimum.
         """
-        account = await UserAccountsRepository.get_by_email(email)
+        async with AsyncSessionLocal() as session:
+            account = await UserAccountsRepository.get_by_email(session, email)
         if not account:
             return False
 
