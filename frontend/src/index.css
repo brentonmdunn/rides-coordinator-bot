@@ -183,6 +183,12 @@
   }
 }
 
+/* Inline code blocks — prevent overflow on mobile */
+code {
+  @apply break-words;
+  word-break: break-word;
+}
+
 /* Global cursor customization */
 button,
 [role="button"],

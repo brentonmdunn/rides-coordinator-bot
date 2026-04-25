@@ -248,7 +248,8 @@ export function RouteBuilderWidget({
                         zoom={14}
                         scrollWheelZoom={false}
                         dragging={false}
-                        style={{ height: '350px', width: '100%' }}
+                        className="h-52 sm:h-[350px] w-full"
+                        style={{ width: '100%' }}
                     >
                         {theme === 'dark' ? (
                             <TileLayer
