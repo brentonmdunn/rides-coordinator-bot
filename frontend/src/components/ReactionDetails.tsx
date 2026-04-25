@@ -96,6 +96,7 @@ function ReactionDetails() {
                         size="sm"
                         onClick={updateTypeAndFetch}
                         title="Refresh data (resets to auto)"
+                        aria-label="Refresh data"
                         className="h-8 w-8 p-0"
                         disabled={loading}
                     >

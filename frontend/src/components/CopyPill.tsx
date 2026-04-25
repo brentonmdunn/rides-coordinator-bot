@@ -20,15 +20,17 @@ export function CopyPill({ copyStr, displayStr }: CopyPillProps) {
 
 
     return (
-        <span
+        <button
+            type="button"
             onClick={handleCopy}
             className={`px-2 py-1 rounded text-sm cursor-pointer transition-all duration-300 border ${isCopied
                 ? 'bg-success/15 text-success-text border-success/30'
                 : 'bg-muted text-foreground hover:bg-muted/80 border-transparent'
                 }`}
             title={isCopied ? '✓ Copied!' : 'Click to copy username'}
+            aria-label={`Copy ${displayStr} to clipboard`}
         >
             {displayStr}
-        </span>
+        </button>
     )
 }

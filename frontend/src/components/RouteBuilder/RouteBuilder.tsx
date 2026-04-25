@@ -380,6 +380,7 @@ function RouteBuilder() {
                     onClick={closeFullscreen}
                     className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-slate-700 dark:text-slate-300"
                     title="Exit fullscreen (Esc)"
+                    aria-label="Exit fullscreen map view"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     <span className="text-sm font-semibold">Back</span>

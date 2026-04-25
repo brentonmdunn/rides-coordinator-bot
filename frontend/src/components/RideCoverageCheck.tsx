@@ -192,6 +192,7 @@ function RideCoverageCheck() {
                         size="sm"
                         onClick={handleRefresh}
                         title="Refresh data"
+                        aria-label="Refresh data"
                         className="h-8 w-8 p-0"
                     >
                         <RefreshCw className="h-4 w-4" />
@@ -202,6 +203,7 @@ function RideCoverageCheck() {
                             size="sm"
                             onClick={() => setShowMenu(!showMenu)}
                             title="More options"
+                            aria-label="More options"
                             className="h-8 w-8 p-0"
                         >
                             <MoreVertical className="h-4 w-4" />
