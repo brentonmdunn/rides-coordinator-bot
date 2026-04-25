@@ -12,7 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Settings } from 'lucide-react'
 
 /**
- * A dashboard component that allows admins to lookup and display grouping locations 
+ * A dashboard component that allows admins to lookup and display grouping locations
  * for a specific ride event (Friday, Sunday, or via a specific Discord message ID).
  */
 function PickupLocations() {
@@ -23,11 +23,11 @@ function PickupLocations() {
     const { copiedText: copiedUsername, copyToClipboard } = useCopyToClipboard()
     const [showInfo, setShowInfo] = useState(false)
 
-    const { 
-        data: pickupData, 
-        error: pickupError, 
-        isLoading: pickupLoading, 
-        fetchPickups 
+    const {
+        data: pickupData,
+        error: pickupError,
+        isLoading: pickupLoading,
+        fetchPickups
     } = usePickups()
 
     const handleFetchPickups = async (e: React.FormEvent) => {

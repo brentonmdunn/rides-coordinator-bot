@@ -25,8 +25,8 @@ This project uses an **Image Promotion** strategy (Build Once, Deploy Many) for 
 
 > [!CAUTION]
 > **Direct Pushes to Main**:
-> If you push code directly to the `main` branch without going through a Pull Request, the promotion job will pull the **most recent image** from the preprod repository (likely from a previous PR) and push it to production. 
-> 
+> If you push code directly to the `main` branch without going through a Pull Request, the promotion job will pull the **most recent image** from the preprod repository (likely from a previous PR) and push it to production.
+>
 > **Always use Pull Requests to ensure your latest changes are built and promoted correctly.**
 
 ## Troubleshooting

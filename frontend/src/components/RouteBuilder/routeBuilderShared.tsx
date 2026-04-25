@@ -232,5 +232,3 @@ export function ArrivalTimeSelector({
         </div>
     )
 }
-
-

@@ -4,7 +4,7 @@ name: Lint for Print Statements
 on:
   pull_request:
     branches:
-      - main 
+      - main
       - staging
 
 jobs:

@@ -69,4 +69,3 @@ The backend can be deployed via the root Docker configuration.
 # From root directory
 docker build -t ride-bot .
 ```
-
