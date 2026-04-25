@@ -2,10 +2,10 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from bot.core.bot_instance import get_bot
+from api.dependencies import parse_int_param, require_bot, validate_ride_type
 from bot.core.enums import ChannelIds, JobName
 from bot.core.error_reporter import send_error_to_discord
 from bot.services.group_rides_service import GroupRidesService
@@ -60,36 +60,20 @@ async def group_rides(request: GroupRidesRequest):
     Returns:
         GroupRidesResponse with success status and either groupings or error message
     """
-    bot = get_bot()
-    if not bot:
-        raise HTTPException(status_code=503, detail="Bot not initialized")
+    bot = require_bot()
+    validate_ride_type(request.ride_type)
+    channel_id_int = parse_int_param(request.channel_id, "Channel ID")
+
+    if request.ride_type == "message_id":
+        if not request.message_id:
+            return GroupRidesResponse(
+                success=False, error="message_id is required when ride_type is 'message_id'"
+            )
+        message_id_int: int | None = parse_int_param(request.message_id, "Message ID")
+    else:
+        message_id_int = None
 
     try:
-        # Validate ride_type
-        if request.ride_type not in [JobName.FRIDAY, JobName.SUNDAY, "message_id"]:
-            return GroupRidesResponse(
-                success=False, error="ride_type must be 'friday', 'sunday', or 'message_id'"
-            )
-
-        # If using message_id, validate it's provided
-        if request.ride_type == "message_id":
-            if not request.message_id:
-                return GroupRidesResponse(
-                    success=False, error="message_id is required when ride_type is 'message_id'"
-                )
-            try:
-                message_id_int = int(request.message_id)
-            except ValueError:
-                return GroupRidesResponse(success=False, error="Message ID must be a valid integer")
-        else:
-            message_id_int = None
-
-        # Convert channel_id to int
-        try:
-            channel_id_int = int(request.channel_id)
-        except ValueError:
-            return GroupRidesResponse(success=False, error="Channel ID must be a valid integer")
-
         # Create service and call the API method
         service = GroupRidesService(bot)
         result = await service.group_rides_api(
