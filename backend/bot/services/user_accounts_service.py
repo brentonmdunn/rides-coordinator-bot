@@ -4,6 +4,8 @@ User accounts service.
 Business logic for user account management and role-based access control.
 """
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
 from bot.repositories.user_accounts_repository import UserAccountsRepository
@@ -19,33 +21,44 @@ class UserAccountsService:
     """Service for user account operations and role checks."""
 
     @staticmethod
-    async def get_or_create_account(email: str):
+    async def get_or_create_account(email: str, session: AsyncSession | None = None):
         """
         Get or create a user account with default viewer role.
 
         Args:
             email: The email address of the user.
+            session: Optional database session. If None, one is created internally.
 
         Returns:
             The existing or newly created UserAccount.
         """
+        if session is not None:
+            return await UserAccountsRepository.get_or_create(session, email)
+
         async with AsyncSessionLocal() as session:
             return await UserAccountsRepository.get_or_create(session, email)
 
     @staticmethod
-    async def has_minimum_role(email: str, minimum_role: AccountRoles) -> bool:
+    async def has_minimum_role(
+        email: str, minimum_role: AccountRoles, session: AsyncSession | None = None
+    ) -> bool:
         """
         Check if a user has at least the specified role level.
 
         Args:
             email: The email address to check.
             minimum_role: The minimum required role.
+            session: Optional database session. If None, one is created internally.
 
         Returns:
             True if the user's role meets or exceeds the minimum.
         """
-        async with AsyncSessionLocal() as session:
+        if session is not None:
             account = await UserAccountsRepository.get_by_email(session, email)
+        else:
+            async with AsyncSessionLocal() as session:
+                account = await UserAccountsRepository.get_by_email(session, email)
+
         if not account:
             return False
 
