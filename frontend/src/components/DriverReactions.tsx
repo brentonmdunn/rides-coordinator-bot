@@ -6,6 +6,7 @@ import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
+import { ListSkeleton } from './LoadingSkeleton'
 
 import { CopyPill } from './CopyPill'
 
@@ -129,7 +130,7 @@ function DriverReactions() {
                     </Button>
                 </div>
 
-                {loading && <div className="text-center py-4 text-slate-500">Loading reactions...</div>}
+                {loading && <ListSkeleton rows={4} />}
 
                 {error && <ErrorMessage message={error} />}
 

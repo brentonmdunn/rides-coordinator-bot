@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { FeatureFlag } from '../types'
+import { TableSkeleton } from './LoadingSkeleton'
 
 interface FeatureFlagsResponse {
     flags: FeatureFlag[]
@@ -110,11 +111,7 @@ function FeatureFlagsManager() {
                         <li>Disabling a flag will stop all associated automated jobs.</li>
                     </ul>
                 </InfoPanel>
-                {flagsLoading && (
-                    <div className="p-8 text-center text-slate-500 animate-pulse">
-                        Loading feature flags...
-                    </div>
-                )}
+                {flagsLoading && <TableSkeleton rows={5} cols={2} />}
 
                 <div className="mb-6">
                     <ErrorMessage message={flagsError} />

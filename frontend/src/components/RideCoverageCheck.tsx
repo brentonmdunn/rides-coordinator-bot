@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw, MoreVertical, CloudDownload, Check } from 'lucide-react'
 import { getAutomaticDay } from '../lib/utils'
+import { CoverageSkeleton } from './LoadingSkeleton'
 
 interface RideDayProps {
     rideType: 'friday' | 'sunday'
@@ -40,11 +41,7 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
     })
 
     if (isLoading) {
-        return (
-            <div className="p-4 text-center text-slate-500 animate-pulse">
-                Loading {title.toLowerCase()} coverage...
-            </div>
-        )
+        return <CoverageSkeleton />
     }
 
     if (error) {
