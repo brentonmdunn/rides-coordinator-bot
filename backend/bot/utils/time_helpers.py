@@ -6,6 +6,8 @@ import pytz
 
 from bot.core.enums import DaysOfWeek, DaysOfWeekNumber
 
+LA_TZ = pytz.timezone("America/Los_Angeles")
+
 days_of_week_to_number = {
     DaysOfWeek.MONDAY: DaysOfWeekNumber.MONDAY,
     DaysOfWeek.TUESDAY: DaysOfWeekNumber.TUESDAY,
@@ -41,8 +43,7 @@ def is_in_ride_day_window(day: str) -> bool:
     Returns:
         bool: True if the current time is within the window, False otherwise.
     """
-    la_tz = pytz.timezone("America/Los_Angeles")
-    now = datetime.now().astimezone(la_tz)
+    now = datetime.now(tz=LA_TZ)
     weekday_index = now.weekday()  # Monday = 0, Sunday = 6
     hour = now.hour
 
@@ -82,7 +83,7 @@ def get_next_date_str(day: DaysOfWeekNumber) -> str:
     Returns:
         str: The formatted date string (mm/dd).
     """
-    today = datetime.today()
+    today = datetime.now(tz=LA_TZ)
     days_ahead = (day - today.weekday() + DAYS_IN_WEEK) % DAYS_IN_WEEK
     if days_ahead == 0:
         days_ahead = DAYS_IN_WEEK  # Skip to next day if `day` is current day
@@ -103,7 +104,7 @@ def get_next_date_obj(day: DaysOfWeek) -> date:
         date: The date object for the next occurrence of the given day.
     """
     day_num = days_of_week_to_number[day]
-    today = datetime.today()
+    today = datetime.now(tz=LA_TZ)
     days_ahead = (day_num - today.weekday() + DAYS_IN_WEEK) % DAYS_IN_WEEK
     if days_ahead == 0:
         days_ahead = DAYS_IN_WEEK  # Skip to next day if `day` is current day
@@ -119,7 +120,7 @@ def get_last_sunday() -> datetime:
     Returns:
         datetime: The datetime object for the last Sunday.
     """
-    now = datetime.now()
+    now = datetime.now(tz=LA_TZ)
     days_to_subtract = (now.weekday() + 1) % DAYS_IN_WEEK
     if days_to_subtract == 0:
         days_to_subtract = DAYS_IN_WEEK
@@ -136,8 +137,7 @@ def is_active_hours() -> bool:
     Returns:
         True if within active hours, False otherwise.
     """
-    la_tz = pytz.timezone("America/Los_Angeles")
-    hour = datetime.now().astimezone(la_tz).hour
+    hour = datetime.now(tz=LA_TZ).hour
     return hour >= HOUR_7AM or hour < HOUR_1AM
 
 
@@ -152,7 +152,7 @@ def is_ride_cycle_active() -> bool:
     Returns:
         True from Wednesday 12:00 PM through Sunday 11:59 PM, False otherwise.
     """
-    now = datetime.now()
+    now = datetime.now(tz=LA_TZ)
     return (now.weekday() == DaysOfWeekNumber.WEDNESDAY and now.hour >= HOUR_NOON) or (
         DaysOfWeekNumber.THURSDAY <= now.weekday() <= DaysOfWeekNumber.SUNDAY
     )
@@ -168,7 +168,7 @@ def get_current_cycle_start() -> datetime:
     Returns:
         datetime of the most recent Wednesday at 12:00:00.
     """
-    now = datetime.now()
+    now = datetime.now(tz=LA_TZ)
     days_since_wednesday = (now.weekday() - DaysOfWeekNumber.WEDNESDAY) % DAYS_IN_WEEK
     if now.weekday() < DaysOfWeekNumber.WEDNESDAY:  # Monday or Tuesday — back to previous cycle
         days_since_wednesday += DAYS_IN_WEEK
@@ -221,7 +221,7 @@ def get_next_wednesday_noon() -> datetime:
     Returns:
         datetime of the next ask-rides send time.
     """
-    now = datetime.now()
+    now = datetime.now(tz=LA_TZ)
     days_until_wednesday = (DaysOfWeekNumber.WEDNESDAY - now.weekday()) % DAYS_IN_WEEK
     if days_until_wednesday == 0 and now.hour >= HOUR_NOON:
         days_until_wednesday = DAYS_IN_WEEK
