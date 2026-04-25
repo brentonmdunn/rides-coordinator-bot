@@ -21,9 +21,6 @@ logger = logging.getLogger(__name__)
 LLM_MODEL = "gemini-2.5-flash"
 NUM_RETRY_ATTEMPTS = 4
 
-# Global variable to store the previous response for logging purposes during retries
-prev_response = None
-
 
 def log_retry_attempt(retry_state):
     """
@@ -32,7 +29,10 @@ def log_retry_attempt(retry_state):
     Args:
         retry_state (tenacity.RetryCallState): The current state of the retry call.
     """
-    global prev_response
+    prev_response = None
+    if retry_state.args:
+        llm_self = retry_state.args[0]
+        prev_response = getattr(llm_self, "_last_response", None)
     logger.warning(
         f"Failed to process request, attempting retry {retry_state.attempt_number}..."
         f"Exception was: {retry_state.outcome.exception()}..."
@@ -103,8 +103,8 @@ class LLMService:
             )
         )
 
-        global prev_response
-        prev_response = ai_response
+        # Store response for retry logging via tenacity's retry_state
+        self._last_response = ai_response
 
         logger.debug(f"Raw LLM output={ai_response}")
 
