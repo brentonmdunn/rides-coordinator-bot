@@ -6,7 +6,7 @@ import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.database import AsyncSessionLocal
-from bot.core.enums import FeatureFlagNames
+from bot.core.enums import Emoji, FeatureFlagNames
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ class FeatureFlagsService:
         )
 
         for flag in all_flags:
-            status_icon = "✅" if flag.enabled else "❌"
+            status_icon = Emoji.CHECK_MARK if flag.enabled else Emoji.CANNOT_DRIVE
             status_text = "Enabled" if flag.enabled else "Disabled"
             embed.add_field(name=flag.feature, value=f"{status_icon} {status_text}", inline=False)
 

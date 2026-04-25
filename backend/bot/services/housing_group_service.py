@@ -4,6 +4,7 @@ import logging
 
 import discord
 
+from bot.core.enums import Emoji
 from bot.utils.constants import (
     RITA_LOCATIONS,
     SCHOLARS_LOCATIONS,
@@ -29,15 +30,25 @@ class HousingGroupService:
             A dictionary with housing groups and unknown users.
         """
         housing_groups = {
-            "Scholars": {"count": 0, "locations": {}, "filter": SCHOLARS_LOCATIONS, "emoji": "🏫"},
+            "Scholars": {
+                "count": 0,
+                "locations": {},
+                "filter": SCHOLARS_LOCATIONS,
+                "emoji": Emoji.SCHOLARS,
+            },
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "locations": {},
                 "filter": WARREN_PEPPER_CANYON_LOCATIONS,
-                "emoji": "🏠",
+                "emoji": Emoji.WARREN_PCYN,
             },
-            "Rita": {"count": 0, "locations": {}, "filter": RITA_LOCATIONS, "emoji": "🏡"},
-            "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": "🌍"},
+            "Rita": {
+                "count": 0,
+                "locations": {},
+                "filter": RITA_LOCATIONS,
+                "emoji": Emoji.RITA,
+            },
+            "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": Emoji.GLOBE},
         }
 
         for location, people_username_list in locations_people.items():

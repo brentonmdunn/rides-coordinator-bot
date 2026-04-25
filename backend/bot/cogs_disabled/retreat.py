@@ -10,7 +10,7 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from bot.core.enums import ChannelIds
+from bot.core.enums import ChannelIds, Emoji
 from bot.utils.constants import SCHOLARS_LOCATIONS
 
 logger = logging.getLogger(__name__)
@@ -142,21 +142,21 @@ class Retreat(commands.Cog):
                 "count": 0,
                 "people": "",
                 "filter": SCHOLARS_LOCATIONS,
-                "emoji": "🏫",
+                "emoji": Emoji.SCHOLARS,
             },
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "people": "",
                 "filter": ["warren", "pepper canyon"],
-                "emoji": "🏠",
+                "emoji": Emoji.WARREN_PCYN,
             },
             "Rita + Eighth": {
                 "count": 0,
                 "people": "",
                 "filter": ["rita", "eighth"],
-                "emoji": "🏡",
+                "emoji": Emoji.RITA,
             },
-            "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": "🌍"},
+            "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": Emoji.GLOBE},
         }
 
         for location, people in locations_people.items():
