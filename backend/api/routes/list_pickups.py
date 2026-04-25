@@ -3,12 +3,11 @@
 import logging
 
 import discord
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from api.dependencies import parse_int_param, require_bot, validate_ride_type
 from bot.core.enums import AskRidesMessage, ChannelIds, JobName
-from bot.core.error_reporter import send_error_to_discord
 from bot.services.locations_service import LocationsService
 
 logger = logging.getLogger(__name__)
@@ -65,8 +64,8 @@ async def list_pickups(request: ListPickupsRequest):
     # Validate message_id early when ride_type is "message_id"
     if request.ride_type == "message_id":
         if not request.message_id:
-            return ListPickupsResponse(
-                success=False, error="message_id is required when ride_type is 'message_id'"
+            raise HTTPException(
+                status_code=400, detail="message_id is required when ride_type is 'message_id'"
             )
         message_id_int: int | None = parse_int_param(request.message_id, "Message ID")
     else:
@@ -86,9 +85,9 @@ async def list_pickups(request: ListPickupsRequest):
             )
 
             if message_id_int is None:
-                return ListPickupsResponse(
-                    success=False,
-                    error=(
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
                         f"Could not find the {request.ride_type} rides message. "
                         "It may not exist yet."
                     ),
@@ -136,16 +135,16 @@ async def list_pickups(request: ListPickupsRequest):
         return ListPickupsResponse(success=True, data=response_data)
 
     except ValueError as e:
-        return ListPickupsResponse(success=False, error=str(e))
-    except discord.NotFound:
-        return ListPickupsResponse(
-            success=False, error="Message not found. Please check the Message ID and try again."
-        )
-    except discord.Forbidden:
-        return ListPickupsResponse(
-            success=False, error="Bot does not have permission to access this message or channel."
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except discord.NotFound as e:
+        raise HTTPException(
+            status_code=404, detail="Message not found. Please check the Message ID and try again."
+        ) from e
+    except discord.Forbidden as e:
+        raise HTTPException(
+            status_code=403,
+            detail="Bot does not have permission to access this message or channel.",
+        ) from e
     except Exception as e:
         logger.exception("An unexpected error occurred while listing pickups")
-        await send_error_to_discord("**Uncaught API Error** in `/api/list-pickups`", error=e)
-        return ListPickupsResponse(success=False, error=f"An unexpected error occurred: {e!s}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.") from e

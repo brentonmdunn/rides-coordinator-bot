@@ -131,10 +131,10 @@ async def make_route(request: MakeRouteRequest):
 
     # Validate inputs
     if not request.locations:
-        return MakeRouteResponse(success=False, error="At least one location must be provided")
+        raise HTTPException(status_code=400, detail="At least one location must be provided")
 
     if not request.leave_time:
-        return MakeRouteResponse(success=False, error="Leave time must be provided")
+        raise HTTPException(status_code=400, detail="Leave time must be provided")
 
     try:
         service = GroupRidesService(bot)
@@ -149,8 +149,7 @@ async def make_route(request: MakeRouteRequest):
         return MakeRouteResponse(success=True, route=route)
 
     except ValueError as e:
-        logger.warning(f"Invalid input for route generation: {e}")
-        return MakeRouteResponse(success=False, error=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     except Exception as e:
         logger.exception("Error generating route")
