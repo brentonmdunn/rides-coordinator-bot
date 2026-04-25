@@ -90,4 +90,4 @@ def lookup_time(query: LocationQuery) -> int:
                 distances[neighbor] = distance
                 heapq.heappush(priority_queue, (distance, neighbor))
 
-    return None
+    raise ValueError(f"No path found from {query.start_location} to {query.end_location}")
