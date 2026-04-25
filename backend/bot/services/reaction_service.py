@@ -49,13 +49,13 @@ class ReactionService:
             if (
                 option
                 and option == RideOption.SUNDAY_DROPOFF_BACK
-                and (str(reaction.emoji) in [Emoji.BURGER, Emoji.EIGHT_SPOKED_ASTERISK])
+                and (str(reaction.emoji) in [Emoji.LUNCH, Emoji.SOMETHING_ELSE])
             ):
                 continue
             if (
                 option
                 and option == RideOption.SUNDAY_DROPOFF_LUNCH
-                and (str(reaction.emoji) in [Emoji.HOUSE, Emoji.EIGHT_SPOKED_ASTERISK])
+                and (str(reaction.emoji) in [Emoji.NO_LUNCH, Emoji.SOMETHING_ELSE])
             ):
                 continue
             async for user in reaction.users():

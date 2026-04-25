@@ -34,19 +34,19 @@ class HousingGroupService:
                 "count": 0,
                 "locations": {},
                 "filter": SCHOLARS_LOCATIONS,
-                "emoji": Emoji.SCHOOL,
+                "emoji": Emoji.SCHOLARS,
             },
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "locations": {},
                 "filter": WARREN_PEPPER_CANYON_LOCATIONS,
-                "emoji": Emoji.HOUSE,
+                "emoji": Emoji.WARREN_PCYN,
             },
             "Rita": {
                 "count": 0,
                 "locations": {},
                 "filter": RITA_LOCATIONS,
-                "emoji": Emoji.HOUSE_WITH_GARDEN,
+                "emoji": Emoji.RITA,
             },
             "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": Emoji.GLOBE},
         }

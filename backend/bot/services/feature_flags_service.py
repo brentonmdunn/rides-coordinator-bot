@@ -95,7 +95,7 @@ class FeatureFlagsService:
         )
 
         for flag in all_flags:
-            status_icon = Emoji.CHECK_MARK if flag.enabled else Emoji.CROSS_MARK
+            status_icon = Emoji.CHECK_MARK if flag.enabled else Emoji.CANNOT_DRIVE
             status_text = "Enabled" if flag.enabled else "Disabled"
             embed.add_field(name=flag.feature, value=f"{status_icon} {status_text}", inline=False)
 
