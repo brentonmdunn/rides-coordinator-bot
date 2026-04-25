@@ -36,8 +36,10 @@ jobs:
       - name: Sync dependencies
         run: uv sync
 
-      - name: Check for pending migrations
+      - name: Run migrations to head and check for drift
         run: |
+          mkdir -p db
+          uv run alembic upgrade head
           uv run alembic check 2>&1 || {
             echo "::error::Model changes detected without a corresponding migration. Run 'alembic revision --autogenerate -m \"description\"' to generate one."
             exit 1
