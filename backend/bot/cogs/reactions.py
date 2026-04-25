@@ -166,14 +166,17 @@ class Reactions(commands.Cog):
             logger.exception("_handle_reaction_remove: error in _check_if_ask_message")
 
     async def _check_if_ask_message(self, message_id, channel_id):
-        from bot.services.locations_service import LocationsService
         from bot.utils.cache import (
             warm_ask_drivers_reactions_cache,
             warm_ask_rides_reactions_cache,
         )
 
+        if not self.locations_cog:
+            return
+
+        locations_svc = self.locations_cog.service
+
         if channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS:
-            locations_svc = LocationsService(self.bot)
             for event in AskRidesMessage:
                 m_id = await locations_svc._find_correct_message(event, channel_id)
                 if m_id == message_id:
@@ -181,7 +184,6 @@ class Reactions(commands.Cog):
                     break
 
         elif channel_id == ChannelIds.SERVING__DRIVER_CHAT_WOOOOO:
-            locations_svc = LocationsService(self.bot)
             for event in AskRidesMessage:
                 m_id = await locations_svc._find_driver_message(event, channel_id)
                 if m_id == message_id:
