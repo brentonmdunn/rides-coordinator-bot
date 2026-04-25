@@ -97,4 +97,3 @@ function StatusCard({ title, jobName, job, canManage }: StatusCardProps) {
 }
 
 export default StatusCard
-

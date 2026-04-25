@@ -43,7 +43,7 @@ function RoleSwitcher({ currentRole }: RoleSwitcherProps) {
                         Viewing as <strong>{currentRoleInfo?.label ?? currentRole}</strong>
                     </span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                     {ROLES.map((r) => (
                         <button
                             key={r.value}

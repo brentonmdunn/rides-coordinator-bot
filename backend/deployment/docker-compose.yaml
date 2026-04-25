@@ -23,7 +23,7 @@ services:
       REDIS_URL: redis://redis:6379
     volumes:
       - ./db:/app/db:rw
-      - ./logs:/logs:rw 
+      - ./logs:/logs:rw
     ports:
       - "8000:8000"
     depends_on:

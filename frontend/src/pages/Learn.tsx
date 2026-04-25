@@ -8,7 +8,7 @@ function Learn() {
     return (
         <>
             <EnvironmentBanner />
-            <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50 dark:bg-zinc-950 py-12 px-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+            <main id="main-content" className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50 dark:bg-zinc-950 py-12 px-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-12">
@@ -131,6 +131,7 @@ function Learn() {
                                     ['Ask Rides Status Dashboard', 'Overview of whether rides request was sent out and reaction summary'],
                                     ['Ask Rides Reactions', 'Names of people who reacted for a ride'],
                                     ['Driver Reactions', 'Names of drivers who reacted to give a ride'],
+                                    ['Ride Coverage Check', 'Tracks whether each rider has been assigned to a driver'],
                                     ['List Pickups', 'Pickup locations of people who reacted for a ride'],
                                     ['Group Rides', 'Automatically groups rides and creates routes (does not always work but is a good starting place)'],
                                     ['Route Builder', 'Manually create routes'],
@@ -148,11 +149,10 @@ function Learn() {
                         </TutorialText>
                     </article>
                 </div>
-            </div>
+            </main>
         </>
     )
 
 }
 
 export default Learn
-

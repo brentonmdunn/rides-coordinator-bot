@@ -6,6 +6,7 @@ import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
+import { ListSkeleton } from './LoadingSkeleton'
 
 import { CopyPill } from './CopyPill'
 
@@ -67,6 +68,7 @@ function DriverReactions() {
                         size="sm"
                         onClick={updateDayAndFetch}
                         title="Refresh data"
+                        aria-label="Refresh data"
                         className="h-8 w-8 p-0"
                         disabled={loading}
                     >
@@ -126,7 +128,7 @@ function DriverReactions() {
                     </Button>
                 </div>
 
-                {loading && <div className="text-center py-4 text-slate-500">Loading reactions...</div>}
+                {loading && <ListSkeleton rows={4} />}
 
                 {error && <ErrorMessage message={error} />}
 
@@ -143,6 +145,7 @@ function DriverReactions() {
                                 ) : (
                                     <details className="group border border-slate-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 overflow-hidden">
                                         <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors select-none list-none [&::-webkit-details-marker]:hidden">
+                                            <span className="sr-only">Show driver reaction details</span>
                                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                                                 {Object.entries(data.reactions).map(([emoji, usernames]) => (
                                                     <div key={emoji} className="flex items-center gap-2">

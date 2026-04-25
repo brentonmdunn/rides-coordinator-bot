@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { FeatureFlag } from '../types'
+import { TableSkeleton } from './LoadingSkeleton'
 
 interface FeatureFlagsResponse {
     flags: FeatureFlag[]
@@ -58,7 +59,6 @@ function FeatureFlagsManager() {
         },
         onError: (err) => {
             console.error('Feature flag toggle error:', err)
-            alert('Failed to toggle feature flag')
         }
     })
 
@@ -107,23 +107,25 @@ function FeatureFlagsManager() {
                         <li>Disabling a flag will stop all associated automated jobs.</li>
                     </ul>
                 </InfoPanel>
-                {flagsLoading && (
-                    <div className="p-8 text-center text-slate-500 animate-pulse">
-                        Loading feature flags...
-                    </div>
-                )}
+                {flagsLoading && <TableSkeleton rows={5} cols={2} />}
 
                 <div className="mb-6">
                     <ErrorMessage message={flagsError} />
                 </div>
+
+                {toggleMutation.isError && (
+                    <div className="mb-4 px-3 py-2 rounded-md bg-destructive/15 border border-destructive/30 text-destructive-text text-sm">
+                        Failed to toggle feature flag: {toggleMutation.error instanceof Error ? toggleMutation.error.message : 'Unknown error'}
+                    </div>
+                )}
 
                 {!flagsLoading && !flagsError && featureFlags.length > 0 && (
                     <div className="rounded-lg border border-slate-200 dark:border-zinc-800 overflow-x-auto w-full max-w-[calc(100vw-3rem)]">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-slate-50 dark:bg-zinc-800/50 text-slate-900 dark:text-slate-100 font-semibold border-b border-slate-200 dark:border-zinc-800">
                                 <tr>
-                                    <th className="px-6 py-4">Feature Flag</th>
-                                    <th className="px-6 py-4 text-center w-[120px]">Status</th>
+                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4">Feature Flag</th>
+                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4 text-center w-[100px] sm:w-[120px]">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -132,14 +134,15 @@ function FeatureFlagsManager() {
                                         key={flag.id}
                                         className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors"
                                     >
-                                        <td className="px-6 py-4 font-mono text-slate-700 dark:text-slate-300">
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono text-slate-700 dark:text-slate-300 break-all">
                                             {flag.feature}
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                                             <Switch
                                                 checked={flag.enabled}
                                                 onCheckedChange={(checked) => handleToggle(flag.feature, checked)}
                                                 disabled={!isEditMode || toggleMutation.isPending}
+                                                aria-label={`Toggle ${flag.feature}`}
                                             />
                                         </td>
                                     </tr>

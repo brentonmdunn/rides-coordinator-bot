@@ -1,6 +1,6 @@
 /**
  * API Configuration
- * 
+ *
  * Handles environment-specific API URL configuration and centralized error handling.
  * - Development: Points to localhost:8000
  * - Production: Uses same origin (served by backend)

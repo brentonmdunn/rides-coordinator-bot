@@ -23,6 +23,7 @@ function GroupRides() {
     const [groupRidesError, setGroupRidesError] = useState<string>('')
     const [groupRidesLoading, setGroupRidesLoading] = useState(false)
     const [copiedGrouping, setCopiedGrouping] = useState<number | null>(null)
+    const [copyError, setCopyError] = useState<string>('')
     const [showInfo, setShowInfo] = useState(false)
 
     const groupRides = async (e: React.FormEvent) => {
@@ -75,7 +76,8 @@ function GroupRides() {
             setTimeout(() => setCopiedGrouping(null), 5000)
         } catch (error) {
             console.error('Failed to copy:', error)
-            alert('Failed to copy to clipboard')
+            setCopyError('Failed to copy to clipboard. Check browser permissions.')
+            setTimeout(() => setCopyError(''), 5000)
         }
     }
 
@@ -109,6 +111,7 @@ function GroupRides() {
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                         title="Advanced Settings"
+                        aria-label="Advanced Settings"
                     >
                         <Settings className="h-4 w-4" />
                     </Button>
@@ -225,6 +228,7 @@ function GroupRides() {
                 {/* Error Display */}
                 <div className="mt-6">
                     <ErrorMessage message={groupRidesError} />
+                    <ErrorMessage message={copyError} />
                 </div>
 
                 {/* Results Display */}

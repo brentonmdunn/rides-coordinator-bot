@@ -96,7 +96,8 @@ app.middleware("http")(cloudflare_access_middleware)
 
 # Include routers
 app.include_router(health_router)
-app.include_router(example_router)
+if APP_ENV == "local":
+    app.include_router(example_router)
 app.include_router(locations_router)
 app.include_router(feature_flags_router)
 app.include_router(me_router)

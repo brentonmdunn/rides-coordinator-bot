@@ -38,20 +38,20 @@ Repositories are exclusively in charge of communicating with the SQLite database
 flowchart TD
     User([Discord User])
     Frontend([React Dashboard])
-    
+
     subgraph Presentation Layer
         Cog[Cogs\nDiscord Application layer]
         API[FastAPI Routes\nHTTP Application layer]
     end
-    
+
     subgraph Business Logic Layer
         Service[Services\nApplies logic, caches, transforms]
     end
-    
+
     subgraph Data Access Layer
         Repo[(Repositories\nExecutes SQL queries)]
     end
-    
+
     User -- "/slash-command" --> Cog
     Frontend -- "HTTP POST" --> API
     Cog -- request processed data --> Service

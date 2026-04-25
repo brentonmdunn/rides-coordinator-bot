@@ -4,18 +4,13 @@ import logging
 
 import discord
 
-logger = logging.getLogger(__name__)
+from bot.utils.constants import (
+    RITA_LOCATIONS,
+    SCHOLARS_LOCATIONS,
+    WARREN_PEPPER_CANYON_LOCATIONS,
+)
 
-SCHOLARS_LOCATIONS = [
-    "revelle",
-    "muir",
-    "sixth",
-    "marshall",
-    "erc",
-    "seventh",
-    "new marshall",
-    "eighth",
-]
+logger = logging.getLogger(__name__)
 
 
 class HousingGroupService:
@@ -38,17 +33,10 @@ class HousingGroupService:
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "locations": {},
-                "filter": [
-                    "warren",
-                    "pcyn",
-                    "pce",
-                    "pcw",
-                    "pepper canyon east",
-                    "pepper canyon west",
-                ],
+                "filter": WARREN_PEPPER_CANYON_LOCATIONS,
                 "emoji": "🏠",
             },
-            "Rita": {"count": 0, "locations": {}, "filter": ["rita"], "emoji": "🏡"},
+            "Rita": {"count": 0, "locations": {}, "filter": RITA_LOCATIONS, "emoji": "🏡"},
             "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": "🌍"},
         }
 

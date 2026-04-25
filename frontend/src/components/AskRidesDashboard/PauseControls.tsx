@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import { Button } from '../ui/button'
@@ -90,18 +90,93 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
 
             {/* Pause Modal — single-screen with all options visible */}
             {showModal && (
+                <PauseModal
+                    onClose={() => setShowModal(false)}
+                    pauseMutation={pauseMutation}
+                    datesLoading={datesLoading}
+                    upcomingDates={upcomingDates}
+                    dateOffset={dateOffset}
+                    setDateOffset={setDateOffset}
+                />
+            )}
+        </>
+    )
+}
+
+function PauseModal({
+    onClose,
+    pauseMutation,
+    datesLoading,
+    upcomingDates,
+    dateOffset,
+    setDateOffset,
+}: {
+    onClose: () => void
+    pauseMutation: ReturnType<typeof useMutation<unknown, Error, { is_paused: boolean; resume_after_date?: string | null }>>
+    datesLoading: boolean
+    upcomingDates: { dates: UpcomingDate[]; has_more: boolean } | undefined
+    dateOffset: number
+    setDateOffset: React.Dispatch<React.SetStateAction<number>>
+}) {
+    const modalRef = useRef<HTMLDivElement>(null)
+    const previousFocusRef = useRef<HTMLElement | null>(null)
+
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            onClose()
+            return
+        }
+        if (e.key === 'Tab' && modalRef.current) {
+            const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+            if (e.shiftKey) {
+                if (document.activeElement === first) {
+                    e.preventDefault()
+                    last.focus()
+                }
+            } else {
+                if (document.activeElement === last) {
+                    e.preventDefault()
+                    first.focus()
+                }
+            }
+        }
+    }, [onClose])
+
+    useEffect(() => {
+        previousFocusRef.current = document.activeElement as HTMLElement
+        document.addEventListener('keydown', handleKeyDown)
+        requestAnimationFrame(() => {
+            const firstButton = modalRef.current?.querySelector<HTMLElement>('button')
+            firstButton?.focus()
+        })
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            previousFocusRef.current?.focus()
+        }
+    }, [handleKeyDown])
+
+    return (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-                    onClick={() => setShowModal(false)}
+                    onClick={onClose}
                 >
                     <div
+                        ref={modalRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="pause-modal-title"
+                        aria-describedby="pause-modal-description"
                         className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4 w-full"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+                        <h3 id="pause-modal-title" className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
                             Pause messages
                         </h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+                        <p id="pause-modal-description" className="text-sm text-slate-500 dark:text-slate-400 mb-5">
                             Skip sending until you resume or until a specific event.
                         </p>
 
@@ -173,7 +248,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                         {/* Cancel */}
                         <div className="mt-4 flex justify-end">
                             <button
-                                onClick={() => setShowModal(false)}
+                                onClick={onClose}
                                 className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
                             >
                                 Cancel
@@ -187,8 +262,6 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                         )}
                     </div>
                 </div>
-            )}
-        </>
     )
 }
 

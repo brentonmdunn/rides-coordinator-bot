@@ -1,17 +1,21 @@
-name: Ruff Lint
+name: Migration check
 
 on:
   pull_request:
     branches:
       - main
       - staging
+    paths:
+      - 'backend/bot/core/models.py'
+      - 'backend/bot/core/base.py'
+      - 'backend/alembic/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
+  check-migrations:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,8 +36,11 @@ jobs:
       - name: Sync dependencies
         run: uv sync
 
-      - name: Check formatting with Ruff
-        run: uv run ruff format --check .
-
-      - name: Run Ruff linter
-        run: uv run invoke lint
+      - name: Run migrations to head and check for drift
+        run: |
+          mkdir -p db
+          uv run alembic upgrade head
+          uv run alembic check 2>&1 || {
+            echo "::error::Model changes detected without a corresponding migration. Run 'alembic revision --autogenerate -m \"description\"' to generate one."
+            exit 1
+          }
