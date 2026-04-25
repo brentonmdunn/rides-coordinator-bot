@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiFetch } from '../lib/api'
 import { useCopyToClipboard } from '../lib/utils'
+import { useTheme } from './use-theme'
 import {
     Select,
     SelectContent,
@@ -30,6 +31,7 @@ function MapLinks() {
     const [locationsLoading, setLocationsLoading] = useState(true)
     const [selectedLocation, setSelectedLocation] = useState<string>('')
     const { copiedText, copyToClipboard } = useCopyToClipboard(3000)
+    const { theme } = useTheme()
 
     useEffect(() => {
         const fetchLocations = async () => {
@@ -126,12 +128,20 @@ function MapLinks() {
                         zoom={selectedCoords ? 16 : 14}
                         scrollWheelZoom={false}
                         dragging={false}
-                        style={{ height: '300px', width: '100%' }}
+                        className="h-48 sm:h-[300px] w-full"
+                        style={{ width: '100%' }}
                     >
-                        <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
+                        {theme === 'dark' ? (
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                            />
+                        ) : (
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                        )}
                         <MapInteractionGuard />
                         {selectedCoords && (
                             <>

@@ -130,8 +130,8 @@ function FeatureFlagsManager() {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-slate-50 dark:bg-zinc-800/50 text-slate-900 dark:text-slate-100 font-semibold border-b border-slate-200 dark:border-zinc-800">
                                 <tr>
-                                    <th scope="col" className="px-6 py-4">Feature Flag</th>
-                                    <th scope="col" className="px-6 py-4 text-center w-[120px]">Status</th>
+                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4">Feature Flag</th>
+                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4 text-center w-[100px] sm:w-[120px]">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -140,10 +140,10 @@ function FeatureFlagsManager() {
                                         key={flag.id}
                                         className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors"
                                     >
-                                        <td className="px-6 py-4 font-mono text-slate-700 dark:text-slate-300">
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono text-slate-700 dark:text-slate-300 break-all">
                                             {flag.feature}
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                                             <Switch
                                                 checked={flag.enabled}
                                                 onCheckedChange={(checked) => handleToggle(flag.feature, checked)}

@@ -102,8 +102,8 @@ function UserManagement() {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-slate-50 dark:bg-zinc-800/50 text-slate-900 dark:text-slate-100 font-semibold border-b border-slate-200 dark:border-zinc-800">
                                 <tr>
-                                    <th scope="col" className="px-6 py-4">Email</th>
-                                    <th scope="col" className="px-6 py-4 w-[220px]">Role</th>
+                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4">Email</th>
+                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4 w-[160px] sm:w-[220px]">Role</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -112,15 +112,15 @@ function UserManagement() {
                                         key={user.id}
                                         className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors"
                                     >
-                                        <td className="px-6 py-4">
-                                            <span className="text-slate-700 dark:text-slate-300">{user.email}</span>
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                                            <span className="text-slate-700 dark:text-slate-300 break-all">{user.email}</span>
                                             {user.role_edited_by && (
                                                 <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                                                     promoted by {user.role_edited_by}
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4">
                                             <Select
                                                 value={user.role}
                                                 onValueChange={(val) =>
