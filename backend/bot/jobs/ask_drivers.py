@@ -37,7 +37,9 @@ async def _ask_drivers_template(
         return sent_message
     except discord.HTTPException as e:
         logger.error(f"Failed to send message to channel {channel_id}: {e}")
-        await send_error_to_discord(bot, e)
+        await send_error_to_discord(
+            f"**Error** in `_ask_drivers_template` for channel {channel_id}", error=e
+        )
         return None
 
 
