@@ -42,8 +42,32 @@ from bot.utils.time_helpers import (
 
 logger = logging.getLogger(__name__)
 
-WILDCARD_DATES: list[str] = ["6/20", "6/27", "6/29"]
+# Dates to skip ride announcements for (format: m/d/yy to avoid cross-year matches).
+# TODO: Consider replacing with calendar-based checks like _should_send_ask_rides_sun().
+WILDCARD_DATES: list[str] = ["6/20/25", "6/27/25", "6/29/25"]
 CLASS_DATES: list[str] = []
+
+
+def _is_wildcard_date(formatted_date: str) -> bool:
+    """
+    Check if a date string (m/d format) matches any wildcard date.
+
+    Compares against WILDCARD_DATES which use m/d/yy format to avoid
+    cross-year false matches.
+
+    Args:
+        formatted_date: Date string in m/d format from get_next_date_str.
+
+    Returns:
+        True if the date should be skipped.
+    """
+    from datetime import datetime
+
+    from bot.utils.time_helpers import LA_TZ
+
+    year_suffix = datetime.now(tz=LA_TZ).strftime("%y")
+    date_with_year = f"{formatted_date}/{year_suffix}"
+    return date_with_year in WILDCARD_DATES
 
 
 def _get_dynamic_ttl() -> int:
@@ -75,7 +99,7 @@ def _get_dynamic_ttl() -> int:
 def _make_wednesday_msg() -> str | None:
     """Create message for Wednesday rides."""
     formatted_date: str = get_next_date_str(DaysOfWeekNumber.WEDNESDAY)
-    if formatted_date in WILDCARD_DATES:
+    if _is_wildcard_date(formatted_date):
         return None
     return (
         f"React to this message if you need a ride for Wednesday night Bible study {formatted_date} "
@@ -86,7 +110,7 @@ def _make_wednesday_msg() -> str | None:
 def _make_friday_msg() -> str | None:
     """Create message for Friday rides."""
     formatted_date: str = get_next_date_str(DaysOfWeekNumber.FRIDAY)
-    if formatted_date in WILDCARD_DATES:
+    if _is_wildcard_date(formatted_date):
         return None
     return (
         f"React to this message if you need a ride for Friday night fellowship {formatted_date} "
@@ -97,7 +121,7 @@ def _make_friday_msg() -> str | None:
 def _make_sunday_msg() -> str | None:
     """Create message for Sunday service rides."""
     formatted_date: str = get_next_date_str(DaysOfWeekNumber.SUNDAY)
-    if formatted_date in WILDCARD_DATES:
+    if _is_wildcard_date(formatted_date):
         return None
     return (
         f"React to this message if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10am)!\n\n"
