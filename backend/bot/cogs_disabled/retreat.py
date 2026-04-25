@@ -11,6 +11,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from bot.core.enums import ChannelIds
+from bot.utils.constants import SCHOLARS_LOCATIONS
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,6 @@ load_dotenv()
 
 RETREAT_CSV_URL = os.getenv("RETREAT_CSV_URL")
 
-# List of scholars housing locations
-SCHOLARS_LOCATIONS = ["revelle", "muir", "sixth", "marshall", "erc", "seventh"]
 
 LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.SERVING__DRIVER_BOT_SPAM,
