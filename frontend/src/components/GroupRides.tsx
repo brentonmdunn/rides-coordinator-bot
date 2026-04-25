@@ -109,6 +109,7 @@ function GroupRides() {
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                         title="Advanced Settings"
+                        aria-label="Advanced Settings"
                     >
                         <Settings className="h-4 w-4" />
                     </Button>

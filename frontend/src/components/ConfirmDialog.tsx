@@ -1,3 +1,5 @@
+import { useEffect, useRef, useCallback } from 'react'
+
 interface ConfirmDialogProps {
     isOpen: boolean;
     title: string;
@@ -19,15 +21,72 @@ export function ConfirmDialog({
     onConfirm,
     onCancel
 }: ConfirmDialogProps) {
+    const dialogRef = useRef<HTMLDivElement>(null)
+    const previousFocusRef = useRef<HTMLElement | null>(null)
+
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            onCancel()
+            return
+        }
+
+        if (e.key === 'Tab' && dialogRef.current) {
+            const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+
+            if (e.shiftKey) {
+                if (document.activeElement === first) {
+                    e.preventDefault()
+                    last.focus()
+                }
+            } else {
+                if (document.activeElement === last) {
+                    e.preventDefault()
+                    first.focus()
+                }
+            }
+        }
+    }, [onCancel])
+
+    useEffect(() => {
+        if (isOpen) {
+            previousFocusRef.current = document.activeElement as HTMLElement
+            document.addEventListener('keydown', handleKeyDown)
+
+            requestAnimationFrame(() => {
+                const firstButton = dialogRef.current?.querySelector<HTMLElement>('button')
+                firstButton?.focus()
+            })
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            if (!isOpen && previousFocusRef.current) {
+                previousFocusRef.current.focus()
+            }
+        }
+    }, [isOpen, handleKeyDown])
+
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onCancel}>
-            <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="confirm-dialog-title"
+                aria-describedby="confirm-dialog-description"
+                className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <h3 id="confirm-dialog-title" className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                     {title}
                 </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">
+                <p id="confirm-dialog-description" className="text-sm text-slate-600 dark:text-slate-400 mb-5">
                     {description}
                 </p>
                 <div className="flex justify-end gap-3">
