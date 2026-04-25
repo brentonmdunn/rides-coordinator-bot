@@ -4,9 +4,8 @@ import logging
 
 import discord
 
-from bot.core.enums import ChannelIds, JobName
+from bot.core.enums import ChannelIds, JobName, ReactionAction
 from bot.core.error_reporter import send_error_to_discord
-from bot.core.reaction_enums import ReactionAction
 from bot.utils.format_message import message_link
 from bot.utils.parsing import get_message_and_embed_content
 

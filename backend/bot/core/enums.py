@@ -187,6 +187,19 @@ class AccountRoles(StrEnum):
     RIDE_COORDINATOR = "ride_coordinator"
 
 
+class ReactionAction(StrEnum):
+    """
+    Enum representing the type of reaction action.
+
+    Attributes:
+        ADD: Represents adding a reaction to a message.
+        REMOVE: Represents removing a reaction from a message.
+    """
+
+    ADD = "add"
+    REMOVE = "remove"
+
+
 DAY_TO_ASK_RIDES_MESSAGE: dict[JobName, AskRidesMessage] = {
     JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
     JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
