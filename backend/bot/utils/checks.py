@@ -8,6 +8,7 @@ from typing import Any
 import discord
 from discord import app_commands
 
+from bot.core.database import AsyncSessionLocal
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,10 @@ def feature_flag_enabled(feature: str, enable_logs: bool = True):
 
             feature_is_enabled = False  # Default to false
             try:
-                feature_flag = await FeatureFlagsRepository.get_feature_flag_status(feature)
+                async with AsyncSessionLocal() as session:
+                    feature_flag = await FeatureFlagsRepository.get_feature_flag_status(
+                        session, feature
+                    )
                 if feature_flag is not None:
                     feature_is_enabled = feature_flag
             except Exception as e:

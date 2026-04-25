@@ -5,7 +5,8 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.api import get_bot
+from bot.core.bot_instance import get_bot
+from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, ChannelIds, JobName
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
 from bot.services.locations_service import LocationsService
@@ -82,7 +83,6 @@ async def get_pickup_coverage(ride_type: str):
 
     try:
         locations_service = LocationsService(bot)
-        ride_coverage_repo = RideCoverageRepository()
 
         # Determine which message to check based on ride type
         if ride_type.lower() == JobName.FRIDAY:
@@ -124,7 +124,10 @@ async def get_pickup_coverage(ride_type: str):
         # Build user list with assignment status using the repository
         # Use bulk check for performance
         usernames_list = [str(u) for u in usernames_reacted]
-        covered_usernames = await ride_coverage_repo.get_bulk_coverage_status(usernames_list)
+        async with AsyncSessionLocal() as session:
+            covered_usernames = await RideCoverageRepository.get_bulk_coverage_status(
+                session, usernames_list
+            )
 
         users = []
         assigned_count = 0
@@ -141,7 +144,8 @@ async def get_pickup_coverage(ride_type: str):
 
         # Check if any coverage entries exist for the current week
         last_sunday = get_last_sunday()
-        has_entries = await ride_coverage_repo.has_coverage_entries(last_sunday)
+        async with AsyncSessionLocal() as session:
+            has_entries = await RideCoverageRepository.has_coverage_entries(session, last_sunday)
 
         return {
             "users": users,

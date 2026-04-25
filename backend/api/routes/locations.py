@@ -8,7 +8,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
-from bot.api import get_bot
+from bot.core.bot_instance import get_bot
 from bot.core.enums import ChannelIds
 from bot.services.locations_service import LocationsService
 

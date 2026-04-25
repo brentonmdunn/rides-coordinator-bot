@@ -9,7 +9,7 @@ import os
 
 from fastapi import APIRouter, HTTPException, Request
 
-from bot.api import get_bot
+from bot.core.bot_instance import get_bot
 
 logger = logging.getLogger(__name__)
 

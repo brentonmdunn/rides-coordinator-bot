@@ -6,8 +6,9 @@ import discord
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.api import get_bot, send_error_to_discord
+from bot.core.bot_instance import get_bot
 from bot.core.enums import AskRidesMessage, JobName
+from bot.core.error_reporter import send_error_to_discord
 from bot.services.locations_service import LocationsService
 
 logger = logging.getLogger(__name__)

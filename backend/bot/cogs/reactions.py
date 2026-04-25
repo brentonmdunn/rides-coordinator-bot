@@ -9,18 +9,16 @@ from bot.cogs.locations import Locations
 from bot.core.enums import (
     AskRidesMessage,
     ChannelIds,
-    DaysOfWeek,
     FeatureFlagNames,
 )
 from bot.core.logger import generate_txn_id, txn_id_var
 from bot.core.reaction_enums import ReactionAction
-from bot.repositories.thread_repository import EventThreadRepository
 from bot.services.reaction_logging_service import ReactionLoggingService
 from bot.services.ride_request_service import RideRequestService
 from bot.services.thread_service import ThreadService
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.parsing import get_message_and_embed_content
-from bot.utils.time_helpers import is_during_target_window
+from bot.utils.time_helpers import is_during_late_reaction_window
 
 logger = logging.getLogger(__name__)
 
@@ -258,10 +256,9 @@ class Reactions(commands.Cog):
             Only logs reactions in the rides announcements channel during target windows.
         """
         message_content = get_message_and_embed_content(message)
-        if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS and (
-            ("friday" in message_content and is_during_target_window(DaysOfWeek.FRIDAY))
-            or ("sunday" in message_content and is_during_target_window(DaysOfWeek.SUNDAY))
-            or ("wednesday" in message_content and is_during_target_window(DaysOfWeek.WEDNESDAY))
+        if (
+            payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+            and is_during_late_reaction_window(message_content)
         ):
             await self.logging_service.log_late_ride_reaction(user, payload, message, action)
 
@@ -346,11 +343,7 @@ async def setup(bot: commands.Bot):
     Args:
         bot: The Discord bot instance to add the cog to.
     """
-    # Initialize repository (only for database operations)
-    thread_repository = EventThreadRepository()
-
-    # Initialize services
-    thread_service = ThreadService(thread_repository)
+    thread_service = ThreadService()
     logging_service = ReactionLoggingService(bot)
     ride_request_service = RideRequestService(bot)
 

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import type { RideCoverage } from '../types'
 import { AlertTriangle } from 'lucide-react'
+import { isFridayWarningWindow, isSundayWarningWindow } from '../lib/utils'
 
 function RideCoverageWarning() {
     // Check Friday ride coverage
@@ -36,18 +37,11 @@ function RideCoverageWarning() {
         refetchOnReconnect: false,
     })
 
-    // Get current day and time
-    const now = new Date()
-    const day = now.getDay() // 0 = Sunday, 5 = Friday, 6 = Saturday
-    const hour = now.getHours()
-
-    // Check if we need to show warning for each ride type
     const fridayNeedsDrivers = fridayData?.message_found && !fridayData?.has_coverage_entries
     const sundayNeedsDrivers = sundayData?.message_found && !sundayData?.has_coverage_entries
 
-    // Time-based conditions for showing warnings
-    const shouldShowFridayWarning = fridayNeedsDrivers && day === 5 && hour >= 12 // Friday after 12pm
-    const shouldShowSundayWarning = sundayNeedsDrivers && day === 6 && hour >= 17 // Saturday after 5pm
+    const shouldShowFridayWarning = fridayNeedsDrivers && isFridayWarningWindow()
+    const shouldShowSundayWarning = sundayNeedsDrivers && isSundayWarningWindow()
 
     // Don't show anything if no warnings needed
     if (!shouldShowFridayWarning && !shouldShowSundayWarning) {
