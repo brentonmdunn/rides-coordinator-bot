@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -12,12 +13,13 @@ import MapLinks from '../components/MapLinks'
 import AskRidesDashboard from '../components/AskRidesDashboard/AskRidesDashboard'
 import RideCoverageCheck from '../components/RideCoverageCheck'
 import RideCoverageWarning from '../components/RideCoverageWarning'
-import FeatureFlagsManager from '../components/FeatureFlagsManager'
-import SystemActions from '../components/SystemActions'
-import UserManagement from '../components/UserManagement'
 import RoleSwitcher from '../components/RoleSwitcher'
 import { ModeToggle } from '../components/mode-toggle'
 import EnvironmentBanner from '../components/EnvironmentBanner'
+
+const FeatureFlagsManager = lazy(() => import('../components/FeatureFlagsManager'))
+const UserManagement = lazy(() => import('../components/UserManagement'))
+const SystemActions = lazy(() => import('../components/SystemActions'))
 
 function Home() {
     const { data: meData } = useQuery<{ email: string; role: AccountRole; is_local: boolean }>({
@@ -70,9 +72,13 @@ function Home() {
                         <GroupRides />
                         <RouteBuilder />
                         <MapLinks />
-                        {isAdmin && <FeatureFlagsManager />}
-                        {isAdmin && <UserManagement />}
-                        {isAdmin && <SystemActions />}
+                        {isAdmin && (
+                            <Suspense fallback={<div className="text-center py-8 text-slate-500">Loading admin tools…</div>}>
+                                <FeatureFlagsManager />
+                                <UserManagement />
+                                <SystemActions />
+                            </Suspense>
+                        )}
                     </div>
                 </div>
             </div>

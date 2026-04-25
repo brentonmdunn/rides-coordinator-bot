@@ -61,7 +61,6 @@ function FeatureFlagsManager() {
         },
         onError: (err) => {
             console.error('Feature flag toggle error:', err)
-            alert('Failed to toggle feature flag')
         }
     })
 
@@ -119,6 +118,12 @@ function FeatureFlagsManager() {
                 <div className="mb-6">
                     <ErrorMessage message={flagsError} />
                 </div>
+
+                {toggleMutation.isError && (
+                    <div className="mb-4 px-3 py-2 rounded-md bg-destructive/15 border border-destructive/30 text-destructive-text text-sm">
+                        Failed to toggle feature flag: {toggleMutation.error instanceof Error ? toggleMutation.error.message : 'Unknown error'}
+                    </div>
+                )}
 
                 {!flagsLoading && !flagsError && featureFlags.length > 0 && (
                     <div className="rounded-lg border border-slate-200 dark:border-zinc-800 overflow-x-auto w-full max-w-[calc(100vw-3rem)]">
