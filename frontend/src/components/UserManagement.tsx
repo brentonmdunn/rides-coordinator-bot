@@ -11,6 +11,7 @@ import {
 } from './ui/select'
 
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
+import { TableSkeleton } from './LoadingSkeleton'
 
 interface UserAccount {
     id: number
@@ -81,11 +82,7 @@ function UserManagement() {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                {isLoading && (
-                    <div className="p-8 text-center text-slate-500 animate-pulse">
-                        Loading users...
-                    </div>
-                )}
+                {isLoading && <TableSkeleton rows={3} cols={3} />}
 
                 <div className="mb-6">
                     <ErrorMessage message={errorMsg} />
