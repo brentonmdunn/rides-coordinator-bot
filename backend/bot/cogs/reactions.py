@@ -10,9 +10,9 @@ from bot.core.enums import (
     AskRidesMessage,
     ChannelIds,
     FeatureFlagNames,
+    ReactionAction,
 )
 from bot.core.logger import generate_txn_id, txn_id_var
-from bot.core.reaction_enums import ReactionAction
 from bot.services.reaction_logging_service import ReactionLoggingService
 from bot.services.ride_request_service import RideRequestService
 from bot.services.thread_service import ThreadService
