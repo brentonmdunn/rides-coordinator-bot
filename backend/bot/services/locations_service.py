@@ -1,164 +1,56 @@
-"""Service for location-related operations."""
+"""
+Service for location-related operations.
 
-import csv
-import io
+Acts as a thin coordinator that delegates to:
+- ``CsvSyncService`` for Google Sheets CSV syncing
+- ``ReactionService`` for reaction fetching and caching
+- ``HousingGroupService`` for location grouping and embed building
+"""
+
 import logging
-import os
 from collections import defaultdict
-from collections.abc import Callable
-
-import discord
-import httpx
-from dotenv import load_dotenv
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
     AskRidesMessage,
-    CacheNamespace,
-    CanBeDriver,
     ChannelIds,
-    ClassYear,
     JobName,
     RideOption,
-    RoleIds,
 )
 from bot.core.error_reporter import send_error_to_discord
-from bot.core.models import Locations as LocationsModel
 from bot.repositories.locations_repository import LocationsRepository
-from bot.utils.cache import _get_reaction_cache_ttl, alru_cache
+from bot.services.csv_sync_service import CsvSyncService
+from bot.services.housing_group_service import HousingGroupService
+from bot.services.reaction_service import ReactionService
 from bot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
 from bot.utils.parsing import get_message_and_embed_content
-from bot.utils.time_helpers import get_last_sunday
 
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
-LSCC_PPL_CSV_URL = os.getenv("LSCC_PPL_CSV_URL")
-
 RideOptionsSchema = RideOption
-
-SCHOLARS_LOCATIONS = [
-    "revelle",
-    "muir",
-    "sixth",
-    "marshall",
-    "erc",
-    "seventh",
-    "new marshall",
-    "eighth",
-]
 
 
 class LocationsService:
-    """Service for handling location data and synchronization."""
+    """Coordinator service for location data and synchronization."""
 
     def __init__(self, bot):
         """Initialize the LocationsService."""
         self.bot = bot
+        self._csv_sync = CsvSyncService()
+        self._reactions = ReactionService(bot)
+        self._housing = HousingGroupService()
 
+    # ------------------------------------------------------------------
+    # CSV sync (delegates to CsvSyncService)
+    # ------------------------------------------------------------------
     async def sync_locations(self):
-        """
-        Syncs the Google Sheet with database table `locations`.
+        """Syncs the Google Sheet with database table ``locations``."""
+        await self._csv_sync.sync_locations()
 
-        Raises:
-            Exception: If LSCC_PPL_CSV_URL is not set or data retrieval fails.
-        """
-        logger.info("Syncing locations...")
-        if not LSCC_PPL_CSV_URL:
-            raise Exception("LSCC_PPL_CSV_URL environment variable not set.")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(LSCC_PPL_CSV_URL)
-
-        if response.status_code != 200:
-            raise Exception("Failed to retrieve data.")
-
-        csv_data = response.content.decode("utf-8")
-        csv_file = io.StringIO(csv_data)
-        reader = csv.DictReader(csv_file)
-
-        # Validate that all required columns exist
-        required_columns = ["Name", "Discord Username", "Year", "Location", "Driver"]
-        if reader.fieldnames is None:
-            raise Exception("CSV file is empty or has no header row.")
-
-        missing_columns = [col for col in required_columns if col not in reader.fieldnames]
-        if missing_columns:
-            raise Exception(
-                f"CSV is missing required columns: {', '.join(missing_columns)}. "
-                f"Found columns: {', '.join(reader.fieldnames)}"
-            )
-
-        locations_to_add = []
-        for row in reader:
-            name = self._get_info(row, "Name")
-            if not name:
-                # The 'name' column is not nullable, so we skip rows without a valid name.
-                continue
-
-            locations_to_add.append(
-                LocationsModel(
-                    name=name.title(),
-                    discord_username=self._get_info(row, "Discord Username"),
-                    year=self._get_info(row, "Year", self._verify_year),
-                    location=self._get_info(row, "Location"),
-                    driver=self._get_info(row, "Driver", self._verify_driver),
-                )
-            )
-
-        async with AsyncSessionLocal() as session:
-            await LocationsRepository.sync_locations(session, locations_to_add)
-
-        logger.info("Finished syncing locations csv with table.")
-
-    def _verify_year(self, year: str) -> bool:
-        """
-        Verifies if the year is valid.
-
-        Args:
-            year: The year string to verify.
-
-        Returns:
-            True if valid, False otherwise.
-        """
-        return year in [year.value for year in ClassYear]
-
-    def _verify_driver(self, driver: str) -> bool:
-        """
-        Verifies if the driver status is valid.
-
-        Args:
-            driver: The driver status string.
-
-        Returns:
-            True if valid, False otherwise.
-        """
-        return driver in [driver.value for driver in CanBeDriver]
-
-    def _get_info(self, data: dict, key: str, verify_schema: Callable | None = None) -> str | None:
-        """
-        Extracts and verifies information from a dictionary.
-
-        Args:
-            data: The dictionary containing data.
-            key: The key to extract.
-            verify_schema: Optional callback to verify the extracted value.
-
-        Returns:
-            The extracted string if valid, otherwise None.
-        """
-        value = data.get(key)
-        # Ensure value is a string and not just whitespace
-        if not isinstance(value, str) or not value.strip():
-            return None
-
-        info = value.strip().lower()
-        if verify_schema is not None and not verify_schema(info):
-            return None
-        return info
-
+    # ------------------------------------------------------------------
+    # Location lookup
+    # ------------------------------------------------------------------
     async def get_location(
         self, name: str, discord_only: bool = False
     ) -> list[tuple[str, str]] | None:
@@ -221,6 +113,9 @@ class LocationsService:
             return "No people found."
         return "\n".join(f"{n}: {loc}" for n, loc in possible_people)
 
+    # ------------------------------------------------------------------
+    # List locations (main coordinator method)
+    # ------------------------------------------------------------------
     async def list_locations_wrapper(
         self,
         interaction,
@@ -245,7 +140,7 @@ class LocationsService:
                 f"message_id={message_id}, option={option}"
             )
             args = await self.list_locations(day, message_id, channel_id, option)
-            embed = self._build_embed(*args, option=option)
+            embed = self._housing.build_embed(*args, option=option)
             if day and option and "dropoff" in option.lower():
                 async with AsyncSessionLocal() as session:
                     non_discord = await LocationsRepository.get_non_discord_pickups(session, day)
@@ -256,7 +151,7 @@ class LocationsService:
                     await interaction.response.send_message(
                         embeds=[
                             embed,
-                            self._build_embed(
+                            self._housing.build_embed(
                                 non_discord_locations_people,
                                 set(),
                                 set(),
@@ -277,9 +172,6 @@ class LocationsService:
                 "An unexpected error occurred. Please try again later.", ephemeral=True
             )
 
-    @alru_cache(
-        ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS
-    )
     async def list_locations(
         self,
         day=None,
@@ -323,8 +215,7 @@ class LocationsService:
                 AskRidesMessage.SUNDAY_CLASS, channel_id
             )
         ) is not None:
-            # We must use `=` and `-` creates a new set.
-            # Avoid `-=` as it mutates the set in-place, which corrupts the InMemoryBackend cache.
+            # Avoid ``-=`` as it mutates the set in-place, which corrupts the cache.
             usernames_reacted = usernames_reacted - await self._get_usernames_who_reacted(
                 channel_id, class_message_id
             )
@@ -339,261 +230,54 @@ class LocationsService:
 
         return locations_people, usernames_reacted, location_found
 
-    @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID)
+    # ------------------------------------------------------------------
+    # Delegation helpers (maintain backward compatibility)
+    # ------------------------------------------------------------------
     async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
-        """
-        Finds the most recent message matching the criteria.
+        """Delegates to ReactionService.find_correct_message."""
+        return await self._reactions.find_correct_message(ask_rides_message, channel_id)
 
-        Delegates to the batch method `_find_all_messages` which scans
-        channel history once for all AskRidesMessage variants and populates
-        the per-key cache.
+    async def _find_all_messages(self, channel_id=None):
+        """Delegates to ReactionService._find_all_messages."""
+        if channel_id is None:
+            channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+        return await self._reactions._find_all_messages(channel_id)
 
-        Args:
-            ask_rides_message: The message content to search for.
-            channel_id: The channel ID to search in.
-
-        Returns:
-            The message ID if found, otherwise None.
-        """
-        results = await self._find_all_messages(channel_id)
-        return results.get(ask_rides_message)
-
-    async def _find_all_messages(self, channel_id) -> dict[AskRidesMessage, int | None]:
-        """
-        Scans channel history once and finds all AskRidesMessage matches.
-
-        Populates the per-key `_find_correct_message` cache for each variant
-        so subsequent individual lookups are O(1) cache hits.
-
-        Args:
-            channel_id: The channel ID to search in.
-
-        Returns:
-            Dictionary mapping each AskRidesMessage to its message ID (or None).
-        """
-        last_sunday = get_last_sunday()
-        channel = self.bot.get_channel(channel_id)
-        results: dict[AskRidesMessage, int | None] = dict.fromkeys(AskRidesMessage)
-
-        if not channel:
-            return results
-
-        most_recent: dict[AskRidesMessage, object] = {}
-        async for message in channel.history(after=last_sunday):
-            combined_text = get_message_and_embed_content(message, message_content=False).lower()
-            for msg_type in AskRidesMessage:
-                if msg_type.lower() in combined_text:
-                    most_recent[msg_type] = message
-
-        for msg_type, message in most_recent.items():
-            results[msg_type] = message.id
-
-        # Populate per-key cache entries
-        for msg_type, msg_id in results.items():
-            await self._find_correct_message.cache_set(msg_type, channel_id, result=msg_id)
-
-        return results
-
-    @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
     async def _find_driver_message(
         self, event: AskRidesMessage, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
     ):
-        """
-        Finds the most recent driver message matching the keyword.
-
-        Delegates to the batch method `_find_all_driver_messages` which scans
-        channel history once for all events and populates the per-key cache.
-
-        Args:
-            event: The event to search for (e.g., "Friday", "Sunday").
-            channel_id: The channel ID to search in.
-
-        Returns:
-            The message ID if found, otherwise None.
-        """
-        logger.debug("_find_driver_message: looking up results")
-        results = await self._find_all_driver_messages(channel_id)
-        logger.debug("_find_driver_message: got results")
-        return results.get(event)
+        """Delegates to ReactionService.find_driver_message."""
+        return await self._reactions.find_driver_message(event, channel_id)
 
     async def _find_all_driver_messages(
-        self,
-        channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
-    ) -> dict[AskRidesMessage, int | None]:
-        """
-        Scans driver channel history once and finds all driver message matches.
+        self, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
+    ):
+        """Delegates to ReactionService._find_all_driver_messages."""
+        return await self._reactions._find_all_driver_messages(channel_id)
 
-        Populates the per-key `_find_driver_message` cache for each variant
-        so subsequent individual lookups are O(1) cache hits.
-
-        Args:
-            channel_id: The channel ID to search in.
-
-        Returns:
-            Dictionary mapping each AskRidesMessage to its driver message ID (or None).
-        """
-        logger.debug("_find_all_driver_messages: starting scan")
-        driver_keywords: dict[AskRidesMessage, list[str]] = {
-            AskRidesMessage.FRIDAY_FELLOWSHIP: ["friday", "felly", "fellowship"],
-            AskRidesMessage.SUNDAY_SERVICE: ["sunday", "service"],
-            AskRidesMessage.SUNDAY_CLASS: ["sunday", "class"],
-        }
-
-        last_sunday = get_last_sunday()
-        channel = self.bot.get_channel(channel_id)
-        results: dict[AskRidesMessage, int | None] = dict.fromkeys(driver_keywords)
-
-        if not channel:
-            return results
-
-        driver_role_mention = f"<@&{RoleIds.DRIVER}>"
-
-        most_recent: dict[AskRidesMessage, object] = {}
-        async for message in channel.history(after=last_sunday):
-            if driver_role_mention not in message.content:
-                continue
-            combined_text = get_message_and_embed_content(message).lower()
-            logger.debug(f"combined_text: {combined_text}")
-            for event, keywords in driver_keywords.items():
-                if any(kw in combined_text for kw in keywords):
-                    most_recent[event] = message
-
-        for event, message in most_recent.items():
-            results[event] = message.id
-
-        # Populate per-key cache entries
-        for event, msg_id in results.items():
-            await self._find_driver_message.cache_set(event, channel_id, result=msg_id)
-
-        return results
-
-    @alru_cache(
-        ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS
-    )
-    async def get_ask_rides_reactions(self, event: AskRidesMessage):
-        """
-        Retrieves reaction breakdown for an ask-rides message.
-
-        Args:
-            event: The AskRidesMessage type to look up.
-
-        Returns:
-            Dictionary with reactions mapping emojis to lists of usernames,
-            username_to_name mapping, and message_found flag. None if message not found.
-        """
-        channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
-        message_id = await self._find_correct_message(event, channel_id)
-        if not message_id:
-            return None
-
-        channel = self.bot.get_channel(channel_id)
-        message = await channel.fetch_message(message_id)
-
-        reactions_by_emoji = defaultdict(list)
-        all_usernames = set()
-        for reaction in message.reactions:
-            async for user in reaction.users():
-                if not user.bot:
-                    username = user.name
-                    reactions_by_emoji[str(reaction.emoji)].append(username)
-                    all_usernames.add(username)
-
-        async with AsyncSessionLocal() as session:
-            username_to_name = await LocationsRepository.get_names_for_usernames(
-                session, all_usernames
-            )
-
-        return {
-            "reactions": dict(reactions_by_emoji),
-            "username_to_name": username_to_name,
-        }
-
-    @alru_cache(
-        ttl=_get_reaction_cache_ttl,
-        ignore_self=True,
-        namespace=CacheNamespace.ASK_DRIVERS_REACTIONS,
-    )
-    async def get_driver_reactions(self, event: AskRidesMessage):
-        """
-        Retrieves reaction breakdown for a driver message.
-
-        Args:
-            event: AskRidesMessage.FRIDAY_FELLOWSHIP or AskRidesMessage.SUNDAY_SERVICE
-
-        Returns:
-            Dictionary with reactions mapping emojis to lists of usernames,
-            and username_to_name mapping for display purposes.
-        """
-        logger.debug(f"get_driver_reactions: event={event}")
-        if event not in (AskRidesMessage.FRIDAY_FELLOWSHIP, AskRidesMessage.SUNDAY_SERVICE):
-            raise ValueError(f"Invalid event for driver reactions: {event}")
-
-        channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
-
-        logger.debug("get_driver_reactions: looking up driver message")
-        message_id = await self._find_driver_message(event, channel_id)
-        if not message_id:
-            return None
-
-        channel = self.bot.get_channel(channel_id)
-        message = await channel.fetch_message(message_id)
-
-        reactions_by_emoji = defaultdict(list)
-        all_usernames = set()
-        for reaction in message.reactions:
-            async for user in reaction.users():
-                if not user.bot:
-                    username = user.name
-                    reactions_by_emoji[str(reaction.emoji)].append(username)
-                    all_usernames.add(username)
-
-        # Get name mappings for all usernames using repository
-        async with AsyncSessionLocal() as session:
-            username_to_name = await LocationsRepository.get_names_for_usernames(
-                session, all_usernames
-            )
-
-        return {
-            "reactions": dict(reactions_by_emoji),
-            "username_to_name": username_to_name,
-        }
-
-    @alru_cache(
-        ttl=_get_reaction_cache_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_REACTIONS
-    )
     async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
-        """
-        Retrieves a set of usernames who reacted to a message.
+        """Delegates to ReactionService.get_usernames_who_reacted."""
+        return await self._reactions.get_usernames_who_reacted(channel_id, message_id, option)
 
-        Args:
-            channel_id: The channel ID.
-            message_id: The message ID.
-            option: Optional filtering based on reaction emoji.
+    @property
+    def get_ask_rides_reactions(self):
+        """Exposes the cached ReactionService.get_ask_rides_reactions."""
+        return self._reactions.get_ask_rides_reactions
 
-        Returns:
-            A set of usernames who reacted.
-        """
-        usernames_reacted = set()
-        channel = self.bot.get_channel(channel_id)
-        message = await channel.fetch_message(message_id)
-        for reaction in message.reactions:
-            if (
-                option
-                and option == RideOption.SUNDAY_DROPOFF_BACK
-                and (str(reaction.emoji) in ["🍔", "✳️"])
-            ):
-                continue
-            if (
-                option
-                and option == RideOption.SUNDAY_DROPOFF_LUNCH
-                and (str(reaction.emoji) in ["🏠", "✳️"])
-            ):
-                continue
-            async for user in reaction.users():
-                if not user.bot:
-                    usernames_reacted.add(user.name)
-        return usernames_reacted
+    @property
+    def get_driver_reactions(self):
+        """Exposes the cached ReactionService.get_driver_reactions."""
+        return self._reactions.get_driver_reactions
 
+    def group_locations_by_housing(self, locations_people, usernames_reacted, location_found):
+        """Delegates to HousingGroupService.group_locations_by_housing."""
+        return self._housing.group_locations_by_housing(
+            locations_people, usernames_reacted, location_found
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
     async def _sort_locations(self, usernames_reacted):
         """
         Sorts users into locations based on their database records.
@@ -622,119 +306,3 @@ class LocationsService:
                     locations_people[person.location].append((person.name, username))
                     location_found.add(username)
         return locations_people, location_found
-
-    def group_locations_by_housing(self, locations_people, usernames_reacted, location_found):
-        """
-        Groups locations into housing categories.
-
-        Args:
-            locations_people: Dictionary mapping locations to people.
-            usernames_reacted: Set of all usernames who reacted.
-            location_found: Set of usernames whose location was found.
-
-        Returns:
-            A dictionary with housing groups and unknown users:
-            {
-                "groups": {
-                    "Scholars": {"count": int, "locations": {location: [people]}, "emoji": str},
-                    ...
-                },
-                "unknown_users": [str]
-            }
-        """
-        housing_groups = {
-            "Scholars": {"count": 0, "locations": {}, "filter": SCHOLARS_LOCATIONS, "emoji": "🏫"},
-            "Warren + Pepper Canyon": {
-                "count": 0,
-                "locations": {},
-                "filter": [
-                    "warren",
-                    "pcyn",
-                    "pce",
-                    "pcw",
-                    "pepper canyon east",
-                    "pepper canyon west",
-                ],
-                "emoji": "🏠",
-            },
-            "Rita": {"count": 0, "locations": {}, "filter": ["rita"], "emoji": "🏡"},
-            "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": "🌍"},
-        }
-
-        # Group locations into housing categories
-        for location, people_username_list in locations_people.items():
-            # Don't flatten to just names yet, keep the full tuple
-            people = people_username_list
-            matched = False
-
-            for _, group_data in housing_groups.items():
-                if any(keyword in location.lower() for keyword in group_data["filter"]):
-                    group_data["count"] += len(people)
-                    group_data["locations"][location] = people
-                    matched = True
-                    break
-
-            if not matched:
-                housing_groups["Off Campus"]["count"] += len(people)
-                housing_groups["Off Campus"]["locations"][location] = people
-
-        # Get unknown users
-        unknown_location = set(usernames_reacted) - location_found
-        unknown_users = [str(user) for user in unknown_location] if unknown_location else []
-
-        return {"groups": housing_groups, "unknown_users": unknown_users}
-
-    def _build_embed(
-        self, locations_people, usernames_reacted, location_found, option=None, custom_title=None
-    ):
-        """
-        Builds a Discord embed displaying location breakdowns.
-
-        Args:
-            locations_people: Dictionary mapping locations to people.
-            usernames_reacted: Set of all usernames who reacted.
-            location_found: Set of usernames whose location was found.
-            option: Optional filter option string.
-            custom_title: Optional custom title for the embed.
-
-        Returns:
-            A Discord Embed object.
-        """
-        title = "Housing Breakdown"
-        if option:
-            title += f" ({option})"
-        embed = discord.Embed(
-            title=title if custom_title is None else custom_title, color=discord.Color.blue()
-        )
-
-        # Use the helper function to group locations
-        grouped_data = self.group_locations_by_housing(
-            locations_people, usernames_reacted, location_found
-        )
-
-        # Build embed fields from grouped data
-        for group_name, group_data in grouped_data["groups"].items():
-            if group_data["count"] > 0:
-                # Format the people string for this group
-                people_str = ""
-                for location, people in group_data["locations"].items():
-                    # Extract just the names for the Discord embed
-                    people_names = [p[0] for p in people]
-                    people_str += f"**({len(people)}) {location}:** {', '.join(people_names)}\n"
-
-                embed.add_field(
-                    name=f"{group_data['emoji']} [{group_data['count']}] {group_name}",
-                    value=people_str,
-                    inline=False,
-                )
-
-        # Add unknown users if any
-        if grouped_data["unknown_users"]:
-            embed.add_field(
-                name=f"❓ [{len(grouped_data['unknown_users'])}] Unknown Location",
-                value=", ".join(grouped_data["unknown_users"])
-                + "\n(Make sure their Discord username is correct in the sheet!)",
-                inline=False,
-            )
-
-        return embed

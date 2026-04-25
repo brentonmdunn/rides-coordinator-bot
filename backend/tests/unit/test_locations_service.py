@@ -42,11 +42,11 @@ async def test_sync_locations(monkeypatch):
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.get = AsyncMock(return_value=mock_response)
     monkeypatch.setattr("httpx.AsyncClient", MagicMock(return_value=mock_client))
-    monkeypatch.setattr("bot.services.locations_service.LSCC_PPL_CSV_URL", "http://example.com")
+    monkeypatch.setattr("bot.services.csv_sync_service.LSCC_PPL_CSV_URL", "http://example.com")
 
     mock_sync = AsyncMock()
     monkeypatch.setattr(
-        "bot.services.locations_service.LocationsRepository.sync_locations", mock_sync
+        "bot.services.csv_sync_service.LocationsRepository.sync_locations", mock_sync
     )
 
     mock_session = AsyncMock()
@@ -54,7 +54,7 @@ async def test_sync_locations(monkeypatch):
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
     monkeypatch.setattr(
-        "bot.services.locations_service.AsyncSessionLocal",
+        "bot.services.csv_sync_service.AsyncSessionLocal",
         MagicMock(return_value=mock_session_cm),
     )
 
@@ -99,7 +99,7 @@ async def test_build_embed_groups_and_unknown():
     usernames_reacted = {"alice#123", "bob#456", "unknown_user"}
     location_found = {"alice#123", "bob#456"}
 
-    embed = svc._build_embed(
+    embed = svc._housing.build_embed(
         locations_people, usernames_reacted, location_found, option=RideOption.FRIDAY
     )
     assert isinstance(embed, discord.Embed)
