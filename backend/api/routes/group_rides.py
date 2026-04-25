@@ -2,12 +2,11 @@
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from api.dependencies import parse_int_param, require_bot, validate_ride_type
 from bot.core.enums import ChannelIds, JobName
-from bot.core.error_reporter import send_error_to_discord
 from bot.services.group_rides_service import GroupRidesService
 
 logger = logging.getLogger(__name__)
@@ -66,8 +65,8 @@ async def group_rides(request: GroupRidesRequest):
 
     if request.ride_type == "message_id":
         if not request.message_id:
-            return GroupRidesResponse(
-                success=False, error="message_id is required when ride_type is 'message_id'"
+            raise HTTPException(
+                status_code=400, detail="message_id is required when ride_type is 'message_id'"
             )
         message_id_int: int | None = parse_int_param(request.message_id, "Message ID")
     else:
@@ -90,10 +89,7 @@ async def group_rides(request: GroupRidesRequest):
         )
 
     except ValueError as e:
-        return GroupRidesResponse(success=False, error=str(e))
-    except Exception:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
         logger.exception("Unexpected error in group_rides API")
-        await send_error_to_discord("**Unexpected Error** in `POST /api/group-rides`")
-        return GroupRidesResponse(
-            success=False, error="An unexpected error occurred. Please try again later."
-        )
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.") from e
