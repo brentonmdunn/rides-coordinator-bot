@@ -11,7 +11,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.core.bot_instance import get_bot
+from api.dependencies import require_ready_bot
 from bot.core.enums import PickupLocations
 from bot.services.group_rides_service import GroupRidesService
 from bot.utils.constants import MAP_LOCATIONS, get_map_links
@@ -127,11 +127,7 @@ async def make_route(request: MakeRouteRequest):
         f"leave_time={request.leave_time}"
     )
 
-    bot = get_bot()
-
-    if bot is None or not bot.is_ready():
-        logger.warning("Bot not ready")
-        raise HTTPException(status_code=503, detail="Discord bot not ready")
+    bot = require_ready_bot()
 
     # Validate inputs
     if not request.locations:

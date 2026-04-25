@@ -3,10 +3,10 @@
 import logging
 
 import discord
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from bot.core.bot_instance import get_bot
+from api.dependencies import parse_int_param, require_bot, validate_ride_type
 from bot.core.enums import AskRidesMessage, ChannelIds, JobName
 from bot.core.error_reporter import send_error_to_discord
 from bot.services.locations_service import LocationsService
@@ -57,36 +57,23 @@ async def list_pickups(request: ListPickupsRequest):
     Returns:
         ListPickupsResponse with success status and either pickup data or error message
     """
-    bot = get_bot()
-    if not bot:
-        raise HTTPException(status_code=503, detail="Bot not initialized")
+    bot = require_bot()
+
+    validate_ride_type(request.ride_type)
+    channel_id_int = parse_int_param(request.channel_id, "Channel ID")
+
+    # Validate message_id early when ride_type is "message_id"
+    if request.ride_type == "message_id":
+        if not request.message_id:
+            return ListPickupsResponse(
+                success=False, error="message_id is required when ride_type is 'message_id'"
+            )
+        message_id_int: int | None = parse_int_param(request.message_id, "Message ID")
+    else:
+        message_id_int = None
 
     try:
-        # Validate ride_type
-        if request.ride_type not in [JobName.FRIDAY, JobName.SUNDAY, "message_id"]:
-            return ListPickupsResponse(
-                success=False, error="ride_type must be 'friday', 'sunday', or 'message_id'"
-            )
-
-        # Convert channel_id to int
-        try:
-            channel_id_int = int(request.channel_id)
-        except ValueError:
-            return ListPickupsResponse(success=False, error="Channel ID must be a valid integer")
-
-        # Determine message_id based on ride_type
-        if request.ride_type == "message_id":
-            if not request.message_id:
-                return ListPickupsResponse(
-                    success=False, error="message_id is required when ride_type is 'message_id'"
-                )
-            try:
-                message_id_int = int(request.message_id)
-            except ValueError:
-                return ListPickupsResponse(
-                    success=False, error="Message ID must be a valid integer"
-                )
-        else:
+        if message_id_int is None:
             # Find the message for Friday or Sunday
             if request.ride_type == JobName.FRIDAY:
                 ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP

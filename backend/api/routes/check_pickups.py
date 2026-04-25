@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.core.bot_instance import get_bot
+from api.dependencies import require_bot, validate_ride_type
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, ChannelIds, JobName
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
@@ -73,13 +73,8 @@ async def get_pickup_coverage(ride_type: str):
         - total: Total number of users who reacted
         - assigned: Number of users with ride assignments
     """
-    bot = get_bot()
-    if not bot:
-        raise HTTPException(status_code=503, detail="Bot not initialized")
-
-    # Validate ride_type
-    if ride_type.lower() not in [JobName.FRIDAY, JobName.SUNDAY]:
-        raise HTTPException(status_code=400, detail="ride_type must be 'friday' or 'sunday'")
+    bot = require_bot()
+    validate_ride_type(ride_type.lower(), allow_message_id=False)
 
     try:
         locations_service = LocationsService(bot)
@@ -172,9 +167,7 @@ async def sync_ride_coverage():
     Returns:
         Dictionary with sync results.
     """
-    bot = get_bot()
-    if not bot:
-        raise HTTPException(status_code=503, detail="Bot not initialized")
+    bot = require_bot()
 
     try:
         # Get the RideCoverage cog
@@ -206,9 +199,7 @@ async def get_driver_reactions(day: str):
     Args:
         day: "friday" or "sunday"
     """
-    bot = get_bot()
-    if not bot:
-        raise HTTPException(status_code=503, detail="Bot not initialized")
+    bot = require_bot()
 
     locations_service = LocationsService(bot)
     try:

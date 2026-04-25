@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
-from bot.core.bot_instance import get_bot
+from api.dependencies import require_bot, require_ready_bot
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, CacheNamespace, DaysOfWeek, JobName
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
@@ -43,9 +43,7 @@ async def send_now():
     This calls the same run_ask_rides_all function used by the scheduler,
     useful when the scheduled send was missed (e.g. due to a service crash).
     """
-    bot = get_bot()
-    if not bot or not bot.is_ready():
-        raise HTTPException(status_code=503, detail="Bot not initialized or not ready")
+    bot = require_ready_bot()
 
     try:
         await run_ask_rides_all(bot)
@@ -67,9 +65,7 @@ async def get_status():
     Returns:
         Dictionary with status for friday, sunday, and sunday_class jobs
     """
-    bot = get_bot()
-    if not bot:
-        return {"error": "Bot not initialized"}
+    bot = require_bot()
 
     status = await get_ask_rides_status(bot)
     return status
@@ -217,9 +213,7 @@ async def get_ask_rides_reactions(message_type: str):
         Dictionary with reactions mapping emojis to lists of usernames,
         username_to_name mapping, and message_found flag
     """
-    bot = get_bot()
-    if not bot:
-        raise HTTPException(status_code=503, detail="Bot not initialized")
+    bot = require_bot()
 
     # Map message_type to AskRidesMessage enum
     type_to_event = {
