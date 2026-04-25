@@ -79,6 +79,7 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                                                     : ''
                                                     }`}
                                                 title={`Click to copy @${person.discord_username}`}
+                                                aria-label={`Copy @${person.discord_username} to clipboard`}
                                             >
                                                 {person.name}
                                                 {copiedUsername === "@" + person.discord_username && ' ✓'}

@@ -130,8 +130,8 @@ function FeatureFlagsManager() {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-slate-50 dark:bg-zinc-800/50 text-slate-900 dark:text-slate-100 font-semibold border-b border-slate-200 dark:border-zinc-800">
                                 <tr>
-                                    <th className="px-6 py-4">Feature Flag</th>
-                                    <th className="px-6 py-4 text-center w-[120px]">Status</th>
+                                    <th scope="col" className="px-6 py-4">Feature Flag</th>
+                                    <th scope="col" className="px-6 py-4 text-center w-[120px]">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -148,6 +148,7 @@ function FeatureFlagsManager() {
                                                 checked={flag.enabled}
                                                 onCheckedChange={(checked) => handleToggle(flag.feature, checked)}
                                                 disabled={!isEditMode || toggleMutation.isPending}
+                                                aria-label={`Toggle ${flag.feature}`}
                                             />
                                         </td>
                                     </tr>
