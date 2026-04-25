@@ -30,7 +30,6 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
         queryKey: ['upcomingDates', jobName, dateOffset],
         queryFn: async () => {
             const response = await apiFetch(`/api/ask-rides/upcoming-dates/${jobName}?count=4&offset=${dateOffset}`)
-            if (!response.ok) throw new Error('Failed to load dates')
             return response.json()
         },
         enabled: showModal,
@@ -44,10 +43,6 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(params),
             })
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}))
-                throw new Error(data.detail || 'Failed to update pause')
-            }
             return response.json()
         },
         onSuccess: () => {

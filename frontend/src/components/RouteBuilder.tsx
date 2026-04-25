@@ -123,7 +123,6 @@ function RouteBuilder() {
         queryKey: ['user-preferences'],
         queryFn: async () => {
             const res = await apiFetch('/api/me/preferences')
-            if (!res.ok) throw new Error('Failed to load preferences')
             return res.json()
         },
         // Keep the preference indefinitely; it only changes when the user toggles
@@ -147,7 +146,6 @@ function RouteBuilder() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ show_map_labels: value }),
             })
-            if (!res.ok) throw new Error('Failed to save preference')
             return res.json() as Promise<UserPreferences>
         },
         onSuccess: (data) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAutomaticDay } from '../lib/utils'
-import { apiFetch } from '../lib/api'
+import { apiFetch, ApiError } from '../lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
@@ -40,25 +40,20 @@ function ReactionDetails() {
         setError('')
         try {
             const response = await apiFetch(`/api/ask-rides/reactions/${messageType}`)
-            if (!response.ok) {
-                // If the specific type (e.g. Sunday) isn't found, we don't auto-switch to others
-                // to avoid confusing behavior, just show the "not found" state.
-                if (response.status === 404) {
-                    setData({
-                        message_type: messageType,
-                        reactions: {},
-                        username_to_name: {},
-                        message_found: false
-                    })
-                    setSelectedType(messageType)
-                    return
-                }
-                throw new Error('Failed to fetch ask-rides reactions')
-            }
             const result = await response.json()
             setData(result)
             setSelectedType(messageType)
         } catch (err) {
+            if (err instanceof ApiError && err.status === 404) {
+                setData({
+                    message_type: messageType,
+                    reactions: {},
+                    username_to_name: {},
+                    message_found: false
+                })
+                setSelectedType(messageType)
+                return
+            }
             setError(err instanceof Error ? err.message : 'Unknown error')
         } finally {
             setLoading(false)

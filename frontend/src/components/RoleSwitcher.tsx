@@ -22,7 +22,6 @@ function RoleSwitcher({ currentRole }: RoleSwitcherProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ role }),
             })
-            if (!res.ok) throw new Error('Failed to switch role')
             return res.json()
         },
         onSuccess: () => {

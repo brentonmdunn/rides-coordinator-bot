@@ -32,9 +32,6 @@ function DriverReactions() {
         setError('')
         try {
             const response = await apiFetch(`/api/check-pickups/driver-reactions/${day}`)
-            if (!response.ok) {
-                throw new Error('Failed to fetch driver reactions')
-            }
             const result = await response.json()
             setData(result)
             setActiveDay(day)
