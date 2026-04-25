@@ -2,6 +2,7 @@
 
 from bot.core.enums import (
     DaysOfWeek,
+    Emoji,
     RoleIds,
 )
 from bot.utils.format_message import ping_role_with_message
@@ -21,9 +22,23 @@ class DriverService:
             list[str]: A list of emojis.
         """
         if day == DaysOfWeek.SUNDAY:
-            return ["🍔", "🏠", "🔄", "❌", "➡️", "⬅️", "✳️"]
+            return [
+                Emoji.BURGER,
+                Emoji.HOUSE,
+                Emoji.COUNTERCLOCKWISE,
+                Emoji.CROSS_MARK,
+                Emoji.RIGHT_ARROW,
+                Emoji.LEFT_ARROW,
+                Emoji.EIGHT_SPOKED_ASTERISK,
+            ]
         else:  # Friday
-            return ["👍", "❌", "➡️", "⬅️", "✳️"]
+            return [
+                Emoji.THUMBS_UP,
+                Emoji.CROSS_MARK,
+                Emoji.RIGHT_ARROW,
+                Emoji.LEFT_ARROW,
+                Emoji.EIGHT_SPOKED_ASTERISK,
+            ]
 
     def format_message(self, message: str) -> str:
         """

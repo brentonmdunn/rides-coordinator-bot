@@ -4,6 +4,8 @@ import logging
 
 import discord
 
+from bot.core.enums import Emoji
+
 logger = logging.getLogger(__name__)
 
 SCHOLARS_LOCATIONS = [
@@ -34,7 +36,12 @@ class HousingGroupService:
             A dictionary with housing groups and unknown users.
         """
         housing_groups = {
-            "Scholars": {"count": 0, "locations": {}, "filter": SCHOLARS_LOCATIONS, "emoji": "🏫"},
+            "Scholars": {
+                "count": 0,
+                "locations": {},
+                "filter": SCHOLARS_LOCATIONS,
+                "emoji": Emoji.SCHOOL,
+            },
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "locations": {},
@@ -46,10 +53,15 @@ class HousingGroupService:
                     "pepper canyon east",
                     "pepper canyon west",
                 ],
-                "emoji": "🏠",
+                "emoji": Emoji.HOUSE,
             },
-            "Rita": {"count": 0, "locations": {}, "filter": ["rita"], "emoji": "🏡"},
-            "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": "🌍"},
+            "Rita": {
+                "count": 0,
+                "locations": {},
+                "filter": ["rita"],
+                "emoji": Emoji.HOUSE_WITH_GARDEN,
+            },
+            "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": Emoji.GLOBE},
         }
 
         for location, people_username_list in locations_people.items():

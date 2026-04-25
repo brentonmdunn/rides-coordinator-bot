@@ -8,6 +8,7 @@ from bot.core.enums import (
     AskRidesMessage,
     CacheNamespace,
     ChannelIds,
+    Emoji,
     RideOption,
     RoleIds,
 )
@@ -48,13 +49,13 @@ class ReactionService:
             if (
                 option
                 and option == RideOption.SUNDAY_DROPOFF_BACK
-                and (str(reaction.emoji) in ["🍔", "✳️"])
+                and (str(reaction.emoji) in [Emoji.BURGER, Emoji.EIGHT_SPOKED_ASTERISK])
             ):
                 continue
             if (
                 option
                 and option == RideOption.SUNDAY_DROPOFF_LUNCH
-                and (str(reaction.emoji) in ["🏠", "✳️"])
+                and (str(reaction.emoji) in [Emoji.HOUSE, Emoji.EIGHT_SPOKED_ASTERISK])
             ):
                 continue
             async for user in reaction.users():

@@ -200,6 +200,32 @@ class ReactionAction(StrEnum):
     REMOVE = "remove"
 
 
+class Emoji(StrEnum):
+    """Centralized emoji constants used for reactions and display."""
+
+    # Ride-type reactions
+    BURGER = "🍔"
+    HOUSE = "🏠"
+    EIGHT_SPOKED_ASTERISK = "✳️"
+    ROCK = "🪨"
+    BOOK = "📖"
+
+    # Driver reactions
+    THUMBS_UP = "👍"
+    CROSS_MARK = "❌"
+    COUNTERCLOCKWISE = "🔄"
+    RIGHT_ARROW = "➡️"
+    LEFT_ARROW = "⬅️"
+
+    # Status indicators
+    CHECK_MARK = "✅"
+
+    # Housing group display
+    SCHOOL = "🏫"
+    HOUSE_WITH_GARDEN = "🏡"
+    GLOBE = "🌍"
+
+
 DAY_TO_ASK_RIDES_MESSAGE: dict[JobName, AskRidesMessage] = {
     JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
     JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
