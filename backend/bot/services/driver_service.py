@@ -23,21 +23,21 @@ class DriverService:
         """
         if day == DaysOfWeek.SUNDAY:
             return [
-                Emoji.BURGER,
-                Emoji.HOUSE,
-                Emoji.COUNTERCLOCKWISE,
-                Emoji.CROSS_MARK,
-                Emoji.RIGHT_ARROW,
-                Emoji.LEFT_ARROW,
-                Emoji.EIGHT_SPOKED_ASTERISK,
+                Emoji.LUNCH,
+                Emoji.NO_LUNCH,
+                Emoji.EITHER_NO_PREFERENCE,
+                Emoji.CANNOT_DRIVE,
+                Emoji.DRIVE_THERE,
+                Emoji.DRIVE_BACK,
+                Emoji.SOMETHING_ELSE,
             ]
         else:  # Friday
             return [
-                Emoji.THUMBS_UP,
-                Emoji.CROSS_MARK,
-                Emoji.RIGHT_ARROW,
-                Emoji.LEFT_ARROW,
-                Emoji.EIGHT_SPOKED_ASTERISK,
+                Emoji.CAN_DRIVE,
+                Emoji.CANNOT_DRIVE,
+                Emoji.DRIVE_THERE,
+                Emoji.DRIVE_BACK,
+                Emoji.SOMETHING_ELSE,
             ]
 
     def format_message(self, message: str) -> str:

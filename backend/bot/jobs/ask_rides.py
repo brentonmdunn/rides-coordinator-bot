@@ -169,9 +169,9 @@ DEFAULT_RIDE_COLOR = discord.Color.default()
 # This is the single source of truth for bot reactions (used by both
 # job runners and API helpers to exclude bot reactions from user counts)
 BOT_REACTIONS = {
-    JobName.FRIDAY: [Emoji.ROCK],
-    JobName.SUNDAY: [Emoji.BURGER, Emoji.HOUSE, Emoji.EIGHT_SPOKED_ASTERISK],
-    JobName.SUNDAY_CLASS: [Emoji.BOOK],
+    JobName.FRIDAY: [Emoji.FRIDAY_FELLOWSHIP],
+    JobName.SUNDAY: [Emoji.LUNCH, Emoji.NO_LUNCH, Emoji.SOMETHING_ELSE],
+    JobName.SUNDAY_CLASS: [Emoji.SUNDAY_CLASS],
 }
 
 

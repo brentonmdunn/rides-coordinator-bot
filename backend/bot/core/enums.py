@@ -204,25 +204,26 @@ class Emoji(StrEnum):
     """Centralized emoji constants used for reactions and display."""
 
     # Ride-type reactions
-    BURGER = "🍔"
-    HOUSE = "🏠"
-    EIGHT_SPOKED_ASTERISK = "✳️"
-    ROCK = "🪨"
-    BOOK = "📖"
+    LUNCH = "🍔"
+    NO_LUNCH = "🏠"
+    SOMETHING_ELSE = "✳️"
+    FRIDAY_FELLOWSHIP = "🪨"
+    SUNDAY_CLASS = "📖"
 
     # Driver reactions
-    THUMBS_UP = "👍"
-    CROSS_MARK = "❌"
-    COUNTERCLOCKWISE = "🔄"
-    RIGHT_ARROW = "➡️"
-    LEFT_ARROW = "⬅️"
+    CAN_DRIVE = "👍"
+    CANNOT_DRIVE = "❌"
+    EITHER_NO_PREFERENCE = "🔄"
+    DRIVE_THERE = "➡️"
+    DRIVE_BACK = "⬅️"
 
     # Status indicators
     CHECK_MARK = "✅"
 
     # Housing group display
-    SCHOOL = "🏫"
-    HOUSE_WITH_GARDEN = "🏡"
+    SCHOLARS = "🏫"
+    WARREN_PCYN = "🏠"
+    RITA = "🏡"
     GLOBE = "🌍"
 
 

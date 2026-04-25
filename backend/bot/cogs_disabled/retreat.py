@@ -143,19 +143,19 @@ class Retreat(commands.Cog):
                 "count": 0,
                 "people": "",
                 "filter": SCHOLARS_LOCATIONS,
-                "emoji": Emoji.SCHOOL,
+                "emoji": Emoji.SCHOLARS,
             },
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "people": "",
                 "filter": ["warren", "pepper canyon"],
-                "emoji": Emoji.HOUSE,
+                "emoji": Emoji.WARREN_PCYN,
             },
             "Rita + Eighth": {
                 "count": 0,
                 "people": "",
                 "filter": ["rita", "eighth"],
-                "emoji": Emoji.HOUSE_WITH_GARDEN,
+                "emoji": Emoji.RITA,
             },
             "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": Emoji.GLOBE},
         }
