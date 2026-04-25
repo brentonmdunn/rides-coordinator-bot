@@ -11,10 +11,6 @@ function SystemActions() {
     const invalidateMutation = useMutation({
         mutationFn: async () => {
             const res = await apiFetch('/api/cache/invalidate', { method: 'POST' })
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}))
-                throw new Error(data.detail || 'Failed to invalidate cache')
-            }
             return res.json()
         },
     })

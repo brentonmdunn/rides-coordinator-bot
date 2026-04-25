@@ -26,9 +26,6 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
         queryKey: ['rideCoverage', rideType],
         queryFn: async () => {
             const response = await apiFetch(`/api/check-pickups/${rideType}`)
-            if (!response.ok) {
-                throw new Error('Failed to load ride coverage')
-            }
             return response.json()
         },
         // Cache data for 5 minutes to prevent excessive Discord API calls
@@ -141,9 +138,6 @@ function RideCoverageCheck() {
         queryKey: ['rideCoverage', currentRideType],
         queryFn: async () => {
             const response = await apiFetch(`/api/check-pickups/${currentRideType}`)
-            if (!response.ok) {
-                throw new Error('Failed to check message')
-            }
             return response.json()
         },
         staleTime: 5 * 60 * 1000,
@@ -157,9 +151,6 @@ function RideCoverageCheck() {
             const response = await apiFetch('/api/check-pickups/sync', {
                 method: 'POST'
             })
-            if (!response.ok) {
-                throw new Error('Failed to sync ride coverage')
-            }
             return response.json()
         },
         onSuccess: () => {

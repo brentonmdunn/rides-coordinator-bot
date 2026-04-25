@@ -28,9 +28,6 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
         queryFn: async () => {
             // ... unchanged
             const response = await apiFetch('/api/ask-rides/status')
-            if (!response.ok) {
-                throw new Error('Failed to load ask rides status')
-            }
             return response.json()
         }
     })
@@ -40,10 +37,6 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
             const response = await apiFetch('/api/ask-rides/send-now', {
                 method: 'POST',
             })
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}))
-                throw new Error(data.detail || 'Failed to send messages')
-            }
             return response.json()
         },
         onSuccess: () => {

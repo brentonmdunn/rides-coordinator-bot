@@ -92,7 +92,6 @@ function RouteBuilder() {
         queryKey: ['driver-reactions', driverDay],
         queryFn: async () => {
             const res = await apiFetch(`/api/check-pickups/driver-reactions/${driverDay}`)
-            if (!res.ok) throw new Error('Failed to load driver reactions')
             return res.json()
         },
         staleTime: 5 * 60 * 1000,
@@ -114,7 +113,6 @@ function RouteBuilder() {
         queryKey: ['user-preferences'],
         queryFn: async () => {
             const res = await apiFetch('/api/me/preferences')
-            if (!res.ok) throw new Error('Failed to load preferences')
             return res.json()
         },
         staleTime: Infinity,
@@ -135,7 +133,6 @@ function RouteBuilder() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ show_map_labels: value }),
             })
-            if (!res.ok) throw new Error('Failed to save preference')
             return res.json() as Promise<UserPreferences>
         },
         onSuccess: (data) => {

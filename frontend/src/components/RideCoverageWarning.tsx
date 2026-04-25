@@ -10,9 +10,6 @@ function RideCoverageWarning() {
         queryKey: ['rideCoverage', 'friday'],
         queryFn: async () => {
             const response = await apiFetch('/api/check-pickups/friday')
-            if (!response.ok) {
-                throw new Error('Failed to check Friday coverage')
-            }
             return response.json()
         },
         staleTime: 5 * 60 * 1000,
@@ -26,9 +23,6 @@ function RideCoverageWarning() {
         queryKey: ['rideCoverage', 'sunday'],
         queryFn: async () => {
             const response = await apiFetch('/api/check-pickups/sunday')
-            if (!response.ok) {
-                throw new Error('Failed to check Sunday coverage')
-            }
             return response.json()
         },
         staleTime: 5 * 60 * 1000,

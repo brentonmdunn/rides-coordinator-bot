@@ -30,9 +30,6 @@ function FeatureFlagsManager() {
         queryKey: ['featureFlags'],
         queryFn: async () => {
             const response = await apiFetch('/api/feature-flags')
-            if (!response.ok) {
-                throw new Error('Failed to load feature flags')
-            }
             return response.json()
         }
     })

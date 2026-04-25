@@ -45,7 +45,6 @@ function UserManagement() {
         queryKey: ['adminUsers'],
         queryFn: async () => {
             const res = await apiFetch('/api/admin/users')
-            if (!res.ok) throw new Error('Failed to load users')
             return res.json()
         },
     })
@@ -57,10 +56,6 @@ function UserManagement() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ role }),
             })
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}))
-                throw new Error(data.detail || 'Failed to update role')
-            }
             return res.json()
         },
         onSuccess: () => {
