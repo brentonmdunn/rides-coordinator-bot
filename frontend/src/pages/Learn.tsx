@@ -131,6 +131,7 @@ function Learn() {
                                     ['Ask Rides Status Dashboard', 'Overview of whether rides request was sent out and reaction summary'],
                                     ['Ask Rides Reactions', 'Names of people who reacted for a ride'],
                                     ['Driver Reactions', 'Names of drivers who reacted to give a ride'],
+                                    ['Ride Coverage Check', 'Tracks whether each rider has been assigned to a driver'],
                                     ['List Pickups', 'Pickup locations of people who reacted for a ride'],
                                     ['Group Rides', 'Automatically groups rides and creates routes (does not always work but is a good starting place)'],
                                     ['Route Builder', 'Manually create routes'],
