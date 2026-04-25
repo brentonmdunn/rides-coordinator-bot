@@ -38,7 +38,10 @@ async def test_sync_locations(monkeypatch):
         b"Name,Discord Username,Year,Location,Driver\nAlice,alice,2025,Revelle,Yes"
     )
 
-    monkeypatch.setattr("requests.get", MagicMock(return_value=mock_response))
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.get = AsyncMock(return_value=mock_response)
+    monkeypatch.setattr("httpx.AsyncClient", MagicMock(return_value=mock_client))
     monkeypatch.setattr("bot.services.locations_service.LSCC_PPL_CSV_URL", "http://example.com")
 
     mock_sync = AsyncMock()

@@ -1,7 +1,6 @@
 """Service for location-related operations."""
 
 import csv
-import gc
 import io
 import logging
 import os
@@ -9,7 +8,7 @@ from collections import defaultdict
 from collections.abc import Callable
 
 import discord
-import requests
+import httpx
 from dotenv import load_dotenv
 
 from bot.core.database import AsyncSessionLocal
@@ -70,7 +69,8 @@ class LocationsService:
         if not LSCC_PPL_CSV_URL:
             raise Exception("LSCC_PPL_CSV_URL environment variable not set.")
 
-        response = requests.get(LSCC_PPL_CSV_URL)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(LSCC_PPL_CSV_URL)
 
         if response.status_code != 200:
             raise Exception("Failed to retrieve data.")
@@ -111,9 +111,6 @@ class LocationsService:
         async with AsyncSessionLocal() as session:
             await LocationsRepository.sync_locations(session, locations_to_add)
 
-        reader = None
-        locations_to_add = None
-        gc.collect()
         logger.info("Finished syncing locations csv with table.")
 
     def _verify_year(self, year: str) -> bool:

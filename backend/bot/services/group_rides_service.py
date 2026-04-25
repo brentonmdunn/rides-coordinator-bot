@@ -5,8 +5,6 @@ import logging
 from datetime import datetime, time, timedelta
 
 import discord
-
-# from langchain_google_genai import ChatGoogleGenerativeAI # Removed
 from rapidfuzz import fuzz, process
 
 from bot.core.enums import (
@@ -20,8 +18,6 @@ from bot.core.enums import (
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.schemas import (
     Identity,
-    # LLMOutputError, # Removed
-    # LLMOutputNominal, # Removed
     LocationQuery,
     Passenger,
 )
@@ -29,20 +25,10 @@ from bot.repositories.group_rides_repository import GroupRidesRepository
 from bot.services.llm_service import LLMService
 from bot.services.locations_service import LocationsService
 from bot.utils.constants import get_map_url
-
-# from bot.utils.genai.prompt import (
-#     CUSTOM_INSTRUCTIONS,
-#     GROUP_RIDES_PROMPT,
-#     GROUP_RIDES_PROMPT_LEGACY,
-#     PROMPT_EPILOGUE,
-# )
 from bot.utils.locations import LOCATIONS_MATRIX, lookup_time
 from bot.utils.parsing import get_message_and_embed_content, parse_time
 
 logger = logging.getLogger(__name__)
-
-# LLM_MODEL = "gemini-2.5-pro"
-# LLM_MODEL = "gemini-2.5-flash"
 
 PICKUP_ADJUSTMENT = 1
 
@@ -313,7 +299,6 @@ class GroupRidesService:
     def __init__(self, bot):
         """Initialize the GroupRidesService."""
         self.bot = bot
-        # self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
         self.llm_service = LLMService()
         self.locations_service = LocationsService(bot)
         self.repo = GroupRidesRepository(bot)
