@@ -2,10 +2,9 @@
 
 import asyncio
 import logging
-from datetime import datetime, time, timedelta
+from datetime import time
 
 import discord
-from rapidfuzz import fuzz, process
 
 from bot.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
@@ -16,21 +15,25 @@ from bot.core.enums import (
     PickupLocations,
 )
 from bot.core.error_reporter import send_error_to_discord
-from bot.core.schemas import (
-    Identity,
-    LocationQuery,
-    Passenger,
-)
+from bot.core.schemas import Identity, Passenger
 from bot.repositories.group_rides_repository import GroupRidesRepository
 from bot.services.llm_service import LLMService
 from bot.services.locations_service import LocationsService
-from bot.utils.constants import get_map_url
-from bot.utils.locations import LOCATIONS_MATRIX, lookup_time
-from bot.utils.parsing import get_message_and_embed_content, parse_time
+from bot.services.ride_grouping import (
+    LocationsPeopleType,
+    PassengersByLocation,
+    count_tuples,
+    create_output,
+    is_enough_capacity,
+    llm_input_drivers,
+    llm_input_pickups,
+    parse_numbers,
+)
+from bot.services.route_service import RouteService
+from bot.utils.locations import LOCATIONS_MATRIX
+from bot.utils.parsing import get_message_and_embed_content
 
 logger = logging.getLogger(__name__)
-
-PICKUP_ADJUSTMENT = 1
 
 EVENT_END_LEAVE_TIMES: dict[JobName, time] = {
     JobName.SUNDAY: time(hour=10, minute=10),
@@ -51,247 +54,6 @@ living_to_pickup = {
     CampusLivingLocations.WARREN: PickupLocations.WARREN_EQL,
 }
 
-LocationsPeopleType = dict[str, list[tuple[str, str]]]
-PassengersByLocation = dict[PickupLocations, list[Passenger]]
-
-
-def parse_numbers(s: str) -> list[int]:
-    """
-    Parses a string of single-digit numbers and returns a list of integers.
-
-    The input string can have numbers separated by spaces or no spaces at all.
-    Each number in the input string must be a single digit from 0 to 9.
-
-    Example input: "4 4 4" or "444"
-
-    Args:
-        s (str): The input string.
-
-    Returns:
-        list[int]: A list of integers.
-    """
-    # Remove all spaces from the string
-    cleaned_string = s.replace(" ", "")
-
-    return [int(char) for char in cleaned_string]
-
-
-def find_passenger(locations_people: PassengersByLocation, person: str, location: str) -> Passenger:
-    """
-    Finds a passenger object by name and location.
-
-    Args:
-        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
-        person (str): The name of the person to find.
-        location (str): The location key to search in.
-
-    Returns:
-        Passenger: The Passenger object if found, otherwise None.
-    """
-    if location in locations_people:
-        for p in locations_people[location]:
-            if p.identity.name == person:
-                return p
-    logger.warning(f"None was returned for {locations_people=} {person=}")
-    return None
-
-
-def count_tuples(data_dict: PassengersByLocation) -> int:
-    """
-    Counts the total number of passengers across all locations.
-
-    Args:
-        data_dict (PassengersByLocation): Dictionary of passengers grouped by location.
-
-    Returns:
-        int: The total count of passengers.
-    """
-    return sum(len(people_list) for people_list in data_dict.values())
-
-
-def is_enough_capacity(
-    driver_capacity_list: list[int], locations_people: PassengersByLocation
-) -> bool:
-    """
-    Checks if there is enough driver capacity for all passengers.
-
-    Args:
-        driver_capacity_list (list[int]): List of capacities for each driver.
-        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
-
-    Returns:
-        bool: True if total capacity is greater than or equal to passenger count, False otherwise.
-    """
-    rider_count = count_tuples(locations_people)
-    return sum(driver_capacity_list) >= rider_count
-
-
-def calculate_pickup_time(
-    curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int
-) -> datetime.time:
-    """
-    Calculates the pickup time based on the previous location and travel time.
-
-    Args:
-        curr_leave_time (datetime.time): The leave time from the previous location.
-        grouped_by_location (list): List of passenger groups.
-        location (str): The current pickup location.
-        offset (int): The offset index for the previous location.
-
-    Returns:
-        datetime.time: The calculated pickup time.
-    """
-    time_between = PICKUP_ADJUSTMENT + lookup_time(
-        LocationQuery(
-            start_location=grouped_by_location[len(grouped_by_location) - offset][
-                0
-            ].pickup_location,
-            end_location=location,
-        )
-    )
-    dummy_datetime = datetime.combine(datetime.today(), curr_leave_time)
-    new_datetime = dummy_datetime - timedelta(minutes=time_between)
-    return new_datetime.time()
-
-
-def llm_input_drivers(driver_capacity: list[int]) -> str:
-    """
-    Formats driver capacity data for LLM input.
-
-    Args:
-        driver_capacity (list[int]): List of driver capacities.
-
-    Returns:
-        str: A formatted string describing driver capacities.
-    """
-    return ", ".join(
-        f"Driver{i} has capacity {capacity}" for i, capacity in enumerate(driver_capacity)
-    )
-
-
-def llm_input_pickups(locations_people: PassengersByLocation) -> str:
-    """
-    Formats pickup location data for LLM input.
-
-    Args:
-        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
-
-    Returns:
-        str: A formatted string describing pickup locations and passengers.
-    """
-    return "\n".join(
-        f"{location}: {', '.join(person.identity.name for person in locations_people[location])}"
-        for location in locations_people
-    ) + ("\n" if locations_people else "")
-
-
-def create_output(
-    llm_result: dict[str, list[dict[str, str]]],
-    locations_people: PassengersByLocation,
-    end_leave_time: datetime.time,
-    off_campus: LocationsPeopleType,
-) -> list[str]:
-    """
-    Creates the final output messages based on the LLM result.
-
-    Args:
-        llm_result (dict[str, list[dict[str, str]]]): The result from the LLM.
-        locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
-        end_leave_time (datetime.time): The target arrival time.
-        off_campus (LocationsPeopleType): Dictionary of off-campus passengers.
-
-    Returns:
-        list[str]: A list of formatted output strings.
-    """
-    overall_summary = "==== summary ====\n"
-
-    # Create O(1) lookup map for passengers by name to avoid repeated O(N) searches
-    passenger_lookup = {
-        passenger.identity.name: passenger
-        for passengers in locations_people.values()
-        for passenger in passengers
-    }
-    output_list = []
-
-    for driver_id in llm_result:
-        curr_leave_time = end_leave_time
-        grouped_by_location: list[list[Passenger]] = []
-        curr_location: list[Passenger] = []
-
-        for obj in llm_result[driver_id]:
-            person_name = obj["name"]
-            location = obj["location"]
-
-            passenger = passenger_lookup.get(person_name)
-            if not passenger:
-                logger.warning(f"Passenger {person_name} not found in lookup map")
-                continue
-
-            # New group or part of same group as prev
-            if len(curr_location) == 0 or location == curr_location[-1].pickup_location:
-                curr_location.append(passenger)
-            # Need to end curr group and create new group
-            else:
-                grouped_by_location.append(curr_location)
-                curr_location: list[Passenger] = []
-                curr_location.append(passenger)
-
-        grouped_by_location.append(curr_location)
-
-        drive_formatted = []
-        drive_summary = []
-
-        # grouped_by_location is in order by who to pickup first. Need it
-        # reversed so can calculate pickup time backwards from goal leave time
-        for idx, users_at_location in enumerate(reversed(grouped_by_location)):
-            usernames_at_location = [
-                p.identity.username if p.identity.username is not None else p.identity.name
-                for p in users_at_location
-            ]
-            names_at_location = [p.identity.name for p in users_at_location]
-
-            pickup_location = users_at_location[0].pickup_location
-
-            if idx != 0:
-                curr_leave_time = calculate_pickup_time(
-                    curr_leave_time, grouped_by_location, pickup_location, idx
-                )
-
-            base_string = (
-                f"{' '.join(usernames_at_location)} "
-                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
-                f"{pickup_location}"
-            )
-
-            # Add google maps link if we have it
-            map_url = get_map_url(pickup_location)
-            if map_url:
-                formatted_string = f"{base_string} ([Google Maps]({map_url}))"
-            else:
-                formatted_string = base_string
-
-            drive_formatted.append(formatted_string)
-            drive_summary.append(
-                f"[{len(names_at_location)}] "
-                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} "
-                f"{pickup_location.split()[0]}"
-            )
-
-        overall_summary += f"- {' > '.join(reversed(drive_summary))}\n"
-
-        copy_str = f"drive: {', '.join(reversed(drive_formatted))}\n"
-        output_list.append(copy_str)
-        output_list.append(f"```\n{copy_str}\n```")
-
-    if len(off_campus) != 0:
-        overall_summary += "- TODO: off campus\n"
-        for key in off_campus:
-            overall_summary += f"""  - {key}: {", ".join([f"{person[0]} (`@{person[1]}`)" for person in off_campus[key]])}\n"""
-
-    overall_summary += "================="
-    output_list.insert(0, overall_summary)
-    return output_list
-
 
 class GroupRidesService:
     """Service for handling group rides logic and LLM interaction."""
@@ -302,6 +64,7 @@ class GroupRidesService:
         self.llm_service = LLMService()
         self.locations_service = LocationsService(bot)
         self.repo = GroupRidesRepository(bot)
+        self._route_service = RouteService()
 
     @staticmethod
     def _get_living_location(location: str) -> CampusLivingLocations:
@@ -314,8 +77,6 @@ class GroupRidesService:
         Returns:
             CampusLivingLocations: The corresponding CampusLivingLocations enum member.
         """
-        # Workaround since capitalization is not the same between services
-        # Fix is issue #107 https://github.com/brentonmdunn/rides-coordinator-bot/issues/107
         if location.lower() == "erc":
             return CampusLivingLocations.ERC
         return CampusLivingLocations(location.title())
@@ -523,112 +284,17 @@ class GroupRidesService:
             await interaction.followup.send(f"Error: {e!s}")
             return
 
-        await interaction.followup.send(output[0])  # Need one message to respond to previous defer
-        # Individual messages allow for easy copy paste
-        # Followups reply to the initial response and it looks bad
+        await interaction.followup.send(output[0])
         for message in output[1:]:
             await interaction.channel.send(message)
 
     def get_pickup_location_fuzzy(self, input_loc: str) -> PickupLocations | None:
-        """
-        Get the fuzzy matched pickup location from an input string.
-
-        Args:
-            input_loc (str): The input location string.
-
-        Returns:
-            PickupLocations | None: The matched pickup location or None if no match is found.
-        """
-        choices = {e.value: e for e in PickupLocations}
-
-        # --- PASS 1: High Precision ---
-        # Checks for whole words, handles reordering ("bamboo erc" -> "ERC... bamboo")
-        result = process.extractOne(
-            input_loc,
-            choices.keys(),
-            scorer=fuzz.token_sort_ratio,
-            score_cutoff=65,  # Keep this relatively high to avoid bad guesses
-        )
-
-        if result:
-            return choices[result[0]]
-
-        # --- PASS 2: Fallback (Partial Matching) ---
-        # "If a match cannot be found then try to find best match"
-        # This handles substrings and typos ("seveneth" -> "Seventh mail room")
-        result = process.extractOne(
-            input_loc,
-            choices.keys(),
-            scorer=fuzz.partial_ratio,
-            score_cutoff=60,  # Slightly lower cutoff for the fallback
-        )
-
-        if result:
-            logger.debug(f"{result=}")
-            logger.debug(f"Fallback match: '{input_loc}' -> '{result[0]}' (Score: {result[1]})")
-            return choices[result[0]]
-
-        return None
+        """Delegates to RouteService.get_pickup_location_fuzzy."""
+        return RouteService.get_pickup_location_fuzzy(input_loc)
 
     def make_route(self, locations: str, leave_time: str) -> str:
-        """
-        Makes route based on specified locations.
-
-        Args:
-            locations: The locations to make a route for.
-            leave_time: The leave time for the route.
-
-        Returns:
-            The route as a string.
-        """
-        curr_leave_time = parse_time(leave_time)
-        locations_list = locations.split()
-        locations_list_actual = []
-        for location in locations_list:
-            # First, try to match by enum key (e.g., "SEVENTH", "MARSHALL")
-            try:
-                actual_location = PickupLocations[location.upper()]
-                locations_list_actual.append(actual_location)
-            except KeyError:
-                # Fall back to fuzzy matching (e.g., "seventh", "marshall uppers")
-                if (actual_location := self.get_pickup_location_fuzzy(location)) is not None:
-                    locations_list_actual.append(actual_location)
-                else:
-                    raise ValueError(f"Invalid location: {location}") from None
-
-        drive_formatted: list[str] = []
-        logger.debug(f"{locations_list_actual=}")
-
-        reversed_locations = list(reversed(locations_list_actual))
-        for idx, location in enumerate(reversed_locations):
-            if idx != 0:
-                time_between = PICKUP_ADJUSTMENT + lookup_time(
-                    LocationQuery(start_location=location, end_location=reversed_locations[idx - 1])
-                )
-                logger.debug(f"{time_between=}")
-                dummy_datetime = datetime.combine(datetime.today(), curr_leave_time)
-                new_datetime = dummy_datetime - timedelta(minutes=time_between)
-                curr_leave_time = new_datetime.time()
-
-            logger.debug(f"{curr_leave_time=}")
-            logger.debug(f"{location=}")
-            base_string = (
-                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} {location.value}"
-            )
-
-            # Add google maps link if we have it
-            # Wrapping URL in <> suppresses Discord link embeds
-            map_url = get_map_url(location)
-            if map_url:
-                formatted_string = f"{base_string} ([Google Maps](<{map_url}>))"
-            else:
-                formatted_string = base_string
-
-            drive_formatted.append(formatted_string)
-
-        logger.debug(f"{drive_formatted=}")
-
-        return ", ".join(reversed(drive_formatted))
+        """Delegates to RouteService.make_route."""
+        return RouteService.make_route(locations, leave_time)
 
     async def group_rides_api(
         self,
@@ -677,7 +343,6 @@ class GroupRidesService:
             if message_id is None:
                 raise ValueError(f"Could not find the {day} rides message. It may not exist yet.")
 
-        # Ensure we have a message_id at this point
         if message_id is None:
             raise ValueError("Either message_id or day must be provided")
 
@@ -685,15 +350,7 @@ class GroupRidesService:
             message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
         )
 
-        # Separate summary and groupings for web app:
-        # - First item is the summary
-        # - Skip markdown code blocks (items starting with ```)
-        # - Return plain formatted groupings
         summary = output[0] if output else ""
-        groupings = [
-            item
-            for item in output[1:]
-            if not item.startswith("```")  # Skip markdown code blocks
-        ]
+        groupings = [item for item in output[1:] if not item.startswith("```")]
 
         return {"summary": summary, "groupings": groupings}

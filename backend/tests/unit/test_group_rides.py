@@ -5,7 +5,7 @@ import pytest
 
 from bot.core.enums import CampusLivingLocations, PickupLocations
 from bot.core.schemas import Identity, LocationQuery, Passenger
-from bot.services.group_rides_service import (
+from bot.services.ride_grouping import (
     PassengersByLocation,
     calculate_pickup_time,
     count_tuples,
@@ -229,10 +229,8 @@ class TestCalculatePickupTime:
     # The last pickup is at Warren, the one before that is at Muir.
     sample_route_so_far = [[p_warren]]  # noqa
 
-    @patch("bot.services.group_rides_service.lookup_time")
-    @patch(
-        "bot.services.group_rides_service.PICKUP_ADJUSTMENT", 2
-    )  # Mock the constant to be 2 minutes
+    @patch("bot.services.ride_grouping.lookup_time")
+    @patch("bot.services.ride_grouping.PICKUP_ADJUSTMENT", 2)  # Mock the constant to be 2 minutes
     def test_simple_calculation(self, mock_lookup_time):
         """Should correctly calculate a new pickup time by subtracting travel and adjustment time."""
         # Arrange: Mock the travel time between Innovation (the stop we are calculating)
