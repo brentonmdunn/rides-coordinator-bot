@@ -71,12 +71,15 @@ def feature_flag_enabled(feature: str, enable_logs: bool = True):
 
             feature_is_enabled = False  # Default to false
             try:
-                async with AsyncSessionLocal() as session:
-                    feature_flag = await FeatureFlagsRepository.get_feature_flag_status(
-                        session, feature
-                    )
-                if feature_flag is not None:
-                    feature_is_enabled = feature_flag
+                if feature in FeatureFlagsRepository._cache:
+                    feature_is_enabled = FeatureFlagsRepository._cache[feature]
+                else:
+                    async with AsyncSessionLocal() as session:
+                        feature_flag = await FeatureFlagsRepository.get_feature_flag_status(
+                            session, feature
+                        )
+                    if feature_flag is not None:
+                        feature_is_enabled = feature_flag
             except Exception as e:
                 if enable_logs:
                     logger.error("Error fetching feature flag '%s': %s", feature, e)

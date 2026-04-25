@@ -12,7 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Settings } from 'lucide-react'
 
 /**
- * A dashboard component that allows admins to lookup and display grouping locations 
+ * A dashboard component that allows admins to lookup and display grouping locations
  * for a specific ride event (Friday, Sunday, or via a specific Discord message ID).
  */
 function PickupLocations() {
@@ -23,11 +23,11 @@ function PickupLocations() {
     const { copiedText: copiedUsername, copyToClipboard } = useCopyToClipboard()
     const [showInfo, setShowInfo] = useState(false)
 
-    const { 
-        data: pickupData, 
-        error: pickupError, 
-        isLoading: pickupLoading, 
-        fetchPickups 
+    const {
+        data: pickupData,
+        error: pickupError,
+        isLoading: pickupLoading,
+        fetchPickups
     } = usePickups()
 
     const handleFetchPickups = async (e: React.FormEvent) => {
@@ -52,6 +52,7 @@ function PickupLocations() {
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                         title="Advanced Settings"
+                        aria-label="Advanced Settings"
                     >
                         <Settings className="h-4 w-4" />
                     </Button>
@@ -69,8 +70,8 @@ function PickupLocations() {
                     title="How to use List Pickups"
                 >
                     <ol className="list-decimal list-inside space-y-1.5">
-                        <li>Select a <span className="font-medium">Ride Type</span> (e.g., Friday Service).</li>
-                        <li>If "By Message ID" is selected, copy & paste the Discord message ID.</li>
+                        <li>Select a <span className="font-medium">Ride Type</span> (e.g., Friday Fellowship).</li>
+                        <li>If "Custom Message ID" is selected, copy & paste the Discord message ID.</li>
                         <li>Click <span className="font-medium">Fetch Pickups</span> to load the list.</li>
                         <li>Click on any person's name to copy their Discord username to your clipboard.</li>
                     </ol>

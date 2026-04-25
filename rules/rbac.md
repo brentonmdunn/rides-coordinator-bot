@@ -46,7 +46,7 @@ async def send_rides():
 ### How it Works
 - `require_admin` ensures the user is `AccountRoles.ADMIN`.
 - `require_ride_coordinator` ensures the user is `AccountRoles.RIDE_COORDINATOR` **OR HIGHER** (so Admins automatically pass this check).
-- The hierarchy is defined in `UserAccountsService.ROLE_LEVELS`. 
+- The hierarchy is defined in `UserAccountsService.ROLE_LEVELS`.
   - `admin` = 3
   - `ride_coordinator` = 2
   - `viewer` = 1
@@ -97,7 +97,7 @@ interface Props {
 
 function Controls({ canManage }: Props) {
     if (!canManage) return null // Hide entirely
-    
+
     return <button>Send Now</button>
 }
 ```
@@ -106,7 +106,7 @@ function Controls({ canManage }: Props) {
 
 ## Local Development (Testing Roles)
 
-When running locally (`APP_ENV=local`), the authentication flow is bypassed. 
+When running locally (`APP_ENV=local`), the authentication flow is bypassed.
 
 1. **Auto-Admin**: The default local user (`dev@example.com`) is automatically seeded as an Admin on startup.
 2. **Role Switcher**: The UI includes a "Dev Mode" dropdown banner at the top of the screen that allows you to instantly switch your role between Admin, Ride Coordinator, and Viewer to test different UI states without restarting the app.

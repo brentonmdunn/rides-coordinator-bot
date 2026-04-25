@@ -19,4 +19,3 @@ until [ "$(docker inspect -f '{{.State.Health.Status}}' ride-bot)" == "healthy" 
 done
 
 echo -e "\n✅ Update complete! Bot is healthy."
-

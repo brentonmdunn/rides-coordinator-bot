@@ -108,7 +108,11 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                         </li>
                         <li className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-warning"></span>
-                            <span><span className="font-medium">Will Not Send:</span> Feature is enabled, but no action is needed (e.g., no class scheduled).</span>
+                            <span><span className="font-medium">Paused:</span> The job has been paused manually. It may resume automatically on a chosen date or stay paused until resumed.</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-warning"></span>
+                            <span><span className="font-medium">Will Not Send:</span> Feature is enabled, but no action is needed (e.g., no class scheduled or a wildcard event was detected).</span>
                         </li>
                         <li className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-destructive"></span>
@@ -116,7 +120,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                         </li>
                     </ul>
                     <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-                        Use the <span className="font-medium">📨 Send now</span> button to manually trigger all ask rides messages if the scheduled send was missed (e.g. due to a service crash).
+                        Use the <span className="font-medium">⏸️ Pause</span> / <span className="font-medium">▶️ Resume</span> buttons on each card to temporarily skip a job. Use the <span className="font-medium">📨 Send now</span> button to manually trigger all ask rides messages if the scheduled send was missed (e.g. due to a service crash).
                     </p>
                 </InfoPanel>
 
@@ -169,4 +173,3 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 }
 
 export default AskRidesDashboard
-

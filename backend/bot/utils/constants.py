@@ -41,6 +41,29 @@ def get_map_url(location: PickupLocations) -> str | None:
     return f"https://www.google.com/maps?q={lat},{lng}"
 
 
+SCHOLARS_LOCATIONS = [
+    "revelle",
+    "muir",
+    "sixth",
+    "marshall",
+    "erc",
+    "seventh",
+    "new marshall",
+    "eighth",
+]
+
+WARREN_PEPPER_CANYON_LOCATIONS = [
+    "warren",
+    "pcyn",
+    "pce",
+    "pcw",
+    "pepper canyon east",
+    "pepper canyon west",
+]
+
+RITA_LOCATIONS = ["rita"]
+
+
 def get_map_links() -> dict[PickupLocations, str]:
     """
     Generate a dict of all pickup locations to their Google Maps URLs.

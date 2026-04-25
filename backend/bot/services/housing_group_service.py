@@ -5,19 +5,13 @@ import logging
 import discord
 
 from bot.core.enums import Emoji
+from bot.utils.constants import (
+    RITA_LOCATIONS,
+    SCHOLARS_LOCATIONS,
+    WARREN_PEPPER_CANYON_LOCATIONS,
+)
 
 logger = logging.getLogger(__name__)
-
-SCHOLARS_LOCATIONS = [
-    "revelle",
-    "muir",
-    "sixth",
-    "marshall",
-    "erc",
-    "seventh",
-    "new marshall",
-    "eighth",
-]
 
 
 class HousingGroupService:
@@ -45,20 +39,13 @@ class HousingGroupService:
             "Warren + Pepper Canyon": {
                 "count": 0,
                 "locations": {},
-                "filter": [
-                    "warren",
-                    "pcyn",
-                    "pce",
-                    "pcw",
-                    "pepper canyon east",
-                    "pepper canyon west",
-                ],
+                "filter": WARREN_PEPPER_CANYON_LOCATIONS,
                 "emoji": Emoji.HOUSE,
             },
             "Rita": {
                 "count": 0,
                 "locations": {},
-                "filter": ["rita"],
+                "filter": RITA_LOCATIONS,
                 "emoji": Emoji.HOUSE_WITH_GARDEN,
             },
             "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": Emoji.GLOBE},

@@ -6,6 +6,7 @@ import { Button } from './ui/button'
 import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
+import { ListSkeleton } from './LoadingSkeleton'
 import type { AskRidesReactionsData } from '../types'
 import { CopyPill } from './CopyPill'
 
@@ -96,6 +97,7 @@ function ReactionDetails() {
                         size="sm"
                         onClick={updateTypeAndFetch}
                         title="Refresh data (resets to auto)"
+                        aria-label="Refresh data"
                         className="h-8 w-8 p-0"
                         disabled={loading}
                     >
@@ -150,7 +152,7 @@ function ReactionDetails() {
                     ))}
                 </div>
 
-                {loading && <div className="text-center py-8 text-muted-foreground animate-pulse">Loading reactions...</div>}
+                {loading && <ListSkeleton rows={5} />}
 
                 {error && <ErrorMessage message={error} />}
 

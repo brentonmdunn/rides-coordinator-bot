@@ -27,6 +27,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "alembic>=1.16.0",
     "invoke>=2.2.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.3.0",
@@ -37,7 +38,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 exclude = [
-    "alembic", 
+    "alembic",
     ".git",
     "__pycache__",
     "migrations",

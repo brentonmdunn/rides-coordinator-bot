@@ -28,11 +28,11 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
             {/* Locations within this group */}
             <div className="divide-y divide-border">
                 {Object.entries(groupData.locations).map(([locationName, people]) => {
-                    const getTag = (p: { name: string, discord_username: string | null }) => 
+                    const getTag = (p: { name: string, discord_username: string | null }) =>
                         p.discord_username ? `@${p.discord_username}` : p.name;
-                    
+
                     const copySummary = people.map(p => getTag(p)).join(' ');
-                    
+
                     const isCopied = copiedUsername === copySummary;
 
                     return (
@@ -79,6 +79,7 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                                                     : ''
                                                     }`}
                                                 title={`Click to copy @${person.discord_username}`}
+                                                aria-label={`Copy @${person.discord_username} to clipboard`}
                                             >
                                                 {person.name}
                                                 {copiedUsername === "@" + person.discord_username && ' ✓'}
