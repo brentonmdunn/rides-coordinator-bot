@@ -14,7 +14,7 @@ export function usePickups() {
 
     /**
      * Fetches pickup locations from the API.
-     * 
+     *
      * @param rideType - The type of ride (e.g., 'friday', 'sunday', or 'message_id')
      * @param messageId - Required if rideType is 'message_id' to lookup specific Discord message
      * @param channelId - Optional custom channel ID to search in
