@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from bot.core.bot_instance import get_bot
-from bot.core.enums import JobName
+from bot.core.enums import ChannelIds, JobName
 from bot.core.error_reporter import send_error_to_discord
 from bot.services.group_rides_service import GroupRidesService
 
@@ -26,7 +26,8 @@ class GroupRidesRequest(BaseModel):
         default="44444", description="String of integers representing seats per driver"
     )
     channel_id: str = Field(
-        default="939950319721406464", description="Default to rides announcements channel"
+        default=str(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)),
+        description="Default to rides announcements channel",
     )
 
 

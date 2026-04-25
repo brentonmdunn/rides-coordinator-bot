@@ -10,12 +10,13 @@ import os
 from fastapi import APIRouter, HTTPException, Request
 
 from bot.core.bot_instance import get_bot
+from bot.core.enums import ChannelIds
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID", "916823070017204274"))
+DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID", str(int(ChannelIds.BOT_STUFF__BOTS))))
 
 
 @router.get("/api/hello")
