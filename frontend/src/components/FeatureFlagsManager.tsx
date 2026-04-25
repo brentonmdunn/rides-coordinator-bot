@@ -7,14 +7,11 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { FeatureFlag } from '../types'
 import { TableSkeleton } from './LoadingSkeleton'
+import { SectionCard } from './shared'
 
 interface FeatureFlagsResponse {
     flags: FeatureFlag[]
 }
-
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
-
-// ... existing imports
 
 function FeatureFlagsManager() {
     const queryClient = useQueryClient()
@@ -68,31 +65,26 @@ function FeatureFlagsManager() {
     }
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                        <span>⚙️</span>
-                        <span>Feature Flags</span>
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant={isEditMode ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setIsEditMode(!isEditMode)}
-                        >
-                            {isEditMode ? "Done" : "Edit"}
-                        </Button>
-                        <InfoToggleButton
-                            isOpen={showInfo}
-                            onClick={() => setShowInfo(!showInfo)}
-                            title="About Feature Flags"
-                        />
-
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
+        <SectionCard
+            icon="⚙️"
+            title="Feature Flags"
+            actions={
+                <>
+                    <Button
+                        variant={isEditMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsEditMode(!isEditMode)}
+                    >
+                        {isEditMode ? "Done" : "Edit"}
+                    </Button>
+                    <InfoToggleButton
+                        isOpen={showInfo}
+                        onClick={() => setShowInfo(!showInfo)}
+                        title="About Feature Flags"
+                    />
+                </>
+            }
+        >
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}
@@ -157,8 +149,7 @@ function FeatureFlagsManager() {
                         No feature flags found.
                     </p>
                 )}
-            </CardContent>
-        </Card>
+        </SectionCard>
     )
 }
 

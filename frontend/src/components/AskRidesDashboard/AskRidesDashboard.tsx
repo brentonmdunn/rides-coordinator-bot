@@ -6,9 +6,9 @@ import type { AskRidesStatus } from '../../types'
 import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import ConfirmDialog from '../ConfirmDialog'
+import { SectionCard } from '../shared'
 
 interface AskRidesDashboardProps {
     canManage: boolean
@@ -52,10 +52,11 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const askRidesError = error instanceof Error ? error.message : ''
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle><span>📅</span> Ask Rides Status Dashboard</CardTitle>
-                <div className="flex items-center gap-2">
+        <SectionCard
+            icon="📅"
+            title="Ask Rides Status Dashboard"
+            actions={
+                <>
                     {canManage && (
                         <Button
                             onClick={() => setShowConfirm(true)}
@@ -79,9 +80,9 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                         onClick={() => setShowInfo(!showInfo)}
                         title="About Dashboard Status"
                     />
-                </div>
-            </CardHeader>
-            <CardContent>
+                </>
+            }
+        >
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}
@@ -151,8 +152,6 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                         <StatusCard title="📖 Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
                     </div>
                 )}
-            </CardContent>
-
             <ConfirmDialog
                 isOpen={showConfirm}
                 title="Send rides messages now?"
@@ -161,7 +160,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                 onConfirm={handleSendNow}
                 onCancel={() => setShowConfirm(false)}
             />
-        </Card>
+        </SectionCard>
     )
 }
 

@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch, ApiError } from '../lib/api'
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
-import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import { ListSkeleton } from './LoadingSkeleton'
 import type { AskRidesReactionsData } from '../types'
 import { CopyPill } from './CopyPill'
+import { RefreshIconButton, SectionCard } from './shared'
 
 
 type MessageType = 'friday' | 'sunday' | 'sunday_class'
@@ -80,32 +79,24 @@ function ReactionDetails() {
     const selectedOption = MESSAGE_TYPES.find(t => t.value === selectedType)
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                    <span>📋</span>
-                    <span>Ask Rides Reactions</span>
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
+        <SectionCard
+            icon="📋"
+            title="Ask Rides Reactions"
+            actions={
+                <>
+                    <RefreshIconButton
                         onClick={updateTypeAndFetch}
+                        isLoading={loading}
                         title="Refresh data (resets to auto)"
-                        aria-label="Refresh data"
-                        className="h-8 w-8 p-0"
-                        disabled={loading}
-                    >
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
+                    />
                     <InfoToggleButton
                         isOpen={showInfo}
                         onClick={() => setShowInfo(!showInfo)}
                         title="About Ask Rides Reactions"
                     />
-                </div>
-            </CardHeader>
-            <CardContent>
+                </>
+            }
+        >
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}
@@ -197,8 +188,7 @@ function ReactionDetails() {
                         )}
                     </div>
                 )}
-            </CardContent>
-        </Card>
+        </SectionCard>
     )
 }
 

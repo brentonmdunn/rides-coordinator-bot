@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { RefreshCw } from 'lucide-react'
 import ConfirmDialog from './ConfirmDialog'
+import { SectionCard } from './shared'
 
 function SystemActions() {
     const [showConfirm, setShowConfirm] = useState(false)
@@ -21,14 +21,11 @@ function SystemActions() {
     }
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                    <span>⚠️</span>
-                    <span>System Actions</span>
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
+        <SectionCard
+            icon="⚠️"
+            title="System Actions"
+            titleClassName="text-red-600 dark:text-red-400"
+        >
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-sm text-slate-600 dark:text-slate-400 text-center sm:text-left">
                         Clear all cached data. This will force the system to fetch fresh data from the database and other external sources on the next request. This may temporarily increase load times.
@@ -52,7 +49,6 @@ function SystemActions() {
                         ✅ All cache entries invalidated successfully.
                     </div>
                 )}
-            </CardContent>
             <ConfirmDialog
                 isOpen={showConfirm}
                 title="Invalidate all cache entries?"
@@ -62,7 +58,7 @@ function SystemActions() {
                 onConfirm={handleInvalidate}
                 onCancel={() => setShowConfirm(false)}
             />
-        </Card>
+        </SectionCard>
     )
 }
 

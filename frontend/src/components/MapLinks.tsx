@@ -11,9 +11,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from './ui/select'
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Copy, Check, ExternalLink } from 'lucide-react'
 import { Button } from './ui/button'
+import { SectionCard } from './shared'
 import type { PickupLocationsResponse } from '../types'
 
 import { RecenterMap, MapInteractionGuard } from './MapShared'
@@ -72,14 +72,7 @@ function MapLinks() {
     const isCopied = copiedText === selectedMapUrl
 
     return (
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                    <span>📍</span>
-                    <span>Pickup Directions</span>
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
+        <SectionCard icon="📍" title="Pickup Directions" headerClassName="pb-2">
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                     Select a pickup location to view it on the map and copy the
                     Google Maps link.
@@ -213,8 +206,7 @@ function MapLinks() {
                         </div>
                     </div>
                 )}
-            </CardContent>
-        </Card>
+        </SectionCard>
     )
 }
 
