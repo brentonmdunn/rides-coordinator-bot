@@ -56,7 +56,8 @@ async def startup() -> None:
         await seed_message_schedule_pauses(session)
     async with AsyncSessionLocal() as session:
         await seed_admin_accounts(session)
-    await FeatureFlagsRepository.initialize_cache()
+    async with AsyncSessionLocal() as session:
+        await FeatureFlagsRepository.initialize_cache(session)
     await _disable_features_for_local_env()
 
 
