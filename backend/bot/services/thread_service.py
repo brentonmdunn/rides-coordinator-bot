@@ -31,6 +31,65 @@ class StarterMessageError(EventThreadError):
 class ThreadService:
     """Manages the business logic for event threads."""
 
+    @staticmethod
+    async def _get_thread_members(thread: discord.Thread) -> set[int]:
+        """Get all member IDs in a thread."""
+        try:
+            thread_members = await thread.fetch_members()
+            return {member.id for member in thread_members}
+        except discord.Forbidden:
+            logger.error(f"Missing permissions to fetch members for thread {thread.id}")
+            return set()
+        except Exception as e:
+            logger.error(f"Failed to fetch thread members: {e}")
+            return set()
+
+    @staticmethod
+    async def _add_user_to_thread(thread: discord.Thread, user: discord.Member) -> bool:
+        """Add a user to a Discord thread."""
+        try:
+            await thread.add_user(user)
+            logger.info(f"Added user {user.name} to thread {thread.name} on reaction.")
+            return True
+        except discord.Forbidden:
+            logger.error(
+                f"Failed to add user {user.name} to thread {thread.name} "
+                "due to insufficient permissions."
+            )
+            return False
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while adding user to thread: {e}")
+            return False
+
+    @staticmethod
+    async def _remove_user_from_thread(thread: discord.Thread, user: discord.Member) -> bool:
+        """Remove a user from a Discord thread."""
+        try:
+            await thread.remove_user(user)
+            logger.info(
+                f"Removed user {user.name} from thread {thread.name} after reaction removal."
+            )
+            return True
+        except discord.Forbidden:
+            logger.error(
+                f"Failed to remove user {user.name} from thread {thread.name} "
+                "due to insufficient permissions."
+            )
+            return False
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while removing user from thread: {e}")
+            return False
+
+    @staticmethod
+    async def _count_user_reactions(message: discord.Message, user_id: int) -> int:
+        """Count how many reactions a user has on a message."""
+        user_reactions = 0
+        for reaction in message.reactions:
+            async for user in reaction.users():
+                if user.id == user_id:
+                    user_reactions += 1
+        return user_reactions
+
     async def end_event_thread(self, thread_id: str) -> None:
         """
         Stops tracking an event thread.
@@ -181,12 +240,12 @@ class ThreadService:
                 logger.error(f"Could not find thread with ID {payload.message_id}")
                 return False
 
-            thread_member_ids = await EventThreadRepository.get_thread_members(thread)
+            thread_member_ids = await self._get_thread_members(thread)
 
             if user.id in thread_member_ids:
                 return False
 
-            result = await EventThreadRepository.add_user_to_thread(thread, user)
+            result = await self._add_user_to_thread(thread, user)
             if result:
                 logger.info(
                     f"add_reactor_to_thread: added user={user.name} to thread={payload.message_id}"
@@ -226,7 +285,7 @@ class ThreadService:
             logger.error(f"Could not find message with ID {payload.message_id}")
             return False
 
-        user_reactions = await EventThreadRepository.count_user_reactions(message, payload.user_id)
+        user_reactions = await self._count_user_reactions(message, payload.user_id)
 
         if user_reactions > 0:
             return False
@@ -241,12 +300,12 @@ class ThreadService:
             logger.error(f"Could not find thread with ID {payload.message_id}")
             return False
 
-        thread_member_ids = await EventThreadRepository.get_thread_members(thread)
+        thread_member_ids = await self._get_thread_members(thread)
 
         if user.id not in thread_member_ids:
             return False
 
-        result = await EventThreadRepository.remove_user_from_thread(thread, user)
+        result = await self._remove_user_from_thread(thread, user)
         if result:
             logger.info(
                 f"remove_reactor_from_thread: removed user={user.name} "

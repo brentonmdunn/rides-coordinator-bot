@@ -2,7 +2,6 @@
 
 import logging
 
-import discord
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -84,97 +83,3 @@ class EventThreadRepository:
         """
         result = await EventThreadRepository.get_by_message_id(session, message_id)
         return result is not None
-
-    @staticmethod
-    async def get_thread_members(thread: discord.Thread) -> set[int]:
-        """
-        Get all member IDs in a thread.
-
-        Args:
-            thread: The Discord thread.
-
-        Returns:
-            A set of member IDs in the thread.
-        """
-        try:
-            thread_members = await thread.fetch_members()
-            return {member.id for member in thread_members}
-        except discord.Forbidden:
-            logger.error(f"Missing permissions to fetch members for thread {thread.id}")
-            return set()
-        except Exception as e:
-            logger.error(f"Failed to fetch thread members: {e}")
-            return set()
-
-    @staticmethod
-    async def add_user_to_thread(thread: discord.Thread, user: discord.Member) -> bool:
-        """
-        Add a user to a Discord thread.
-
-        Args:
-            thread: The Discord thread.
-            user: The user to add.
-
-        Returns:
-            True if successful, False otherwise.
-        """
-        try:
-            await thread.add_user(user)
-            logger.info(f"Added user {user.name} to thread {thread.name} on reaction.")
-            return True
-        except discord.Forbidden:
-            logger.error(
-                f"Failed to add user {user.name} to thread {thread.name} "
-                "due to insufficient permissions."
-            )
-            return False
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while adding user to thread: {e}")
-            return False
-
-    @staticmethod
-    async def remove_user_from_thread(thread: discord.Thread, user: discord.Member) -> bool:
-        """
-        Remove a user from a Discord thread.
-
-        Args:
-            thread: The Discord thread.
-            user: The user to remove.
-
-        Returns:
-            True if successful, False otherwise.
-        """
-        try:
-            await thread.remove_user(user)
-            logger.info(
-                f"Removed user {user.name} from thread {thread.name} after reaction removal."
-            )
-            return True
-        except discord.Forbidden:
-            logger.error(
-                f"Failed to remove user {user.name} from thread {thread.name} "
-                "due to insufficient permissions."
-            )
-            return False
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while removing user from thread: {e}")
-            return False
-
-    @staticmethod
-    async def count_user_reactions(message: discord.Message, user_id: int) -> int:
-        """
-        Count how many reactions a user has on a message.
-
-        Args:
-            message: The Discord message.
-            user_id: The ID of the user.
-
-        Returns:
-            The number of reactions the user has on the message.
-        """
-        user_reactions = 0
-        for reaction in message.reactions:
-            async for user in reaction.users():
-                if user.id == user_id:
-                    user_reactions += 1
-        return user_reactions
