@@ -183,6 +183,11 @@
   }
 }
 
+/* Links in prose content — ensure visible in dark mode */
+.prose a {
+  @apply text-blue-600 dark:text-blue-400 underline underline-offset-2;
+}
+
 /* Global cursor customization */
 button,
 [role="button"],
