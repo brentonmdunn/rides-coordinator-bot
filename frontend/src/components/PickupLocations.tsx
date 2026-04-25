@@ -70,8 +70,8 @@ function PickupLocations() {
                     title="How to use List Pickups"
                 >
                     <ol className="list-decimal list-inside space-y-1.5">
-                        <li>Select a <span className="font-medium">Ride Type</span> (e.g., Friday Service).</li>
-                        <li>If "By Message ID" is selected, copy & paste the Discord message ID.</li>
+                        <li>Select a <span className="font-medium">Ride Type</span> (e.g., Friday Fellowship).</li>
+                        <li>If "Custom Message ID" is selected, copy & paste the Discord message ID.</li>
                         <li>Click <span className="font-medium">Fetch Pickups</span> to load the list.</li>
                         <li>Click on any person's name to copy their Discord username to your clipboard.</li>
                     </ol>
