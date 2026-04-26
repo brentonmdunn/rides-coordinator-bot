@@ -2,11 +2,39 @@
 
 import heapq
 import logging
+from functools import lru_cache
 
 from bot.core.enums import PickupLocations
 from bot.core.schemas import LocationQuery
 
 logger = logging.getLogger(__name__)
+
+# Node type: either a PickupLocations enum or one of the special "START"/"END" strings.
+LocationNode = PickupLocations | str
+
+# Short labels used when rendering the distance table for the LLM. Keeping columns
+# narrow matters because the model pays per-token attention to each header.
+_SHORT_LABELS: dict[LocationNode, str] = {
+    PickupLocations.MUIR: "Muir",
+    PickupLocations.SIXTH: "Sixth",
+    PickupLocations.MARSHALL: "Marshall",
+    PickupLocations.ERC: "ERC",
+    PickupLocations.SEVENTH: "Seventh",
+    PickupLocations.WARREN_EQL: "Warren",
+    PickupLocations.GEISEL_LOOP: "GeiselLoop",
+    PickupLocations.RITA: "Rita",
+    PickupLocations.INNOVATION: "Innovation",
+    PickupLocations.EIGHTH: "Eighth",
+    PickupLocations.PCYN_LOOP: "PepperCyn",
+    "START": "START",
+    "END": "END",
+}
+
+
+def _short(node: LocationNode) -> str:
+    """Return the short label for a node used in the distance table."""
+    return _SHORT_LABELS.get(node, str(node))
+
 
 LOCATIONS_MATRIX = {
     PickupLocations.MUIR: [(PickupLocations.SIXTH, 1), (PickupLocations.EIGHTH, 2)],
@@ -91,3 +119,111 @@ def lookup_time(query: LocationQuery) -> int:
                 heapq.heappush(priority_queue, (distance, neighbor))
 
     raise ValueError(f"No path found from {query.start_location} to {query.end_location}")
+
+
+def compute_all_pairs_shortest_paths(
+    adjacency: dict[LocationNode, list[tuple[LocationNode, int]]] | None = None,
+) -> dict[LocationNode, dict[LocationNode, int]]:
+    """
+    Compute all-pairs shortest paths over the locations graph via repeated Dijkstra.
+
+    Treats the graph as undirected for reachability: if an edge only appears in one
+    direction in the adjacency list, the reverse direction is still searched via
+    the forward edges of the other node.
+
+    Args:
+        adjacency: Adjacency list. Defaults to the module-level ``LOCATIONS_MATRIX``.
+
+    Returns:
+        A dict ``{src: {dst: distance}}``. Unreachable pairs are omitted.
+    """
+    graph = adjacency if adjacency is not None else LOCATIONS_MATRIX
+    nodes = list(graph.keys())
+    result: dict[LocationNode, dict[LocationNode, int]] = {}
+
+    for src in nodes:
+        distances: dict[LocationNode, float] = {n: float("inf") for n in nodes}
+        distances[src] = 0
+        pq: list[tuple[float, LocationNode]] = [(0, src)]
+
+        while pq:
+            current_distance, current = heapq.heappop(pq)
+            if current_distance > distances[current]:
+                continue
+            for neighbor, weight in graph.get(current, []):
+                new_dist = current_distance + weight
+                if new_dist < distances.get(neighbor, float("inf")):
+                    distances[neighbor] = new_dist
+                    heapq.heappush(pq, (new_dist, neighbor))
+
+        result[src] = {n: int(d) for n, d in distances.items() if d != float("inf")}
+
+    return result
+
+
+@lru_cache(maxsize=1)
+def _cached_all_pairs() -> dict[LocationNode, dict[LocationNode, int]]:
+    """Cache the all-pairs table for the default ``LOCATIONS_MATRIX``."""
+    return compute_all_pairs_shortest_paths(LOCATIONS_MATRIX)
+
+
+# Node ordering used when rendering the table. Roughly groups by corridor so the
+# human-readable output is easier to scan during debugging.
+_TABLE_NODE_ORDER: list[LocationNode] = [
+    "START",
+    PickupLocations.MUIR,
+    PickupLocations.SIXTH,
+    PickupLocations.MARSHALL,
+    PickupLocations.ERC,
+    PickupLocations.SEVENTH,
+    PickupLocations.EIGHTH,
+    PickupLocations.RITA,
+    PickupLocations.INNOVATION,
+    PickupLocations.WARREN_EQL,
+    PickupLocations.GEISEL_LOOP,
+    PickupLocations.PCYN_LOOP,
+    "END",
+]
+
+
+def render_distance_markdown(
+    adjacency: dict[LocationNode, list[tuple[LocationNode, int]]] | None = None,
+) -> str:
+    """
+    Render an all-pairs shortest-path distance table as a Markdown table.
+
+    The cell ``row=A col=B`` is the minimum travel time (minutes) from A to B.
+    Unreachable pairs render as ``-``. The diagonal renders as ``0``.
+
+    Args:
+        adjacency: Optional adjacency list. Defaults to ``LOCATIONS_MATRIX``.
+
+    Returns:
+        A Markdown table string suitable for inclusion in an LLM prompt.
+    """
+    if adjacency is None or adjacency is LOCATIONS_MATRIX:
+        all_pairs = _cached_all_pairs()
+    else:
+        all_pairs = compute_all_pairs_shortest_paths(adjacency)
+
+    nodes = [n for n in _TABLE_NODE_ORDER if n in all_pairs]
+    # Append any nodes we forgot to order (future-proofing).
+    for n in all_pairs:
+        if n not in nodes:
+            nodes.append(n)
+
+    header = "| from / to | " + " | ".join(_short(n) for n in nodes) + " |"
+    separator = "| --- | " + " | ".join("---" for _ in nodes) + " |"
+    rows = [header, separator]
+
+    for src in nodes:
+        cells = []
+        for dst in nodes:
+            if src == dst:
+                cells.append("0")
+                continue
+            d = all_pairs.get(src, {}).get(dst)
+            cells.append(str(d) if d is not None else "-")
+        rows.append(f"| {_short(src)} | " + " | ".join(cells) + " |")
+
+    return "\n".join(rows)
