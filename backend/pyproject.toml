@@ -89,3 +89,4 @@ ignore = [
 "bot/cogs_testing/**/*.py" = ["D"]
 "bot/jobs_disabled/**/*.py" = ["D"]
 "scripts/**/*.py" = ["T20"]
+"evals/**/*.py" = ["T20"]
