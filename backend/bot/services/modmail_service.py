@@ -23,6 +23,9 @@ _INVALID_CHANNEL_CHARS = re.compile(r"[^a-z0-9_-]+")
 _CHANNEL_NAME_PREFIX = "dm-"
 _CHANNEL_NAME_MAX_LEN = 90
 
+# A Discord user ID is an 17-20 digit integer; accept anything that fits.
+_USER_ID_RE = re.compile(r"^\d{15,25}$")
+
 
 class ModmailError(Exception):
     """Base exception for the modmail service."""
@@ -36,6 +39,17 @@ class ModmailDMForbiddenError(ModmailError):
     """Raised when the bot cannot DM a user (privacy settings, no shared guild, etc)."""
 
 
+class ModmailUserNotFoundError(ModmailError):
+    """Raised when a username/ID cannot be resolved to a Discord user."""
+
+
+class ModmailAmbiguousUserError(ModmailError):
+    """Raised when a username matches multiple users across the bot's guilds."""
+
+
+UserLike = discord.abc.User | str | int
+
+
 def _sanitize_username(username: str) -> str:
     """Sanitize a Discord username for use as a channel-name suffix."""
     lowered = username.lower()
@@ -46,7 +60,6 @@ def _sanitize_username(username: str) -> str:
 def _channel_name_for(user: discord.abc.User) -> str:
     """Build the modmail channel name for a given user."""
     suffix = _sanitize_username(user.name)
-    # Keep the user id as a disambiguator so collisions can't happen.
     name = f"{_CHANNEL_NAME_PREFIX}{suffix}-{user.id}"
     return name[:_CHANNEL_NAME_MAX_LEN]
 
@@ -127,9 +140,6 @@ class ModmailService:
 
         return overwrites
 
-    # ------------------------------------------------------------------
-    # Channel lifecycle
-    # ------------------------------------------------------------------
     def _primary_guild(self) -> discord.Guild | None:
         """Return the single guild the bot is in, or None if ambiguous."""
         guilds = list(self.bot.guilds)
@@ -137,6 +147,62 @@ class ModmailService:
             return guilds[0]
         return None
 
+    # ------------------------------------------------------------------
+    # User resolution
+    # ------------------------------------------------------------------
+    async def resolve_user(self, who: UserLike) -> discord.abc.User:
+        """
+        Resolve a user-like value into a Discord user object.
+
+        Args:
+            who: A ``discord.User``/``Member``, a user ID (``int`` or numeric
+                ``str``), or a username string. Usernames are matched against
+                members in every guild the bot is in.
+
+        Returns:
+            A Discord user object.
+
+        Raises:
+            ModmailUserNotFoundError: If no user can be resolved.
+            ModmailAmbiguousUserError: If a username matches multiple users.
+        """
+        if isinstance(who, discord.abc.User):
+            return who
+
+        if isinstance(who, int) or (isinstance(who, str) and _USER_ID_RE.match(who)):
+            user_id = int(who)
+            user = self.bot.get_user(user_id)
+            if user is not None:
+                return user
+            try:
+                return await self.bot.fetch_user(user_id)
+            except discord.NotFound as exc:
+                raise ModmailUserNotFoundError(
+                    f"No Discord user found for id={user_id}.",
+                ) from exc
+
+        if not isinstance(who, str):
+            raise ModmailUserNotFoundError(f"Cannot resolve user from {who!r}.")
+
+        # Username lookup across all guilds the bot is in.
+        needle = who.lstrip("@").lower()
+        matches: dict[int, discord.Member] = {}
+        for guild in self.bot.guilds:
+            for member in guild.members:
+                if member.name.lower() == needle or str(member).lower() == needle:
+                    matches[member.id] = member
+
+        if len(matches) == 1:
+            return next(iter(matches.values()))
+        if len(matches) > 1:
+            raise ModmailAmbiguousUserError(
+                f"Username '{who}' matches {len(matches)} users. Pass a user ID instead.",
+            )
+        raise ModmailUserNotFoundError(f"No Discord user found for username '{who}'.")
+
+    # ------------------------------------------------------------------
+    # Channel lifecycle
+    # ------------------------------------------------------------------
     async def get_or_create_channel(
         self,
         user: discord.abc.User,
@@ -171,8 +237,9 @@ class ModmailService:
                 channel = guild.get_channel(int(existing.channel_id))
                 if isinstance(channel, discord.TextChannel):
                     return channel
-                # DB row points at a channel that no longer exists; close it.
-                await ModmailRepository.mark_closed(session, existing)
+                # DB row points at a channel that no longer exists; drop it so
+                # we can re-create.
+                await ModmailRepository.delete(session, existing)
                 await session.commit()
 
         category = self._get_category(guild)
@@ -199,13 +266,12 @@ class ModmailService:
         try:
             await channel.send(
                 embed=discord.Embed(
-                    title="📬 New modmail conversation",
+                    title="📬 Modmail with this user",
                     description=(
                         f"This channel relays messages between staff and "
                         f"{user.mention} (`{user}` · `{user.id}`).\n\n"
                         "• Any non-bot message posted here is DM'd to the user.\n"
-                        "• Their DMs to the bot are mirrored here as embeds.\n"
-                        "• Run `/close-modmail` to archive this channel."
+                        "• Their DMs to the bot are mirrored here as embeds."
                     ),
                     color=discord.Color.blurple(),
                 ),
@@ -215,32 +281,60 @@ class ModmailService:
 
         return channel
 
-    async def close_channel(self, channel: discord.TextChannel) -> bool:
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+    async def dm_user(
+        self,
+        who: UserLike,
+        message: str,
+        *,
+        initiator: discord.abc.User | None = None,
+        guild: discord.Guild | None = None,
+    ) -> discord.TextChannel:
         """
-        Close and delete a modmail channel.
+        DM a user and mirror the outgoing message in their modmail channel.
+
+        Accepts a ``discord.User``/``Member``, a user ID, or a username string.
+        Creates the modmail channel if one doesn't exist yet.
 
         Args:
-            channel: The modmail channel to close.
+            who: The target user (object, ID, or username).
+            message: The message content to send.
+            initiator: Optional staff member who triggered this DM (shown in the
+                channel mirror). Defaults to the bot itself.
+            guild: The guild to use when creating a new channel.
 
         Returns:
-            True if the channel was tracked and closed, False otherwise.
-        """
-        async with AsyncSessionLocal() as session:
-            row = await ModmailRepository.get_by_channel_id(session, str(channel.id))
-            if row is None:
-                return False
-            await ModmailRepository.mark_closed(session, row)
-            await session.commit()
+            The modmail channel where the DM was mirrored.
 
-        try:
-            await channel.delete(reason="Modmail conversation closed.")
-        except discord.Forbidden:
-            logger.exception("Missing permission to delete modmail channel %s", channel.id)
-            return False
-        return True
+        Raises:
+            ModmailUserNotFoundError: If the user cannot be resolved.
+            ModmailAmbiguousUserError: If a username matches multiple users.
+            ModmailDMForbiddenError: If the user has DMs closed.
+            ModmailConfigError: If modmail is not configured.
+        """
+        user = await self.resolve_user(who)
+        channel = await self.get_or_create_channel(user, guild=guild)
+        await self._send_dm(user, message, attachments=None)
+
+        sender = initiator if initiator is not None else self.bot.user
+        sender_label = str(sender) if sender is not None else "Bot"
+        sender_icon = (
+            sender.display_avatar.url if sender is not None and sender.display_avatar else None
+        )
+
+        embed = discord.Embed(
+            description=message or "*(no text)*",
+            color=discord.Color.blurple(),
+        )
+        embed.set_author(name=f"{sender_label} → {user}", icon_url=sender_icon)
+        embed.set_footer(text=f"Delivered via DM · User ID: {user.id}")
+        await channel.send(embed=embed)
+        return channel
 
     # ------------------------------------------------------------------
-    # Message relay
+    # Message relay (listener-driven)
     # ------------------------------------------------------------------
     async def relay_dm_to_channel(self, message: discord.Message) -> None:
         """
@@ -305,7 +399,7 @@ class ModmailService:
         if row is None:
             return
 
-        user = await self._resolve_user(row)
+        user = await self._resolve_user_row(row)
         if user is None:
             await channel.send(
                 embed=discord.Embed(
@@ -355,45 +449,10 @@ class ModmailService:
         with contextlib.suppress(discord.Forbidden, discord.NotFound):
             await message.delete()
 
-    async def start_conversation(
-        self,
-        user: discord.abc.User,
-        content: str,
-        initiator: discord.abc.User,
-        *,
-        guild: discord.Guild | None = None,
-    ) -> discord.TextChannel:
-        """
-        Start a bot-initiated DM conversation with a user.
-
-        Args:
-            user: The user to DM.
-            content: The message content to send.
-            initiator: The staff member who kicked off this conversation.
-            guild: The guild to create the channel in.
-
-        Returns:
-            The modmail channel used for the conversation.
-        """
-        channel = await self.get_or_create_channel(user, guild=guild)
-        await self._send_dm(user, content, attachments=None)
-
-        embed = discord.Embed(
-            description=content or "*(no text)*",
-            color=discord.Color.blurple(),
-        )
-        embed.set_author(
-            name=f"{initiator} → {user}",
-            icon_url=initiator.display_avatar.url if initiator.display_avatar else None,
-        )
-        embed.set_footer(text=f"Bot-initiated DM · User ID: {user.id}")
-        await channel.send(embed=embed)
-        return channel
-
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-    async def _resolve_user(self, row: ModmailChannels) -> discord.User | None:
+    async def _resolve_user_row(self, row: ModmailChannels) -> discord.User | None:
         """Best-effort fetch of a Discord user for a modmail row."""
         user_id = int(row.user_id)
         user = self.bot.get_user(user_id)

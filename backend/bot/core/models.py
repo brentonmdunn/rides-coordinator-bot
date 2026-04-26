@@ -126,7 +126,6 @@ class ModmailChannels(Base):
     channel_id: Mapped[str] = mapped_column(unique=True, index=True)
     username: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    closed_at: Mapped[datetime | None]
 
 
 class UserPreferences(Base):

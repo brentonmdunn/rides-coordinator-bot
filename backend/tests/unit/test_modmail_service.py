@@ -1,13 +1,16 @@
 """Unit tests for the modmail service helpers."""
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
+import discord
 import pytest
 
 from bot.services.modmail_service import (
+    ModmailAmbiguousUserError,
     ModmailConfigError,
     ModmailService,
+    ModmailUserNotFoundError,
     _channel_name_for,
     _sanitize_username,
 )
@@ -72,7 +75,6 @@ class TestGetCategory:
         monkeypatch.setenv("MODMAIL_CATEGORY_ID", "111")
         guild = MagicMock()
         guild.name = "Test"
-        # get_channel returns something that isn't a CategoryChannel
         guild.get_channel = MagicMock(return_value=object())
         svc = ModmailService(bot=MagicMock())
         with pytest.raises(ModmailConfigError):
@@ -100,3 +102,86 @@ class TestPrimaryGuild:
         bot.guilds = []
         svc = ModmailService(bot=bot)
         assert svc._primary_guild() is None
+
+
+def _fake_member(name: str, user_id: int) -> MagicMock:
+    """Build a MagicMock that isinstance-passes as discord.abc.User."""
+    member = MagicMock(spec=discord.Member)
+    member.id = user_id
+    member.name = name
+    member.__str__ = lambda self: self.name  # type: ignore[assignment]
+    return member
+
+
+class TestResolveUser:
+    """Tests for ModmailService.resolve_user."""
+
+    @pytest.mark.asyncio
+    async def test_passes_through_user_object(self):
+        member = _fake_member("alice", 1)
+        svc = ModmailService(bot=MagicMock())
+        assert await svc.resolve_user(member) is member
+
+    @pytest.mark.asyncio
+    async def test_resolves_by_numeric_id_from_cache(self):
+        member = _fake_member("alice", 42)
+        bot = MagicMock()
+        bot.get_user = MagicMock(return_value=member)
+        bot.fetch_user = AsyncMock()
+        svc = ModmailService(bot=bot)
+        assert await svc.resolve_user(42) is member
+        bot.fetch_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_resolves_by_numeric_string_id(self):
+        member = _fake_member("alice", 424242424242424242)
+        bot = MagicMock()
+        bot.get_user = MagicMock(return_value=None)
+        bot.fetch_user = AsyncMock(return_value=member)
+        svc = ModmailService(bot=bot)
+        assert await svc.resolve_user("424242424242424242") is member
+        bot.fetch_user.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_resolves_by_username_single_match(self):
+        member = _fake_member("alice", 7)
+        guild = MagicMock()
+        guild.members = [member]
+        bot = MagicMock()
+        bot.guilds = [guild]
+        svc = ModmailService(bot=bot)
+        assert await svc.resolve_user("alice") is member
+
+    @pytest.mark.asyncio
+    async def test_username_not_found_raises(self):
+        guild = MagicMock()
+        guild.members = []
+        bot = MagicMock()
+        bot.guilds = [guild]
+        svc = ModmailService(bot=bot)
+        with pytest.raises(ModmailUserNotFoundError):
+            await svc.resolve_user("nobody")
+
+    @pytest.mark.asyncio
+    async def test_username_ambiguous_raises(self):
+        m1 = _fake_member("alice", 1)
+        m2 = _fake_member("alice", 2)
+        guild_a = MagicMock()
+        guild_a.members = [m1]
+        guild_b = MagicMock()
+        guild_b.members = [m2]
+        bot = MagicMock()
+        bot.guilds = [guild_a, guild_b]
+        svc = ModmailService(bot=bot)
+        with pytest.raises(ModmailAmbiguousUserError):
+            await svc.resolve_user("alice")
+
+    @pytest.mark.asyncio
+    async def test_accepts_leading_at(self):
+        member = _fake_member("alice", 9)
+        guild = MagicMock()
+        guild.members = [member]
+        bot = MagicMock()
+        bot.guilds = [guild]
+        svc = ModmailService(bot=bot)
+        assert await svc.resolve_user("@alice") is member
