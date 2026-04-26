@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, MessageSquare } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import type { AccountRole } from '../types'
@@ -47,6 +47,15 @@ function Home() {
                         description="Manage rides, view pickups, and configure bot settings all in one place."
                         actions={
                             <>
+                                {canManage && (
+                                    <Link
+                                        to="/modmail"
+                                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors"
+                                    >
+                                        <MessageSquare className="w-4 h-4" />
+                                        Modmail
+                                    </Link>
+                                )}
                                 <Link
                                     to="/learn"
                                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors"

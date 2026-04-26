@@ -8,6 +8,7 @@ import Home from './pages/Home.tsx'
 import { ThemeProvider } from "./components/theme-provider"
 
 const Learn = lazy(() => import('./pages/Learn.tsx'))
+const Modmail = lazy(() => import('./pages/Modmail.tsx'))
 
 const queryClient = new QueryClient()
 
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/learn" element={<Learn />} />
+                <Route path="/modmail" element={<Modmail />} />
               </Routes>
             </Suspense>
           </BrowserRouter>

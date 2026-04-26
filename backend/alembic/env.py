@@ -14,6 +14,8 @@ from bot.core.models import (  # noqa: F401
     FeatureFlags,
     Locations,
     MessageSchedulePause,
+    ModmailChannels,
+    ModmailMessages,
     NonDiscordRides,
     RideCoverage,
     UserAccount,

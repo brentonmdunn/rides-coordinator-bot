@@ -68,6 +68,7 @@ class FeatureFlagNames(StrEnum):
     LOG_REACTIONS = "log_reactions"
     EVENT_THREADS = "event_threads"
     LATE_RIDES_REACT = "late_rides_react"
+    MODMAIL = "modmail"
 
 
 class JobName(StrEnum):
@@ -177,6 +178,14 @@ class RideOption(StrEnum):
     SUNDAY_DROPOFF_BACK = "Sunday dropoff back"
     SUNDAY_DROPOFF_LUNCH = "Sunday dropoff lunch"
     FRIDAY = "Friday"
+
+
+class ModmailSenderType(StrEnum):
+    """Identifies who sent a modmail message."""
+
+    USER = "user"
+    ADMIN = "admin"
+    BOT = "bot"
 
 
 class AccountRoles(StrEnum):
