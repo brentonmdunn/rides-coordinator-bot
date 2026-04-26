@@ -31,7 +31,6 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
-        sa.Column("closed_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("user_id"),
         sa.UniqueConstraint("channel_id"),
     )

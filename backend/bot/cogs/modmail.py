@@ -10,9 +10,12 @@ from bot.core.enums import FeatureFlagNames
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_cmd
 from bot.services.modmail_service import (
+    ModmailAmbiguousUserError,
     ModmailConfigError,
     ModmailDMForbiddenError,
     ModmailService,
+    ModmailUserNotFoundError,
+    UserLike,
 )
 from bot.utils.checks import feature_flag_enabled
 
@@ -26,8 +29,7 @@ class Modmail(commands.Cog):
     Relays DMs between users and the bot through per-user staff channels:
     - Inbound user DMs are mirrored into a dedicated channel per user.
     - Staff messages in that channel are DM'd back to the user.
-    - Staff can initiate a DM with `/dm`.
-    - `/close-modmail` archives the current modmail channel.
+    - Staff (and code) can DM a user with ``dm_user(user, message)``.
     """
 
     def __init__(self, bot: commands.Bot, modmail_service: ModmailService):
@@ -40,6 +42,40 @@ class Modmail(commands.Cog):
         """
         self.bot = bot
         self.service = modmail_service
+
+    # ------------------------------------------------------------------
+    # Public helper for other cogs / jobs
+    # ------------------------------------------------------------------
+    async def dm_user(
+        self,
+        who: UserLike,
+        message: str,
+        *,
+        initiator: discord.abc.User | None = None,
+        guild: discord.Guild | None = None,
+    ) -> discord.TextChannel:
+        """
+        DM a user and mirror the outgoing message in their modmail channel.
+
+        Thin wrapper around ``ModmailService.dm_user`` for convenient access
+        from other cogs via ``bot.get_cog("Modmail").dm_user(...)``.
+
+        Args:
+            who: The target user (``discord.User``/``Member``, user ID, or
+                username string).
+            message: The message content to send.
+            initiator: Optional staff member who triggered this DM.
+            guild: The guild to use when creating a new channel.
+
+        Returns:
+            The modmail channel where the DM was mirrored.
+        """
+        return await self.service.dm_user(
+            who,
+            message,
+            initiator=initiator,
+            guild=guild,
+        )
 
     # ------------------------------------------------------------------
     # Event listeners
@@ -75,7 +111,7 @@ class Modmail(commands.Cog):
     # ------------------------------------------------------------------
     @app_commands.command(
         name="dm",
-        description="Send a DM to a user through modmail and log it in a staff channel.",
+        description="DM a user through modmail (message is mirrored in a staff channel).",
     )
     @app_commands.describe(
         user="The user to DM.",
@@ -91,7 +127,7 @@ class Modmail(commands.Cog):
         message: str,
     ) -> None:
         """
-        Start or continue a modmail conversation by DMing a user.
+        DM a user via modmail.
 
         Args:
             interaction: The Discord interaction.
@@ -105,9 +141,9 @@ class Modmail(commands.Cog):
             return
 
         try:
-            channel = await self.service.start_conversation(
-                user=user,
-                content=message,
+            channel = await self.service.dm_user(
+                user,
+                message,
                 initiator=interaction.user,
                 guild=interaction.guild,
             )
@@ -121,41 +157,14 @@ class Modmail(commands.Cog):
                 ephemeral=True,
             )
             return
-
-        await interaction.followup.send(
-            f"✉️ DM sent to {user.mention}. Continue the conversation in {channel.mention}.",
-            ephemeral=True,
-        )
-
-    @app_commands.command(
-        name="close-modmail",
-        description="Close and delete the current modmail channel.",
-    )
-    @app_commands.checks.has_permissions(manage_channels=True)
-    @feature_flag_enabled(FeatureFlagNames.MODMAIL)
-    @log_cmd
-    async def close_modmail(self, interaction: discord.Interaction) -> None:
-        """
-        Close the modmail channel the command is invoked in.
-
-        Args:
-            interaction: The Discord interaction.
-        """
-        channel = interaction.channel
-        if not isinstance(channel, discord.TextChannel):
-            await interaction.response.send_message(
-                "This command must be used inside a modmail channel.",
-                ephemeral=True,
-            )
+        except (ModmailUserNotFoundError, ModmailAmbiguousUserError) as exc:
+            await interaction.followup.send(f"❌ {exc}", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        closed = await self.service.close_channel(channel)
-        if not closed:
-            await interaction.followup.send(
-                "This doesn't appear to be a tracked modmail channel.",
-                ephemeral=True,
-            )
+        await interaction.followup.send(
+            f"✉️ DM sent to {user.mention}. Mirrored in {channel.mention}.",
+            ephemeral=True,
+        )
 
 
 async def _feature_enabled() -> bool:
