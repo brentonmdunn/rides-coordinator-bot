@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
-import { RefreshCw } from 'lucide-react'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import { ListSkeleton } from './LoadingSkeleton'
 
 import { CopyPill } from './CopyPill'
+import { RefreshIconButton, SectionCard } from './shared'
 
 interface DriverReactionsData {
     day: string
@@ -56,32 +55,20 @@ function DriverReactions() {
     }, [updateDayAndFetch])
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                    <span>🚙</span>
-                    <span>Driver Reactions ({capitalize(activeDay)})</span>
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={updateDayAndFetch}
-                        title="Refresh data"
-                        aria-label="Refresh data"
-                        className="h-8 w-8 p-0"
-                        disabled={loading}
-                    >
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
+        <SectionCard
+            icon="🚙"
+            title={`Driver Reactions (${capitalize(activeDay)})`}
+            actions={
+                <>
+                    <RefreshIconButton onClick={updateDayAndFetch} isLoading={loading} />
                     <InfoToggleButton
                         isOpen={showInfo}
                         onClick={() => setShowInfo(!showInfo)}
                         title="About Driver Reactions"
                     />
-                </div>
-            </CardHeader>
-            <CardContent>
+                </>
+            }
+        >
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}
@@ -192,8 +179,7 @@ function DriverReactions() {
                         )}
                     </>
                 )}
-            </CardContent>
-        </Card>
+        </SectionCard>
     )
 }
 

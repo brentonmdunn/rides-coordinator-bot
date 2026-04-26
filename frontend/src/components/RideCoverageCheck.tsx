@@ -4,11 +4,11 @@ import { apiFetch } from '../lib/api'
 import ErrorMessage from "./ErrorMessage"
 import type { RideCoverage, RideCoverageUser } from '../types'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { RefreshCw, MoreVertical, CloudDownload, Check } from 'lucide-react'
 import { getAutomaticDay } from '../lib/utils'
 import { CoverageSkeleton } from './LoadingSkeleton'
+import { RefreshIconButton, SectionCard } from './shared'
 
 interface RideDayProps {
     rideType: 'friday' | 'sunday'
@@ -171,20 +171,14 @@ function RideCoverageCheck() {
     }
 
     return (
-        <Card className="!overflow-visible">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 !overflow-visible">
-                <CardTitle><span>🎯</span> Ride Coverage Check</CardTitle>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleRefresh}
-                        title="Refresh data"
-                        aria-label="Refresh data"
-                        className="h-8 w-8 p-0"
-                    >
-                        <RefreshCw className="h-4 w-4" />
-                    </Button>
+        <SectionCard
+            cardClassName="!overflow-visible"
+            headerClassName="!overflow-visible"
+            icon="🎯"
+            title="Ride Coverage Check"
+            actions={
+                <>
+                    <RefreshIconButton onClick={handleRefresh} />
                     <div className="relative">
                         <Button
                             variant="ghost"
@@ -229,9 +223,9 @@ function RideCoverageCheck() {
                         onClick={() => setShowInfo(!showInfo)}
                         title="About Ride Coverage"
                     />
-                </div>
-            </CardHeader>
-            <CardContent>
+                </>
+            }
+        >
                 {syncMutation.isSuccess && (
                     <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-md text-sm flex items-center gap-2">
                         <Check className="h-4 w-4" />
@@ -295,8 +289,7 @@ function RideCoverageCheck() {
                         <RideDay rideType="friday" title="Friday Fellowship" emoji="🎉" />
                     )}
                 </div>
-            </CardContent>
-        </Card>
+        </SectionCard>
     )
 }
 

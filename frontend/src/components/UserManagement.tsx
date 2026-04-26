@@ -9,9 +9,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from './ui/select'
-
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { TableSkeleton } from './LoadingSkeleton'
+import { SectionCard } from './shared'
 
 interface UserAccount {
     id: number
@@ -69,14 +68,7 @@ function UserManagement() {
     const errorMsg = error instanceof Error ? error.message : ''
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <span>👥</span>
-                    <span>User Management</span>
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
+        <SectionCard icon="👥" title="User Management">
                 {isLoading && <TableSkeleton rows={3} cols={3} />}
 
                 <div className="mb-6">
@@ -151,8 +143,7 @@ function UserManagement() {
                         No users found.
                     </p>
                 )}
-            </CardContent>
-        </Card>
+        </SectionCard>
     )
 }
 
