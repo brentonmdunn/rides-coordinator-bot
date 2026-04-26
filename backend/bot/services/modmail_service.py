@@ -6,6 +6,7 @@ import contextlib
 import logging
 import os
 import re
+from typing import NamedTuple
 
 import discord
 
@@ -48,6 +49,13 @@ class ModmailAmbiguousUserError(ModmailError):
 
 
 UserLike = discord.abc.User | str | int
+
+
+class DMResult(NamedTuple):
+    """Result of a ``dm_user`` call."""
+
+    channel: discord.TextChannel
+    delivered: bool
 
 
 def _sanitize_username(username: str) -> str:
@@ -291,12 +299,17 @@ class ModmailService:
         *,
         initiator: discord.abc.User | None = None,
         guild: discord.Guild | None = None,
-    ) -> discord.TextChannel:
+    ) -> DMResult:
         """
         DM a user and mirror the outgoing message in their modmail channel.
 
         Accepts a ``discord.User``/``Member``, a user ID, or a username string.
         Creates the modmail channel if one doesn't exist yet.
+
+        If the DM cannot be delivered (user has DMs closed, blocked the bot,
+        etc.), this method does NOT raise — it posts a ⚠️ delivery-failed embed
+        in the mirror channel and returns ``DMResult(channel, delivered=False)``
+        so callers can decide what to do.
 
         Args:
             who: The target user (object, ID, or username).
@@ -306,17 +319,15 @@ class ModmailService:
             guild: The guild to use when creating a new channel.
 
         Returns:
-            The modmail channel where the DM was mirrored.
+            A ``DMResult`` with the mirror channel and whether delivery succeeded.
 
         Raises:
             ModmailUserNotFoundError: If the user cannot be resolved.
             ModmailAmbiguousUserError: If a username matches multiple users.
-            ModmailDMForbiddenError: If the user has DMs closed.
             ModmailConfigError: If modmail is not configured.
         """
         user = await self.resolve_user(who)
         channel = await self.get_or_create_channel(user, guild=guild)
-        await self._send_dm(user, message, attachments=None)
 
         sender = initiator if initiator is not None else self.bot.user
         sender_label = str(sender) if sender is not None else "Bot"
@@ -324,14 +335,33 @@ class ModmailService:
             sender.display_avatar.url if sender is not None and sender.display_avatar else None
         )
 
-        embed = discord.Embed(
+        # Post the outgoing-message embed first so staff have a trail regardless
+        # of whether delivery succeeds.
+        attempt_embed = discord.Embed(
             description=message or "*(no text)*",
             color=discord.Color.blurple(),
         )
-        embed.set_author(name=f"{sender_label} → {user}", icon_url=sender_icon)
-        embed.set_footer(text=f"Delivered via DM · User ID: {user.id}")
-        await channel.send(embed=embed)
-        return channel
+        attempt_embed.set_author(name=f"{sender_label} → {user}", icon_url=sender_icon)
+        attempt_embed.set_footer(text=f"User ID: {user.id}")
+        await channel.send(embed=attempt_embed)
+
+        try:
+            await self._send_dm(user, message, attachments=None)
+        except ModmailDMForbiddenError as exc:
+            logger.info("dm_user: delivery failed for user %s: %s", user.id, exc)
+            await channel.send(
+                embed=discord.Embed(
+                    title="⚠️ Not delivered",
+                    description=(
+                        f"{user.mention} has DMs closed or does not share a "
+                        "server with the bot. The message above was not delivered."
+                    ),
+                    color=discord.Color.red(),
+                ),
+            )
+            return DMResult(channel=channel, delivered=False)
+
+        return DMResult(channel=channel, delivered=True)
 
     # ------------------------------------------------------------------
     # Message relay (listener-driven)
