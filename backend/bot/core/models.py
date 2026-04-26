@@ -13,7 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.core.base import Base
-from bot.core.enums import AccountRoles, JobName
+from bot.core.enums import AccountRoles, JobName, ModmailSenderType
 
 
 class DiscordUsers(Base):
@@ -126,6 +126,23 @@ class ModmailChannels(Base):
     channel_id: Mapped[str] = mapped_column(unique=True, index=True)
     username: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class ModmailMessages(Base):
+    """Model representing a single message in a modmail conversation."""
+
+    __tablename__ = "modmail_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(index=True)
+    sender_type: Mapped[ModmailSenderType] = mapped_column(
+        SQLEnum(ModmailSenderType, values_callable=lambda obj: [e.value for e in obj]),
+    )
+    sender_id: Mapped[str]
+    sender_name: Mapped[str | None]
+    content: Mapped[str]
+    attachments_json: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
 
 
 class UserPreferences(Base):

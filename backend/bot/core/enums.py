@@ -180,6 +180,14 @@ class RideOption(StrEnum):
     FRIDAY = "Friday"
 
 
+class ModmailSenderType(StrEnum):
+    """Identifies who sent a modmail message."""
+
+    USER = "user"
+    ADMIN = "admin"
+    BOT = "bot"
+
+
 class AccountRoles(StrEnum):
     """Roles for accounts."""
 

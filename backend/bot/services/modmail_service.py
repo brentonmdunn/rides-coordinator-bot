@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import os
 import re
@@ -11,10 +12,12 @@ from typing import NamedTuple
 import discord
 
 from bot.core.database import AsyncSessionLocal
-from bot.core.enums import RoleIds
+from bot.core.enums import ModmailSenderType, RoleIds
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.models import ModmailChannels
+from bot.repositories.modmail_messages_repository import ModmailMessagesRepository
 from bot.repositories.modmail_repository import ModmailRepository
+from bot.services.modmail_ws import modmail_ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +86,62 @@ class ModmailService:
             bot: The Discord client instance.
         """
         self.bot = bot
+
+    # ------------------------------------------------------------------
+    # Message persistence
+    # ------------------------------------------------------------------
+    async def _persist_message(
+        self,
+        *,
+        user_id: str,
+        sender_type: ModmailSenderType,
+        sender_id: str,
+        sender_name: str | None,
+        content: str,
+        attachment_urls: list[str] | None = None,
+    ) -> None:
+        """
+        Persist a message to the database and broadcast via WebSocket.
+
+        Args:
+            user_id: The conversation owner's Discord user ID.
+            sender_type: Who sent the message.
+            sender_id: The sender's identifier.
+            sender_name: Human-readable sender name.
+            content: The message text.
+            attachment_urls: Optional list of attachment URLs.
+        """
+        attachments_json = json.dumps(attachment_urls) if attachment_urls else None
+        try:
+            async with AsyncSessionLocal() as session:
+                row = await ModmailMessagesRepository.create(
+                    session,
+                    user_id=user_id,
+                    sender_type=sender_type,
+                    sender_id=sender_id,
+                    sender_name=sender_name,
+                    content=content,
+                    attachments_json=attachments_json,
+                )
+                await session.commit()
+                await session.refresh(row)
+                await modmail_ws_manager.broadcast(
+                    {
+                        "type": "new_message",
+                        "message": {
+                            "id": row.id,
+                            "user_id": row.user_id,
+                            "sender_type": row.sender_type.value,
+                            "sender_id": row.sender_id,
+                            "sender_name": row.sender_name,
+                            "content": row.content,
+                            "attachments_json": row.attachments_json,
+                            "created_at": row.created_at.isoformat(),
+                        },
+                    }
+                )
+        except Exception:
+            logger.exception("Failed to persist modmail message")
 
     # ------------------------------------------------------------------
     # Configuration helpers
@@ -345,6 +404,14 @@ class ModmailService:
         attempt_embed.set_footer(text=f"User ID: {user.id}")
         await channel.send(embed=attempt_embed)
 
+        await self._persist_message(
+            user_id=str(user.id),
+            sender_type=ModmailSenderType.ADMIN if initiator else ModmailSenderType.BOT,
+            sender_id=str(sender.id) if sender else "bot",
+            sender_name=sender_label,
+            content=message or "",
+        )
+
         try:
             await self._send_dm(user, message, attachments=None)
         except ModmailDMForbiddenError as exc:
@@ -404,6 +471,15 @@ class ModmailService:
             )
 
         await channel.send(embed=embed)
+
+        await self._persist_message(
+            user_id=str(user.id),
+            sender_type=ModmailSenderType.USER,
+            sender_id=str(user.id),
+            sender_name=str(user),
+            content=message.content or "",
+            attachment_urls=attachments or None,
+        )
 
     async def relay_channel_to_dm(self, message: discord.Message) -> None:
         """
@@ -478,6 +554,16 @@ class ModmailService:
         await channel.send(embed=confirm)
         with contextlib.suppress(discord.Forbidden, discord.NotFound):
             await message.delete()
+
+        attachment_urls = [a.url for a in message.attachments] if message.attachments else None
+        await self._persist_message(
+            user_id=row.user_id,
+            sender_type=ModmailSenderType.ADMIN,
+            sender_id=str(message.author.id),
+            sender_name=str(message.author),
+            content=message.content or "",
+            attachment_urls=attachment_urls,
+        )
 
     # ------------------------------------------------------------------
     # Internals
