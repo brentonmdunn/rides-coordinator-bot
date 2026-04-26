@@ -116,12 +116,13 @@ async def get_pickup_coverage(ride_type: str):
                 )
                 usernames_reacted -= class_usernames
 
-        # Build user list with assignment status using the repository
-        # Use bulk check for performance
+        # Build user list with assignment status using the repository.
+        # Use the week boundary so entries don't expire after 24 h.
+        last_sunday = get_last_sunday()
         usernames_list = [str(u) for u in usernames_reacted]
         async with AsyncSessionLocal() as session:
             covered_usernames = await RideCoverageRepository.get_bulk_coverage_status(
-                session, usernames_list
+                session, usernames_list, since=last_sunday
             )
 
         users = []
@@ -137,17 +138,14 @@ async def get_pickup_coverage(ride_type: str):
         # Sort: unassigned first, then alphabetically
         users.sort(key=lambda x: (x["has_ride"], x["discord_username"]))
 
-        # Check if any coverage entries exist for the current week
-        last_sunday = get_last_sunday()
-        async with AsyncSessionLocal() as session:
-            has_entries = await RideCoverageRepository.has_coverage_entries(session, last_sunday)
-
+        # Derive per-ride-type coverage flag from the users we just checked
+        # instead of a global query that ignores ride type.
         return {
             "users": users,
             "total": len(users),
             "assigned": assigned_count,
             "message_found": True,
-            "has_coverage_entries": has_entries,
+            "has_coverage_entries": assigned_count > 0,
         }
 
     except Exception as e:
