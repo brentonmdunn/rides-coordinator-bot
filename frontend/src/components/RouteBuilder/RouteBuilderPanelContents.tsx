@@ -9,18 +9,12 @@
  * sortable location list, arrival time selector, error, and route output.
  */
 
-import { MousePointerClick } from 'lucide-react'
+import { Clock, MousePointerClick } from 'lucide-react'
 import { Button } from '../ui/button'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '../ui/select'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
 import type { TimeModeKey } from './routeBuilderConstants'
 import EditableOutput from '../EditableOutput'
+import { DriverSelector } from './DriverSelector'
 
 export interface RouteBuilderPanelContentsProps {
     // Location state
@@ -51,6 +45,10 @@ export interface RouteBuilderPanelContentsProps {
     driverUsernameToName: Record<string, string>
     selectedDriver: string
     onSelectDriver: (driver: string) => void
+
+    // Trip metadata
+    tripSummary?: string | null
+    legLabels?: (string | null)[]
 }
 
 export function RouteBuilderPanelContents({
@@ -75,6 +73,8 @@ export function RouteBuilderPanelContents({
     driverUsernameToName,
     selectedDriver,
     onSelectDriver,
+    tripSummary,
+    legLabels,
 }: RouteBuilderPanelContentsProps) {
     if (selectedLocationKeys.length === 0) {
         return (
@@ -113,11 +113,19 @@ export function RouteBuilderPanelContents({
                 </Button>
             </div>
 
+            {tripSummary && (
+                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-xs font-medium">
+                    <Clock className="h-3 w-3" />
+                    {tripSummary}
+                </div>
+            )}
+
             <SortableLocationList
                 locationKeys={selectedLocationKeys}
                 getLocationValue={getLocationValue}
                 onRemove={onRemoveLocation}
                 onReorder={onReorderLocations}
+                legLabels={legLabels}
             />
 
             {/* Arrival Time */}
@@ -148,27 +156,15 @@ export function RouteBuilderPanelContents({
             )}
 
             {/* Driver selector */}
-            {routeOutput && drivers.length > 0 && (
+            {drivers.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-slate-200 dark:border-zinc-700">
-                    <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Driver
-                    </div>
-                    <Select
-                        value={selectedDriver || '__none__'}
-                        onValueChange={(v) => onSelectDriver(v === '__none__' ? '' : v)}
-                    >
-                        <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="__none__">No driver</SelectItem>
-                            {drivers.map((username) => (
-                                <SelectItem key={username} value={username}>
-                                    {driverUsernameToName[username] || `@${username}`}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <DriverSelector
+                        drivers={drivers}
+                        driverUsernameToName={driverUsernameToName}
+                        selectedDriver={selectedDriver}
+                        onSelectDriver={onSelectDriver}
+                        compact
+                    />
                 </div>
             )}
 

@@ -15,23 +15,12 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { UCSD_CENTER } from '../MapConstants'
+import { createNumberedIcon } from './numberedMarker'
 import type { PickupLocationsResponse } from '../../types'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Numbered circle marker for selected pins. */
-function createNumberedIcon(num: number, isNewlyToggled: boolean): L.DivIcon {
-    const animationClass = isNewlyToggled ? ' animate-[marker-bounce_0.35s_ease-out]' : ''
-    return new L.DivIcon({
-        html: `<div class="numbered-marker${animationClass}">${num}</div>`,
-        className: '',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -16],
-    })
-}
 
 /** Default blue marker with explicit sizing to prevent tooltip misalignment. */
 const defaultIcon = new L.Icon({

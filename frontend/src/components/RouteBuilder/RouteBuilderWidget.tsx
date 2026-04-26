@@ -2,30 +2,26 @@
  * RouteBuilderWidget.tsx
  *
  * The card / widget view of the Route Builder — the default display when not
- * in fullscreen mode. Contains the location dropdown, sortable stop list,
- * arrival time selector, error message, route output, and the static
- * mini-map preview. Route is generated automatically as locations change.
+ * in fullscreen mode. Contains the multi-select location combobox, sortable
+ * stop list, arrival time selector, route output, driver selector, and the
+ * mini-map preview. The mini-map shows numbered markers for selected stops
+ * and lets users click pins to toggle them — matching the fullscreen view.
  */
 
-import { Expand } from 'lucide-react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { Clock, Expand } from 'lucide-react'
+import { MapContainer, TileLayer, Marker, Polyline, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { RecenterMap, MapInteractionGuard } from '../MapShared'
 import { UCSD_CENTER } from '../MapConstants'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '../ui/select'
-import { Button } from '../ui/button'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 import ErrorMessage from '../ErrorMessage'
 import EditableOutput from '../EditableOutput'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
+import { LocationCombobox } from './LocationCombobox'
+import { DriverSelector } from './DriverSelector'
+import { createNumberedIcon } from './numberedMarker'
 import type { TimeModeKey } from './routeBuilderConstants'
 import type { PickupLocationsResponse } from '../../types'
 
@@ -39,14 +35,12 @@ export interface RouteBuilderWidgetProps {
     // Fullscreen
     onOpenFullscreen: () => void
 
-    // Location dropdown
+    // Locations
     locationsData: PickupLocationsResponse | undefined
     locationsLoading: boolean
-    selectedLocation: string
-    onSelectLocation: (key: string) => void
     selectedLocationKeys: string[]
     getLocationValue: (key: string) => string
-    onAddLocation: () => void
+    onToggleLocation: (key: string) => void
     onRemoveLocation: (index: number) => void
     onReorderLocations: (keys: string[]) => void
 
@@ -66,9 +60,18 @@ export interface RouteBuilderWidgetProps {
     onRevertRoute: () => void
     copied: boolean
 
-    // Mini-map
+    // Drivers
+    drivers: string[]
+    driverUsernameToName: Record<string, string>
+    selectedDriver: string
+    onSelectDriver: (driver: string) => void
+
+    // Mini-map + trip metadata
     mapBounds: L.LatLngBoundsExpression | undefined
     routeGeometry: [number, number][] | null
+    tripSummary: string | null
+    legLabels: (string | null)[]
+    lastToggledLocation: string | null
 }
 
 export function RouteBuilderWidget({
@@ -78,11 +81,9 @@ export function RouteBuilderWidget({
     onOpenFullscreen,
     locationsData,
     locationsLoading,
-    selectedLocation,
-    onSelectLocation,
     selectedLocationKeys,
     getLocationValue,
-    onAddLocation,
+    onToggleLocation,
     onRemoveLocation,
     onReorderLocations,
     timeMode,
@@ -97,9 +98,20 @@ export function RouteBuilderWidget({
     onCopyRoute,
     onRevertRoute,
     copied,
+    drivers,
+    driverUsernameToName,
+    selectedDriver,
+    onSelectDriver,
     mapBounds,
     routeGeometry,
+    tripSummary,
+    legLabels,
+    lastToggledLocation,
 }: RouteBuilderWidgetProps) {
+    const displayPrefix = selectedDriver ? `@${selectedDriver} drive: ` : ''
+    const displayValue = displayPrefix + routeOutput
+    const displayOriginal = displayPrefix + originalRouteOutput
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -131,68 +143,51 @@ export function RouteBuilderWidget({
                     title="How to use Route Builder"
                 >
                     <ol className="list-decimal list-inside space-y-1.5">
-                        <li>Select pickup locations from the dropdown in the order you want to visit them.</li>
-                        <li>Drag locations to reorder them if needed.</li>
-                        <li>Enter the final destination arrival time — the route generates automatically.</li>
-                        <li>Copy the route and paste it into Discord.</li>
+                        <li>Pick stops from the dropdown — or click pins on the map below.</li>
+                        <li>Drag stops to reorder them.</li>
+                        <li>Set the arrival time at the final destination — the route generates automatically.</li>
+                        <li>Optionally pick a driver, then copy the route into Discord.</li>
                     </ol>
                 </InfoPanel>
 
                 <div className="space-y-6">
-                    {/* Location Selection Dropdown */}
+                    {/* Location Combobox */}
                     <div>
-                        <label className="block">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                                Select Locations
-                            </span>
-                            <div className="flex gap-2">
-                                <Select
-                                    value={selectedLocation}
-                                    onValueChange={onSelectLocation}
-                                    disabled={locationsLoading}
-                                >
-                                    <SelectTrigger className="flex-1">
-                                        <SelectValue
-                                            placeholder={
-                                                locationsLoading ? 'Loading locations...' : 'Choose a location...'
-                                            }
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {locationsData?.locations
-                                            .filter((loc) => !selectedLocationKeys.includes(loc.key))
-                                            .map((location) => (
-                                                <SelectItem key={location.key} value={location.key}>
-                                                    {location.value}
-                                                </SelectItem>
-                                            ))}
-                                    </SelectContent>
-                                </Select>
-                                <Button
-                                    type="button"
-                                    onClick={onAddLocation}
-                                    disabled={!selectedLocation || locationsLoading}
-                                    variant="outline"
-                                    className="shrink-0"
-                                >
-                                    Add Location
-                                </Button>
-                            </div>
-                        </label>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                            Select Locations
+                        </span>
+                        <LocationCombobox
+                            locations={locationsData}
+                            loading={locationsLoading}
+                            selectedKeys={selectedLocationKeys}
+                            onToggle={onToggleLocation}
+                        />
                     </div>
 
                     {/* Selected Locations with Drag & Drop */}
                     {selectedLocationKeys.length > 0 && (
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
-                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                                Route Order ({selectedLocationKeys.length} location
-                                {selectedLocationKeys.length !== 1 ? 's' : ''})
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Route Order ({selectedLocationKeys.length} location
+                                    {selectedLocationKeys.length !== 1 ? 's' : ''})
+                                </div>
+                                {tripSummary && (
+                                    <div
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-xs font-medium"
+                                        title="Estimated drive time and distance"
+                                    >
+                                        <Clock className="h-3 w-3" />
+                                        {tripSummary}
+                                    </div>
+                                )}
                             </div>
                             <SortableLocationList
                                 locationKeys={selectedLocationKeys}
                                 getLocationValue={getLocationValue}
                                 onRemove={onRemoveLocation}
                                 onReorder={onReorderLocations}
+                                legLabels={legLabels}
                             />
                         </div>
                     )}
@@ -225,6 +220,18 @@ export function RouteBuilderWidget({
                     <ErrorMessage message={routeError} />
                 </div>
 
+                {/* Driver selector */}
+                {drivers.length > 0 && (
+                    <div className="mt-6">
+                        <DriverSelector
+                            drivers={drivers}
+                            driverUsernameToName={driverUsernameToName}
+                            selectedDriver={selectedDriver}
+                            onSelectDriver={onSelectDriver}
+                        />
+                    </div>
+                )}
+
                 {/* Route Output */}
                 {routeOutput && (
                     <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -232,9 +239,15 @@ export function RouteBuilderWidget({
                             Generated Route
                         </h3>
                         <EditableOutput
-                            value={routeOutput}
-                            originalValue={originalRouteOutput}
-                            onChange={onChangeRouteOutput}
+                            value={displayValue}
+                            originalValue={displayOriginal}
+                            onChange={(v) =>
+                                onChangeRouteOutput(
+                                    displayPrefix && v.startsWith(displayPrefix)
+                                        ? v.slice(displayPrefix.length)
+                                        : v
+                                )
+                            }
                             onCopy={onCopyRoute}
                             onRevert={onRevertRoute}
                             copied={copied}
@@ -266,15 +279,36 @@ export function RouteBuilderWidget({
                         <MapInteractionGuard />
                         <RecenterMap bounds={mapBounds} />
 
-                        {selectedLocationKeys.map((key, i) => {
-                            const value = getLocationValue(key)
-                            const coords = locationsData?.coordinates[value]
+                        {locationsData?.locations.map((loc) => {
+                            const coords = locationsData.coordinates[loc.value]
                             if (!coords) return null
+                            const isSelected = selectedLocationKeys.includes(loc.key)
+                            const orderIndex = selectedLocationKeys.indexOf(loc.key)
                             return (
-                                <Marker key={`${key}-${i}`} position={[coords.lat, coords.lng]}>
-                                    <Popup>
-                                        <strong>{i + 1}.</strong> {value}
-                                    </Popup>
+                                <Marker
+                                    key={loc.key}
+                                    position={[coords.lat, coords.lng]}
+                                    icon={
+                                        isSelected
+                                            ? createNumberedIcon(
+                                                orderIndex + 1,
+                                                lastToggledLocation === loc.key
+                                            )
+                                            : undefined
+                                    }
+                                    eventHandlers={{
+                                        click: (e) => {
+                                            L.DomEvent.stopPropagation(e.originalEvent)
+                                            onToggleLocation(loc.key)
+                                        },
+                                    }}
+                                >
+                                    <Tooltip direction="top" offset={[0, isSelected ? -10 : -36]}>
+                                        <span className="font-medium">
+                                            {isSelected ? `${orderIndex + 1}. ` : ''}
+                                            {loc.value}
+                                        </span>
+                                    </Tooltip>
                                 </Marker>
                             )
                         })}

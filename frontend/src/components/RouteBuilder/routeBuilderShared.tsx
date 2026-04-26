@@ -43,6 +43,8 @@ export interface SortableLocationItemProps {
     index: number
     locationValue: string
     onRemove: () => void
+    /** Drive time + distance to the previous stop (e.g. "↓ 5 min · 1.2 mi"). */
+    legLabel?: string | null
 }
 
 export function SortableLocationItem({
@@ -50,6 +52,7 @@ export function SortableLocationItem({
     index,
     locationValue,
     onRemove,
+    legLabel,
 }: SortableLocationItemProps) {
     const {
         attributes,
@@ -67,29 +70,35 @@ export function SortableLocationItem({
     }
 
     return (
-        <div
-            ref={setNodeRef}
-            style={style}
-            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-md transition-all"
-        >
-            <div
-                {...attributes}
-                {...listeners}
-                className="cursor-grab active:cursor-grabbing touch-none"
-            >
-                <GripVertical className="h-4 w-4 text-slate-400" />
+        <div ref={setNodeRef} style={style}>
+            {legLabel && index > 0 && (
+                <div
+                    aria-hidden="true"
+                    className="my-1 ml-6 text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                >
+                    {legLabel}
+                </div>
+            )}
+            <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-md transition-all">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="cursor-grab active:cursor-grabbing touch-none"
+                >
+                    <GripVertical className="h-4 w-4 text-slate-400" />
+                </div>
+                <span className="flex-1 text-sm text-slate-900 dark:text-slate-100">
+                    {index + 1}. {locationValue}
+                </span>
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    className="text-slate-400 hover:text-red-500 transition-colors"
+                    title="Remove location"
+                >
+                    <X className="h-4 w-4" />
+                </button>
             </div>
-            <span className="flex-1 text-sm text-slate-900 dark:text-slate-100">
-                {index + 1}. {locationValue}
-            </span>
-            <button
-                type="button"
-                onClick={onRemove}
-                className="text-slate-400 hover:text-red-500 transition-colors"
-                title="Remove location"
-            >
-                <X className="h-4 w-4" />
-            </button>
         </div>
     )
 }
@@ -103,6 +112,8 @@ export interface SortableLocationListProps {
     getLocationValue: (key: string) => string
     onRemove: (index: number) => void
     onReorder: (keys: string[]) => void
+    /** Optional per-leg drive labels: legLabels[i] is the leg INTO row i (i ≥ 1). */
+    legLabels?: (string | null)[]
 }
 
 export function SortableLocationList({
@@ -110,6 +121,7 @@ export function SortableLocationList({
     getLocationValue,
     onRemove,
     onReorder,
+    legLabels,
 }: SortableLocationListProps) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -132,7 +144,7 @@ export function SortableLocationList({
             onDragEnd={handleDragEnd}
         >
             <SortableContext items={locationKeys} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
+                <div className="space-y-1">
                     {locationKeys.map((key, index) => (
                         <SortableLocationItem
                             key={key}
@@ -140,6 +152,7 @@ export function SortableLocationList({
                             index={index}
                             locationValue={getLocationValue(key)}
                             onRemove={() => onRemove(index)}
+                            legLabel={legLabels?.[index] ?? null}
                         />
                     ))}
                 </div>
