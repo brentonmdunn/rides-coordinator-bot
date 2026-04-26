@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiFetch } from '../lib/api'
+import { copyToClipboard } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
@@ -26,8 +27,6 @@ function GroupRides() {
     const [originalGroupRidesData, setOriginalGroupRidesData] = useState<string[] | null>(null)
     const [groupRidesError, setGroupRidesError] = useState<string>('')
     const [groupRidesLoading, setGroupRidesLoading] = useState(false)
-    const [copiedGrouping, setCopiedGrouping] = useState<number | null>(null)
-    const [copyError, setCopyError] = useState<string>('')
     const [showInfo, setShowInfo] = useState(false)
 
     const groupRides = async (e: React.FormEvent) => {
@@ -70,18 +69,6 @@ function GroupRides() {
             console.error('Group rides error:', error)
         } finally {
             setGroupRidesLoading(false)
-        }
-    }
-
-    const copyToClipboard = async (text: string, index: number) => {
-        try {
-            await navigator.clipboard.writeText(text)
-            setCopiedGrouping(index)
-            setTimeout(() => setCopiedGrouping(null), 5000)
-        } catch (error) {
-            console.error('Failed to copy:', error)
-            setCopyError('Failed to copy to clipboard. Check browser permissions.')
-            setTimeout(() => setCopyError(''), 5000)
         }
     }
 
@@ -191,7 +178,6 @@ function GroupRides() {
             {/* Error Display */}
             <div className="mt-6">
                 <ErrorMessage message={groupRidesError} />
-                <ErrorMessage message={copyError} />
             </div>
 
             {/* Results Display */}
@@ -218,9 +204,8 @@ function GroupRides() {
                                         value={grouping}
                                         originalValue={originalGroupRidesData?.[index] || grouping}
                                         onChange={(newValue) => handleGroupingChange(index, newValue)}
-                                        onCopy={() => copyToClipboard(grouping, index)}
+                                        onCopy={() => copyToClipboard(grouping)}
                                         onRevert={() => revertGrouping(index)}
-                                        copied={copiedGrouping === index}
                                         minHeight="min-h-[60px]"
                                     />
                                 ))}
