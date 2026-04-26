@@ -1,0 +1,13 @@
+name: basic two-driver mixed corridor
+notes: |
+  Simple sanity-check scenario. Two drivers with 4 seats each, passengers
+  spread across the upper-campus corridor. Use this as a template to copy
+  when writing your own scenarios.
+drivers: [4, 4]
+event: sunday
+passengers:
+  - { name: alice, living: Muir }
+  - { name: bob, living: Sixth }
+  - { name: carol, living: ERC }
+  - { name: dave, living: Seventh }
+  - { name: erin, living: Eighth }
