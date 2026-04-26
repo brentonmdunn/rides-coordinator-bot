@@ -217,6 +217,8 @@ class GroupRidesService:
                 LOCATIONS_MATRIX,
                 legacy_prompt,
                 custom_prompt,
+                passengers_by_location,
+                driver_capacity_list,
             )
         except Exception:
             logger.exception("Failed to get a successful LLM response after retries")
