@@ -10,9 +10,9 @@ from bot.core.enums import FeatureFlagNames
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_cmd
 from bot.services.modmail_service import (
+    DMResult,
     ModmailAmbiguousUserError,
     ModmailConfigError,
-    ModmailDMForbiddenError,
     ModmailService,
     ModmailUserNotFoundError,
     UserLike,
@@ -53,12 +53,14 @@ class Modmail(commands.Cog):
         *,
         initiator: discord.abc.User | None = None,
         guild: discord.Guild | None = None,
-    ) -> discord.TextChannel:
+    ) -> DMResult:
         """
         DM a user and mirror the outgoing message in their modmail channel.
 
         Thin wrapper around ``ModmailService.dm_user`` for convenient access
         from other cogs via ``bot.get_cog("Modmail").dm_user(...)``.
+
+        Does not raise on delivery failures — inspect ``result.delivered``.
 
         Args:
             who: The target user (``discord.User``/``Member``, user ID, or
@@ -68,7 +70,7 @@ class Modmail(commands.Cog):
             guild: The guild to use when creating a new channel.
 
         Returns:
-            The modmail channel where the DM was mirrored.
+            ``DMResult(channel, delivered)``.
         """
         return await self.service.dm_user(
             who,
@@ -141,7 +143,7 @@ class Modmail(commands.Cog):
             return
 
         try:
-            channel = await self.service.dm_user(
+            result = await self.service.dm_user(
                 user,
                 message,
                 initiator=interaction.user,
@@ -150,21 +152,21 @@ class Modmail(commands.Cog):
         except ModmailConfigError as exc:
             await interaction.followup.send(f"❌ {exc}", ephemeral=True)
             return
-        except ModmailDMForbiddenError:
-            await interaction.followup.send(
-                f"❌ Could not DM {user.mention}: they have DMs closed or do "
-                "not share a server with the bot.",
-                ephemeral=True,
-            )
-            return
         except (ModmailUserNotFoundError, ModmailAmbiguousUserError) as exc:
             await interaction.followup.send(f"❌ {exc}", ephemeral=True)
             return
 
-        await interaction.followup.send(
-            f"✉️ DM sent to {user.mention}. Mirrored in {channel.mention}.",
-            ephemeral=True,
-        )
+        if result.delivered:
+            await interaction.followup.send(
+                f"✉️ DM sent to {user.mention}. Mirrored in {result.channel.mention}.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.followup.send(
+                f"⚠️ Could not DM {user.mention} (DMs closed or no shared server). "
+                f"Attempt is logged in {result.channel.mention}.",
+                ephemeral=True,
+            )
 
 
 async def _feature_enabled() -> bool:
