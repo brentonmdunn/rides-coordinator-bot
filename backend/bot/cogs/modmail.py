@@ -17,7 +17,7 @@ from bot.services.modmail_service import (
     ModmailUserNotFoundError,
     UserLike,
 )
-from bot.utils.checks import feature_flag_enabled
+from bot.utils.checks import feature_flag_enabled, is_ride_coordinator
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class Modmail(commands.Cog):
         user="The user to DM.",
         message="The message to send to the user.",
     )
-    @app_commands.checks.has_permissions(manage_channels=True)
+    @is_ride_coordinator()
     @feature_flag_enabled(FeatureFlagNames.MODMAIL)
     @log_cmd
     async def dm(
