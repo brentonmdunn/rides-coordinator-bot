@@ -1,4 +1,5 @@
-"""Semantic validation of LLM assignment output.
+"""
+Semantic validation of LLM assignment output.
 
 `LLMOutputNominal` only validates shape (dict of list of {name, location}).
 Even a shape-valid output can be wrong: wrong passenger names, wrong locations,
@@ -18,7 +19,8 @@ _DRIVER_ID_RE = re.compile(r"^Driver(\d+)$")
 
 
 def _normalize_location(raw: str) -> str:
-    """Lowercase + collapse whitespace for forgiving location string comparison.
+    """
+    Lowercase + collapse whitespace for forgiving location string comparison.
 
     The bot sometimes passes the enum value ("Sixth loop") and the LLM sometimes
     shortens it ("Sixth") or echoes the input verbatim. Comparing normalized
@@ -29,17 +31,22 @@ def _normalize_location(raw: str) -> str:
 
 
 def _allowed_pickup_values(passenger: Passenger) -> set[str]:
-    """Return normalized pickup-location strings a passenger may be assigned.
-
-    Every passenger has a single primary ``pickup_location``. The helper
-    returns both the full enum value and a single-word short form so the
-    LLM can use either style. The Marshall-flex change (a follow-up commit)
-    extends this function to also return alternative locations.
     """
-    pickup = passenger.pickup_location
-    full = _normalize_location(str(pickup))
-    short = full.split()[0] if full else full
-    return {full, short}
+    Return normalized pickup-location strings a passenger may be assigned.
+
+    Returns both the full enum value ("Marshall uppers") and a single-word
+    short form ("Marshall") for each of the passenger's allowed pickup
+    locations, so the LLM can use either style. For flex passengers (e.g.
+    Marshall residents who can also be picked up at Geisel Loop) all
+    alternative locations are included as well.
+    """
+    allowed: set[str] = set()
+    for pickup in passenger.allowed_pickup_locations:
+        full = _normalize_location(str(pickup))
+        short = full.split()[0] if full else full
+        allowed.add(full)
+        allowed.add(short)
+    return allowed
 
 
 def validate_assignment(
@@ -47,7 +54,8 @@ def validate_assignment(
     passengers_by_location: PassengersByLocation,
     driver_capacity_list: list[int],
 ) -> list[str]:
-    """Return a list of human-readable violations; empty list means valid.
+    """
+    Return a list of human-readable violations; empty list means valid.
 
     Checks performed:
       * every input passenger appears exactly once in the assignment
@@ -114,9 +122,12 @@ def validate_assignment(
             normalized = _normalize_location(location)
             short = normalized.split()[0] if normalized else normalized
             if normalized not in allowed and short not in allowed:
+                allowed_display = ", ".join(
+                    f"'{loc}'" for loc in passenger.allowed_pickup_locations
+                )
                 violations.append(
                     f"Passenger '{name}' was assigned to location '{location}', "
-                    f"but their allowed pickup location is '{passenger.pickup_location}'."
+                    f"but their allowed pickup location(s) are: {allowed_display}."
                 )
 
     missing = expected_names - seen_names
@@ -155,7 +166,8 @@ def format_repair_instructions(
     previous_output: str,
     violations: list[str],
 ) -> str:
-    """Build the repair instructions appended to the original prompt on a retry.
+    """
+    Build the repair instructions appended to the original prompt on a retry.
 
     The repair message restates the previous (invalid) output, lists the
     specific violations, and asks the model to produce a corrected assignment.

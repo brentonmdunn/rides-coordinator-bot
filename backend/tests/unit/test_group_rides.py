@@ -269,12 +269,14 @@ class TestLlmInputPickups:
         assert llm_input_pickups(data) == expected
 
     def test_location_with_empty_passenger_list(self, sample_passengers: dict[str, Passenger]):
-        """Should correctly format a string even with a location that has no passengers."""
+        """Should skip empty-location lines to avoid feeding the LLM noise."""
         data: PassengersByLocation = {
             PickupLocations.SIXTH: [sample_passengers["alice"]],
             PickupLocations.ERC: [],
         }
-        expected = "Sixth loop: Alice\nERC across from bamboo: \n"
+        # Empty-list locations used to render as "ERC across from bamboo: " which
+        # is pure noise for the LLM; the new formatter omits them.
+        expected = "Sixth loop: Alice\n"
         assert llm_input_pickups(data) == expected
 
     def test_empty_dict(self):

@@ -54,6 +54,15 @@ living_to_pickup = {
     CampusLivingLocations.WARREN: PickupLocations.WARREN_EQL,
 }
 
+# Alternative pickup locations per living location. Residents of these
+# neighborhoods can be picked up at the primary location from
+# ``living_to_pickup`` OR any of the listed alternatives. Empty entries mean
+# "no alternatives" (the common case). Currently only Marshall residents
+# can flex between Marshall Uppers and Geisel Loop.
+living_to_alt_pickups: dict[CampusLivingLocations, list[PickupLocations]] = {
+    CampusLivingLocations.MARSHALL: [PickupLocations.GEISEL_LOOP],
+}
+
 
 class GroupRidesService:
     """Service for handling group rides logic and LLM interaction."""
@@ -117,7 +126,15 @@ class GroupRidesService:
     def _split_on_off_campus(
         self, locations_people: LocationsPeopleType
     ) -> tuple[PassengersByLocation, LocationsPeopleType]:
-        """Bucket passengers into on-campus (by pickup location) and off-campus groups."""
+        """
+        Bucket passengers into on-campus (by pickup location) and off-campus groups.
+
+        Passengers living in a neighborhood listed in ``living_to_alt_pickups``
+        are annotated with their alternative pickup locations. They are still
+        keyed under their primary ``pickup_location`` here so capacity math
+        treats them as a single pool; the LLM picks the actual location per
+        passenger downstream.
+        """
         valid_campus_locations = {loc.value.lower() for loc in CampusLivingLocations}
         passengers_by_location: PassengersByLocation = {}
         off_campus: LocationsPeopleType = {}
@@ -129,11 +146,13 @@ class GroupRidesService:
 
             living_loc_enum = self._get_living_location(living_location)
             pickup_key = self._get_pickup_location(living_loc_enum)
+            alt_pickups = living_to_alt_pickups.get(living_loc_enum, [])
             passengers_by_location.setdefault(pickup_key, []).extend(
                 Passenger(
                     identity=Identity(name=person[0], username=person[1]),
                     living_location=living_loc_enum,
                     pickup_location=pickup_key,
+                    alt_pickup_locations=list(alt_pickups),
                 )
                 for person in people
             )
