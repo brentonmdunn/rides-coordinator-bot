@@ -11,27 +11,13 @@
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import '@luomus/leaflet-smooth-wheel-zoom'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { UCSD_CENTER } from '../MapConstants'
-import { createNumberedIcon } from './numberedMarker'
+import { createNumberedIcon, defaultMarkerIcon } from './numberedMarker'
 import type { PickupLocationsResponse } from '../../types'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Default blue marker with explicit sizing to prevent tooltip misalignment. */
-const defaultIcon = new L.Icon({
-    iconUrl: markerIcon,
-    iconRetinaUrl: markerIcon2x,
-    shadowUrl: markerShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-})
 
 /** Fires onMapClick when the user clicks empty map space. */
 function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
@@ -103,7 +89,7 @@ export function RouteBuilderFullscreenMap({
                         icon={
                             isSelected
                                 ? createNumberedIcon(orderIndex + 1, lastToggledLocation === loc.key)
-                                : defaultIcon
+                                : defaultMarkerIcon
                         }
                         eventHandlers={{
                             click: (e) => {

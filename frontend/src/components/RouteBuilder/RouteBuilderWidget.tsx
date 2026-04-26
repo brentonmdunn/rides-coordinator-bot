@@ -21,7 +21,7 @@ import EditableOutput from '../EditableOutput'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
 import { LocationCombobox } from './LocationCombobox'
 import { DriverSelector } from './DriverSelector'
-import { createNumberedIcon } from './numberedMarker'
+import { createNumberedIcon, defaultMarkerIcon } from './numberedMarker'
 import type { TimeModeKey } from './routeBuilderConstants'
 import type { PickupLocationsResponse } from '../../types'
 
@@ -294,7 +294,7 @@ export function RouteBuilderWidget({
                                                 orderIndex + 1,
                                                 lastToggledLocation === loc.key
                                             )
-                                            : undefined
+                                            : defaultMarkerIcon
                                     }
                                     eventHandlers={{
                                         click: (e) => {
