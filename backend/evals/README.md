@@ -1,10 +1,12 @@
 # Group Rides Eval Harness
 
 A small CLI for manually inspecting what the group-rides LLM pipeline produces
-on a hand-written scenario. There are no gold/expected assertions here — the
-harness prints the prompt, the raw LLM output, the validator findings, the
+on a hand-written scenario. By default there are no gold/expected assertions —
+the harness prints the prompt, the raw LLM output, the validator findings, the
 per-driver drive time, and the rendered Discord messages so you can judge
-whether the assignment is good yourself.
+whether the assignment is good yourself. If you add an `expected` block to a
+scenario, you also get a gold-comparison section that grades the run at three
+strictness levels plus the drive-time delta.
 
 Complements the unit-test suite (`tests/unit/test_flex_pickup.py`,
 `tests/unit/test_assignment_validator.py`, etc.) which covers the
@@ -40,7 +42,9 @@ In order:
 5. **DRIVE TIME** — total minutes for each driver, computed by walking
    `START -> first pickup -> ... -> last pickup -> END` on the all-pairs
    shortest-path table. Consecutive same-location stops are collapsed.
-6. **RENDERED DISCORD MESSAGES** — exactly what the coordinator would
+6. **GOLD COMPARISON** — only printed when the scenario has an `expected`
+   block. See the next section.
+7. **RENDERED DISCORD MESSAGES** — exactly what the coordinator would
    paste into Discord.
 
 On `--dry-run` only steps 1–2 are printed.
@@ -72,12 +76,62 @@ Valid `living` values (case-insensitive, matched against
 `Marshall` is the only living location that produces flex passengers; they
 can be assigned to either `Marshall uppers` or `Geisel Loop`.
 
+## Optional: gold comparison
+
+Add an `expected` block to any scenario and the harness will grade the run
+at three strictness levels plus a drive-time delta:
+
+```yaml
+expected:
+  cars:
+    - passengers:
+        - { name: alice,  location: Muir }
+        - { name: bob,    location: Sixth }
+        - { name: marsha, location: Marshall }     # or "Marshall uppers"
+    - passengers:
+        - { name: marley, location: Geisel Loop }
+        - { name: iris,   location: Innovation }
+        - { name: wendy,  location: Warren }
+  max_time_delta_minutes: 2                        # optional
+```
+
+Matching rules:
+
+1. **Partition** — does the actual assignment group passengers into the
+   same *cars* as gold? Driver labels are ignored (actual `"Driver0"` can
+   be matched to gold's car-1 if their passenger sets match).
+2. **Location** — is every passenger's resolved pickup location equal to
+   the gold location? Location strings are compared with the same
+   normalization as the production pipeline — `"Geisel Loop"`,
+   `"GeiselLoop"`, and `"Geisel"` all match `PickupLocations.GEISEL_LOOP`.
+3. **Order** — within each matched car, is the pickup order identical?
+   Only meaningful when partition matches.
+
+If `max_time_delta_minutes` is set, the harness flags actual drive times
+that exceed the gold total by more than that many minutes.
+
+The output section looks like:
+
+```
+-- GOLD COMPARISON --
+partition: PASS
+locations: FAIL
+  x marsha: expected 'Marshall uppers', got 'Geisel Loop'
+order: PASS
+drive time: gold=14 min, actual=15 min (delta +1 min, tolerance +2 min (within tolerance))
+```
+
+The harness still exits 0 — this is inspection, not CI.
+
 ## Starter scenarios
 
 - `scenarios/basic.yaml` — Minimal two-driver upper-corridor scenario. Use
   as a template when writing your own.
 - `scenarios/marshall_flex_split.yaml` — Two drivers on opposite corridors
   with two Marshall riders. Exercises the flex-pickup split.
+- `scenarios/marshall_flex_split_with_gold.yaml` — Same input as the above
+  with a full `expected` block; use it to see a populated gold-comparison
+  section.
 - `scenarios/warren_innovation_corridor.yaml` — Exercises the hard
   corridor-separation rule (Warren/Innovation must not be combined with
   Eighth/Muir/Sixth/Marshall/ERC).

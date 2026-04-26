@@ -27,10 +27,21 @@ Scenario file format (YAML):
       - { name: alice,   living: Sixth }
       - { name: bob,     living: Marshall }      # flex: Marshall OR Geisel Loop
       - { name: carol,   living: Warren }
+    expected:                                    # optional: gold-labelled answer
+      cars:
+        - passengers:
+          - { name: alice, location: Sixth }
+          - { name: bob,   location: Marshall }
+        - passengers:
+          - { name: carol, location: Warren }
+      max_time_delta_minutes: 2                  # optional: tolerance for drive-time
 
 Living values are matched case-insensitively against the
 ``CampusLivingLocations`` enum values ("Sixth", "Seventh", "Marshall",
 "ERC", "Muir", "Eighth", "Revelle", "PCE", "PCW", "Rita", "Warren").
+
+When ``expected`` is present, an extra ``GOLD COMPARISON`` section reports
+partition, location, and order match plus the drive-time delta.
 """
 
 from __future__ import annotations
@@ -65,6 +76,11 @@ from bot.utils.locations import (
     LOCATIONS_MATRIX,
     compute_all_pairs_shortest_paths,
     render_distance_markdown,
+)
+from evals.gold_compare import (
+    compare_to_gold,
+    format_gold_report,
+    parse_expected,
 )
 
 DEFAULT_END_TIMES = {
@@ -262,6 +278,24 @@ def run(scenario_path: Path, dry_run: bool, legacy: bool) -> int:
         stops = len(llm_result.get(driver_id, []))
         print(f"  {driver_id}: {driver_total} min across {stops} passenger(s)")
     print(f"  total: {total} min")
+
+    raw_expected = scenario.get("expected")
+    if raw_expected is not None:
+        try:
+            expected_cars, max_delta = parse_expected(raw_expected)
+        except ValueError as exc:
+            print(_section("GOLD COMPARISON"))
+            print(f"  (invalid 'expected' block: {exc})")
+        else:
+            comparison = compare_to_gold(
+                llm_result,
+                passengers_by_location,
+                expected_cars,
+                max_delta,
+            )
+            print(_section("GOLD COMPARISON"))
+            for line in format_gold_report(comparison):
+                print(line)
 
     print(_section("RENDERED DISCORD MESSAGES"))
     messages = create_output(
