@@ -61,7 +61,8 @@ select = [
   "D",  # pydocstyle (docstring style)
   "RUF",# Ruff-specific rules,
   "COM", # Trailing comma
-  "PTH"
+  "PTH",
+  "T20", # flake8-print (bans print/pprint)
 ]
 ignore = [
   "D100", # Missing docstring in public module
@@ -87,3 +88,5 @@ ignore = [
 "bot/cogs_disabled/**/*.py" = ["D"]
 "bot/cogs_testing/**/*.py" = ["D"]
 "bot/jobs_disabled/**/*.py" = ["D"]
+"scripts/**/*.py" = ["T20"]
+"evals/**/*.py" = ["T20"]
