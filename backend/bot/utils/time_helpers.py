@@ -27,8 +27,8 @@ DAYS_IN_WEEK = 7
 
 
 @dataclass(frozen=True)
-class RideDayWindow:
-    """A ride-day announcement window: start_day @ start_hour → end_day @ end_hour."""
+class TimeWindow:
+    """A time window: start_day @ start_hour → end_day @ end_hour."""
 
     start_day: DaysOfWeek
     start_hour: int
@@ -36,20 +36,41 @@ class RideDayWindow:
     end_hour: int
 
 
-RIDE_DAY_WINDOWS: dict[DaysOfWeek, RideDayWindow] = {
-    DaysOfWeek.WEDNESDAY: RideDayWindow(
+RIDE_DAY_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
+    DaysOfWeek.WEDNESDAY: TimeWindow(
         start_day=DaysOfWeek.TUESDAY,
         start_hour=19,
         end_day=DaysOfWeek.WEDNESDAY,
         end_hour=19,
     ),
-    DaysOfWeek.FRIDAY: RideDayWindow(
+    DaysOfWeek.FRIDAY: TimeWindow(
         start_day=DaysOfWeek.THURSDAY,
         start_hour=19,
         end_day=DaysOfWeek.FRIDAY,
         end_hour=19,
     ),
-    DaysOfWeek.SUNDAY: RideDayWindow(
+    DaysOfWeek.SUNDAY: TimeWindow(
+        start_day=DaysOfWeek.SATURDAY,
+        start_hour=10,
+        end_day=DaysOfWeek.SUNDAY,
+        end_hour=10,
+    ),
+}
+
+LATE_REACTION_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
+    DaysOfWeek.WEDNESDAY: TimeWindow(
+        start_day=DaysOfWeek.TUESDAY,
+        start_hour=19,
+        end_day=DaysOfWeek.WEDNESDAY,
+        end_hour=19,
+    ),
+    DaysOfWeek.FRIDAY: TimeWindow(
+        start_day=DaysOfWeek.THURSDAY,
+        start_hour=19,
+        end_day=DaysOfWeek.FRIDAY,
+        end_hour=19,
+    ),
+    DaysOfWeek.SUNDAY: TimeWindow(
         start_day=DaysOfWeek.SATURDAY,
         start_hour=10,
         end_day=DaysOfWeek.SUNDAY,
@@ -65,9 +86,38 @@ RIDE_CYCLE_START_HOUR = 12
 RIDE_CYCLE_END_DAY = DaysOfWeekNumber.SUNDAY
 
 
+def _resolve_day(day: str | DaysOfWeek) -> DaysOfWeek | None:
+    """Resolve a day string or enum to a ``DaysOfWeek`` member."""
+    if isinstance(day, DaysOfWeek):
+        return day
+    try:
+        return DaysOfWeek(day.capitalize())
+    except ValueError:
+        return None
+
+
+def _is_in_window(day: str | DaysOfWeek, windows: dict[DaysOfWeek, TimeWindow]) -> bool:
+    """Check if the current LA time falls inside the window for *day*."""
+    day_enum = _resolve_day(day)
+    if day_enum is None:
+        return False
+
+    window = windows.get(day_enum)
+    if window is None:
+        return False
+
+    now = datetime.now(tz=LA_TZ)
+    weekday_enum = list(DaysOfWeek)[now.weekday()]
+    hour = now.hour
+
+    return (weekday_enum == window.start_day and hour >= window.start_hour) or (
+        weekday_enum == window.end_day and hour < window.end_hour
+    )
+
+
 def is_in_ride_day_window(day: str | DaysOfWeek) -> bool:
     """
-    Checks if the current time in LA is within the target window for the given day.
+    Checks if the current time in LA is within the ride-day window for the given day.
 
     Windows are defined in ``RIDE_DAY_WINDOWS``.
 
@@ -78,25 +128,23 @@ def is_in_ride_day_window(day: str | DaysOfWeek) -> bool:
     Returns:
         bool: True if the current time is within the window, False otherwise.
     """
-    now = datetime.now(tz=LA_TZ)
-    weekday_enum = list(DaysOfWeek)[now.weekday()]
-    hour = now.hour
+    return _is_in_window(day, RIDE_DAY_WINDOWS)
 
-    if isinstance(day, DaysOfWeek):
-        day_enum = day
-    else:
-        try:
-            day_enum = DaysOfWeek(day.capitalize())
-        except ValueError:
-            return False
 
-    window = RIDE_DAY_WINDOWS.get(day_enum)
-    if window is None:
-        return False
+def is_in_late_reaction_window(day: str | DaysOfWeek) -> bool:
+    """
+    Checks if the current time in LA is within the late-reaction window for the given day.
 
-    return (weekday_enum == window.start_day and hour >= window.start_hour) or (
-        weekday_enum == window.end_day and hour < window.end_hour
-    )
+    Windows are defined in ``LATE_REACTION_WINDOWS``.
+
+    Args:
+        day: The day to check (Wednesday, Friday, or Sunday).
+             Accepts a string or a ``DaysOfWeek`` enum member.
+
+    Returns:
+        bool: True if the current time is within the window, False otherwise.
+    """
+    return _is_in_window(day, LATE_REACTION_WINDOWS)
 
 
 def get_next_date_str(day: DaysOfWeekNumber) -> str:
@@ -231,9 +279,9 @@ def is_during_late_reaction_window(message_content: str) -> bool:
     """
     content = message_content.lower()
     return (
-        ("friday" in content and is_in_ride_day_window(DaysOfWeek.FRIDAY))
-        or ("sunday" in content and is_in_ride_day_window(DaysOfWeek.SUNDAY))
-        or ("wednesday" in content and is_in_ride_day_window(DaysOfWeek.WEDNESDAY))
+        ("friday" in content and is_in_late_reaction_window(DaysOfWeek.FRIDAY))
+        or ("sunday" in content and is_in_late_reaction_window(DaysOfWeek.SUNDAY))
+        or ("wednesday" in content and is_in_late_reaction_window(DaysOfWeek.WEDNESDAY))
     )
 
 
