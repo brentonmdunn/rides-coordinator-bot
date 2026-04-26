@@ -1,7 +1,7 @@
 """Add modmail_channels table.
 
 Revision ID: c9f7a2b4e011
-Revises: f1a2b3c4d5e6
+Revises: c6440e6c3d0e
 Create Date: 2026-04-26
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "c9f7a2b4e011"
-down_revision: str | None = "f1a2b3c4d5e6"
+down_revision: str | None = "c6440e6c3d0e"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
