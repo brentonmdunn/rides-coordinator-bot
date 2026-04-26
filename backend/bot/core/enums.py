@@ -68,6 +68,7 @@ class FeatureFlagNames(StrEnum):
     LOG_REACTIONS = "log_reactions"
     EVENT_THREADS = "event_threads"
     LATE_RIDES_REACT = "late_rides_react"
+    MODMAIL = "modmail"
 
 
 class JobName(StrEnum):

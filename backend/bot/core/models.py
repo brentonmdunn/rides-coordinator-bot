@@ -117,6 +117,17 @@ class UserAccount(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
 
+class ModmailChannels(Base):
+    """Model mapping a Discord user to their dedicated modmail channel."""
+
+    __tablename__ = "modmail_channels"
+
+    user_id: Mapped[str] = mapped_column(primary_key=True)
+    channel_id: Mapped[str] = mapped_column(unique=True, index=True)
+    username: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class UserPreferences(Base):
     """
     Model representing per-user UI/app preferences.
