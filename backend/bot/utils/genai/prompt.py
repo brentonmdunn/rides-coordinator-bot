@@ -36,6 +36,11 @@ Each person will be separated by a comma. For example, "nathan luk" is one perso
 {drivers_str}
 </drivers>
 <matrix>
+The table below is an all-pairs shortest-path matrix (minutes). Cell (row=A, col=B)
+is the minimum travel time from A to B. The special rows/columns "START" and "END"
+are the driver's origin and destination. "-" means the pair is unreachable.
+Total route time for a driver is: START -> first pickup -> ... -> last pickup -> END.
+
 {locations_matrix}
 </matrix>
 </current_situation>
@@ -122,6 +127,10 @@ Each person will be separated by a comma. For example, "nathan luk" is one perso
 {drivers_str}
 </drivers>
 <matrix>
+The table below is an all-pairs shortest-path matrix (minutes). Cell (row=A, col=B)
+is the minimum travel time from A to B. "START" and "END" are the driver's origin
+and destination. "-" means the pair is unreachable.
+
 {locations_matrix}
 </matrix>
 </current_situation>

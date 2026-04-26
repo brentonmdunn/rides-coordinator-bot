@@ -14,6 +14,7 @@ from bot.utils.genai.prompt import (
     GROUP_RIDES_PROMPT_LEGACY,
     PROMPT_EPILOGUE,
 )
+from bot.utils.locations import render_distance_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -82,13 +83,18 @@ class LLMService:
                 prompt += CUSTOM_INSTRUCTIONS.format(custom_instructions=custom_prompt)
             prompt += PROMPT_EPILOGUE
 
+        # Render the adjacency graph as an all-pairs shortest-path Markdown table so
+        # the LLM doesn't have to perform graph search itself. See
+        # backend/docs/group_rides_pipeline.md for rationale.
+        locations_matrix_md = render_distance_markdown(locations_matrix)
+
         if os.getenv("APP_ENV", "local") == "local":
             logger.debug(
                 f"prompt={
                     prompt.format(
                         pickups_str=pickups_str,
                         drivers_str=drivers_str,
-                        locations_matrix=locations_matrix,
+                        locations_matrix=locations_matrix_md,
                     )
                 }"
             )
@@ -99,7 +105,9 @@ class LLMService:
 
         ai_response = self.llm.invoke(
             prompt.format(
-                pickups_str=pickups_str, drivers_str=drivers_str, locations_matrix=locations_matrix
+                pickups_str=pickups_str,
+                drivers_str=drivers_str,
+                locations_matrix=locations_matrix_md,
             )
         )
 
