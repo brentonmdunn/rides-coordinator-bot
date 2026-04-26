@@ -55,7 +55,8 @@ class LLMService:
     """Service for handling Google Gemini interactions."""
 
     def __init__(self):
-        """Initialize the LLMService.
+        """
+        Initialize the LLMService.
 
         ``response_mime_type`` forces the Gemini API to return a JSON object,
         which removes the fragile codefence-stripping parsing path. ``seed``
