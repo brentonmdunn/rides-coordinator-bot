@@ -11,6 +11,7 @@ from bot.jobs.ask_rides import (
     run_ask_rides_all,
     run_periodic_cache_warming,
 )
+from bot.jobs.non_discord_rides import delete_past_pickups
 from bot.jobs.sync_rides_locations import sync_rides_locations
 
 
@@ -78,11 +79,11 @@ class JobScheduler(commands.Cog):
             id="sync_rides_locations",
         )
 
-        # self.scheduler.add_job(
-        #     delete_past_pickups,
-        #     CronTrigger(day_of_week="mon", hour=3, minute=0),
-        #     id="delete_past_pickups",
-        # )
+        self.scheduler.add_job(
+            delete_past_pickups,
+            CronTrigger(day_of_week="mon", hour=3, minute=0),
+            id="delete_past_pickups",
+        )
 
         self.scheduler.start()
 
