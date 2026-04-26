@@ -420,27 +420,27 @@ class TestGetSendWednesday:
 class TestIsDuringLateReactionWindow:
     """Tests for is_during_late_reaction_window."""
 
-    @patch("bot.utils.time_helpers.is_in_ride_day_window")
+    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_friday_message_in_window(self, mock_window):
         mock_window.return_value = True
         assert is_during_late_reaction_window("React for Friday fellowship 4/24") is True
 
-    @patch("bot.utils.time_helpers.is_in_ride_day_window")
+    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_sunday_message_in_window(self, mock_window):
         mock_window.return_value = True
         assert is_during_late_reaction_window("React for Sunday service 4/26") is True
 
-    @patch("bot.utils.time_helpers.is_in_ride_day_window")
+    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_wednesday_message_in_window(self, mock_window):
         mock_window.return_value = True
         assert is_during_late_reaction_window("React for Wednesday Bible study") is True
 
-    @patch("bot.utils.time_helpers.is_in_ride_day_window")
+    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_no_day_in_message(self, mock_window):
         mock_window.return_value = True
         assert is_during_late_reaction_window("React for rides!") is False
 
-    @patch("bot.utils.time_helpers.is_in_ride_day_window")
+    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_day_in_message_but_not_in_window(self, mock_window):
         mock_window.return_value = False
         assert is_during_late_reaction_window("React for Friday fellowship") is False
