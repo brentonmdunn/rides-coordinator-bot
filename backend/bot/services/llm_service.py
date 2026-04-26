@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 # LLM_MODEL = "gemini-2.5-pro"
 LLM_MODEL = "gemini-2.5-flash"
 NUM_RETRY_ATTEMPTS = 4
+# Fixed seed paired with temperature=0. Still not a strict guarantee of
+# reproducibility (API version / model version can drift), but removes one
+# source of per-call variance.
+_LLM_SEED = 42
 
 
 def log_retry_attempt(retry_state):
@@ -45,8 +49,19 @@ class LLMService:
     """Service for handling Google Gemini interactions."""
 
     def __init__(self):
-        """Initialize the LLMService."""
-        self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
+        """Initialize the LLMService.
+
+        ``response_mime_type`` forces the Gemini API to return a JSON object,
+        which removes the fragile codefence-stripping parsing path. ``seed``
+        pairs with ``temperature=0`` to make outputs as reproducible as the
+        API permits (useful for debugging and for best-of-N sampling later).
+        """
+        self.llm = ChatGoogleGenerativeAI(
+            model=LLM_MODEL,
+            temperature=0,
+            response_mime_type="application/json",
+            seed=_LLM_SEED,
+        )
 
     @tenacity.retry(
         stop=tenacity.stop_after_attempt(NUM_RETRY_ATTEMPTS),
@@ -116,31 +131,11 @@ class LLMService:
 
         logger.debug(f"Raw LLM output={ai_response}")
 
-        def preprocess_llm_result(ai_response):
-            # Attempt to be robust to optional markdown code blocks
-            content = ai_response.content
-            if "```json" in content:
-                try:
-                    start = content.find("```json") + 7
-                    end = content.rfind("```")
-                    json_str = content[start:end].strip()
-                    return json.loads(json_str)
-                except Exception:
-                    pass
-
-            # Original logic fallback
-            if "json" in ai_response.content:
-                codebox_beginning_idx = 8
-                codebox_ending_idx = -3
-                llm_result = json.loads(
-                    ai_response.content[codebox_beginning_idx:codebox_ending_idx]
-                )
-            else:
-                llm_result = json.loads(ai_response.content)
-            return llm_result
-
-        # Sometimes the LLM decides to put a code box even if it is directed not to
-        llm_result = preprocess_llm_result(ai_response)
+        # With ``response_mime_type="application/json"`` the API returns a raw
+        # JSON string in ``content``. No codefence handling is required. If the
+        # API ever returns something non-JSON (e.g. a safety refusal), the
+        # ``JSONDecodeError`` will trigger a tenacity retry.
+        llm_result = json.loads(ai_response.content)
 
         logger.info(f"{llm_result=}")
 
