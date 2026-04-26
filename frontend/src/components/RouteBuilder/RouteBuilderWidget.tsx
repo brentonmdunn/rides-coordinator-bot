@@ -58,7 +58,6 @@ export interface RouteBuilderWidgetProps {
     onChangeRouteOutput: (value: string) => void
     onCopyRoute: () => void
     onRevertRoute: () => void
-    copied: boolean
 
     // Drivers
     drivers: string[]
@@ -97,7 +96,6 @@ export function RouteBuilderWidget({
     onChangeRouteOutput,
     onCopyRoute,
     onRevertRoute,
-    copied,
     drivers,
     driverUsernameToName,
     selectedDriver,
@@ -250,7 +248,6 @@ export function RouteBuilderWidget({
                             }
                             onCopy={onCopyRoute}
                             onRevert={onRevertRoute}
-                            copied={copied}
                         />
                     </div>
                 )}

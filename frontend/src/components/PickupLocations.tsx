@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useCopyToClipboard } from '../lib/utils'
+import { copyToClipboard } from '../lib/utils'
 import { Button } from './ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
@@ -22,7 +22,6 @@ function PickupLocations() {
     const [messageId, setMessageId] = useState('')
     const [channelId, setChannelId] = useState('')
     const [showSettings, setShowSettings] = useState(false)
-    const { copiedText: copiedUsername, copyToClipboard } = useCopyToClipboard()
     const [showInfo, setShowInfo] = useState(false)
 
     const {
@@ -121,7 +120,6 @@ function PickupLocations() {
                                 key={groupName}
                                 groupName={groupName}
                                 groupData={groupData}
-                                copiedUsername={copiedUsername}
                                 onCopy={copyToClipboard}
                             />
                         ))}

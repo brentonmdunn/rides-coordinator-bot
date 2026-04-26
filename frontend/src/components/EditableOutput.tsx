@@ -6,22 +6,16 @@ interface EditableOutputProps {
     onChange: (value: string) => void
     onCopy: () => void
     onRevert: () => void
-    copied: boolean
     minHeight?: string
     placeholder?: string
 }
 
-/**
- * Reusable component for editable text output with copy and revert functionality.
- * Used in RouteBuilder and GroupRides for consistent UX.
- */
 function EditableOutput({
     value,
     originalValue,
     onChange,
     onCopy,
     onRevert,
-    copied,
     minHeight = 'min-h-[80px]',
     placeholder = ''
 }: EditableOutputProps) {
@@ -43,13 +37,10 @@ function EditableOutput({
                 <Button
                     onClick={onCopy}
                     size="sm"
-                    variant={copied ? "default" : "outline"}
-                    className={`h-8 px-2 text-xs bg-white hover:bg-slate-100 dark:bg-zinc-900 ${copied
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent dark:bg-emerald-600 dark:hover:bg-emerald-700"
-                        : "text-slate-700 dark:text-slate-300"
-                        }`}
+                    variant="outline"
+                    className="h-8 px-2 text-xs bg-white hover:bg-slate-100 dark:bg-zinc-900 text-slate-700 dark:text-slate-300"
                 >
-                    {copied ? '✓ Copied' : '📋 Copy'}
+                    Copy
                 </Button>
             </div>
             <textarea

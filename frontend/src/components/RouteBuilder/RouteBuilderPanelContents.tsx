@@ -38,7 +38,6 @@ export interface RouteBuilderPanelContentsProps {
     onChangeRouteOutput: (value: string) => void
     onCopyRoute: () => void
     onRevertRoute: () => void
-    copied: boolean
 
     // Driver state
     drivers: string[]
@@ -68,7 +67,6 @@ export function RouteBuilderPanelContents({
     onChangeRouteOutput,
     onCopyRoute,
     onRevertRoute,
-    copied,
     drivers,
     driverUsernameToName,
     selectedDriver,
@@ -186,7 +184,6 @@ export function RouteBuilderPanelContents({
                             }
                             onCopy={onCopyRoute}
                             onRevert={onRevertRoute}
-                            copied={copied}
                             minHeight="min-h-[120px]"
                         />
                     </div>
