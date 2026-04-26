@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from api.auth import cloudflare_access_middleware
 from api.middleware.access_logger import AccessLogMiddleware
@@ -75,6 +76,10 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(lifespan=lifespan)
+
+# Expose Prometheus metrics at /metrics for observability of API latency,
+# request volume, and error rates.
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # Add CORS middleware for development (allows frontend on different port)
 if APP_ENV == "local":
