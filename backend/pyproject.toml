@@ -20,6 +20,7 @@ dependencies = [
     "rapidfuzz>=3.14.3",
     "recurring-ical-events>=3.8.0",
     "redis[hiredis]>=5.0.0",
+    "slowapi>=0.1.9",
     "sqlalchemy>=2.0.43",
     "tenacity>=9.1.2",
     "uvicorn[standard]>=0.34.0",
