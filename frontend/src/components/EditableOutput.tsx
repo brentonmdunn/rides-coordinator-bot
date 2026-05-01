@@ -14,8 +14,6 @@ interface EditableOutputProps {
     usernames?: UsernameEntry[]
 }
 
-const MAX_SUGGESTIONS = 5
-
 function getMentionQuery(value: string, cursorPos: number): string | null {
     for (let i = cursorPos - 1; i >= 0; i--) {
         const ch = value[i]
@@ -88,7 +86,18 @@ function EditableOutput({
                       const q = mentionQuery.toLowerCase()
                       return username.toLowerCase().includes(q) || name.toLowerCase().includes(q)
                   })
-                  .slice(0, MAX_SUGGESTIONS)
+                  .map((entry) => {
+                      const q = mentionQuery.toLowerCase()
+                      const u = entry.username.toLowerCase()
+                      const n = entry.name.toLowerCase()
+                      const score =
+                          u === q || n === q ? 0
+                          : u.startsWith(q) || n.startsWith(q) ? 1
+                          : 2
+                      return { entry, score }
+                  })
+                  .sort((a, b) => a.score - b.score)
+                  .map(({ entry }) => entry)
             : []
     const showDropdown = dropdownOpen && mentionQuery !== null
 
@@ -200,7 +209,7 @@ function EditableOutput({
             </div>
 
             {showDropdown && (
-                <ul className="absolute bottom-2 left-2 z-20 w-56 rounded-md border border-slate-200 dark:border-zinc-600 bg-white dark:bg-zinc-900 shadow-lg py-1 text-sm">
+                <ul className="absolute bottom-2 left-2 z-20 w-56 max-h-[9.5rem] overflow-y-auto rounded-md border border-slate-200 dark:border-zinc-600 bg-white dark:bg-zinc-900 shadow-lg py-1 text-sm">
                     {suggestions.length === 0 ? (
                         <li className="px-3 py-1.5 text-slate-400 dark:text-slate-500 select-none">
                             No results
