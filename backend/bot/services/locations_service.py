@@ -42,6 +42,15 @@ class LocationsService:
         self._housing = HousingGroupService()
 
     # ------------------------------------------------------------------
+    # Static helpers (no bot required)
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def get_all_discord_usernames() -> list[tuple[str, str]]:
+        """Return (discord_username, name) pairs for all rows with a non-null username."""
+        async with AsyncSessionLocal() as session:
+            return await LocationsRepository.get_all_discord_usernames(session)
+
+    # ------------------------------------------------------------------
     # CSV sync (delegates to CsvSyncService)
     # ------------------------------------------------------------------
     async def sync_locations(self):

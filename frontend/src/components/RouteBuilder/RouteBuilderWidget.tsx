@@ -24,6 +24,7 @@ import { DriverSelector } from './DriverSelector'
 import { createNumberedIcon, defaultMarkerIcon } from './numberedMarker'
 import type { TimeModeKey } from './routeBuilderConstants'
 import type { PickupLocationsResponse } from '../../types'
+import { useUsernames } from '../../hooks/useUsernames'
 
 export interface RouteBuilderWidgetProps {
     theme: string
@@ -108,6 +109,7 @@ export function RouteBuilderWidget({
     legLabels,
     lastToggledLocation,
 }: RouteBuilderWidgetProps) {
+    const { data: usernames } = useUsernames()
     const displayPrefix = selectedDriver ? `@${selectedDriver} drive: ` : ''
     const displayValue = displayPrefix + routeOutput
     const displayOriginal = displayPrefix + originalRouteOutput
@@ -251,6 +253,7 @@ export function RouteBuilderWidget({
                             onCopy={onCopyRoute}
                             onRevert={onRevertRoute}
                             copied={copied}
+                            usernames={usernames}
                         />
                     </div>
                 )}
