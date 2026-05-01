@@ -14,6 +14,21 @@ interface EditableOutputProps {
     usernames?: UsernameEntry[]
 }
 
+// Returns true when the cursor is sitting inside a token that is already a
+// valid @mention — so the dropdown should be suppressed.
+function isInsideValidMention(value: string, cursorPos: number, validUsernameSet: Set<string>): boolean {
+    let atPos = -1
+    for (let i = cursorPos - 1; i >= 0; i--) {
+        const ch = value[i]
+        if (ch === '@') { atPos = i; break }
+        if (ch === ' ' || ch === '\n') break
+    }
+    if (atPos === -1) return false
+    let end = cursorPos
+    while (end < value.length && value[end] !== ' ' && value[end] !== '\n') end++
+    return validUsernameSet.has(value.slice(atPos + 1, end).toLowerCase())
+}
+
 function getMentionQuery(value: string, cursorPos: number): string | null {
     for (let i = cursorPos - 1; i >= 0; i--) {
         const ch = value[i]
@@ -158,7 +173,10 @@ function EditableOutput({
                   .sort((a, b) => a.score - b.score)
                   .map(({ entry }) => entry)
             : []
-    const showDropdown = dropdownOpen && mentionQuery !== null
+    const insideValidMention = usernames
+        ? isInsideValidMention(value, cursorPos, validUsernameSet)
+        : false
+    const showDropdown = dropdownOpen && mentionQuery !== null && !insideValidMention
 
     function refreshDropdownPos(text: string, cursor: number) {
         const query = getMentionQuery(text, cursor)
