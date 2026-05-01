@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Button } from './ui/button'
+import type { UsernameEntry } from '../hooks/useUsernames'
 
 interface EditableOutputProps {
     value: string
@@ -10,7 +11,7 @@ interface EditableOutputProps {
     copied: boolean
     minHeight?: string
     placeholder?: string
-    usernames?: string[]
+    usernames?: UsernameEntry[]
 }
 
 const MAX_SUGGESTIONS = 5
@@ -55,10 +56,13 @@ function EditableOutput({
     const [dropdownOpen, setDropdownOpen] = useState(true)
 
     const mentionQuery = usernames ? getMentionQuery(value, cursorPos) : null
-    const suggestions =
+    const suggestions: UsernameEntry[] =
         mentionQuery !== null && usernames
             ? usernames
-                  .filter((u) => u.toLowerCase().includes(mentionQuery.toLowerCase()))
+                  .filter(({ username, name }) => {
+                      const q = mentionQuery.toLowerCase()
+                      return username.toLowerCase().includes(q) || name.toLowerCase().includes(q)
+                  })
                   .slice(0, MAX_SUGGESTIONS)
             : []
     const showDropdown = dropdownOpen && mentionQuery !== null
@@ -77,9 +81,9 @@ function EditableOutput({
         setDropdownOpen(true)
     }
 
-    function commitSuggestion(username: string) {
+    function commitSuggestion(entry: UsernameEntry) {
         if (mentionQuery === null) return
-        const { newValue, newCursor } = applyMention(value, cursorPos, mentionQuery, username)
+        const { newValue, newCursor } = applyMention(value, cursorPos, mentionQuery, entry.username)
         onChange(newValue)
         setDropdownOpen(false)
         // Restore focus and cursor after React re-renders
@@ -103,7 +107,7 @@ function EditableOutput({
             setActiveIndex((i) => (i - 1 + suggestions.length) % suggestions.length)
         } else if (e.key === 'Enter') {
             e.preventDefault()
-            commitSuggestion(suggestions[activeIndex])
+            commitSuggestion(suggestions[activeIndex] as UsernameEntry)
         } else if (e.key === 'Escape') {
             setDropdownOpen(false)
         }
@@ -153,12 +157,12 @@ function EditableOutput({
                             No results
                         </li>
                     ) : (
-                        suggestions.map((u, i) => (
+                        suggestions.map((entry, i) => (
                             <li
-                                key={u}
+                                key={entry.username}
                                 onMouseDown={(e) => {
                                     e.preventDefault()
-                                    commitSuggestion(u)
+                                    commitSuggestion(entry)
                                 }}
                                 className={`px-3 py-1.5 cursor-pointer select-none ${
                                     i === activeIndex
@@ -166,7 +170,7 @@ function EditableOutput({
                                         : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800'
                                 }`}
                             >
-                                @{u}
+                                @{entry.username}
                             </li>
                         ))
                     )}

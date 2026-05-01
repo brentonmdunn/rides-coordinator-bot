@@ -14,6 +14,7 @@ import { Button } from '../ui/button'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
 import type { TimeModeKey } from './routeBuilderConstants'
 import EditableOutput from '../EditableOutput'
+import type { UsernameEntry } from '../../hooks/useUsernames'
 import { DriverSelector } from './DriverSelector'
 
 export interface RouteBuilderPanelContentsProps {
@@ -51,7 +52,7 @@ export interface RouteBuilderPanelContentsProps {
     legLabels?: (string | null)[]
 
     // Autocomplete
-    usernames?: string[]
+    usernames?: UsernameEntry[]
 }
 
 export function RouteBuilderPanelContents({
