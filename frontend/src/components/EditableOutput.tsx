@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Button } from './ui/button'
 import type { UsernameEntry } from '../hooks/useUsernames'
 
@@ -51,9 +51,34 @@ function EditableOutput({
 }: EditableOutputProps) {
     const isModified = value !== originalValue
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const highlightRef = useRef<HTMLDivElement>(null)
     const [cursorPos, setCursorPos] = useState(0)
     const [activeIndex, setActiveIndex] = useState(0)
     const [dropdownOpen, setDropdownOpen] = useState(true)
+
+    const validUsernameSet = useMemo(
+        () => new Set((usernames ?? []).map((u) => u.username.toLowerCase())),
+        [usernames]
+    )
+
+    const highlightedContent = useMemo(() => {
+        if (!usernames) return [value]
+        // Split on @token boundaries, keeping the delimiters
+        const parts = value.split(/(@\S+)/g)
+        return parts.map((part, i) => {
+            if (part.startsWith('@') && validUsernameSet.has(part.slice(1).toLowerCase())) {
+                return (
+                    <mark
+                        key={i}
+                        className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded px-0.5 font-semibold not-italic"
+                    >
+                        {part}
+                    </mark>
+                )
+            }
+            return <span key={i}>{part}</span>
+        })
+    }, [value, usernames, validUsernameSet])
 
     const mentionQuery = usernames ? getMentionQuery(value, cursorPos) : null
     const suggestions: UsernameEntry[] =
@@ -81,12 +106,18 @@ function EditableOutput({
         setDropdownOpen(true)
     }
 
+    function handleScroll(e: React.UIEvent<HTMLTextAreaElement>) {
+        if (highlightRef.current) {
+            highlightRef.current.scrollTop = e.currentTarget.scrollTop
+            highlightRef.current.scrollLeft = e.currentTarget.scrollLeft
+        }
+    }
+
     function commitSuggestion(entry: UsernameEntry) {
         if (mentionQuery === null) return
         const { newValue, newCursor } = applyMention(value, cursorPos, mentionQuery, entry.username)
         onChange(newValue)
         setDropdownOpen(false)
-        // Restore focus and cursor after React re-renders
         requestAnimationFrame(() => {
             if (textareaRef.current) {
                 textareaRef.current.focus()
@@ -139,17 +170,35 @@ function EditableOutput({
                     {copied ? '✓ Copied' : '📋 Copy'}
                 </Button>
             </div>
-            <textarea
-                ref={textareaRef}
-                value={value}
-                onChange={handleChange}
-                onSelect={updateCursor}
-                onKeyDown={handleKeyDown}
-                onBlur={() => setDropdownOpen(false)}
-                placeholder={placeholder}
-                className={`w-full ${minHeight} p-4 text-sm font-mono bg-transparent border-0 resize-y focus:ring-0 focus:outline-none text-slate-800 dark:text-slate-200 rounded-md`}
-                spellCheck={false}
-            />
+
+            {/* Overlay wrapper: highlight div behind, textarea on top */}
+            <div className="relative">
+                {/* Highlight layer — mirrors textarea content with styled @mentions */}
+                <div
+                    ref={highlightRef}
+                    aria-hidden
+                    className={`absolute inset-0 ${minHeight} p-4 text-sm font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words overflow-hidden pointer-events-none rounded-md`}
+                >
+                    {highlightedContent}
+                    {/* Extra line so height matches when content ends with \n */}
+                    <br />
+                </div>
+
+                {/* Textarea — transparent text so highlight shows through */}
+                <textarea
+                    ref={textareaRef}
+                    value={value}
+                    onChange={handleChange}
+                    onSelect={updateCursor}
+                    onKeyDown={handleKeyDown}
+                    onScroll={handleScroll}
+                    onBlur={() => setDropdownOpen(false)}
+                    placeholder={placeholder}
+                    spellCheck={false}
+                    className={`relative z-10 w-full ${minHeight} p-4 text-sm font-mono bg-transparent border-0 resize-y focus:ring-0 focus:outline-none rounded-md text-transparent caret-slate-800 dark:caret-slate-200`}
+                />
+            </div>
+
             {showDropdown && (
                 <ul className="absolute bottom-2 left-2 z-20 w-56 rounded-md border border-slate-200 dark:border-zinc-600 bg-white dark:bg-zinc-900 shadow-lg py-1 text-sm">
                     {suggestions.length === 0 ? (
