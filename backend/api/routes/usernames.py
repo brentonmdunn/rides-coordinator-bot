@@ -1,7 +1,7 @@
 """
 Usernames API Endpoint
 
-GET /api/usernames — returns all known Discord usernames for @mention autocomplete.
+GET /api/usernames — returns Discord username + display name pairs for @mention autocomplete.
 """
 
 import logging
@@ -17,10 +17,10 @@ router = APIRouter()
 
 @router.get("/api/usernames")
 async def get_usernames():
-    """Return all known Discord usernames for @mention autocomplete."""
+    """Return Discord username + name pairs for @mention autocomplete."""
     try:
-        usernames = await LocationsService.get_all_discord_usernames()
-        return {"usernames": usernames}
+        pairs = await LocationsService.get_all_discord_usernames()
+        return {"users": [{"username": u, "name": n} for u, n in pairs]}
     except Exception:
         logger.exception("Failed to fetch usernames")
         raise HTTPException(status_code=500, detail="Failed to fetch usernames") from None

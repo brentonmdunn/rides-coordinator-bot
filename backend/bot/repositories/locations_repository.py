@@ -175,13 +175,13 @@ class LocationsRepository:
         return person
 
     @staticmethod
-    async def get_all_discord_usernames(session: AsyncSession) -> list[str]:
-        """Return all non-null discord_username values from the locations table."""
-        stmt = select(LocationsModel.discord_username).where(
+    async def get_all_discord_usernames(session: AsyncSession) -> list[tuple[str, str]]:
+        """Return (discord_username, name) pairs for all rows with a non-null username."""
+        stmt = select(LocationsModel.discord_username, LocationsModel.name).where(
             LocationsModel.discord_username.is_not(None)
         )
         result = await session.execute(stmt)
-        return [row for (row,) in result.all()]
+        return [(username, name) for username, name in result.all()]
 
     @staticmethod
     async def sync_locations(session: AsyncSession, locations_to_add: list[LocationsModel]):
