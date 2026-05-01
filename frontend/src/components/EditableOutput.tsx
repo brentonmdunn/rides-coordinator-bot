@@ -31,7 +31,8 @@ function applyMention(
     username: string
 ): { newValue: string; newCursor: number } {
     const atPos = cursorPos - query.length - 1
-    const insertion = `@${username} `
+    const trailingSpace = value[cursorPos] === ' ' ? '' : ' '
+    const insertion = `@${username}${trailingSpace}`
     const newValue = value.slice(0, atPos) + insertion + value.slice(cursorPos)
     return { newValue, newCursor: atPos + insertion.length }
 }
