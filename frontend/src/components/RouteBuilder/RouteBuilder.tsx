@@ -36,6 +36,7 @@ import { RouteBuilderWidget } from './RouteBuilderWidget'
 import { RouteBuilderFullscreenMap } from './RouteBuilderFullscreenMap'
 import { RouteBuilderDesktopPanel } from './RouteBuilderDesktopPanel'
 import { RouteBuilderMobileSheet } from './RouteBuilderMobileSheet'
+import { useUsernames } from '../../hooks/useUsernames'
 
 setupLeafletIcons()
 
@@ -157,6 +158,7 @@ function syncPersistedState(state: PersistedState) {
 
 function RouteBuilder() {
     const { theme } = useTheme()
+    const { data: usernames } = useUsernames()
     const isMobile = useIsMobile()
 
     // --- Hydrate persisted state once on mount ---
@@ -497,6 +499,7 @@ function RouteBuilder() {
         onSelectDriver: setSelectedDriver,
         tripSummary,
         legLabels,
+        usernames,
     }
 
     // --- Fullscreen overlay (rendered via portal) ---

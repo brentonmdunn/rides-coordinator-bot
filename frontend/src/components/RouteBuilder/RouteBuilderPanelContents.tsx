@@ -49,6 +49,9 @@ export interface RouteBuilderPanelContentsProps {
     // Trip metadata
     tripSummary?: string | null
     legLabels?: (string | null)[]
+
+    // Autocomplete
+    usernames?: string[]
 }
 
 export function RouteBuilderPanelContents({
@@ -75,6 +78,7 @@ export function RouteBuilderPanelContents({
     onSelectDriver,
     tripSummary,
     legLabels,
+    usernames,
 }: RouteBuilderPanelContentsProps) {
     if (selectedLocationKeys.length === 0) {
         return (
@@ -188,6 +192,7 @@ export function RouteBuilderPanelContents({
                             onRevert={onRevertRoute}
                             copied={copied}
                             minHeight="min-h-[120px]"
+                            usernames={usernames}
                         />
                     </div>
                 )
