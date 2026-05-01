@@ -463,7 +463,7 @@ async def find_message_in_history(
 
     for message in messages:
         # Check if message is from current week
-        if message.created_at.replace(tzinfo=None) < current_week_start:
+        if message.created_at.astimezone(current_week_start.tzinfo) < current_week_start:
             continue
 
         if message.embeds and keyword.lower() in message.embeds[0].description.lower():
