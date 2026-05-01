@@ -24,6 +24,7 @@ function isInsideValidMention(value: string, cursorPos: number, validUsernameSet
         if (ch === ' ' || ch === '\n') break
     }
     if (atPos === -1) return false
+    if (atPos > 0 && value[atPos - 1] !== ' ' && value[atPos - 1] !== '\n') return false
     let end = cursorPos
     while (end < value.length && value[end] !== ' ' && value[end] !== '\n') end++
     return validUsernameSet.has(value.slice(atPos + 1, end).toLowerCase())
@@ -32,7 +33,13 @@ function isInsideValidMention(value: string, cursorPos: number, validUsernameSet
 function getMentionQuery(value: string, cursorPos: number): string | null {
     for (let i = cursorPos - 1; i >= 0; i--) {
         const ch = value[i]
-        if (ch === '@') return value.slice(i + 1, cursorPos)
+        if (ch === '@') {
+            const before = i > 0 ? value[i - 1] : null
+            if (before === null || before === ' ' || before === '\n') {
+                return value.slice(i + 1, cursorPos)
+            }
+            return null
+        }
         if (ch === ' ' || ch === '\n') return null
     }
     return null
@@ -138,7 +145,13 @@ function EditableOutput({
         if (!usernames) return [value]
         const parts = value.split(/(@\S+)/g)
         return parts.map((part, i) => {
-            if (part.startsWith('@') && validUsernameSet.has(part.slice(1).toLowerCase())) {
+            const prev = parts[i - 1] ?? ''
+            const precededBySpace = prev === '' || /\s$/.test(prev)
+            if (
+                precededBySpace &&
+                part.startsWith('@') &&
+                validUsernameSet.has(part.slice(1).toLowerCase())
+            ) {
                 return (
                     <span
                         key={i}
