@@ -51,3 +51,9 @@ def test(c):
 def clean(c):
     """Clean up dev commands."""
     c.run("python scripts/remove_dev_commands.py")
+
+
+@task
+def migrate(c, message):
+    """Generate a new Alembic migration. Usage: uv run invoke migrate -m 'description'."""
+    c.run(f'alembic revision --autogenerate -m "{message}"')
