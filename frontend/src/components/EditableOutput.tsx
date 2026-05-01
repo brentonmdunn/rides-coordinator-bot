@@ -36,6 +36,64 @@ function applyMention(
     return { newValue, newCursor: atPos + insertion.length }
 }
 
+// Measures the pixel position of the character at `atIdx` within `textarea`,
+// returned relative to `container`. Uses a hidden mirror div so line-wrapping
+// is identical to the real textarea. Relies on offsetTop/offsetLeft (not
+// getBoundingClientRect) so the mirror can live off-screen without producing
+// huge negative viewport coordinates.
+function measureAtPosition(
+    textarea: HTMLTextAreaElement,
+    container: HTMLElement,
+    value: string,
+    atIdx: number
+): { top: number; left: number } | null {
+    const cs = window.getComputedStyle(textarea)
+
+    const mirror = document.createElement('div')
+    Object.assign(mirror.style, {
+        position: 'absolute',
+        top: '0',
+        left: '0',
+        visibility: 'hidden',
+        overflow: 'hidden',
+        whiteSpace: 'pre-wrap',
+        wordWrap: 'break-word',
+        width: cs.width,
+        padding: cs.padding,
+        border: cs.border,
+        font: cs.font,
+        lineHeight: cs.lineHeight,
+        letterSpacing: cs.letterSpacing,
+        boxSizing: cs.boxSizing,
+    })
+    mirror.textContent = value.slice(0, atIdx)
+    const marker = document.createElement('span')
+    marker.textContent = '​'
+    mirror.appendChild(marker)
+    document.body.appendChild(mirror)
+
+    // offsetTop/offsetLeft give position within the mirror div, which maps
+    // directly to content coordinates inside the textarea.
+    const caretTop = marker.offsetTop
+    const caretLeft = marker.offsetLeft
+    document.body.removeChild(mirror)
+
+    const textareaRect = textarea.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+    const lineHeight = parseFloat(cs.lineHeight) || 20
+    const dropdownMaxH = 152
+
+    // Subtract scrollTop because the textarea may have scrolled.
+    const relTop = textareaRect.top - containerRect.top + caretTop - textarea.scrollTop
+    const relLeft = textareaRect.left - containerRect.left + caretLeft
+
+    const spaceBelow = containerRect.height - relTop - lineHeight
+    if (spaceBelow >= dropdownMaxH || spaceBelow >= relTop) {
+        return { top: relTop + lineHeight + 4, left: relLeft }
+    }
+    return { top: relTop - dropdownMaxH - 4, left: relLeft }
+}
+
 function EditableOutput({
     value,
     originalValue,
@@ -48,11 +106,13 @@ function EditableOutput({
     usernames,
 }: EditableOutputProps) {
     const isModified = value !== originalValue
+    const containerRef = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightRef = useRef<HTMLDivElement>(null)
     const [cursorPos, setCursorPos] = useState(0)
     const [activeIndex, setActiveIndex] = useState(0)
     const [dropdownOpen, setDropdownOpen] = useState(true)
+    const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
 
     const validUsernameSet = useMemo(
         () => new Set((usernames ?? []).map((u) => u.username.toLowerCase())),
@@ -61,17 +121,16 @@ function EditableOutput({
 
     const highlightedContent = useMemo(() => {
         if (!usernames) return [value]
-        // Split on @token boundaries, keeping the delimiters
         const parts = value.split(/(@\S+)/g)
         return parts.map((part, i) => {
             if (part.startsWith('@') && validUsernameSet.has(part.slice(1).toLowerCase())) {
                 return (
-                    <mark
+                    <span
                         key={i}
-                        className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded not-italic"
+                        className="bg-emerald-100 dark:bg-emerald-900/40 rounded"
                     >
                         {part}
-                    </mark>
+                    </span>
                 )
             }
             return <span key={i}>{part}</span>
@@ -101,18 +160,32 @@ function EditableOutput({
             : []
     const showDropdown = dropdownOpen && mentionQuery !== null
 
+    function refreshDropdownPos(text: string, cursor: number) {
+        const query = getMentionQuery(text, cursor)
+        if (query === null || !textareaRef.current || !containerRef.current) {
+            setDropdownPos(null)
+            return
+        }
+        const atIdx = cursor - query.length - 1
+        setDropdownPos(measureAtPosition(textareaRef.current, containerRef.current, text, atIdx))
+    }
+
     function updateCursor() {
         const pos = textareaRef.current?.selectionStart ?? 0
         setCursorPos(pos)
         setActiveIndex(0)
         setDropdownOpen(true)
+        refreshDropdownPos(value, pos)
     }
 
     function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-        onChange(e.target.value)
-        setCursorPos(e.target.selectionStart ?? 0)
+        const newValue = e.target.value
+        const newCursor = e.target.selectionStart ?? 0
+        onChange(newValue)
+        setCursorPos(newCursor)
         setActiveIndex(0)
         setDropdownOpen(true)
+        refreshDropdownPos(newValue, newCursor)
     }
 
     function handleScroll(e: React.UIEvent<HTMLTextAreaElement>) {
@@ -127,6 +200,7 @@ function EditableOutput({
         const { newValue, newCursor } = applyMention(value, cursorPos, mentionQuery, entry.username)
         onChange(newValue)
         setDropdownOpen(false)
+        setDropdownPos(null)
         requestAnimationFrame(() => {
             if (textareaRef.current) {
                 textareaRef.current.focus()
@@ -154,7 +228,10 @@ function EditableOutput({
     }
 
     return (
-        <div className="group relative bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700 p-1 transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-600">
+        <div
+            ref={containerRef}
+            className="group relative bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700 p-1 transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-600"
+        >
             <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                 {isModified && (
                     <Button
@@ -208,8 +285,11 @@ function EditableOutput({
                 />
             </div>
 
-            {showDropdown && (
-                <ul className="absolute bottom-2 left-2 z-20 w-56 max-h-[9.5rem] overflow-y-auto rounded-md border border-slate-200 dark:border-zinc-600 bg-white dark:bg-zinc-900 shadow-lg py-1 text-sm">
+            {showDropdown && dropdownPos && (
+                <ul
+                    style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                    className="absolute z-20 w-56 max-h-[9.5rem] overflow-y-auto rounded-md border border-slate-200 dark:border-zinc-600 bg-white dark:bg-zinc-900 shadow-lg py-1 text-sm"
+                >
                     {suggestions.length === 0 ? (
                         <li className="px-3 py-1.5 text-slate-400 dark:text-slate-500 select-none">
                             No results
