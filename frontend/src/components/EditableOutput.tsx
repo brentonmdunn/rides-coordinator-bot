@@ -68,7 +68,7 @@ function EditableOutput({
                 return (
                     <mark
                         key={i}
-                        className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded px-0.5 font-semibold not-italic"
+                        className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded not-italic"
                     >
                         {part}
                     </mark>
