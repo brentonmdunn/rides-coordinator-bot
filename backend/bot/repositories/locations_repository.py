@@ -175,6 +175,15 @@ class LocationsRepository:
         return person
 
     @staticmethod
+    async def get_all_discord_usernames(session: AsyncSession) -> list[str]:
+        """Return all non-null discord_username values from the locations table."""
+        stmt = select(LocationsModel.discord_username).where(
+            LocationsModel.discord_username.is_not(None)
+        )
+        result = await session.execute(stmt)
+        return [row for (row,) in result.all()]
+
+    @staticmethod
     async def sync_locations(session: AsyncSession, locations_to_add: list[LocationsModel]):
         """
         Syncs the locations table with new data.
