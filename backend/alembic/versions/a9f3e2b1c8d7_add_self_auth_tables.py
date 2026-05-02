@@ -39,9 +39,8 @@ def upgrade() -> None:
         sa.Column("last_activity_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("session_id_hash"),
     )
-    op.create_index("ix_auth_sessions_session_id_hash", "auth_sessions", ["session_id_hash"])
+    op.create_index("ix_auth_sessions_session_id_hash", "auth_sessions", ["session_id_hash"], unique=True)
     op.create_index("ix_auth_sessions_email", "auth_sessions", ["email"])
     op.create_index("ix_auth_sessions_expires_at", "auth_sessions", ["expires_at"])
 
