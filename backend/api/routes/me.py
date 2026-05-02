@@ -5,6 +5,7 @@ Returns the current authenticated user's information and role.
 Includes a local-only role switcher for development testing.
 """
 
+import logging
 import os
 
 from fastapi import APIRouter, HTTPException, Request
@@ -15,9 +16,12 @@ from bot.core.enums import AccountRoles
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 from bot.services.user_accounts_service import UserAccountsService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 APP_ENV = os.getenv("APP_ENV", "local")
+AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "cloudflare")
 
 
 @router.get("/api/me")
@@ -36,7 +40,15 @@ async def get_current_user(request: Request):
     if not email:
         return {"email": "", "role": AccountRoles.VIEWER, "is_local": APP_ENV == "local"}
 
-    account = await UserAccountsService.get_or_create_account(email)
+    if AUTH_PROVIDER == "self":
+        # Invite-only: don't auto-create. Account must already exist.
+        account = await UserAccountsService.get_account(email)
+        if not account:
+            logger.warning(f"Authenticated user '{email}' has no account row — possible data issue")
+            raise HTTPException(status_code=403, detail="Account not found")
+    else:
+        account = await UserAccountsService.get_or_create_account(email)
+
     return {"email": email, "role": account.role, "is_local": APP_ENV == "local"}
 
 
