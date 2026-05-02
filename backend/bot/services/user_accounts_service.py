@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
+from bot.core.models import UserAccount
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 
 ROLE_LEVELS: dict[str, int] = {
@@ -37,6 +38,35 @@ class UserAccountsService:
 
         async with AsyncSessionLocal() as session:
             return await UserAccountsRepository.get_or_create(session, email)
+
+    @staticmethod
+    async def get_account(email: str) -> UserAccount | None:
+        """Get an existing account by email without creating one."""
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.get_by_email(session, email)
+
+    @staticmethod
+    async def invite(
+        discord_username: str,
+        role: AccountRoles,
+        invited_by: str,
+    ) -> UserAccount | None:
+        """Create an invite record. Returns None if the username already has an account."""
+        async with AsyncSessionLocal() as session:
+            existing = await UserAccountsRepository.get_by_discord_username(
+                session, discord_username
+            )
+            if existing:
+                return None
+            return await UserAccountsRepository.create_invited(
+                session, discord_username, role, invited_by
+            )
+
+    @staticmethod
+    async def revoke(account_id: int) -> bool:
+        """Delete a user account / revoke an invite."""
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.delete_by_id(session, account_id)
 
     @staticmethod
     async def has_minimum_role(
