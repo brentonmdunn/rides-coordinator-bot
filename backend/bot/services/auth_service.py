@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.core.enums import AccountRoles
 from bot.core.models import AuthSession, UserAccount
 from bot.repositories.auth_sessions_repository import AuthSessionsRepository
 from bot.repositories.user_accounts_repository import UserAccountsRepository
@@ -129,6 +130,33 @@ class AuthService:
         """Revoke a session by deleting it from the database."""
         session_id_hash = _hash_token(session_id_plain)
         await AuthSessionsRepository.delete_by_hash(session, session_id_hash)
+
+    @staticmethod
+    async def provision_from_guild_role(
+        session: AsyncSession,
+        discord_user_id: str,
+        discord_username: str,
+        email: str | None,
+    ) -> UserAccount:
+        """
+        Auto-provision a RIDE_COORDINATOR account for a user who has the ride
+        coordinator Discord role but no manual invite.
+
+        Safe to call concurrently — if two requests race, the IntegrityError
+        loser re-fetches the row created by the winner.
+        """
+        try:
+            account = await UserAccountsRepository.create_account(
+                session,
+                email=email or f"{discord_username}@discord.placeholder",
+                role=AccountRoles.RIDE_COORDINATOR,
+            )
+            return await UserAccountsRepository.link_discord_identity(
+                session, account.id, discord_user_id, discord_username, email
+            )
+        except IntegrityError:
+            await session.rollback()
+            return await UserAccountsRepository.get_by_discord_user_id(session, discord_user_id)
 
     @staticmethod
     def verify_csrf(expected: str, provided: str | None) -> bool:

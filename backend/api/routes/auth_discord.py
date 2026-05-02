@@ -27,6 +27,8 @@ DISCORD_CLIENT_ID = os.getenv("DISCORD_OAUTH_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_OAUTH_CLIENT_SECRET")
 DISCORD_REDIRECT_URI = os.getenv("DISCORD_OAUTH_REDIRECT_URI")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
+DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID")
+DISCORD_RIDE_COORDINATOR_ROLE_ID = os.getenv("DISCORD_RIDE_COORDINATOR_ROLE_ID")
 
 _DISCORD_AUTH_URL = "https://discord.com/api/oauth2/authorize"
 _DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
@@ -53,7 +55,7 @@ async def discord_login() -> RedirectResponse:
         "client_id": DISCORD_CLIENT_ID,
         "redirect_uri": DISCORD_REDIRECT_URI,
         "response_type": "code",
-        "scope": "identify email",
+        "scope": "identify email guilds.members.read",
         "state": state,
     }
     discord_url = f"{_DISCORD_AUTH_URL}?{urlencode(params)}"
@@ -121,6 +123,16 @@ async def discord_callback(
                 logger.error(f"Discord user fetch failed: {user_resp.status_code}")
                 return _login_error_redirect("user_fetch_failed")
             discord_user = user_resp.json()
+
+            # Fetch guild member info if guild check is configured.
+            guild_role_ids: set[str] = set()
+            if DISCORD_GUILD_ID:
+                member_resp = await client.get(
+                    f"https://discord.com/api/users/@me/guilds/{DISCORD_GUILD_ID}/member",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if member_resp.is_success:
+                    guild_role_ids = set(member_resp.json().get("roles", []))
     except Exception:
         logger.exception("Error during Discord OAuth exchange")
         return _login_error_redirect("oauth_error")
@@ -135,10 +147,21 @@ async def discord_callback(
     discord_username: str = discord_user["username"]
     email: str | None = discord_user.get("email")
 
+    has_rc_role = bool(
+        DISCORD_GUILD_ID
+        and DISCORD_RIDE_COORDINATOR_ROLE_ID
+        and DISCORD_RIDE_COORDINATOR_ROLE_ID in guild_role_ids
+    )
+
     async with AsyncSessionLocal() as db_session:
         account = await AuthService.match_or_reject(
             db_session, discord_user_id, discord_username, email
         )
+        if account is None and has_rc_role:
+            # Not manually invited but has the ride coordinator Discord role — auto-provision.
+            account = await AuthService.provision_from_guild_role(
+                db_session, discord_user_id, discord_username, email
+            )
         if not account:
             logger.info(f"Login rejected: not invited (discord_username={discord_username})")
             return _login_error_redirect("not_invited")
