@@ -105,3 +105,24 @@ async def seed_admin_accounts(session: AsyncSession):
             logger.info(f"👤 Seeded admin account for '{email}'.")
 
     await session.commit()
+
+
+async def seed_bypass_account(session: AsyncSession) -> None:
+    """Seeds the emergency bypass account if BYPASS_DISCORD=true."""
+    if os.getenv("BYPASS_DISCORD", "").lower() != "true":
+        return
+
+    email = os.getenv("BYPASS_EMAIL", "bypass-emergency@local")
+    result = await session.execute(select(UserAccount).where(UserAccount.email == email))
+    existing = result.scalars().first()
+
+    if existing:
+        if existing.role != AccountRoles.RIDE_COORDINATOR:
+            existing.role = AccountRoles.RIDE_COORDINATOR
+            logger.info(f"👤 Updated bypass account '{email}' to ride_coordinator role.")
+    else:
+        account = UserAccount(email=email, role=AccountRoles.RIDE_COORDINATOR)
+        session.add(account)
+        logger.info(f"👤 Seeded bypass account '{email}' with ride_coordinator role.")
+
+    await session.commit()
