@@ -46,6 +46,16 @@ function UserManagement() {
     const queryClient = useQueryClient()
     const [inviteUsername, setInviteUsername] = useState('')
     const [inviteRole, setInviteRole] = useState<AccountRole>('viewer')
+    const [showEmailFor, setShowEmailFor] = useState<Set<number>>(new Set())
+
+    const toggleEmail = (id: number) => {
+        setShowEmailFor(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
 
     const { data, isLoading, error } = useQuery<UsersResponse>({
         queryKey: ['adminUsers'],
@@ -164,16 +174,13 @@ function UserManagement() {
                                         className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors"
                                     >
                                         <td className="px-3 sm:px-6 py-3 sm:py-4">
-                                            {user.email ? (
-                                                <span className="text-slate-700 dark:text-slate-300 break-all">{user.email}</span>
+                                            {user.discord_username ? (
+                                                <span className="text-slate-700 dark:text-slate-300 font-medium">@{user.discord_username}</span>
                                             ) : (
                                                 <span className="text-slate-500 dark:text-slate-400 italic">pending login</span>
                                             )}
-                                            {user.discord_username && (
-                                                <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                                                    @{user.discord_username}
-                                                    {!user.discord_user_id && ' · not yet logged in'}
-                                                </div>
+                                            {user.discord_username && !user.discord_user_id && (
+                                                <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">not yet logged in</div>
                                             )}
                                             {user.role_edited_by && (
                                                 <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
@@ -183,6 +190,19 @@ function UserManagement() {
                                             {user.invited_by && !user.discord_user_id && (
                                                 <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                                                     invited by {user.invited_by}
+                                                </div>
+                                            )}
+                                            {user.email && (
+                                                <div className="mt-0.5">
+                                                    <button
+                                                        onClick={() => toggleEmail(user.id)}
+                                                        className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                                    >
+                                                        {showEmailFor.has(user.id) ? 'hide email' : 'show email'}
+                                                    </button>
+                                                    {showEmailFor.has(user.id) && (
+                                                        <div className="text-xs text-slate-500 dark:text-slate-400 break-all mt-0.5">{user.email}</div>
+                                                    )}
                                                 </div>
                                             )}
                                         </td>
