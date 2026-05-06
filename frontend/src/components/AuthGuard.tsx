@@ -29,8 +29,15 @@ function AuthGuard() {
         )
     }
 
-    if (error instanceof ApiError && error.status === 401) {
-        return null
+    if (error) {
+        if (error instanceof ApiError && error.status === 401) {
+            return null
+        }
+        return (
+            <div className="min-h-screen flex items-center justify-center text-slate-500">
+                Something went wrong. <button className="ml-2 underline" onClick={() => window.location.reload()}>Reload</button>
+            </div>
+        )
     }
 
     return <Outlet />

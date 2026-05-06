@@ -160,10 +160,12 @@ if admin_ui_path.is_dir():
         full_path = admin_ui_path / file_path
         if file_path and full_path.is_file():
             return FileResponse(full_path)
-        # Otherwise, serve the SPA index.html
+        # Otherwise, serve the SPA index.html.
+        # no-store prevents browsers from caching index.html across deploys,
+        # which would cause old hashed asset URLs to 404 and break the page.
         index_path = admin_ui_path / "index.html"
         if index_path.is_file():
-            return FileResponse(index_path)
+            return FileResponse(index_path, headers={"Cache-Control": "no-store"})
         # If no index.html, return 404
         raise HTTPException(status_code=404, detail="Not Found")
 
