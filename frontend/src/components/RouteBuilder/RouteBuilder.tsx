@@ -18,7 +18,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
-import { getAutomaticDay, useCopyToClipboard } from '../../lib/utils'
+import { getAutomaticDay, copyToClipboard } from '../../lib/utils'
 import { apiFetch } from '../../lib/api'
 import { useTheme } from '../use-theme'
 import type { PickupLocationsResponse, MakeRouteResponse, UserPreferences } from '../../types'
@@ -187,7 +187,6 @@ function RouteBuilder() {
     const [originalRouteOutput, setOriginalRouteOutput] = useState<string>('')
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
-    const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
 
     // --- Driver state ---
     const [selectedDriver, setSelectedDriver] = useState(initialPersisted.current.driver)
@@ -492,7 +491,6 @@ function RouteBuilder() {
         onChangeRouteOutput: setRouteOutput,
         onCopyRoute: () => copyToClipboard(routeCopyContent),
         onRevertRoute: revertRoute,
-        copied: copiedText === routeCopyContent,
         drivers: uniqueDrivers,
         driverUsernameToName: driverData?.username_to_name ?? {},
         selectedDriver,
@@ -599,7 +597,6 @@ function RouteBuilder() {
                 onChangeRouteOutput={setRouteOutput}
                 onCopyRoute={() => copyToClipboard(routeCopyContent)}
                 onRevertRoute={revertRoute}
-                copied={copiedText === routeCopyContent}
                 drivers={uniqueDrivers}
                 driverUsernameToName={driverData?.username_to_name ?? {}}
                 selectedDriver={selectedDriver}

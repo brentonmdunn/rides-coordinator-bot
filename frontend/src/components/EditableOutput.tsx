@@ -8,7 +8,6 @@ interface EditableOutputProps {
     onChange: (value: string) => void
     onCopy: () => void
     onRevert: () => void
-    copied: boolean
     minHeight?: string
     placeholder?: string
     usernames?: UsernameEntry[]
@@ -122,7 +121,6 @@ function EditableOutput({
     onChange,
     onCopy,
     onRevert,
-    copied,
     minHeight = 'min-h-[80px]',
     placeholder = '',
     usernames,
@@ -131,6 +129,7 @@ function EditableOutput({
     const containerRef = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightRef = useRef<HTMLDivElement>(null)
+    const [copied, setCopied] = useState(false)
     const [cursorPos, setCursorPos] = useState(0)
     const [activeIndex, setActiveIndex] = useState(0)
     const [dropdownOpen, setDropdownOpen] = useState(true)
@@ -275,7 +274,7 @@ function EditableOutput({
                     </Button>
                 )}
                 <Button
-                    onClick={onCopy}
+                    onClick={() => { onCopy(); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
                     size="sm"
                     variant={copied ? 'default' : 'outline'}
                     className={`h-8 px-2 text-xs bg-white hover:bg-slate-100 dark:bg-zinc-900 ${
@@ -284,7 +283,7 @@ function EditableOutput({
                             : 'text-slate-700 dark:text-slate-300'
                     }`}
                 >
-                    {copied ? '✓ Copied' : '📋 Copy'}
+                    {copied ? 'Copied!' : 'Copy'}
                 </Button>
             </div>
 
