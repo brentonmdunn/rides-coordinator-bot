@@ -70,6 +70,13 @@ class AuthSessionsRepository:
         await session.commit()
 
     @staticmethod
+    async def delete_by_email(session: AsyncSession, email: str) -> int:
+        """Delete all sessions for a given email. Returns the number of rows removed."""
+        result = await session.execute(delete(AuthSession).where(AuthSession.email == email))
+        await session.commit()
+        return result.rowcount
+
+    @staticmethod
     async def delete_expired(session: AsyncSession) -> int:
         """Delete all expired sessions and return the number of rows removed."""
         result = await session.execute(
