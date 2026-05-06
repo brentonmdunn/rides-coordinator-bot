@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
 from bot.core.models import UserAccount
+from bot.repositories.auth_sessions_repository import AuthSessionsRepository
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 
 ROLE_LEVELS: dict[str, int] = {
@@ -64,9 +65,20 @@ class UserAccountsService:
 
     @staticmethod
     async def revoke(account_id: int) -> bool:
-        """Delete a user account / revoke an invite."""
+        """Delete a user account / revoke an invite, and invalidate all active sessions."""
         async with AsyncSessionLocal() as session:
-            return await UserAccountsRepository.delete_by_id(session, account_id)
+            account = await session.get(UserAccount, account_id)
+            if not account:
+                return False
+            email = account.email
+            await session.delete(account)
+            await session.commit()
+
+        if email:
+            async with AsyncSessionLocal() as session:
+                await AuthSessionsRepository.delete_by_email(session, email)
+
+        return True
 
     @staticmethod
     async def has_minimum_role(
