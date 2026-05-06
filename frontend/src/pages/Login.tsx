@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getApiUrl } from '../lib/api'
+import { ApiError, apiFetch, getApiUrl } from '../lib/api'
+
+const BYPASS_ENABLED = import.meta.env.VITE_BYPASS_DISCORD === 'true'
 
 const ERROR_MESSAGES: Record<string, string> = {
     not_invited: "You're not authorized to access this app. Contact the admin.",
@@ -16,6 +19,32 @@ function Login() {
     const [params] = useSearchParams()
     const errorCode = params.get('error')
     const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? 'Login failed. Please try again.') : null
+
+    const [password, setPassword] = useState('')
+    const [bypassError, setBypassError] = useState<string | null>(null)
+    const [loading, setLoading] = useState(false)
+
+    async function handleBypassSubmit(e: React.FormEvent) {
+        e.preventDefault()
+        setBypassError(null)
+        setLoading(true)
+        try {
+            await apiFetch('/api/auth/bypass/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
+            })
+            window.location.href = '/'
+        } catch (err) {
+            if (err instanceof ApiError && err.status === 401) {
+                setBypassError('Invalid password. Please try again.')
+            } else {
+                setBypassError('An error occurred. Please try again.')
+            }
+        } finally {
+            setLoading(false)
+        }
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 px-4">
@@ -44,6 +73,44 @@ function Login() {
                     </svg>
                     Log in with Discord
                 </a>
+
+                {BYPASS_ENABLED && (
+                    <>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-200 dark:border-zinc-800" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-slate-50 dark:bg-zinc-950 px-2 text-slate-400">
+                                    or
+                                </span>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleBypassSubmit} className="space-y-3">
+                            <input
+                                type="password"
+                                placeholder="Emergency access"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                            />
+                            {bypassError && (
+                                <p className="text-sm text-red-700 dark:text-red-400 text-center">
+                                    {bypassError}
+                                </p>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={loading || !password}
+                                className="w-full px-4 py-3 rounded-lg bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white font-medium transition-colors text-sm"
+                            >
+                                {loading ? 'Signing in…' : 'Sign in'}
+                            </button>
+                        </form>
+                    </>
+                )}
             </div>
         </div>
     )
