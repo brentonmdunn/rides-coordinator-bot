@@ -14,7 +14,7 @@ import pickle
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from bot.core.enums import CacheNamespace
+from bot.core.enums import CacheNamespace, FeatureFlagNames
 from bot.utils.cache_backends import get_backend
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,12 @@ def _get_reaction_cache_ttl() -> int:
     if is_active_hours():
         return ACTIVE_HOURS_REACTION_TTL
     return OFF_HOURS_REACTION_TTL
+
+
+def _is_cache_enabled() -> bool:
+    from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+
+    return FeatureFlagsRepository._cache.get(FeatureFlagNames.USE_CACHE.value, True)
 
 
 def _make_cache_key(*args, **kwargs) -> str:
@@ -84,6 +90,9 @@ def alru_cache(
 
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
+            if not _is_cache_enabled():
+                return await func(*args, **kwargs)
+
             backend = get_backend()
             key_args = args[1:] if ignore_self and args else args
             key = _make_cache_key(func_prefix, *key_args, **kwargs)

@@ -16,6 +16,7 @@ import RideCoverageWarning from '../components/RideCoverageWarning'
 import RoleSwitcher from '../components/RoleSwitcher'
 import { ModeToggle } from '../components/mode-toggle'
 import { PageHeader, PageLayout } from '../components/shared'
+import { logout } from '../lib/auth'
 
 const FeatureFlagsManager = lazy(() => import('../components/FeatureFlagsManager'))
 const UserManagement = lazy(() => import('../components/UserManagement'))
@@ -55,6 +56,15 @@ function Home() {
                                     Learn
                                 </Link>
                                 <ModeToggle />
+                                {!isLocal && (
+                                    <button
+                                        onClick={() => logout()}
+                                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                                        title={meData?.email ?? ''}
+                                    >
+                                        Sign out
+                                    </button>
+                                )}
                             </>
                         }
                     />

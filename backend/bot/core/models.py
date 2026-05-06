@@ -105,7 +105,7 @@ class UserAccount(Base):
     __tablename__ = "user_accounts"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(unique=True, index=True)
     # values_callable stores StrEnum .value (lowercase string) instead of the default .name
     # (uppercase), matching what was written when role was a plain String column.
     role: Mapped[AccountRoles] = mapped_column(
@@ -113,8 +113,26 @@ class UserAccount(Base):
         default=AccountRoles.VIEWER,
     )
     role_edited_by: Mapped[str | None]
+    discord_user_id: Mapped[str | None] = mapped_column(unique=True, index=True)
+    discord_username: Mapped[str | None]
+    invited_by: Mapped[str | None]
+    invited_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class AuthSession(Base):
+    """Model representing a server-side auth session."""
+
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id_hash: Mapped[str] = mapped_column(unique=True, index=True)
+    email: Mapped[str] = mapped_column(index=True)
+    csrf_token: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_activity_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(index=True)
 
 
 class UserPreferences(Base):

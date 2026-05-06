@@ -7,6 +7,8 @@ import pytest
 
 from bot.core.error_reporter import _get_config, send_error_to_discord
 
+_ENABLED = "bot.core.error_reporter._is_send_errors_enabled"
+
 
 class TestGetConfig:
     """Tests for _get_config."""
@@ -46,14 +48,22 @@ class TestSendErrorToDiscord:
 
     @pytest.mark.asyncio
     @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
-    @patch("bot.core.error_reporter.get_bot", return_value=None)
-    async def test_skips_when_bot_not_ready(self, mock_bot, mock_config):
+    @patch(_ENABLED, return_value=False)
+    async def test_skips_when_flag_disabled(self, mock_flag, mock_config):
         await send_error_to_discord("test error")
 
     @pytest.mark.asyncio
     @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch(_ENABLED, return_value=True)
+    @patch("bot.core.error_reporter.get_bot", return_value=None)
+    async def test_skips_when_bot_not_ready(self, mock_bot, mock_flag, mock_config):
+        await send_error_to_discord("test error")
+
+    @pytest.mark.asyncio
+    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch(_ENABLED, return_value=True)
     @patch("bot.core.error_reporter.get_bot")
-    async def test_sends_error_message(self, mock_get_bot, mock_config):
+    async def test_sends_error_message(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
         mock_bot.get_channel.return_value = mock_channel
@@ -67,8 +77,9 @@ class TestSendErrorToDiscord:
 
     @pytest.mark.asyncio
     @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch(_ENABLED, return_value=True)
     @patch("bot.core.error_reporter.get_bot")
-    async def test_sends_error_with_traceback(self, mock_get_bot, mock_config):
+    async def test_sends_error_with_traceback(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
         mock_bot.get_channel.return_value = mock_channel
@@ -83,8 +94,9 @@ class TestSendErrorToDiscord:
 
     @pytest.mark.asyncio
     @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch(_ENABLED, return_value=True)
     @patch("bot.core.error_reporter.get_bot")
-    async def test_sends_error_with_explicit_traceback(self, mock_get_bot, mock_config):
+    async def test_sends_error_with_explicit_traceback(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
         mock_bot.get_channel.return_value = mock_channel
@@ -95,8 +107,9 @@ class TestSendErrorToDiscord:
 
     @pytest.mark.asyncio
     @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch(_ENABLED, return_value=True)
     @patch("bot.core.error_reporter.get_bot")
-    async def test_long_traceback_chunked(self, mock_get_bot, mock_config):
+    async def test_long_traceback_chunked(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
         mock_bot.get_channel.return_value = mock_channel
@@ -109,8 +122,9 @@ class TestSendErrorToDiscord:
 
     @pytest.mark.asyncio
     @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch(_ENABLED, return_value=True)
     @patch("bot.core.error_reporter.get_bot")
-    async def test_channel_not_text_channel(self, mock_get_bot, mock_config):
+    async def test_channel_not_text_channel(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = MagicMock()  # Not a TextChannel
         mock_bot = MagicMock()
         mock_bot.get_channel.return_value = mock_channel
@@ -121,8 +135,9 @@ class TestSendErrorToDiscord:
 
     @pytest.mark.asyncio
     @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch(_ENABLED, return_value=True)
     @patch("bot.core.error_reporter.get_bot")
-    async def test_channel_not_found(self, mock_get_bot, mock_config):
+    async def test_channel_not_found(self, mock_get_bot, mock_flag, mock_config):
         mock_bot = MagicMock()
         mock_bot.get_channel.return_value = None
         mock_get_bot.return_value = mock_bot

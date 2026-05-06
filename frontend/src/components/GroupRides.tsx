@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { apiFetch } from '../lib/api'
 import { copyToClipboard } from '../lib/utils'
+import { useUsernames } from '../hooks/useUsernames'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
@@ -28,6 +29,7 @@ function GroupRides() {
     const [groupRidesError, setGroupRidesError] = useState<string>('')
     const [groupRidesLoading, setGroupRidesLoading] = useState(false)
     const [showInfo, setShowInfo] = useState(false)
+    const { data: usernames } = useUsernames()
 
     const groupRides = async (e: React.FormEvent) => {
         // ... implementation unchanged
@@ -207,6 +209,7 @@ function GroupRides() {
                                         onCopy={() => copyToClipboard(grouping)}
                                         onRevert={() => revertGrouping(index)}
                                         minHeight="min-h-[60px]"
+                                        usernames={usernames}
                                     />
                                 ))}
                             </div>
