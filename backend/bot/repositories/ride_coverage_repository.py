@@ -70,15 +70,21 @@ class RideCoverageRepository:
 
     @staticmethod
     async def get_bulk_coverage_status(
-        session: AsyncSession, discord_usernames: list[str], hours: int = 24
+        session: AsyncSession,
+        discord_usernames: list[str],
+        hours: int = 24,
+        since: datetime.datetime | None = None,
     ) -> set[str]:
         """
-        Checks which of the given users have a ride coverage entry within the last X hours.
+        Checks which of the given users have a ride coverage entry within a time window.
+
+        When *since* is provided it takes precedence over *hours*.
 
         Args:
             session: The database session.
             discord_usernames: List of discord usernames to check.
-            hours: Time window in hours.
+            hours: Fallback time window in hours (used when *since* is ``None``).
+            since: Explicit start datetime; overrides *hours* when set.
 
         Returns:
             set[str]: A set of usernames that have ride coverage entries.
@@ -87,10 +93,14 @@ class RideCoverageRepository:
             return set()
 
         try:
-            since = datetime.datetime.now() - datetime.timedelta(hours=hours)
+            cutoff = (
+                since
+                if since is not None
+                else datetime.datetime.now() - datetime.timedelta(hours=hours)
+            )
             stmt = select(RideCoverageModel.discord_username).where(
                 RideCoverageModel.discord_username.in_(discord_usernames),
-                RideCoverageModel.datetime_detected >= since,
+                RideCoverageModel.datetime_detected >= cutoff,
             )
             result = await session.execute(stmt)
             return set(result.scalars().all())
