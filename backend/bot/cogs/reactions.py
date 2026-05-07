@@ -14,6 +14,7 @@ from bot.core.enums import (
 )
 from bot.core.logger import generate_txn_id, txn_id_var
 from bot.services.reaction_logging_service import ReactionLoggingService
+from bot.services.ride_reaction_log_service import RideReactionLogService
 from bot.services.ride_request_service import RideRequestService
 from bot.services.thread_service import ThreadService
 from bot.utils.checks import feature_flag_enabled
@@ -119,6 +120,11 @@ class Reactions(commands.Cog):
         except Exception:
             logger.exception("_handle_reaction_add: error in _check_if_ask_message")
 
+        try:
+            await self._record_ask_rides_reaction(user, payload, message, ReactionAction.ADD)
+        except Exception:
+            logger.exception("_handle_reaction_add: error in _record_ask_rides_reaction")
+
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         """Handles when a reaction is removed from a message."""
@@ -145,6 +151,9 @@ class Reactions(commands.Cog):
             logger.info(f"Ignoring bot reaction removal from {user.name}")
             return
 
+        if not user:
+            return
+
         try:
             await self._late_rides_react(user, payload, message, channel, ReactionAction.REMOVE)
         except Exception:
@@ -164,6 +173,33 @@ class Reactions(commands.Cog):
             await self._check_if_ask_message(payload.message_id, payload.channel_id)
         except Exception:
             logger.exception("_handle_reaction_remove: error in _check_if_ask_message")
+
+        try:
+            await self._record_ask_rides_reaction(user, payload, message, ReactionAction.REMOVE)
+        except Exception:
+            logger.exception("_handle_reaction_remove: error in _record_ask_rides_reaction")
+
+    async def _record_ask_rides_reaction(
+        self,
+        user: discord.Member | None,
+        payload: discord.RawReactionActionEvent,
+        message: discord.Message,
+        action: ReactionAction,
+    ) -> None:
+        """
+        Persist a reaction event on the rides announcements channel to the database.
+
+        Args:
+            user: The member who reacted, or None if unavailable.
+            payload: The raw reaction event payload.
+            message: The message that was reacted to.
+            action: Whether the reaction was added or removed.
+        """
+        if user is None:
+            return
+        if payload.channel_id != ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS:
+            return
+        await RideReactionLogService.record_ask_rides_reaction(user, payload, message, action)
 
     async def _check_if_ask_message(self, message_id, channel_id):
         from bot.utils.cache import (
