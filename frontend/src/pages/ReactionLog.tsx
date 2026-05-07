@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch } from '../lib/api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiFetch, getApiUrl } from '../lib/api'
 import { Button } from '../components/ui/button'
 import { PageHeader, PageLayout } from '../components/shared'
 import { ModeToggle } from '../components/mode-toggle'
@@ -240,6 +240,17 @@ function ReactionLog() {
     const availableEmojis = Array.from(
         new Set(allData?.rides.flatMap((r) => r.events.map((e) => e.emoji)) ?? [])
     ).sort()
+
+    const queryClient = useQueryClient()
+
+    useEffect(() => {
+        const es = new EventSource(getApiUrl('/api/reaction-log/stream'), { withCredentials: true })
+        es.onmessage = () => {
+            void queryClient.invalidateQueries({ queryKey: ['reaction-log'] })
+            void queryClient.invalidateQueries({ queryKey: ['reaction-log-all-emojis'] })
+        }
+        return () => es.close()
+    }, [queryClient])
 
     const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
         setFilters((prev) => ({ ...prev, [key]: value }))
