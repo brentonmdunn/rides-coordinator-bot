@@ -9,6 +9,7 @@ import discord
 from discord import app_commands
 
 from bot.core.database import AsyncSessionLocal
+from bot.core.enums import RoleIds
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,28 @@ def is_admin():
         if isinstance(member, discord.Member):
             return member.guild_permissions.administrator
         return False
+
+    return app_commands.check(predicate)
+
+
+def is_ride_coordinator():
+    """
+    A decorator that restricts a slash command to members with the RIDE_COORDINATOR role.
+
+    Server administrators are also allowed through.
+
+    Returns:
+        Callable: The decorated command.
+    """
+
+    async def predicate(interaction: discord.Interaction) -> bool:
+        if not interaction.guild or not isinstance(interaction.user, discord.Member):
+            return False
+
+        member = interaction.user
+        if member.guild_permissions.administrator:
+            return True
+        return any(role.id == RoleIds.RIDE_COORDINATOR for role in member.roles)
 
     return app_commands.check(predicate)
 

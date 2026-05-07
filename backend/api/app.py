@@ -29,6 +29,7 @@ from api.routes.health import router as health_router
 from api.routes.list_pickups import router as list_pickups_router
 from api.routes.locations import router as locations_router
 from api.routes.me import router as me_router
+from api.routes.modmail import router as modmail_router
 from api.routes.route_builder import router as route_builder_router
 from api.routes.user_preferences import router as user_preferences_router
 from api.routes.usernames import router as usernames_router
@@ -124,6 +125,7 @@ app.include_router(check_pickups_router)
 app.include_router(route_builder_router)
 app.include_router(admin_users_router)
 app.include_router(user_preferences_router)
+app.include_router(modmail_router)
 app.include_router(usernames_router)
 
 # Mount static files for React SPA (if directory exists)
