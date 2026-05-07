@@ -40,6 +40,25 @@ interface Filters {
     emoji: string
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function weekToDateRange(week: string): { from: string; to: string } | null {
+    // week is "YYYY-Www", e.g. "2026-W19"
+    const match = week.match(/^(\d{4})-W(\d{2})$/)
+    if (!match) return null
+    const year = parseInt(match[1])
+    const weekNum = parseInt(match[2])
+    // ISO week 1 = week containing first Thursday of the year
+    // Monday of week N: Jan 4 + 7*(N-1) days, adjusted to Monday
+    const jan4 = new Date(year, 0, 4)
+    const monday = new Date(jan4)
+    monday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (weekNum - 1) * 7)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    const fmt = (d: Date) => d.toISOString().slice(0, 10)
+    return { from: fmt(monday), to: fmt(sunday) }
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────
 
 type RideTypeOption = { value: RideType; label: string }
@@ -51,20 +70,35 @@ const RIDE_TYPE_OPTIONS: RideTypeOption[] = [
     { value: 'wednesday', label: 'Wednesday' },
 ]
 
+function currentWeekRange(): { from: string; to: string } {
+    const today = new Date()
+    const monday = new Date(today)
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    const fmt = (d: Date) => d.toISOString().slice(0, 10)
+    return { from: fmt(monday), to: fmt(sunday) }
+}
+
+const THIS_WEEK = currentWeekRange()
+
 const EMPTY_FILTERS: Filters = {
     ride_type: '',
-    date_from: '',
-    date_to: '',
+    date_from: THIS_WEEK.from,
+    date_to: THIS_WEEK.to,
     emoji: '',
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function formatEventTime(iso: string): string {
-    const date = new Date(iso)
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
-    const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    // Stored datetimes have no tz suffix — force UTC so conversion to LA is correct
+    const utcIso = iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'
+    const date = new Date(utcIso)
+    const opts = { timeZone: 'America/Los_Angeles' } as const
+    const dayName = date.toLocaleDateString('en-US', { ...opts, weekday: 'short' })
+    const monthDay = date.toLocaleDateString('en-US', { ...opts, month: 'short', day: 'numeric' })
+    const time = date.toLocaleTimeString('en-US', { ...opts, hour: 'numeric', minute: '2-digit' })
     return `${dayName} ${monthDay} · ${time}`
 }
 
@@ -92,20 +126,19 @@ function buildQueryString(filters: Filters): string {
 function ActionBadge({ action }: { action: EventAction }) {
     if (action === 'add') {
         return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+            <span className="inline-flex items-center justify-center w-20 px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
                 Reacted
             </span>
         )
     }
     return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400 line-through-none">
+        <span className="inline-flex items-center justify-center w-20 px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">
             Removed
         </span>
     )
 }
 
 function EventRow({ event }: { event: ReactionEvent }) {
-    const displayName = event.display_name ?? `@${event.discord_username}`
     return (
         <div className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
             <span className="text-xs text-muted-foreground whitespace-nowrap min-w-[160px]">
@@ -113,7 +146,16 @@ function EventRow({ event }: { event: ReactionEvent }) {
             </span>
             <span className="text-xl leading-none">{event.emoji}</span>
             <ActionBadge action={event.action} />
-            <span className="text-sm text-foreground font-medium truncate">{displayName}</span>
+            <div className="flex flex-col items-start min-w-0">
+                <span className="text-sm text-foreground font-medium truncate">
+                    {event.display_name ?? `@${event.discord_username}`}
+                </span>
+                {event.display_name && (
+                    <span className="text-xs text-muted-foreground">
+                        @{event.discord_username}
+                    </span>
+                )}
+            </div>
         </div>
     )
 }
@@ -123,7 +165,9 @@ function RideCard({ ride }: { ride: RideReactionLog }) {
         <div className="bg-card border border-border rounded-lg overflow-hidden">
             {/* Card header */}
             <div className="flex items-center justify-between px-5 py-3 bg-muted/50 border-b border-border">
-                <h3 className="font-semibold text-foreground">{ride.label}</h3>
+                <h3 className="font-semibold text-foreground">
+                    {ride.ride_type ? ride.ride_type.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unknown'}
+                </h3>
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
                     {ride.events.length} {ride.events.length === 1 ? 'event' : 'events'}
                 </span>
@@ -183,6 +227,20 @@ function ReactionLog() {
         },
     })
 
+    // Fetch unfiltered data to populate emoji dropdown regardless of active filters
+    const { data: allData } = useQuery<ReactionLogResponse>({
+        queryKey: ['reaction-log-all-emojis'],
+        queryFn: async () => {
+            const res = await apiFetch('/api/reaction-log')
+            return res.json() as Promise<ReactionLogResponse>
+        },
+        staleTime: 60_000,
+    })
+
+    const availableEmojis = Array.from(
+        new Set(allData?.rides.flatMap((r) => r.events.map((e) => e.emoji)) ?? [])
+    ).sort()
+
     const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
         setFilters((prev) => ({ ...prev, [key]: value }))
     }
@@ -241,6 +299,29 @@ function ReactionLog() {
                 <div className="flex flex-wrap gap-4 items-end">
                     <div className="flex flex-col gap-1">
                         <label
+                            htmlFor="week-filter"
+                            className="text-xs font-semibold text-muted-foreground uppercase tracking-widest"
+                        >
+                            Week
+                        </label>
+                        <input
+                            id="week-filter"
+                            type="week"
+                            onChange={(e) => {
+                                const range = weekToDateRange(e.target.value)
+                                if (range) {
+                                    setFilters((prev) => ({
+                                        ...prev,
+                                        date_from: range.from,
+                                        date_to: range.to,
+                                    }))
+                                }
+                            }}
+                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label
                             htmlFor="date-from"
                             className="text-xs font-semibold text-muted-foreground uppercase tracking-widest"
                         >
@@ -276,14 +357,19 @@ function ReactionLog() {
                         >
                             Emoji
                         </label>
-                        <input
+                        <select
                             id="emoji-filter"
-                            type="text"
-                            placeholder="e.g. 👍"
                             value={filters.emoji}
                             onChange={(e) => setFilter('emoji', e.target.value)}
-                            className="h-9 w-28 px-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
+                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                            <option value="">All</option>
+                            {availableEmojis.map((emoji) => (
+                                <option key={emoji} value={emoji}>
+                                    {emoji}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                     {hasActiveFilters(filters) && (
                         <Button variant="ghost" size="sm" onClick={clearFilters} className="self-end">
