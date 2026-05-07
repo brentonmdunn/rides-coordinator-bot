@@ -26,6 +26,7 @@ class RideReactionEventsRepository:
         ride_date: datetime.date | None,
         ride_type: str | None,
     ) -> None:
+        """Insert a new ride reaction event row."""
         try:
             entry = RideReactionEvent(
                 message_id=message_id,
@@ -51,6 +52,7 @@ class RideReactionEventsRepository:
         date_to: datetime.date | None = None,
         emoji: str | None = None,
     ) -> list[RideReactionEvent]:
+        """Return ride reaction events filtered by the given criteria."""
         try:
             stmt = select(RideReactionEvent)
             if ride_type:
@@ -61,7 +63,7 @@ class RideReactionEventsRepository:
                 stmt = stmt.where(RideReactionEvent.ride_date <= date_to)
             if emoji:
                 stmt = stmt.where(RideReactionEvent.emoji == emoji)
-            stmt = stmt.order_by(RideReactionEvent.occurred_at.asc())
+            stmt = stmt.order_by(RideReactionEvent.occurred_at.desc())
             result = await session.execute(stmt)
             return list(result.scalars().all())
         except Exception:

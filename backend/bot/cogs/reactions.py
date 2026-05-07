@@ -77,22 +77,46 @@ class Reactions(commands.Cog):
 
     async def _handle_reaction_add(self, payload: discord.RawReactionActionEvent):
         """Inner handler for reaction add, runs under a transaction ID."""
+        logger.debug(
+            "_handle_reaction_add: guild_id=%s channel_id=%s message_id=%s user_id=%s emoji=%s",
+            payload.guild_id,
+            payload.channel_id,
+            payload.message_id,
+            payload.user_id,
+            payload.emoji,
+        )
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
+            logger.debug("_handle_reaction_add: guild not found, skipping")
             return  # DM or unknown guild
 
         channel = self.bot.get_channel(payload.channel_id)
+        logger.debug(
+            "_handle_reaction_add: channel=%r type=%s",
+            channel,
+            type(channel).__name__,
+        )
         if not isinstance(channel, discord.TextChannel):
+            logger.debug(
+                "_handle_reaction_add: channel is not TextChannel (got %s), skipping",
+                type(channel).__name__,
+            )
             return  # Ensure it's a text channel
 
         message = await channel.fetch_message(payload.message_id)
         user = guild.get_member(payload.user_id)
+        logger.debug(
+            "_handle_reaction_add: user=%s bot=%s",
+            getattr(user, "name", None),
+            getattr(user, "bot", None),
+        )
 
         if user and user.bot:
             logger.info(f"Ignoring bot reaction from {user.name}")
             return
 
         if not user:
+            logger.debug("_handle_reaction_add: user not found in guild cache, skipping")
             return
 
         try:
@@ -136,22 +160,46 @@ class Reactions(commands.Cog):
 
     async def _handle_reaction_remove(self, payload: discord.RawReactionActionEvent):
         """Inner handler for reaction remove, runs under a transaction ID."""
+        logger.debug(
+            "_handle_reaction_remove: guild_id=%s channel_id=%s message_id=%s user_id=%s emoji=%s",
+            payload.guild_id,
+            payload.channel_id,
+            payload.message_id,
+            payload.user_id,
+            payload.emoji,
+        )
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
+            logger.debug("_handle_reaction_remove: guild not found, skipping")
             return
 
         channel = self.bot.get_channel(payload.channel_id)
+        logger.debug(
+            "_handle_reaction_remove: channel=%r type=%s",
+            channel,
+            type(channel).__name__,
+        )
         if not isinstance(channel, discord.TextChannel):
+            logger.debug(
+                "_handle_reaction_remove: channel is not TextChannel (got %s), skipping",
+                type(channel).__name__,
+            )
             return
 
         message = await channel.fetch_message(payload.message_id)
         user = guild.get_member(payload.user_id)
+        logger.debug(
+            "_handle_reaction_remove: user=%s bot=%s",
+            getattr(user, "name", None),
+            getattr(user, "bot", None),
+        )
 
         if user and user.bot:
             logger.info(f"Ignoring bot reaction removal from {user.name}")
             return
 
         if not user:
+            logger.debug("_handle_reaction_remove: user not found in guild cache, skipping")
             return
 
         try:
@@ -195,10 +243,24 @@ class Reactions(commands.Cog):
             message: The message that was reacted to.
             action: Whether the reaction was added or removed.
         """
+        logger.debug(
+            "_record_ask_rides_reaction: user=%s action=%s channel_id=%s expected=%s",
+            getattr(user, "name", None),
+            action,
+            payload.channel_id,
+            ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS.value,
+        )
         if user is None:
+            logger.debug("_record_ask_rides_reaction: user is None, skipping")
             return
         if payload.channel_id != ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS:
+            logger.debug(
+                "_record_ask_rides_reaction: channel mismatch (%s != %s), skipping",
+                payload.channel_id,
+                ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS.value,
+            )
             return
+        logger.debug("_record_ask_rides_reaction: calling RideReactionLogService")
         await RideReactionLogService.record_ask_rides_reaction(user, payload, message, action)
 
     async def _check_if_ask_message(self, message_id, channel_id):

@@ -41,8 +41,17 @@ class RideReactionLogService:
             action: Whether the reaction was added or removed.
         """
         try:
+            logger.debug(
+                "record_ask_rides_reaction: user=%s emoji=%s action=%s message_id=%s",
+                user.name,
+                payload.emoji,
+                action,
+                payload.message_id,
+            )
             content = get_message_and_embed_content(message)
+            logger.debug("record_ask_rides_reaction: content=%r", content[:200] if content else "")
             ride_type = _detect_ride_type(content)
+            logger.debug("record_ask_rides_reaction: detected ride_type=%s", ride_type)
 
             # Convert to LA timezone before extracting the date so late-evening
             # UTC timestamps (e.g. 23:00 UTC = 15:00 LA) resolve to the correct day.
@@ -50,11 +59,15 @@ class RideReactionLogService:
             if created_at.tzinfo is None:
                 created_at = created_at.replace(tzinfo=datetime.UTC)
             ride_date = created_at.astimezone(LA_TZ).date()
+            logger.debug("record_ask_rides_reaction: ride_date=%s", ride_date)
 
             discord_username = user.name
 
             async with AsyncSessionLocal() as session:
                 display_name = await WhoisRepository.get_display_name(session, discord_username)
+                logger.debug(
+                    "record_ask_rides_reaction: display_name=%s, writing to DB", display_name
+                )
                 await RideReactionEventsRepository.record_event(
                     session=session,
                     message_id=str(payload.message_id),
@@ -66,6 +79,14 @@ class RideReactionLogService:
                     ride_date=ride_date,
                     ride_type=ride_type,
                 )
+            logger.info(
+                "record_ask_rides_reaction: saved event user=%s emoji=%s action=%s ride_type=%s ride_date=%s",
+                discord_username,
+                payload.emoji,
+                action,
+                ride_type,
+                ride_date,
+            )
         except Exception:
             logger.exception("Failed to record ask-rides reaction event")
 
