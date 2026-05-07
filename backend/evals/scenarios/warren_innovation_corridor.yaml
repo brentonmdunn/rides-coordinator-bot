@@ -1,0 +1,15 @@
+name: Warren + Innovation corridor with a full upper-campus car
+notes: |
+  Tests the corridor-separation rule. One car should serve
+  Warren + Innovation (with Warren last per S6), the other car should
+  serve only Eighth/Muir/Sixth/ERC/Seventh. If the LLM combines
+  Warren with Eighth, that's a hard-constraint violation (H6).
+drivers: [3, 4]
+event: sunday
+passengers:
+  - { name: wyatt, living: Warren }
+  - { name: iris, living: PCE }
+  - { name: ivan, living: PCW }
+  - { name: eli, living: Eighth }
+  - { name: maya, living: Muir }
+  - { name: cara, living: ERC }

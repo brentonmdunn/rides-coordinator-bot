@@ -1,0 +1,16 @@
+name: Marshall flex split across corridors
+notes: |
+  Two drivers serving opposite corridors. The two Marshall riders should
+  IDEALLY split: one assigned to "Marshall uppers" (joining the Muir/Sixth
+  car) and one to "Geisel Loop" (joining the Warren/Innovation car). Either
+  all-upper or all-Geisel is suboptimal here — inspect the output to see
+  which assignment the LLM picks.
+drivers: [4, 4]
+event: sunday
+passengers:
+  - { name: alice, living: Muir }
+  - { name: bob, living: Sixth }
+  - { name: marsha, living: Marshall }
+  - { name: marley, living: Marshall }
+  - { name: wendy, living: Warren }
+  - { name: iris, living: PCE }

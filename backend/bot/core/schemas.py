@@ -4,7 +4,7 @@ Pydantic schemas.
 This module defines the Pydantic models used for data validation and serialization.
 """
 
-from pydantic import BaseModel, RootModel, field_validator
+from pydantic import BaseModel, Field, RootModel, field_validator
 
 from bot.core.enums import CampusLivingLocations, PickupLocations
 
@@ -67,8 +67,27 @@ class LLMOutputError(RootModel[dict[str, str]]):
 
 
 class Passenger(BaseModel):
-    """Schema representing a passenger with full location details."""
+    """
+    Schema representing a passenger with full location details.
+
+    ``pickup_location`` is the primary / default pickup for this passenger.
+    ``alt_pickup_locations`` holds any *additional* pickup locations the
+    passenger can also use (e.g. Marshall residents can also be picked up
+    at Geisel Loop). The effective "allowed set" is
+    ``{pickup_location, *alt_pickup_locations}``.
+    """
 
     identity: Identity
     living_location: CampusLivingLocations
     pickup_location: PickupLocations
+    alt_pickup_locations: list[PickupLocations] = Field(default_factory=list)
+
+    @property
+    def allowed_pickup_locations(self) -> list[PickupLocations]:
+        """All pickup locations this passenger may be assigned to."""
+        return [self.pickup_location, *self.alt_pickup_locations]
+
+    @property
+    def is_flex(self) -> bool:
+        """True when this passenger has more than one allowed pickup location."""
+        return len(self.alt_pickup_locations) > 0

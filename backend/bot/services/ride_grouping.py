@@ -16,6 +16,45 @@ LocationsPeopleType = dict[str, list[tuple[str, str]]]
 PassengersByLocation = dict[PickupLocations, list[Passenger]]
 
 
+def _normalize_location_string(raw: str) -> str:
+    """Lowercase + collapse whitespace for forgiving location string comparison."""
+    return " ".join(raw.lower().split())
+
+
+def resolve_chosen_pickup(chosen_raw: str, passenger: Passenger) -> PickupLocations:
+    """
+    Map the LLM's chosen location string to one of the passenger's allowed pickup enums.
+
+    The LLM may output either the full enum value ("Marshall uppers") or a
+    short form ("Marshall" / "GeiselLoop" / "Geisel Loop"). We accept any form
+    that resolves to one of ``passenger.allowed_pickup_locations``. If nothing
+    matches we fall back to the passenger's primary pickup so downstream code
+    doesn't crash on a typo — the validator will have already raised for the
+    mismatch at this point, so reaching here implies the validator also
+    accepted the input.
+    """
+
+    def forms(raw: str) -> tuple[str, str, str]:
+        full = _normalize_location_string(raw)
+        short = full.split()[0] if full else full
+        compressed = full.replace(" ", "")
+        return full, short, compressed
+
+    chosen_full, chosen_short, chosen_compressed = forms(chosen_raw)
+    chosen_forms = {chosen_full, chosen_short, chosen_compressed}
+
+    for candidate in passenger.allowed_pickup_locations:
+        cand_full, cand_short, cand_compressed = forms(str(candidate))
+        if chosen_forms & {cand_full, cand_short, cand_compressed}:
+            return candidate
+
+    logger.warning(
+        f"Could not resolve chosen location '{chosen_raw}' for {passenger.identity.name}; "
+        f"falling back to primary pickup {passenger.pickup_location}."
+    )
+    return passenger.pickup_location
+
+
 def parse_numbers(s: str) -> list[int]:
     """
     Parses a string of single-digit numbers and returns a list of integers.
@@ -132,16 +171,43 @@ def llm_input_pickups(locations_people: PassengersByLocation) -> str:
     """
     Formats pickup location data for LLM input.
 
+    Passengers with a single allowed pickup location are listed grouped by that
+    location in the usual ``"<Location>: name1, name2"`` format. Passengers with
+    multiple allowed pickup locations (flex pickups, e.g. Marshall residents
+    who can also be picked up at Geisel Loop) are listed one-per-line under a
+    "Flex pickups" section with an ``[allowed: A, B]`` tag so the LLM can pick
+    a location per passenger.
+
     Args:
         locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
 
     Returns:
         str: A formatted string describing pickup locations and passengers.
     """
-    return "\n".join(
-        f"{location}: {', '.join(person.identity.name for person in locations_people[location])}"
-        for location in locations_people
-    ) + ("\n" if locations_people else "")
+    if not locations_people:
+        return ""
+
+    fixed_lines: list[str] = []
+    flex_lines: list[str] = []
+
+    for location, passengers in locations_people.items():
+        fixed_names = [p.identity.name for p in passengers if not p.is_flex]
+        if fixed_names:
+            fixed_lines.append(f"{location}: {', '.join(fixed_names)}")
+        for passenger in passengers:
+            if not passenger.is_flex:
+                continue
+            allowed = ", ".join(str(loc) for loc in passenger.allowed_pickup_locations)
+            flex_lines.append(f"- {passenger.identity.name} [allowed: {allowed}]")
+
+    sections: list[str] = []
+    if fixed_lines:
+        sections.append("\n".join(fixed_lines))
+    if flex_lines:
+        sections.append("Flex pickups (assign each passenger to exactly one allowed location):")
+        sections.append("\n".join(flex_lines))
+
+    return "\n".join(sections) + "\n"
 
 
 def create_output(
@@ -180,17 +246,24 @@ def create_output(
             person_name = obj["name"]
             location = obj["location"]
 
-            passenger = passenger_lookup.get(person_name)
-            if not passenger:
+            original = passenger_lookup.get(person_name)
+            if not original:
                 logger.warning(f"Passenger {person_name} not found in lookup map")
                 continue
 
-            if len(curr_location) == 0 or location == curr_location[-1].pickup_location:
+            # Resolve the LLM's chosen location to one of the passenger's allowed
+            # pickup enums, then project that choice onto the Passenger so every
+            # downstream consumer (grouping, pickup-time math, formatted output)
+            # sees the same location. Required for Marshall-flex where the
+            # chosen location can differ from ``original.pickup_location``.
+            chosen = resolve_chosen_pickup(location, original)
+            passenger = original.model_copy(update={"pickup_location": chosen})
+
+            if len(curr_location) == 0 or chosen == curr_location[-1].pickup_location:
                 curr_location.append(passenger)
             else:
                 grouped_by_location.append(curr_location)
-                curr_location: list[Passenger] = []
-                curr_location.append(passenger)
+                curr_location = [passenger]
 
         grouped_by_location.append(curr_location)
 

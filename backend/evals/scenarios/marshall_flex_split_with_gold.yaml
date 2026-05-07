@@ -1,0 +1,29 @@
+name: Marshall flex split across corridors (with gold)
+notes: |
+  Same input as marshall_flex_split.yaml, but with the coordinator-approved
+  answer in the 'expected' block so the harness can grade the run.
+
+  Ideal: marsha joins the upper-corridor car at Marshall uppers; marley
+  joins the Warren/Innovation car at Geisel Loop. Splitting them is what
+  keeps both drivers on a single corridor.
+drivers: [4, 4]
+event: sunday
+passengers:
+  - { name: alice,  living: Muir }
+  - { name: bob,    living: Sixth }
+  - { name: marsha, living: Marshall }
+  - { name: marley, living: Marshall }
+  - { name: wendy,  living: Warren }
+  - { name: iris,   living: PCE }
+
+expected:
+  cars:
+    - passengers:
+        - { name: alice,  location: Muir }
+        - { name: bob,    location: Sixth }
+        - { name: marsha, location: Marshall }
+    - passengers:
+        - { name: marley, location: Geisel Loop }
+        - { name: iris,   location: Innovation }
+        - { name: wendy,  location: Warren }
+  max_time_delta_minutes: 2
