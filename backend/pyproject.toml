@@ -35,6 +35,11 @@ dev = [
     "ruff>=0.13.0",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 100
 exclude = [
