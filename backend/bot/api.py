@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 from bot.core.bot_instance import set_bot_instance
 from bot.core.error_reporter import send_error_to_discord
-from bot.core.lifecycle import APP_ENV, attach_event_handlers, build_bot, load_extensions, startup
+from bot.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,7 @@ async def bot_lifespan():
 
     await startup()
 
-    if APP_ENV != "local":
-        await load_extensions(bot)
+    await load_extensions(bot)
 
     bot_task = asyncio.create_task(bot.start(TOKEN))
 
