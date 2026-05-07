@@ -154,7 +154,9 @@ function EditableOutput({
                 return (
                     <span
                         key={i}
-                        className="bg-emerald-100 dark:bg-emerald-900/40 rounded"
+                        className={copied
+                            ? 'bg-emerald-400 dark:bg-emerald-500 rounded transition-colors duration-150'
+                            : 'bg-emerald-100 dark:bg-emerald-900/40 rounded transition-colors duration-300'}
                     >
                         {part}
                     </span>
@@ -162,7 +164,7 @@ function EditableOutput({
             }
             return <span key={i}>{part}</span>
         })
-    }, [value, usernames, validUsernameSet])
+    }, [value, usernames, validUsernameSet, copied])
 
     const mentionQuery = usernames ? getMentionQuery(value, cursorPos) : null
     const suggestions: UsernameEntry[] =
