@@ -25,8 +25,8 @@ class RideReactionEventsRepository:
         occurred_at: datetime.datetime,
         ride_date: datetime.date | None,
         ride_type: str | None,
-    ) -> None:
-        """Insert a new ride reaction event row."""
+    ) -> RideReactionEvent:
+        """Insert a new ride reaction event row and return it with its generated id."""
         try:
             entry = RideReactionEvent(
                 message_id=message_id,
@@ -40,6 +40,7 @@ class RideReactionEventsRepository:
             )
             session.add(entry)
             await session.commit()
+            return entry
         except Exception:
             await session.rollback()
             raise

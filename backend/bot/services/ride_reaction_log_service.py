@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 import discord
 
+from bot.core import reaction_broadcaster
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import ReactionAction
 from bot.repositories.ride_reaction_events_repository import RideReactionEventsRepository
@@ -63,19 +64,20 @@ class RideReactionLogService:
 
             discord_username = user.name
 
+            occurred_at = datetime.datetime.now(datetime.UTC)
             async with AsyncSessionLocal() as session:
                 display_name = await WhoisRepository.get_display_name(session, discord_username)
                 logger.debug(
                     "record_ask_rides_reaction: display_name=%s, writing to DB", display_name
                 )
-                await RideReactionEventsRepository.record_event(
+                event_row = await RideReactionEventsRepository.record_event(
                     session=session,
                     message_id=str(payload.message_id),
                     discord_username=discord_username,
                     display_name=display_name,
                     emoji=str(payload.emoji),
                     action=action.value,
-                    occurred_at=datetime.datetime.now(datetime.UTC),
+                    occurred_at=occurred_at,
                     ride_date=ride_date,
                     ride_type=ride_type,
                 )
@@ -86,6 +88,19 @@ class RideReactionLogService:
                 action,
                 ride_type,
                 ride_date,
+            )
+            await reaction_broadcaster.publish(
+                {
+                    "id": event_row.id,
+                    "message_id": event_row.message_id,
+                    "discord_username": event_row.discord_username,
+                    "display_name": event_row.display_name,
+                    "emoji": event_row.emoji,
+                    "action": event_row.action,
+                    "occurred_at": event_row.occurred_at.isoformat(),
+                    "ride_date": event_row.ride_date.isoformat() if event_row.ride_date else None,
+                    "ride_type": event_row.ride_type,
+                }
             )
         except Exception:
             logger.exception("Failed to record ask-rides reaction event")
