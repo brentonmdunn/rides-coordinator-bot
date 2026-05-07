@@ -287,6 +287,7 @@ class TestLlmInputPickups:
 # Fixtures shared by create_output tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def alice():
     return Passenger(

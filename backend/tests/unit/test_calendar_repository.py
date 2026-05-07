@@ -3,8 +3,6 @@
 import datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from bot.repositories.calendar_repository import CalendarRepository
 
 

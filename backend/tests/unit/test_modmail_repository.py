@@ -4,12 +4,11 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from bot.core.enums import ModmailSenderType
-from bot.core.models import ModmailChannels, ModmailMessages
 from bot.repositories.modmail_messages_repository import ModmailMessagesRepository
 from bot.repositories.modmail_repository import ModmailRepository
 
+from bot.core.enums import ModmailSenderType
+from bot.core.models import ModmailChannels, ModmailMessages
 
 # ---------------------------------------------------------------------------
 # Helpers

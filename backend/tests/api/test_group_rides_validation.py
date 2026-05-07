@@ -91,9 +91,7 @@ def test_group_rides_success_with_explicit_message_id():
     fake_bot = MagicMock()
 
     fake_service = MagicMock()
-    fake_service.group_rides_api = AsyncMock(
-        return_value={"summary": "summary", "groupings": []}
-    )
+    fake_service.group_rides_api = AsyncMock(return_value={"summary": "summary", "groupings": []})
 
     with (
         patch("api.routes.group_rides.require_bot", return_value=fake_bot),
@@ -160,9 +158,7 @@ def test_group_rides_sunday_ride_type_accepted():
     fake_bot = MagicMock()
 
     fake_service = MagicMock()
-    fake_service.group_rides_api = AsyncMock(
-        return_value={"summary": "ok", "groupings": []}
-    )
+    fake_service.group_rides_api = AsyncMock(return_value={"summary": "ok", "groupings": []})
 
     with (
         patch("api.routes.group_rides.require_bot", return_value=fake_bot),

@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from bot.services.modmail_ws import ModmailWSManager
 
 

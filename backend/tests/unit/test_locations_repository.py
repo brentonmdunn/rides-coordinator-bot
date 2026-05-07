@@ -1,11 +1,10 @@
 """Unit tests for LocationsRepository."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from bot.repositories.locations_repository import LocationsRepository
-
 
 _NOT_SET = object()
 
@@ -91,9 +90,7 @@ async def test_get_names_for_usernames_maps_correctly():
     result_obj.all.return_value = rows
     session.execute = AsyncMock(return_value=result_obj)
 
-    mapping = await LocationsRepository.get_names_for_usernames(
-        session, {"Alice", "bob"}
-    )
+    mapping = await LocationsRepository.get_names_for_usernames(session, {"Alice", "bob"})
 
     assert mapping["Alice"] == "Alice Smith"
     assert mapping["bob"] == "Bob Jones"

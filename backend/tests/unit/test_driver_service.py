@@ -1,7 +1,5 @@
 """Unit tests for DriverService."""
 
-import pytest
-
 from bot.core.enums import DaysOfWeek, Emoji, RoleIds
 from bot.services.driver_service import DriverService
 

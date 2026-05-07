@@ -1,6 +1,6 @@
 """Unit tests for UserAccountsRepository (data access layer)."""
 
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
