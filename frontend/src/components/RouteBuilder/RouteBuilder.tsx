@@ -18,7 +18,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
-import { getAutomaticDay, useCopyToClipboard } from '../../lib/utils'
+import { getAutomaticDay, copyToClipboard } from '../../lib/utils'
 import { apiFetch } from '../../lib/api'
 import { useTheme } from '../use-theme'
 import type { PickupLocationsResponse, MakeRouteResponse, UserPreferences } from '../../types'
@@ -36,6 +36,7 @@ import { RouteBuilderWidget } from './RouteBuilderWidget'
 import { RouteBuilderFullscreenMap } from './RouteBuilderFullscreenMap'
 import { RouteBuilderDesktopPanel } from './RouteBuilderDesktopPanel'
 import { RouteBuilderMobileSheet } from './RouteBuilderMobileSheet'
+import { useUsernames } from '../../hooks/useUsernames'
 
 setupLeafletIcons()
 
@@ -157,6 +158,7 @@ function syncPersistedState(state: PersistedState) {
 
 function RouteBuilder() {
     const { theme } = useTheme()
+    const { data: usernames } = useUsernames()
     const isMobile = useIsMobile()
 
     // --- Hydrate persisted state once on mount ---
@@ -185,7 +187,6 @@ function RouteBuilder() {
     const [originalRouteOutput, setOriginalRouteOutput] = useState<string>('')
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
-    const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
 
     // --- Driver state ---
     const [selectedDriver, setSelectedDriver] = useState(initialPersisted.current.driver)
@@ -490,13 +491,13 @@ function RouteBuilder() {
         onChangeRouteOutput: setRouteOutput,
         onCopyRoute: () => copyToClipboard(routeCopyContent),
         onRevertRoute: revertRoute,
-        copied: copiedText === routeCopyContent,
         drivers: uniqueDrivers,
         driverUsernameToName: driverData?.username_to_name ?? {},
         selectedDriver,
         onSelectDriver: setSelectedDriver,
         tripSummary,
         legLabels,
+        usernames,
     }
 
     // --- Fullscreen overlay (rendered via portal) ---
@@ -596,7 +597,6 @@ function RouteBuilder() {
                 onChangeRouteOutput={setRouteOutput}
                 onCopyRoute={() => copyToClipboard(routeCopyContent)}
                 onRevertRoute={revertRoute}
-                copied={copiedText === routeCopyContent}
                 drivers={uniqueDrivers}
                 driverUsernameToName={driverData?.username_to_name ?? {}}
                 selectedDriver={selectedDriver}

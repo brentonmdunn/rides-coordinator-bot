@@ -53,9 +53,30 @@ export function getApiUrl(endpoint: string): string {
  * @returns Fetch Response (only on 2xx status)
  * @throws {ApiError} on non-2xx responses
  */
+function getCsrfToken(): string {
+    const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
+    return match ? decodeURIComponent(match[1]) : ''
+}
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
 export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
     const url = getApiUrl(endpoint);
-    const response = await fetch(url, options);
+    const method = (options?.method ?? 'GET').toUpperCase()
+
+    const headers = new Headers(options?.headers)
+    if (MUTATING_METHODS.has(method)) {
+        const csrf = getCsrfToken()
+        if (csrf && !headers.has('X-CSRF-Token')) {
+            headers.set('X-CSRF-Token', csrf)
+        }
+    }
+
+    const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+    });
 
     if (!response.ok) {
         let detail: string

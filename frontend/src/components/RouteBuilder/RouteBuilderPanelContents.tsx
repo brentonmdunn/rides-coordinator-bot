@@ -14,6 +14,7 @@ import { Button } from '../ui/button'
 import { SortableLocationList, ArrivalTimeSelector } from './routeBuilderShared'
 import type { TimeModeKey } from './routeBuilderConstants'
 import EditableOutput from '../EditableOutput'
+import type { UsernameEntry } from '../../hooks/useUsernames'
 import { DriverSelector } from './DriverSelector'
 
 export interface RouteBuilderPanelContentsProps {
@@ -38,7 +39,6 @@ export interface RouteBuilderPanelContentsProps {
     onChangeRouteOutput: (value: string) => void
     onCopyRoute: () => void
     onRevertRoute: () => void
-    copied: boolean
 
     // Driver state
     drivers: string[]
@@ -49,6 +49,9 @@ export interface RouteBuilderPanelContentsProps {
     // Trip metadata
     tripSummary?: string | null
     legLabels?: (string | null)[]
+
+    // Autocomplete
+    usernames?: UsernameEntry[]
 }
 
 export function RouteBuilderPanelContents({
@@ -68,13 +71,13 @@ export function RouteBuilderPanelContents({
     onChangeRouteOutput,
     onCopyRoute,
     onRevertRoute,
-    copied,
     drivers,
     driverUsernameToName,
     selectedDriver,
     onSelectDriver,
     tripSummary,
     legLabels,
+    usernames,
 }: RouteBuilderPanelContentsProps) {
     if (selectedLocationKeys.length === 0) {
         return (
@@ -186,8 +189,8 @@ export function RouteBuilderPanelContents({
                             }
                             onCopy={onCopyRoute}
                             onRevert={onRevertRoute}
-                            copied={copied}
                             minHeight="min-h-[120px]"
+                            usernames={usernames}
                         />
                     </div>
                 )

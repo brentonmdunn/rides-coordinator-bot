@@ -6,6 +6,7 @@ import traceback
 import discord
 
 from bot.core.bot_instance import get_bot
+from bot.core.enums import FeatureFlagNames
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,13 @@ def _get_config() -> tuple[str, int | None]:
     raw = os.getenv("ERROR_CHANNEL_ID")
     channel_id = int(raw) if raw else None
     return app_env, channel_id
+
+
+def _is_send_errors_enabled() -> bool:
+    from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+
+    flag_value = FeatureFlagNames.SEND_ERRORS_TO_DISCORD.value
+    return FeatureFlagsRepository._cache.get(flag_value, False)
 
 
 async def send_error_to_discord(
@@ -28,6 +36,9 @@ async def send_error_to_discord(
     """
     app_env, error_channel_id = _get_config()
     if app_env == "local" or error_channel_id is None:
+        return
+
+    if not _is_send_errors_enabled():
         return
 
     bot = get_bot()

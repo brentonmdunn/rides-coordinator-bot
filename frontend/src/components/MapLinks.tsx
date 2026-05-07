@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiFetch } from '../lib/api'
-import { useCopyToClipboard } from '../lib/utils'
+import { copyToClipboard } from '../lib/utils'
 import { useTheme } from './use-theme'
 import {
     Select,
@@ -11,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from './ui/select'
-import { Copy, Check, ExternalLink } from 'lucide-react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { Button } from './ui/button'
 import { SectionCard } from './shared'
 import type { PickupLocationsResponse } from '../types'
@@ -30,7 +30,6 @@ function MapLinks() {
         useState<PickupLocationsResponse | null>(null)
     const [locationsLoading, setLocationsLoading] = useState(true)
     const [selectedLocation, setSelectedLocation] = useState<string>('')
-    const { copiedText, copyToClipboard } = useCopyToClipboard(3000)
     const { theme } = useTheme()
 
     useEffect(() => {
@@ -68,8 +67,6 @@ function MapLinks() {
     const mapCenter: [number, number] = selectedCoords
         ? [selectedCoords.lat, selectedCoords.lng]
         : UCSD_CENTER
-
-    const isCopied = copiedText === selectedMapUrl
 
     return (
         <SectionCard icon="📍" title="Pickup Directions" headerClassName="pb-2">
@@ -170,22 +167,10 @@ function MapLinks() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => copyToClipboard(selectedMapUrl)}
-                                className={`min-w-[6.5rem] transition-colors duration-300 ${isCopied
-                                    ? 'border-green-500 text-green-600 dark:text-green-400'
-                                    : ''
-                                    }`}
+                                className="min-w-[6.5rem]"
                             >
-                                {isCopied ? (
-                                    <>
-                                        <Check className="h-4 w-4 mr-1.5" />
-                                        Copied!
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy className="h-4 w-4 mr-1.5" />
-                                        Copy Link
-                                    </>
-                                )}
+                                <Copy className="h-4 w-4 mr-1.5" />
+                                Copy Link
                             </Button>
                             <Button
                                 id="map-links-open-btn"

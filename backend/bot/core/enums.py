@@ -69,6 +69,8 @@ class FeatureFlagNames(StrEnum):
     EVENT_THREADS = "event_threads"
     LATE_RIDES_REACT = "late_rides_react"
     MODMAIL = "modmail"
+    SEND_ERRORS_TO_DISCORD = "send_errors_to_discord"
+    USE_CACHE = "use_cache"
 
 
 class JobName(StrEnum):
