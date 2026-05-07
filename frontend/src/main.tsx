@@ -11,6 +11,7 @@ import Login from './pages/Login.tsx'
 import { ThemeProvider } from "./components/theme-provider"
 
 const Learn = lazy(() => import('./pages/Learn.tsx'))
+const ReactionLog = lazy(() => import('./pages/ReactionLog.tsx'))
 
 const queryClient = new QueryClient()
 
@@ -26,6 +27,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route element={<AuthGuard />}>
                   <Route path="/" element={<Home />} />
                   <Route path="/learn" element={<Learn />} />
+                  <Route path="/reaction-log" element={<ReactionLog />} />
                 </Route>
               </Routes>
             </Suspense>
