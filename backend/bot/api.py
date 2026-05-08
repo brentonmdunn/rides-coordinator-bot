@@ -36,6 +36,13 @@ async def bot_lifespan():
             pass
         # Bot is shutdown
     """
+    if os.getenv("DISABLE_DISCORD_BOT", "").lower() == "true":
+        logger.warning(
+            "DISABLE_DISCORD_BOT=true — running in API-only mode, bot and all scheduled jobs are disabled"
+        )
+        yield None
+        return
+
     bot = build_bot()
     attach_event_handlers(bot, send_error_to_discord)
     set_bot_instance(bot)
