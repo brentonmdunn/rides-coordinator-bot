@@ -16,6 +16,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from bot.core.database import AsyncSessionLocal
+from bot.core.enums import AccountRoles
+from bot.repositories.user_accounts_repository import UserAccountsRepository
 from bot.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,9 @@ DISCORD_REDIRECT_URI = os.getenv("DISCORD_OAUTH_REDIRECT_URI")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID")
 DISCORD_RIDE_COORDINATOR_ROLE_ID = os.getenv("DISCORD_RIDE_COORDINATOR_ROLE_ID")
+ALLOW_BYPASS_LOGIN = os.getenv("ALLOW_BYPASS_LOGIN", "false").lower() == "true"
+
+BYPASS_EMAIL = "viewer@bypass.local"
 
 _DISCORD_AUTH_URL = "https://discord.com/api/oauth2/authorize"
 _DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
@@ -199,6 +204,53 @@ async def discord_callback(
     response = RedirectResponse(FRONTEND_BASE_URL)
     response.delete_cookie("oauth_state", path="/api/auth/discord/callback")
     _cookie_ttl = 30 * 24 * 60 * 60  # 30 days in seconds
+    response.set_cookie(
+        SESSION_COOKIE,
+        session_id_plain,
+        max_age=_cookie_ttl,
+        httponly=True,
+        samesite="lax",
+        secure=_IS_PROD,
+    )
+    response.set_cookie(
+        CSRF_COOKIE,
+        csrf_token,
+        max_age=_cookie_ttl,
+        httponly=False,
+        samesite="lax",
+        secure=_IS_PROD,
+    )
+    return response
+
+
+@router.get("/api/auth/config")
+async def auth_config() -> JSONResponse:
+    """Return public auth configuration for the frontend."""
+    return JSONResponse({"bypass_login_enabled": ALLOW_BYPASS_LOGIN})
+
+
+@router.get("/api/auth/bypass-login")
+async def bypass_login() -> RedirectResponse:
+    """
+    Bypass auth and log in as a viewer. Only available when ALLOW_BYPASS_LOGIN=true.
+    """
+    if not ALLOW_BYPASS_LOGIN:
+        return _login_error_redirect("access_denied")
+
+    try:
+        async with AsyncSessionLocal() as db_session:
+            await UserAccountsRepository.get_or_create(
+                db_session, BYPASS_EMAIL, AccountRoles.VIEWER
+            )
+            session_id_plain, csrf_token = await AuthService.create_session(
+                db_session, BYPASS_EMAIL
+            )
+    except Exception:
+        logger.exception("Error creating bypass session")
+        return _login_error_redirect("server_error")
+
+    response = RedirectResponse(FRONTEND_BASE_URL)
+    _cookie_ttl = 3 * 60 * 60  # 3 hours
     response.set_cookie(
         SESSION_COOKIE,
         session_id_plain,
