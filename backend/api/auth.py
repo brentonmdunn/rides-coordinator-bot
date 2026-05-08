@@ -73,8 +73,8 @@ async def verify_cloudflare_token(request: Request):
         )
         return None
 
-    # Allow health check to bypass auth
-    if request.url.path == "/health":
+    # Allow health check and auth config/bypass endpoints through without a token
+    if request.url.path in {"/health", "/api/auth/config", "/api/auth/bypass-login"}:
         return {"email": "health-check", "sub": "system"}
 
     token = request.headers.get("Cf-Access-Jwt-Assertion")
