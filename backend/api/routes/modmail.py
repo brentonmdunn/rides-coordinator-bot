@@ -12,8 +12,10 @@ from pydantic import BaseModel
 from api.auth import require_ride_coordinator
 from api.dependencies import require_ready_bot
 from bot.core.database import AsyncSessionLocal
+from bot.repositories.locations_repository import LocationsRepository
 from bot.repositories.modmail_messages_repository import ModmailMessagesRepository
 from bot.repositories.modmail_repository import ModmailRepository
+from bot.repositories.user_accounts_repository import UserAccountsRepository
 from bot.services.modmail_service import (
     ModmailAmbiguousUserError,
     ModmailConfigError,
@@ -103,13 +105,11 @@ async def get_messages(
     }
 
 
-@router.post(
-    "/conversations/{user_id}/messages",
-    dependencies=[Depends(require_ride_coordinator)],
-)
+@router.post("/conversations/{user_id}/messages")
 async def send_message(
     user_id: str,
     body: SendMessageRequest,
+    email: str = Depends(require_ride_coordinator),
 ):
     """
     Send a modmail message to a user from the web UI.
@@ -119,6 +119,7 @@ async def send_message(
     Args:
         user_id: The target Discord user ID.
         body: Contains the message text.
+        email: The authenticated sender's email (injected by auth dependency).
 
     Returns:
         JSON with delivery status.
@@ -126,8 +127,18 @@ async def send_message(
     bot = require_ready_bot()
     service = ModmailService(bot)
 
+    async with AsyncSessionLocal() as session:
+        account = await UserAccountsRepository.get_by_email(session, email)
+        discord_username = account.discord_username if account else None
+        if discord_username:
+            names = await LocationsRepository.get_names_for_usernames(session, {discord_username})
+            full_name = names.get(discord_username) or discord_username
+            sender_name = full_name.split()[0]
+        else:
+            sender_name = None
+
     try:
-        result = await service.dm_user(int(user_id), body.message)
+        result = await service.dm_user(int(user_id), body.message, sender_name=sender_name)
     except ModmailConfigError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except (ModmailUserNotFoundError, ModmailAmbiguousUserError) as exc:

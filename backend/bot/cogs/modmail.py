@@ -90,15 +90,20 @@ class Modmail(commands.Cog):
         Args:
             message: The incoming Discord message.
         """
+        logger.info("on_message fired: author=%s guild=%s", message.author, message.guild)
+
         if message.author.bot:
+            logger.debug("on_message: skipping bot message from %s", message.author)
             return
 
-        if not await _feature_enabled():
+        enabled = await _feature_enabled()
+        logger.debug("on_message: modmail feature_enabled=%s", enabled)
+        if not enabled:
             return
 
         try:
             if message.guild is None:
-                # Inbound DM → mirror into the user's modmail channel.
+                logger.debug("on_message: inbound DM from %s, relaying to channel", message.author)
                 await self.service.relay_dm_to_channel(message)
                 return
 
@@ -175,6 +180,9 @@ async def _feature_enabled() -> bool:
     from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
     cached = FeatureFlagsRepository._cache.get(FeatureFlagNames.MODMAIL.value)
+    logger.debug(
+        "_feature_enabled: cache lookup key=%r result=%r", FeatureFlagNames.MODMAIL.value, cached
+    )
     if cached is not None:
         return cached
     async with AsyncSessionLocal() as session:
@@ -182,6 +190,7 @@ async def _feature_enabled() -> bool:
             session,
             FeatureFlagNames.MODMAIL,
         )
+    logger.debug("_feature_enabled: DB lookup result=%r", result)
     return bool(result)
 
 

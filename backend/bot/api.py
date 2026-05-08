@@ -42,8 +42,8 @@ async def bot_lifespan():
 
     await startup()
 
-    if APP_ENV != "local":
-        await load_extensions(bot)
+    # if APP_ENV != "local":
+    await load_extensions(bot)
 
     bot_task = asyncio.create_task(bot.start(TOKEN))
 

@@ -164,7 +164,9 @@ class ModmailService:
     def _get_category(self, guild: discord.Guild) -> discord.CategoryChannel:
         """Fetch the configured modmail category, raising if missing."""
         category_id = self._get_category_id()
+        logger.debug("_get_category: looking up category_id=%s in guild=%s", category_id, guild)
         category = guild.get_channel(category_id)
+        logger.debug("_get_category: found=%s type=%s", category, type(category).__name__)
         if not isinstance(category, discord.CategoryChannel):
             raise ModmailConfigError(
                 f"MODMAIL_CATEGORY_ID={category_id} is not a category in guild '{guild.name}'.",
@@ -208,10 +210,17 @@ class ModmailService:
         return overwrites
 
     def _primary_guild(self) -> discord.Guild | None:
-        """Return the single guild the bot is in, or None if ambiguous."""
+        """Return the guild to use for modmail, preferring the one with the configured category."""
         guilds = list(self.bot.guilds)
         if len(guilds) == 1:
             return guilds[0]
+        try:
+            category_id = self._get_category_id()
+            for guild in guilds:
+                if guild.get_channel(category_id) is not None:
+                    return guild
+        except ModmailConfigError:
+            pass
         return None
 
     # ------------------------------------------------------------------
@@ -292,6 +301,7 @@ class ModmailService:
         """
         if guild is None:
             guild = self._primary_guild()
+        logger.debug("get_or_create_channel: resolved guild=%s", guild)
         if guild is None:
             raise ModmailConfigError(
                 "Modmail requires a single-guild bot or an explicit guild; "
@@ -358,6 +368,7 @@ class ModmailService:
         *,
         initiator: discord.abc.User | None = None,
         guild: discord.Guild | None = None,
+        sender_name: str | None = None,
     ) -> DMResult:
         """
         DM a user and mirror the outgoing message in their modmail channel.
@@ -412,8 +423,16 @@ class ModmailService:
             content=message or "",
         )
 
+        if sender_name:
+            dm_sender_name = sender_name
+        elif initiator is not None:
+            dm_sender_name = initiator.display_name
+        else:
+            dm_sender_name = "Ride Coordinator"
+        dm_content = f"{dm_sender_name}: {message}" if message else ""
+
         try:
-            await self._send_dm(user, message, attachments=None)
+            await self._send_dm(user, dm_content, attachments=None)
         except ModmailDMForbiddenError as exc:
             logger.info("dm_user: delivery failed for user %s: %s", user.id, exc)
             await channel.send(
@@ -441,6 +460,11 @@ class ModmailService:
             message: The DM message received by the bot.
         """
         user = message.author
+        logger.debug(
+            "relay_dm_to_channel: user=%s content=%r",
+            user,
+            message.content[:50] if message.content else "",
+        )
         try:
             channel = await self.get_or_create_channel(user)
         except ModmailConfigError:
@@ -519,8 +543,11 @@ class ModmailService:
             )
             return
 
+        display_name = await self._display_name_for(message.author.name)
+        dm_content = f"{display_name}: {message.content}" if message.content else ""
+
         try:
-            await self._send_dm(user, message.content, message.attachments)
+            await self._send_dm(user, dm_content, message.attachments)
         except ModmailDMForbiddenError:
             await channel.send(
                 embed=discord.Embed(
@@ -564,6 +591,15 @@ class ModmailService:
             content=message.content or "",
             attachment_urls=attachment_urls,
         )
+
+    async def _display_name_for(self, discord_username: str) -> str:
+        """Return the Locations name for a discord username, falling back to the username."""
+        from bot.repositories.locations_repository import LocationsRepository
+
+        async with AsyncSessionLocal() as session:
+            names = await LocationsRepository.get_names_for_usernames(session, {discord_username})
+        name = names.get(discord_username, discord_username)
+        return name.split()[0] if name else discord_username
 
     # ------------------------------------------------------------------
     # Internals
