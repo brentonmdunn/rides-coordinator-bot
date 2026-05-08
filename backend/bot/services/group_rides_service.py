@@ -104,7 +104,7 @@ class GroupRidesService:
 
     async def _filter_class_attendees(self, usernames_reacted: set, channel_id: int) -> set:
         """Remove Sunday class attendees from the reacted set."""
-        class_message_id = await self.locations_service._find_correct_message(
+        class_message_id = await self.locations_service.find_correct_message(
             AskRidesMessage.SUNDAY_CLASS, channel_id
         )
         if class_message_id is None:
@@ -266,7 +266,7 @@ class GroupRidesService:
             if ask_message is None:
                 raise ValueError("Invalid day")
 
-            message_id = await self.locations_service._find_correct_message(
+            message_id = await self.locations_service.find_correct_message(
                 ask_message, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             )
 
@@ -338,7 +338,7 @@ class GroupRidesService:
             if ask_message is None:
                 raise ValueError("day must be 'friday' or 'sunday'")
 
-            message_id = await self.locations_service._find_correct_message(ask_message, channel_id)
+            message_id = await self.locations_service.find_correct_message(ask_message, channel_id)
 
             if message_id is None:
                 raise ValueError(f"Could not find the {day} rides message. It may not exist yet.")
