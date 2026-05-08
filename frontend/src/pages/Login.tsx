@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getApiUrl } from '../lib/api'
 
@@ -16,6 +17,14 @@ function Login() {
     const [params] = useSearchParams()
     const errorCode = params.get('error')
     const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? 'Login failed. Please try again.') : null
+    const [bypassEnabled, setBypassEnabled] = useState(false)
+
+    useEffect(() => {
+        fetch(getApiUrl('/api/auth/config'))
+            .then((r) => r.json())
+            .then((data) => setBypassEnabled(data.bypass_login_enabled ?? false))
+            .catch(() => {})
+    }, [])
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 px-4">
@@ -44,6 +53,15 @@ function Login() {
                     </svg>
                     Log in with Discord
                 </a>
+
+                {bypassEnabled && (
+                    <a
+                        href={getApiUrl('/api/auth/bypass-login')}
+                        className="flex items-center justify-center w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                        Login
+                    </a>
+                )}
             </div>
         </div>
     )
