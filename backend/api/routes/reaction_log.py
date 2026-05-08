@@ -6,14 +6,12 @@ GET /api/reaction-log — returns ride reaction events grouped by message.
 
 import datetime
 import logging
-from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.auth import require_ride_coordinator
-from bot.core.database import AsyncSessionLocal
-from bot.repositories.ride_reaction_events_repository import RideReactionEventsRepository
+from bot.services.ride_reaction_log_service import RideReactionLogService
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +59,6 @@ def _format_label(ride_type: str | None, ride_date: datetime.date | None) -> str
     type_label = ride_type.replace("_", " ").title() if ride_type else "Unknown"
     if ride_date is None:
         return type_label
-    date_str = (
-        ride_date.strftime("%-m/%-d/%Y") if hasattr(ride_date, "strftime") else str(ride_date)
-    )
-    # Use a nicer format: "May 2, 2026"
     date_str = ride_date.strftime("%B %-d, %Y")
     return f"{type_label} · {date_str}"
 
@@ -90,43 +84,12 @@ async def get_reaction_log(
         emoji: filter to a specific emoji string
     """
     try:
-        async with AsyncSessionLocal() as session:
-            events = await RideReactionEventsRepository.get_events(
-                session,
-                ride_type=ride_type,
-                date_from=date_from,
-                date_to=date_to,
-                emoji=emoji,
-            )
-
-        # Group by message_id while preserving insertion order for events
-        groups: dict[str, dict] = defaultdict(
-            lambda: {"ride_type": None, "ride_date": None, "events": []}
+        sorted_groups = await RideReactionLogService.get_grouped_events(
+            ride_type=ride_type,
+            date_from=date_from,
+            date_to=date_to,
+            emoji=emoji,
         )
-        for event in events:
-            mid = event.message_id
-            groups[mid]["ride_type"] = event.ride_type
-            groups[mid]["ride_date"] = event.ride_date
-            groups[mid]["events"].append(
-                ReactionEventOut(
-                    id=event.id,
-                    discord_username=event.discord_username,
-                    display_name=event.display_name,
-                    emoji=event.emoji,
-                    action=event.action,
-                    occurred_at=event.occurred_at,
-                )
-            )
-
-        # Sort: newest rides first (ride_date desc, then message_id desc as tiebreaker)
-        def _sort_key(item: tuple) -> tuple:
-            mid, data = item
-            rd = data["ride_date"]
-            # None dates sort to the end
-            date_key = rd if rd is not None else datetime.date.min
-            return (date_key, mid)
-
-        sorted_groups = sorted(groups.items(), key=_sort_key, reverse=True)
 
         rides = [
             RideGroup(
@@ -134,7 +97,17 @@ async def get_reaction_log(
                 ride_type=data["ride_type"],
                 ride_date=data["ride_date"],
                 label=_format_label(data["ride_type"], data["ride_date"]),
-                events=data["events"],
+                events=[
+                    ReactionEventOut(
+                        id=event.id,
+                        discord_username=event.discord_username,
+                        display_name=event.display_name,
+                        emoji=event.emoji,
+                        action=event.action,
+                        occurred_at=event.occurred_at,
+                    )
+                    for event in data["events"]
+                ],
             )
             for mid, data in sorted_groups
         ]

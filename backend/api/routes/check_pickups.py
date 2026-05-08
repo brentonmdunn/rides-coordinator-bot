@@ -6,11 +6,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from api.dependencies import require_bot, validate_ride_type
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AskRidesMessage, ChannelIds, JobName
-from bot.repositories.ride_coverage_repository import RideCoverageRepository
+from bot.core.enums import AskRidesMessage, JobName
 from bot.services.locations_service import LocationsService
-from bot.utils.time_helpers import get_last_sunday
+from bot.services.ride_coverage_service import RideCoverageService
 
 logger = logging.getLogger(__name__)
 
@@ -77,77 +75,8 @@ async def get_pickup_coverage(ride_type: str):
     validate_ride_type(ride_type.lower(), allow_message_id=False)
 
     try:
-        locations_service = LocationsService(bot)
-
-        # Determine which message to check based on ride type
-        if ride_type.lower() == JobName.FRIDAY:
-            ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
-        else:  # sunday
-            ask_message = AskRidesMessage.SUNDAY_SERVICE
-
-        # Find the most recent message for this ride type
-        message_id = await locations_service._find_correct_message(
-            ask_message, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        )
-
-        if message_id is None:
-            # No message found for this ride type yet
-            return {
-                "users": [],
-                "total": 0,
-                "assigned": 0,
-                "message_found": False,
-                "has_coverage_entries": False,
-            }
-
-        # Get all users who reacted to the message
-        usernames_reacted = await locations_service._get_usernames_who_reacted(
-            int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS), message_id
-        )
-
-        # For Sunday, exclude users going to class
-        if ride_type.lower() == JobName.SUNDAY:
-            class_message_id = await locations_service._find_correct_message(
-                AskRidesMessage.SUNDAY_CLASS, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-            )
-            if class_message_id:
-                class_usernames = await locations_service._get_usernames_who_reacted(
-                    int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS), class_message_id
-                )
-                usernames_reacted -= class_usernames
-
-        # Build user list with assignment status using the repository.
-        # Use the week boundary so entries don't expire after 24 h.
-        last_sunday = get_last_sunday()
-        usernames_list = [str(u) for u in usernames_reacted]
-        async with AsyncSessionLocal() as session:
-            covered_usernames = await RideCoverageRepository.get_bulk_coverage_status(
-                session, usernames_list, since=last_sunday
-            )
-
-        users = []
-        assigned_count = 0
-
-        for username in usernames_list:
-            has_ride = username in covered_usernames
-            if has_ride:
-                assigned_count += 1
-
-            users.append({"discord_username": username, "has_ride": has_ride})
-
-        # Sort: unassigned first, then alphabetically
-        users.sort(key=lambda x: (x["has_ride"], x["discord_username"]))
-
-        # Derive per-ride-type coverage flag from the users we just checked
-        # instead of a global query that ignores ride type.
-        return {
-            "users": users,
-            "total": len(users),
-            "assigned": assigned_count,
-            "message_found": True,
-            "has_coverage_entries": assigned_count > 0,
-        }
-
+        service = RideCoverageService(bot)
+        return await service.get_coverage_summary(ride_type.lower())
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch ride coverage: {e!s}") from e
 
@@ -168,13 +97,9 @@ async def sync_ride_coverage():
     bot = require_bot()
 
     try:
-        # Get the RideCoverage cog
-        ride_coverage_cog = bot.get_cog("RideCoverage")
-        if not ride_coverage_cog:
-            raise HTTPException(status_code=503, detail="RideCoverage cog not loaded")
-
         logger.info("API: Force sync ride coverage requested")
-        result = await ride_coverage_cog.sync_ride_coverage()
+        service = RideCoverageService(bot)
+        result = await service.sync_ride_coverage()
         logger.info(f"API: Force sync completed: {result}")
 
         return {"success": True, "message": "Ride coverage sync completed", **result}
