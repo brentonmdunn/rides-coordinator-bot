@@ -80,7 +80,7 @@ async def list_pickups(request: ListPickupsRequest):
                 ask_message = AskRidesMessage.SUNDAY_SERVICE
 
             locations_service = LocationsService(bot)
-            message_id_int = await locations_service._find_correct_message(
+            message_id_int = await locations_service.find_correct_message(
                 ask_message, channel_id_int
             )
 

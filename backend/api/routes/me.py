@@ -11,9 +11,7 @@ import os
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
-from bot.repositories.user_accounts_repository import UserAccountsRepository
 from bot.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
@@ -84,8 +82,7 @@ async def switch_role(request: Request, body: RoleSwitchRequest):
     if not email:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    async with AsyncSessionLocal() as session:
-        updated = await UserAccountsRepository.update_role(session, email, body.role)
+    updated = await UserAccountsService.update_role(email, body.role)
     if not updated:
         raise HTTPException(status_code=404, detail="Account not found")
 

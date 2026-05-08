@@ -276,7 +276,7 @@ class Reactions(commands.Cog):
 
         if channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS:
             for event in AskRidesMessage:
-                m_id = await locations_svc._find_correct_message(event, channel_id)
+                m_id = await locations_svc.find_correct_message(event, channel_id)
                 if m_id == message_id:
                     await warm_ask_rides_reactions_cache(self.bot, event)
                     break

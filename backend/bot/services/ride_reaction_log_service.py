@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 import discord
@@ -104,6 +105,51 @@ class RideReactionLogService:
             )
         except Exception:
             logger.exception("Failed to record ask-rides reaction event")
+
+    @staticmethod
+    async def get_grouped_events(
+        ride_type: str | None = None,
+        date_from: datetime.date | None = None,
+        date_to: datetime.date | None = None,
+        emoji: str | None = None,
+    ) -> list[tuple[str, dict]]:
+        """
+        Fetch reaction events and return them grouped by message, newest rides first.
+
+        Args:
+            ride_type: Optional filter (friday | sunday | sunday_class | wednesday).
+            date_from: Include events on or after this ride_date.
+            date_to: Include events on or before this ride_date.
+            emoji: Filter to a specific emoji string.
+
+        Returns:
+            Sorted list of (message_id, {"ride_type", "ride_date", "events": [row, ...]}).
+        """
+        async with AsyncSessionLocal() as session:
+            events = await RideReactionEventsRepository.get_events(
+                session,
+                ride_type=ride_type,
+                date_from=date_from,
+                date_to=date_to,
+                emoji=emoji,
+            )
+
+        groups: dict[str, dict] = defaultdict(
+            lambda: {"ride_type": None, "ride_date": None, "events": []}
+        )
+        for event in events:
+            mid = event.message_id
+            groups[mid]["ride_type"] = event.ride_type
+            groups[mid]["ride_date"] = event.ride_date
+            groups[mid]["events"].append(event)
+
+        def _sort_key(item: tuple) -> tuple:
+            mid, data = item
+            rd = data["ride_date"]
+            date_key = rd if rd is not None else datetime.date.min
+            return (date_key, mid)
+
+        return sorted(groups.items(), key=_sort_key, reverse=True)
 
 
 def _detect_ride_type(content: str) -> str | None:
