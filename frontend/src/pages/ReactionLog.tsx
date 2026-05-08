@@ -140,21 +140,26 @@ function ActionBadge({ action }: { action: EventAction }) {
 
 function EventRow({ event }: { event: ReactionEvent }) {
     return (
-        <div className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
-            <span className="text-xs text-muted-foreground whitespace-nowrap min-w-[160px]">
+        <div className="py-2.5 border-b border-border last:border-0">
+            <span className="text-xs text-muted-foreground block mb-1.5 sm:hidden">
                 {formatEventTime(event.occurred_at)}
             </span>
-            <span className="text-xl leading-none">{event.emoji}</span>
-            <ActionBadge action={event.action} />
-            <div className="flex flex-col items-start min-w-0">
-                <span className="text-sm text-foreground font-medium truncate">
-                    {event.display_name ?? `@${event.discord_username}`}
+            <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground whitespace-nowrap min-w-[160px] hidden sm:block">
+                    {formatEventTime(event.occurred_at)}
                 </span>
-                {event.display_name && (
-                    <span className="text-xs text-muted-foreground">
-                        @{event.discord_username}
+                <span className="text-xl leading-none">{event.emoji}</span>
+                <ActionBadge action={event.action} />
+                <div className="flex flex-col items-start min-w-0">
+                    <span className="text-sm text-foreground font-medium truncate">
+                        {event.display_name ?? `@${event.discord_username}`}
                     </span>
-                )}
+                    {event.display_name && (
+                        <span className="text-xs text-muted-foreground">
+                            @{event.discord_username}
+                        </span>
+                    )}
+                </div>
             </div>
         </div>
     )
@@ -308,7 +313,7 @@ function ReactionLog() {
 
                 {/* Date range + emoji */}
                 <div className="flex flex-wrap gap-4 items-end">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 min-w-35">
                         <label
                             htmlFor="week-filter"
                             className="text-xs font-semibold text-muted-foreground uppercase tracking-widest"
@@ -328,10 +333,10 @@ function ReactionLog() {
                                     }))
                                 }
                             }}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
                         />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 min-w-35">
                         <label
                             htmlFor="date-from"
                             className="text-xs font-semibold text-muted-foreground uppercase tracking-widest"
@@ -343,10 +348,10 @@ function ReactionLog() {
                             type="date"
                             value={filters.date_from}
                             onChange={(e) => setFilter('date_from', e.target.value)}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
                         />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 min-w-35">
                         <label
                             htmlFor="date-to"
                             className="text-xs font-semibold text-muted-foreground uppercase tracking-widest"
@@ -358,10 +363,10 @@ function ReactionLog() {
                             type="date"
                             value={filters.date_to}
                             onChange={(e) => setFilter('date_to', e.target.value)}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
                         />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 min-w-30">
                         <label
                             htmlFor="emoji-filter"
                             className="text-xs font-semibold text-muted-foreground uppercase tracking-widest"
@@ -372,7 +377,7 @@ function ReactionLog() {
                             id="emoji-filter"
                             value={filters.emoji}
                             onChange={(e) => setFilter('emoji', e.target.value)}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
                         >
                             <option value="">All</option>
                             {availableEmojis.map((emoji) => (
