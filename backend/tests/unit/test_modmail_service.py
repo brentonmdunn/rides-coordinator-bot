@@ -319,9 +319,10 @@ class TestPersistMessage:
 
         captured = {}
 
-        with patch(
-            "bot.services.modmail_service.ModmailMessagesRepository.create"
-        ) as mock_create, patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx:
+        with (
+            patch("bot.services.modmail_service.ModmailMessagesRepository.create") as mock_create,
+            patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx,
+        ):
             fake_row = MagicMock()
             fake_row.id = 1
             fake_row.user_id = "123"
@@ -367,9 +368,10 @@ class TestPersistMessage:
 
         captured = {}
 
-        with patch(
-            "bot.services.modmail_service.ModmailMessagesRepository.create"
-        ) as mock_create, patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx:
+        with (
+            patch("bot.services.modmail_service.ModmailMessagesRepository.create") as mock_create,
+            patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx,
+        ):
             fake_row = MagicMock()
             fake_row.id = 1
             fake_row.user_id = "123"
@@ -516,9 +518,12 @@ class TestGetOrCreateChannel:
 
         svc = ModmailService(bot=bot)
 
-        with patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx, patch(
-            "bot.services.modmail_service.ModmailRepository.get_by_user_id",
-            new=AsyncMock(return_value=existing_row),
+        with (
+            patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx,
+            patch(
+                "bot.services.modmail_service.ModmailRepository.get_by_user_id",
+                new=AsyncMock(return_value=existing_row),
+            ),
         ):
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -554,10 +559,11 @@ class TestDmUser:
 
         svc = ModmailService(bot=bot)
 
-        with patch.object(svc, "resolve_user", new=AsyncMock(return_value=user)), patch.object(
-            svc, "get_or_create_channel", new=AsyncMock(return_value=channel)
-        ), patch.object(svc, "_send_dm", new=AsyncMock()), patch.object(
-            svc, "_persist_message", new=AsyncMock()
+        with (
+            patch.object(svc, "resolve_user", new=AsyncMock(return_value=user)),
+            patch.object(svc, "get_or_create_channel", new=AsyncMock(return_value=channel)),
+            patch.object(svc, "_send_dm", new=AsyncMock()),
+            patch.object(svc, "_persist_message", new=AsyncMock()),
         ):
             result = await svc.dm_user(user, "hello world")
 
@@ -582,12 +588,13 @@ class TestDmUser:
 
         svc = ModmailService(bot=bot)
 
-        with patch.object(svc, "resolve_user", new=AsyncMock(return_value=user)), patch.object(
-            svc, "get_or_create_channel", new=AsyncMock(return_value=channel)
-        ), patch.object(
-            svc, "_send_dm", new=AsyncMock(side_effect=ModmailDMForbiddenError("blocked"))
-        ), patch.object(
-            svc, "_persist_message", new=AsyncMock()
+        with (
+            patch.object(svc, "resolve_user", new=AsyncMock(return_value=user)),
+            patch.object(svc, "get_or_create_channel", new=AsyncMock(return_value=channel)),
+            patch.object(
+                svc, "_send_dm", new=AsyncMock(side_effect=ModmailDMForbiddenError("blocked"))
+            ),
+            patch.object(svc, "_persist_message", new=AsyncMock()),
         ):
             result = await svc.dm_user(user, "hello")
 
@@ -619,9 +626,10 @@ class TestRelayDmToChannel:
 
         svc = ModmailService(bot=MagicMock())
 
-        with patch.object(
-            svc, "get_or_create_channel", new=AsyncMock(return_value=channel)
-        ), patch.object(svc, "_persist_message", new=AsyncMock()) as mock_persist:
+        with (
+            patch.object(svc, "get_or_create_channel", new=AsyncMock(return_value=channel)),
+            patch.object(svc, "_persist_message", new=AsyncMock()) as mock_persist,
+        ):
             await svc.relay_dm_to_channel(message)
 
         channel.send.assert_awaited_once()
@@ -639,12 +647,13 @@ class TestRelayDmToChannel:
 
         svc = ModmailService(bot=MagicMock())
 
-        with patch.object(
-            svc,
-            "get_or_create_channel",
-            new=AsyncMock(side_effect=ModmailConfigError("not configured")),
-        ), patch(
-            "bot.services.modmail_service.send_error_to_discord", new=AsyncMock()
+        with (
+            patch.object(
+                svc,
+                "get_or_create_channel",
+                new=AsyncMock(side_effect=ModmailConfigError("not configured")),
+            ),
+            patch("bot.services.modmail_service.send_error_to_discord", new=AsyncMock()),
         ):
             # Should not raise
             await svc.relay_dm_to_channel(message)
@@ -672,9 +681,10 @@ class TestRelayDmToChannel:
 
         svc = ModmailService(bot=MagicMock())
 
-        with patch.object(
-            svc, "get_or_create_channel", new=AsyncMock(return_value=channel)
-        ), patch.object(svc, "_persist_message", new=AsyncMock()) as mock_persist:
+        with (
+            patch.object(svc, "get_or_create_channel", new=AsyncMock(return_value=channel)),
+            patch.object(svc, "_persist_message", new=AsyncMock()) as mock_persist,
+        ):
             await svc.relay_dm_to_channel(message)
 
         # persist_message should be called with the attachment URL
@@ -720,9 +730,12 @@ class TestRelayChannelToDm:
 
         svc = ModmailService(bot=MagicMock())
 
-        with patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx, patch(
-            "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
-            new=AsyncMock(return_value=None),
+        with (
+            patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx,
+            patch(
+                "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
+                new=AsyncMock(return_value=None),
+            ),
         ):
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -748,10 +761,14 @@ class TestRelayChannelToDm:
 
         svc = ModmailService(bot=MagicMock())
 
-        with patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx, patch(
-            "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
-            new=AsyncMock(return_value=row),
-        ), patch.object(svc, "_resolve_user_row", new=AsyncMock(return_value=None)):
+        with (
+            patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx,
+            patch(
+                "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
+                new=AsyncMock(return_value=row),
+            ),
+            patch.object(svc, "_resolve_user_row", new=AsyncMock(return_value=None)),
+        ):
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock(return_value=False)
@@ -760,9 +777,11 @@ class TestRelayChannelToDm:
             await svc.relay_channel_to_dm(message)
 
         channel.send.assert_awaited_once()
-        embed_sent = channel.send.call_args.kwargs.get(
-            "embed"
-        ) or channel.send.call_args.args[0] if channel.send.call_args.args else None
+        embed_sent = (
+            channel.send.call_args.kwargs.get("embed") or channel.send.call_args.args[0]
+            if channel.send.call_args.args
+            else None
+        )
         # Just ensure a send happened with an embed (warning embed)
         assert channel.send.await_count == 1
 
@@ -798,14 +817,16 @@ class TestRelayChannelToDm:
 
         svc = ModmailService(bot=MagicMock())
 
-        with patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx, patch(
-            "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
-            new=AsyncMock(return_value=row),
-        ), patch.object(svc, "_resolve_user_row", new=AsyncMock(return_value=user)), patch.object(
-            svc, "_send_dm", new=AsyncMock()
-        ), patch.object(
-            svc, "_persist_message", new=AsyncMock()
-        ) as mock_persist:
+        with (
+            patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx,
+            patch(
+                "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
+                new=AsyncMock(return_value=row),
+            ),
+            patch.object(svc, "_resolve_user_row", new=AsyncMock(return_value=user)),
+            patch.object(svc, "_send_dm", new=AsyncMock()),
+            patch.object(svc, "_persist_message", new=AsyncMock()) as mock_persist,
+        ):
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock(return_value=False)
@@ -842,13 +863,18 @@ class TestRelayChannelToDm:
 
         svc = ModmailService(bot=MagicMock())
 
-        with patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx, patch(
-            "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
-            new=AsyncMock(return_value=row),
-        ), patch.object(svc, "_resolve_user_row", new=AsyncMock(return_value=user)), patch.object(
-            svc,
-            "_send_dm",
-            new=AsyncMock(side_effect=ModmailDMForbiddenError("blocked")),
+        with (
+            patch("bot.services.modmail_service.AsyncSessionLocal") as mock_ctx,
+            patch(
+                "bot.services.modmail_service.ModmailRepository.get_by_channel_id",
+                new=AsyncMock(return_value=row),
+            ),
+            patch.object(svc, "_resolve_user_row", new=AsyncMock(return_value=user)),
+            patch.object(
+                svc,
+                "_send_dm",
+                new=AsyncMock(side_effect=ModmailDMForbiddenError("blocked")),
+            ),
         ):
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)

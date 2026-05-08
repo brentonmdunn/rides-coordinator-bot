@@ -10,7 +10,6 @@ from bot.core.models import ModmailChannels, ModmailMessages
 from bot.repositories.modmail_messages_repository import ModmailMessagesRepository
 from bot.repositories.modmail_repository import ModmailRepository
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
