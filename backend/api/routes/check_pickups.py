@@ -123,7 +123,10 @@ async def get_driver_reactions(day: str):
     Args:
         day: "friday" or "sunday"
     """
-    bot = require_bot()
+    try:
+        bot = require_bot()
+    except HTTPException:
+        bot = None
 
     locations_service = LocationsService(bot)
     try:
@@ -143,6 +146,15 @@ async def get_driver_reactions(day: str):
             "username_to_name": result["username_to_name"],
             "message_found": True,
         }
+    except HTTPException:
+        raise
+    except AttributeError as e:
+        if bot is None:
+            raise HTTPException(
+                status_code=503, detail="Bot not initialized and no cached data available"
+            ) from None
+        logger.exception("Error fetching driver reactions")
+        raise HTTPException(status_code=500, detail="Error fetching driver reactions") from e
     except Exception as e:
         logger.exception("Error fetching driver reactions")
         raise HTTPException(status_code=500, detail=str(e)) from e
