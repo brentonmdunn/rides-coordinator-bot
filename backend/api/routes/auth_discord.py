@@ -111,7 +111,11 @@ async def discord_callback(
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
             if not token_resp.is_success:
-                logger.error(f"Discord token exchange failed: {token_resp.status_code}")
+                logger.error(
+                    "Discord token exchange failed: status=%s body=%s",
+                    token_resp.status_code,
+                    token_resp.text,
+                )
                 return _login_error_redirect("token_exchange_failed")
             access_token = token_resp.json()["access_token"]
 
@@ -120,7 +124,11 @@ async def discord_callback(
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if not user_resp.is_success:
-                logger.error(f"Discord user fetch failed: {user_resp.status_code}")
+                logger.error(
+                    "Discord user fetch failed: status=%s body=%s",
+                    user_resp.status_code,
+                    user_resp.text,
+                )
                 return _login_error_redirect("user_fetch_failed")
             discord_user = user_resp.json()
 

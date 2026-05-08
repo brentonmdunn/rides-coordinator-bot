@@ -78,6 +78,7 @@ async def get_pickup_coverage(ride_type: str):
         service = RideCoverageService(bot)
         return await service.get_coverage_summary(ride_type.lower())
     except Exception as e:
+        logger.exception("Failed to fetch ride coverage")
         raise HTTPException(status_code=500, detail=f"Failed to fetch ride coverage: {e!s}") from e
 
 
