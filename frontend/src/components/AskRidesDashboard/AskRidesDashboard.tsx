@@ -5,6 +5,7 @@ import ErrorMessage from "../ErrorMessage"
 import type { AskRidesStatus } from '../../types'
 import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
+import { ListSkeleton } from '../LoadingSkeleton'
 
 import { Button } from '../ui/button'
 import ConfirmDialog from '../ConfirmDialog'
@@ -130,11 +131,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                     </div>
                 )}
 
-                {askRidesLoading && (
-                    <div className="p-8 text-center text-slate-500 animate-pulse">
-                        Loading ask rides status...
-                    </div>
-                )}
+                {askRidesLoading && <ListSkeleton rows={3} />}
 
                 <div className="mb-6">
                     <ErrorMessage message={askRidesError} />
