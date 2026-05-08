@@ -25,9 +25,6 @@ function PageHeader({
 }: PageHeaderProps) {
     const titleAlign = centerOnMobile ? 'text-center md:text-left' : ''
     const descriptionAlign = centerOnMobile ? 'mx-auto md:mx-0' : ''
-    const actionsAlign = centerOnMobile
-        ? 'justify-center md:justify-end'
-        : 'justify-center md:justify-end'
 
     return (
         <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-12">
@@ -45,7 +42,7 @@ function PageHeader({
                 )}
             </div>
             {actions != null && (
-                <div className={`flex items-center gap-3 ${actionsAlign}`}>
+                <div className="flex items-center gap-3 justify-center md:justify-end">
                     {actions}
                 </div>
             )}
