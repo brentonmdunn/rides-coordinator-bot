@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import time
-
 import pytest
 
 from bot.core.enums import PickupLocations
 from bot.services.route_service import RouteService
-
 
 # ---------------------------------------------------------------------------
 # get_pickup_location_fuzzy

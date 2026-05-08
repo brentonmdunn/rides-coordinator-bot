@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,7 +17,6 @@ from bot.services.group_rides_service import (
     GroupRidesService,
     living_to_pickup,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -36,7 +34,9 @@ def _make_service() -> GroupRidesService:
     return svc
 
 
-def _make_passenger(name: str, username: str, living: CampusLivingLocations, pickup: PickupLocations) -> Passenger:
+def _make_passenger(
+    name: str, username: str, living: CampusLivingLocations, pickup: PickupLocations
+) -> Passenger:
     return Passenger(
         identity=Identity(name=name, username=username),
         living_location=living,
@@ -155,7 +155,11 @@ def test_split_on_off_campus_mixed():
     passengers_by_location, off_campus = svc._split_on_off_campus(locations_people)
 
     assert "123 Ocean St" in off_campus
-    assert any(p.identity.name == "Alice" for passengers in passengers_by_location.values() for p in passengers)
+    assert any(
+        p.identity.name == "Alice"
+        for passengers in passengers_by_location.values()
+        for p in passengers
+    )
 
 
 def test_split_on_off_campus_erc_handled():
@@ -244,9 +248,7 @@ async def test_filter_class_attendees_removes_class_goers():
     svc = _make_service()
     svc.locations_service._find_correct_message = AsyncMock(return_value=9999)
     # list_locations returns (locations_people, usernames_reacted, location_found)
-    svc.locations_service.list_locations = AsyncMock(
-        return_value=({}, {"alice"}, {"alice"})
-    )
+    svc.locations_service.list_locations = AsyncMock(return_value=({}, {"alice"}, {"alice"}))
 
     result = await svc._filter_class_attendees({"alice", "bob"}, channel_id=12345)
     assert result == {"bob"}
@@ -358,9 +360,7 @@ async def test_process_ride_grouping_raises_when_message_fetch_fails():
 async def test_process_ride_grouping_raises_on_unknown_location():
     svc = _make_service()
     # user reacted but location wasn't found
-    svc.locations_service.list_locations = AsyncMock(
-        return_value=({}, {"alice"}, set())
-    )
+    svc.locations_service.list_locations = AsyncMock(return_value=({}, {"alice"}, set()))
     fake_msg = MagicMock()
     fake_msg.content = "friday fellowship"
     fake_msg.embeds = []
@@ -382,9 +382,14 @@ async def test_process_ride_grouping_raises_on_llm_error_key():
     svc.repo.fetch_message = AsyncMock(return_value=fake_msg)
     svc.llm_service.generate_ride_groups = MagicMock(return_value={"error": "bad input"})
 
-    with patch("bot.services.group_rides_service.asyncio.to_thread", new=AsyncMock(return_value={"error": "bad input"})):
-        with pytest.raises(ValueError, match="LLM returned with error"):
-            await svc._process_ride_grouping(1234, "44444", 9999)
+    with (
+        patch(
+            "bot.services.group_rides_service.asyncio.to_thread",
+            new=AsyncMock(return_value={"error": "bad input"}),
+        ),
+        pytest.raises(ValueError, match="LLM returned with error"),
+    ):
+        await svc._process_ride_grouping(1234, "44444", 9999)
 
 
 @pytest.mark.asyncio
@@ -398,10 +403,15 @@ async def test_process_ride_grouping_raises_on_llm_exception():
     fake_msg.embeds = []
     svc.repo.fetch_message = AsyncMock(return_value=fake_msg)
 
-    with patch("bot.services.group_rides_service.asyncio.to_thread", new=AsyncMock(side_effect=RuntimeError("LLM down"))):
-        with patch("bot.services.group_rides_service.send_error_to_discord", new=AsyncMock()):
-            with pytest.raises(ValueError, match="Could not process"):
-                await svc._process_ride_grouping(1234, "44444", 9999)
+    with (
+        patch(
+            "bot.services.group_rides_service.asyncio.to_thread",
+            new=AsyncMock(side_effect=RuntimeError("LLM down")),
+        ),
+        patch("bot.services.group_rides_service.send_error_to_discord", new=AsyncMock()),
+    ):
+        with pytest.raises(ValueError, match="Could not process"):
+            await svc._process_ride_grouping(1234, "44444", 9999)
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,4 @@
-from types import SimpleNamespace
-
 import discord
-import pytest
 from discord import app_commands
 
 from bot.services.help_service import HelpService

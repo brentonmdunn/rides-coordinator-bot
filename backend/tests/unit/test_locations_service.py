@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import AskRidesMessage, JobName, RideOption
+from bot.core.enums import JobName, RideOption
 from bot.services.locations_service import LocationsService
 from bot.utils.custom_exceptions import NoMatchingMessageFoundError
 
@@ -272,6 +272,7 @@ async def test_list_locations_wrapper_sends_embed():
     svc.list_locations = AsyncMock(return_value=(locations_people, {"alice"}, {"alice"}))
 
     import discord
+
     fake_embed = MagicMock(spec=discord.Embed)
     svc._housing.build_embed = MagicMock(return_value=fake_embed)
 
@@ -339,8 +340,6 @@ async def test_list_locations_no_day_uses_message_id():
             new_callable=AsyncMock,
             return_value=[],
         ):
-            locations_people, reacted, found = await svc.list_locations(
-                message_id=999
-            )
+            locations_people, reacted, found = await svc.list_locations(message_id=999)
 
     assert "alice" in reacted
