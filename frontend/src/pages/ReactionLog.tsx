@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, getApiUrl } from '../lib/api'
 import { Button } from '../components/ui/button'
-import { PageHeader, PageLayout } from '../components/shared'
+import { Input } from '../components/ui/input'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '../components/ui/select'
+import { BackLink, PageHeader, PageLayout } from '../components/shared'
 import { ModeToggle } from '../components/mode-toggle'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -268,15 +274,7 @@ function ReactionLog() {
             spacedBody
             header={
                 <PageHeader
-                    eyebrow={
-                        <Link
-                            to="/"
-                            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
-                        >
-                            <ArrowLeft className="w-3.5 h-3.5" />
-                            Back to Dashboard
-                        </Link>
-                    }
+                    eyebrow={<BackLink to="/" />}
                     title="📜 Reaction Log"
                     description="Chronological log of emoji reactions added or removed from ride messages."
                     actions={<ModeToggle />}
@@ -320,7 +318,7 @@ function ReactionLog() {
                         >
                             Week
                         </label>
-                        <input
+                        <Input
                             id="week-filter"
                             type="week"
                             onChange={(e) => {
@@ -333,7 +331,6 @@ function ReactionLog() {
                                     }))
                                 }
                             }}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
                         />
                     </div>
                     <div className="flex flex-col gap-1 min-w-35">
@@ -343,12 +340,11 @@ function ReactionLog() {
                         >
                             From
                         </label>
-                        <input
+                        <Input
                             id="date-from"
                             type="date"
                             value={filters.date_from}
                             onChange={(e) => setFilter('date_from', e.target.value)}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
                         />
                     </div>
                     <div className="flex flex-col gap-1 min-w-35">
@@ -358,12 +354,11 @@ function ReactionLog() {
                         >
                             To
                         </label>
-                        <input
+                        <Input
                             id="date-to"
                             type="date"
                             value={filters.date_to}
                             onChange={(e) => setFilter('date_to', e.target.value)}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
                         />
                     </div>
                     <div className="flex flex-col gap-1 min-w-30">
@@ -373,19 +368,22 @@ function ReactionLog() {
                         >
                             Emoji
                         </label>
-                        <select
-                            id="emoji-filter"
-                            value={filters.emoji}
-                            onChange={(e) => setFilter('emoji', e.target.value)}
-                            className="h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
+                        <Select
+                            value={filters.emoji || '__all__'}
+                            onValueChange={(v) => setFilter('emoji', v === '__all__' ? '' : v)}
                         >
-                            <option value="">All</option>
-                            {availableEmojis.map((emoji) => (
-                                <option key={emoji} value={emoji}>
-                                    {emoji}
-                                </option>
-                            ))}
-                        </select>
+                            <SelectTrigger id="emoji-filter">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__all__">All</SelectItem>
+                                {availableEmojis.map((emoji) => (
+                                    <SelectItem key={emoji} value={emoji}>
+                                        {emoji}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     {hasActiveFilters(filters) && (
                         <Button variant="ghost" size="sm" onClick={clearFilters} className="self-end">
