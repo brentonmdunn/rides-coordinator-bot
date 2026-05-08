@@ -1,7 +1,5 @@
-import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
 import { ModeToggle } from '../components/mode-toggle'
-import { PageHeader, PageLayout } from '../components/shared'
+import { BackLink, PageHeader, PageLayout } from '../components/shared'
 import { TutorialSection, TutorialSubheader, TutorialText, TutorialList, TutorialTable } from '../components/TutorialComponents'
 
 function Learn() {
@@ -9,15 +7,7 @@ function Learn() {
         <PageLayout
             header={
                 <PageHeader
-                    eyebrow={
-                        <Link
-                            to="/"
-                            className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors mb-4"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Back to Dashboard
-                        </Link>
-                    }
+                    eyebrow={<BackLink to="/" />}
                     title="📚 How to Use Ridebot"
                     description="A complete guide to coordinating rides with Ridebot."
                     actions={<ModeToggle />}
