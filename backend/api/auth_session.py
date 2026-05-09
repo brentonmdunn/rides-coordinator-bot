@@ -33,8 +33,8 @@ _EXEMPT_PATHS = {
     "/api/auth/discord/login",
     "/api/auth/discord/callback",
     "/api/auth/logout",
-    "/api/auth/config",
-    "/api/auth/bypass-login",
+    "/api/auth/bypass/login",
+    "/api/auth/bypass/config",
 }
 
 

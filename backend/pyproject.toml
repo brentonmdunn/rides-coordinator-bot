@@ -8,6 +8,7 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "alembic>=1.16.0",
     "apscheduler>=3.11.0",
+    "bcrypt>=5.0.0",
     "discord>=2.3.2",
     "fastapi>=0.115.0",
     "greenlet>=3.2.4",

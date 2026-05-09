@@ -19,6 +19,7 @@ from api.auth_session import session_cookie_middleware
 from api.middleware.access_logger import AccessLogMiddleware
 from api.routes.admin_users import router as admin_users_router
 from api.routes.ask_rides import router as ask_rides_router
+from api.routes.auth_bypass import router as auth_bypass_router
 from api.routes.auth_discord import router as auth_discord_router
 from api.routes.cache_stats import router as cache_stats_router
 from api.routes.check_pickups import router as check_pickups_router
@@ -90,6 +91,7 @@ app = FastAPI(lifespan=lifespan)
 if AUTH_PROVIDER == "self":
     app.middleware("http")(session_cookie_middleware)
     app.include_router(auth_discord_router)
+    app.include_router(auth_bypass_router)
     logger.info("Using self-hosted Discord OAuth middleware")
 else:
     app.middleware("http")(cloudflare_access_middleware)

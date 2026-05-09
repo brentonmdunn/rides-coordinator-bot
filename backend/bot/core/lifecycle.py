@@ -18,6 +18,7 @@ from bot.core.database import (
     AsyncSessionLocal,
     init_db,
     seed_admin_accounts,
+    seed_bypass_account,
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
@@ -56,6 +57,8 @@ async def startup() -> None:
         await seed_message_schedule_pauses(session)
     async with AsyncSessionLocal() as session:
         await seed_admin_accounts(session)
+    async with AsyncSessionLocal() as session:
+        await seed_bypass_account(session)
     async with AsyncSessionLocal() as session:
         await FeatureFlagsRepository.initialize_cache(session)
     await _disable_features_for_local_env()
