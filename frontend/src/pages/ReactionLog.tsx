@@ -46,25 +46,6 @@ interface Filters {
     emoji: string
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function weekToDateRange(week: string): { from: string; to: string } | null {
-    // week is "YYYY-Www", e.g. "2026-W19"
-    const match = week.match(/^(\d{4})-W(\d{2})$/)
-    if (!match) return null
-    const year = parseInt(match[1])
-    const weekNum = parseInt(match[2])
-    // ISO week 1 = week containing first Thursday of the year
-    // Monday of week N: Jan 4 + 7*(N-1) days, adjusted to Monday
-    const jan4 = new Date(year, 0, 4)
-    const monday = new Date(jan4)
-    monday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (weekNum - 1) * 7)
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    const fmt = (d: Date) => d.toISOString().slice(0, 10)
-    return { from: fmt(monday), to: fmt(sunday) }
-}
-
 // ── Constants ──────────────────────────────────────────────────────────────
 
 type RideTypeOption = { value: RideType; label: string }
@@ -76,17 +57,23 @@ const RIDE_TYPE_OPTIONS: RideTypeOption[] = [
     { value: 'wednesday', label: 'Wednesday' },
 ]
 
-function currentWeekRange(): { from: string; to: string } {
+function weekOffset(offset: number): { from: string; to: string } {
     const today = new Date()
     const monday = new Date(today)
-    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) - offset * 7)
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
     const fmt = (d: Date) => d.toISOString().slice(0, 10)
     return { from: fmt(monday), to: fmt(sunday) }
 }
 
-const THIS_WEEK = currentWeekRange()
+const WEEK_PRESETS = [
+    { label: 'This week', ...weekOffset(0) },
+    { label: 'Last week', ...weekOffset(1) },
+    { label: '2 weeks ago', ...weekOffset(2) },
+]
+
+const THIS_WEEK = WEEK_PRESETS[0]
 
 const EMPTY_FILTERS: Filters = {
     ride_type: '',
@@ -309,30 +296,37 @@ function ReactionLog() {
                     </div>
                 </div>
 
-                {/* Date range + emoji */}
-                <div className="flex flex-wrap gap-4 items-end">
-                    <div className="flex flex-col gap-1 min-w-35">
-                        <label
-                            htmlFor="week-filter"
-                            className="text-xs font-semibold text-muted-foreground uppercase tracking-widest"
-                        >
-                            Week
-                        </label>
-                        <Input
-                            id="week-filter"
-                            type="week"
-                            onChange={(e) => {
-                                const range = weekToDateRange(e.target.value)
-                                if (range) {
+                {/* Week presets */}
+                <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+                        Quick Select
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        {WEEK_PRESETS.map((preset) => (
+                            <Button
+                                key={preset.label}
+                                variant={
+                                    filters.date_from === preset.from && filters.date_to === preset.to
+                                        ? 'default'
+                                        : 'outline'
+                                }
+                                size="sm"
+                                onClick={() =>
                                     setFilters((prev) => ({
                                         ...prev,
-                                        date_from: range.from,
-                                        date_to: range.to,
+                                        date_from: preset.from,
+                                        date_to: preset.to,
                                     }))
                                 }
-                            }}
-                        />
+                            >
+                                {preset.label}
+                            </Button>
+                        ))}
                     </div>
+                </div>
+
+                {/* Date range + emoji */}
+                <div className="flex flex-wrap gap-4 items-end">
                     <div className="flex flex-col gap-1 min-w-35">
                         <label
                             htmlFor="date-from"
