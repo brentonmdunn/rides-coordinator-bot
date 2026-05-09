@@ -27,19 +27,19 @@ function Login() {
     }, [])
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-background px-4">
             <div className="w-full max-w-sm space-y-6">
                 <div className="text-center space-y-2">
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
+                    <h1 className="text-2xl font-bold text-foreground">
                         🚗 Rides Dashboard
                     </h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <p className="text-sm text-muted-foreground">
                         Sign in to continue
                     </p>
                 </div>
 
                 {errorMessage && (
-                    <div className="px-4 py-3 rounded-lg bg-destructive/15 border border-destructive/30 text-sm text-center text-red-700 dark:text-red-400">
+                    <div className="px-4 py-3 rounded-lg bg-destructive/15 border border-destructive/30 text-sm text-center text-destructive-text">
                         {errorMessage}
                     </div>
                 )}
@@ -57,7 +57,7 @@ function Login() {
                 {bypassEnabled && (
                     <a
                         href={getApiUrl('/api/auth/bypass-login')}
-                        className="flex items-center justify-center w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="flex items-center justify-center w-full px-4 py-3 rounded-lg border border-border text-foreground font-medium hover:bg-muted transition-colors"
                     >
                         Login
                     </a>

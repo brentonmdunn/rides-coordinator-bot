@@ -33,12 +33,12 @@ export function RouteBuilderDesktopPanel({
             {/* Toggle button that hangs off the left edge of the panel */}
             <button
                 onClick={onTogglePanelExpanded}
-                className={`absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-10 flex items-center justify-center bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg shadow-md hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors z-[1001]
-                     ${isPanelExpanded ? '' : 'shadow-lg bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}
+                className={`absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-10 flex items-center justify-center bg-card border border-border rounded-lg shadow-md hover:bg-muted transition-colors z-[1001]
+                     ${isPanelExpanded ? '' : 'shadow-lg bg-success/10 border-success/30'}`}
                 title={isPanelExpanded ? 'Collapse panel' : 'Expand panel'}
             >
                 {isPanelExpanded ? (
-                    <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 ) : (
                     <ChevronLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 )}
@@ -46,7 +46,7 @@ export function RouteBuilderDesktopPanel({
 
             {/* Panel body */}
             <div
-                className={`w-full max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl transition-opacity duration-300 ${
+                className={`w-full max-h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-border bg-card/95 backdrop-blur-md shadow-xl transition-opacity duration-300 ${
                     isPanelExpanded
                         ? 'opacity-100 pointer-events-auto'
                         : 'opacity-0 pointer-events-none'
@@ -61,7 +61,7 @@ export function RouteBuilderDesktopPanel({
                             onChange={(e) => onToggleShowLabels(e.target.checked)}
                             className="w-4 h-4 rounded accent-emerald-600"
                         />
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                        <span className="text-xs font-medium text-muted-foreground">
                             Show labels
                         </span>
                     </label>

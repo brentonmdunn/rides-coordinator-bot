@@ -30,12 +30,12 @@ function PageHeader({
         <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-12">
             <div className={`flex-1 ${titleAlign}`}>
                 {eyebrow}
-                <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl mb-4">
+                <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl mb-4">
                     {title}
                 </h1>
                 {description != null && (
                     <p
-                        className={`text-lg text-slate-600 dark:text-slate-400 max-w-2xl ${descriptionAlign}`.trim()}
+                        className={`text-lg text-muted-foreground max-w-2xl ${descriptionAlign}`.trim()}
                     >
                         {description}
                     </p>

@@ -119,13 +119,13 @@ function buildQueryString(filters: Filters): string {
 function ActionBadge({ action }: { action: EventAction }) {
     if (action === 'add') {
         return (
-            <span className="inline-flex items-center justify-center w-20 px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+            <span className="inline-flex items-center justify-center w-20 px-2 py-0.5 rounded text-xs font-semibold bg-success/15 text-success-text">
                 Reacted
             </span>
         )
     }
     return (
-        <span className="inline-flex items-center justify-center w-20 px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">
+        <span className="inline-flex items-center justify-center w-20 px-2 py-0.5 rounded text-xs font-semibold bg-muted text-muted-foreground">
             Removed
         </span>
     )

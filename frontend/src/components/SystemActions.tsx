@@ -25,10 +25,10 @@ function SystemActions() {
         <SectionCard
             icon="⚠️"
             title="System Actions"
-            titleClassName="text-red-600 dark:text-red-400"
+            titleClassName="text-destructive-text"
         >
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="text-sm text-slate-600 dark:text-slate-400 text-center sm:text-left">
+                    <div className="text-sm text-muted-foreground text-center sm:text-left">
                         Clear all cached data. This will force the system to fetch fresh data from the database and other external sources on the next request. This may temporarily increase load times.
                     </div>
                     <Button

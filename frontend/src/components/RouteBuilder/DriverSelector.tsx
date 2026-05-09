@@ -38,7 +38,7 @@ export function DriverSelector({
 
     return (
         <div>
-            <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <div className="text-sm font-medium text-foreground mb-2">
                 {label}
             </div>
             <Select

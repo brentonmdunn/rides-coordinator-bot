@@ -262,7 +262,7 @@ function EditableOutput({
     return (
         <div
             ref={containerRef}
-            className="group relative bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700 p-1 transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-600"
+            className="group relative bg-muted/50 rounded-lg border border-border p-1 transition-all hover:shadow-md hover:border-border/70"
         >
             <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                 {isModified && (
@@ -270,7 +270,7 @@ function EditableOutput({
                         onClick={onRevert}
                         variant="outline"
                         size="sm"
-                        className="h-8 px-2 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 bg-white dark:bg-zinc-900 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950"
+                        className="h-8 px-2 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 bg-card dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950"
                     >
                         ↩ Revert
                     </Button>
@@ -279,10 +279,10 @@ function EditableOutput({
                     onClick={() => { onCopy(); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
                     size="sm"
                     variant={copied ? 'default' : 'outline'}
-                    className={`h-8 px-2 text-xs bg-white hover:bg-slate-100 dark:bg-zinc-900 ${
+                    className={`h-8 px-2 text-xs bg-card hover:bg-muted ${
                         copied
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent dark:bg-emerald-600 dark:hover:bg-emerald-700'
-                            : 'text-slate-700 dark:text-slate-300'
+                            : 'text-foreground'
                     }`}
                 >
                     {copied ? 'Copied!' : 'Copy'}
@@ -295,7 +295,7 @@ function EditableOutput({
                 <div
                     ref={highlightRef}
                     aria-hidden
-                    className={`absolute inset-0 ${minHeight} p-4 text-sm font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words overflow-hidden pointer-events-none rounded-md`}
+                    className={`absolute inset-0 ${minHeight} p-4 text-sm font-mono text-foreground whitespace-pre-wrap break-words overflow-hidden pointer-events-none rounded-md`}
                 >
                     {highlightedContent}
                     {/* Extra line so height matches when content ends with \n */}
@@ -320,10 +320,10 @@ function EditableOutput({
             {showDropdown && dropdownPos && (
                 <ul
                     style={{ top: dropdownPos.top, left: dropdownPos.left }}
-                    className="absolute z-20 w-56 max-h-[9.5rem] overflow-y-auto rounded-md border border-slate-200 dark:border-zinc-600 bg-white dark:bg-zinc-900 shadow-lg py-1 text-sm"
+                    className="absolute z-20 w-56 max-h-[9.5rem] overflow-y-auto rounded-md border border-border bg-popover shadow-lg py-1 text-sm"
                 >
                     {suggestions.length === 0 ? (
-                        <li className="px-3 py-1.5 text-slate-400 dark:text-slate-500 select-none">
+                        <li className="px-3 py-1.5 text-muted-foreground select-none">
                             No results
                         </li>
                     ) : (
@@ -337,7 +337,7 @@ function EditableOutput({
                                 className={`px-3 py-1.5 cursor-pointer select-none ${
                                     i === activeIndex
                                         ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800'
+                                        : 'text-foreground hover:bg-muted'
                                 }`}
                             >
                                 @{entry.username}

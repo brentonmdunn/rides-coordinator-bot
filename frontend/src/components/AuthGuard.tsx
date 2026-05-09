@@ -23,7 +23,7 @@ function AuthGuard() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center text-slate-500">
+            <div className="min-h-screen flex items-center justify-center text-muted-foreground">
                 Loading…
             </div>
         )
@@ -34,7 +34,7 @@ function AuthGuard() {
             return null
         }
         return (
-            <div className="min-h-screen flex items-center justify-center text-slate-500">
+            <div className="min-h-screen flex items-center justify-center text-muted-foreground">
                 Something went wrong. <button className="ml-2 underline" onClick={() => window.location.reload()}>Reload</button>
             </div>
         )
