@@ -1,8 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError, apiFetch, getApiUrl } from '../lib/api'
-
-const BYPASS_ENABLED = import.meta.env.VITE_BYPASS_DISCORD === 'true'
 
 const ERROR_MESSAGES: Record<string, string> = {
     not_invited: "You're not authorized to access this app. Contact the admin.",
@@ -19,6 +17,15 @@ function Login() {
     const [params] = useSearchParams()
     const errorCode = params.get('error')
     const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? 'Login failed. Please try again.') : null
+    const [bypassEnabled, setBypassEnabled] = useState(false)
+
+    useEffect(() => {
+        fetch(getApiUrl('/api/auth/bypass/config'))
+            .then((r) => r.json())
+            .then((data) => setBypassEnabled(data.bypass_enabled ?? false))
+            .catch(() => {})
+    }, [])
+
     const [password, setPassword] = useState('')
     const [bypassError, setBypassError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
@@ -73,7 +80,7 @@ function Login() {
                     Log in with Discord
                 </a>
 
-                {BYPASS_ENABLED && (
+                {bypassEnabled && (
                     <>
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
