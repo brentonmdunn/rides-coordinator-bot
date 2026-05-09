@@ -8,9 +8,9 @@ Only mounted when AUTH_PROVIDER=self; returns 404 when feature is disabled.
 import logging
 import os
 
+import bcrypt
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from bot.core.database import AsyncSessionLocal
@@ -31,8 +31,6 @@ CSRF_COOKIE = "csrf_token"
 _IS_PROD = APP_ENV != "local"
 _COOKIE_TTL = 24 * 60 * 60  # 24 hours — shared credential, shorter TTL limits blast radius
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 class BypassLoginRequest(BaseModel):
     """Request body for emergency bypass login."""
@@ -50,7 +48,7 @@ async def bypass_login(body: BypassLoginRequest) -> JSONResponse:
         logger.error("BYPASS_DISCORD=true but BYPASS_PASSWORD is not set")
         return JSONResponse({"detail": "Server misconfigured"}, status_code=500)
 
-    if not _pwd_context.verify(body.password, BYPASS_PASSWORD_HASH):
+    if not bcrypt.checkpw(body.password.encode(), BYPASS_PASSWORD_HASH.encode()):
         logger.warning("Bypass login attempt with incorrect password")
         return JSONResponse({"detail": "Invalid password"}, status_code=401)
 
