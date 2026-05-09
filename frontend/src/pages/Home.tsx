@@ -50,14 +50,14 @@ function Home() {
                             <div className="flex flex-wrap justify-center md:justify-end gap-2">
                                 <Link
                                     to="/reaction-log"
-                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors"
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors"
                                 >
                                     <History className="w-4 h-4" />
                                     Reaction Log
                                 </Link>
                                 <Link
                                     to="/learn"
-                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-700 transition-colors"
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors"
                                 >
                                     <BookOpen className="w-4 h-4" />
                                     Learn
@@ -66,7 +66,7 @@ function Home() {
                                 {!isLocal && (
                                     <button
                                         onClick={() => logout()}
-                                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                                         title={meData?.email ?? ''}
                                     >
                                         Sign out
@@ -88,7 +88,7 @@ function Home() {
                     <RouteBuilder />
                     <MapLinks />
                     {isAdmin && (
-                        <Suspense fallback={<div className="text-center py-8 text-slate-500">Loading admin tools…</div>}>
+                        <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading admin tools…</div>}>
                             <FeatureFlagsManager />
                             <UserManagement />
                             <SystemActions />

@@ -21,7 +21,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <ErrorBoundary>
           <BrowserRouter>
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Loading…</div>}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>}>
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route element={<AuthGuard />}>

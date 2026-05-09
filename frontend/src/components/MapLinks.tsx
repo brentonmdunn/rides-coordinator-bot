@@ -70,7 +70,7 @@ function MapLinks() {
 
     return (
         <SectionCard icon="📍" title="Pickup Directions" headerClassName="pb-2">
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                     Select a pickup location to view it on the map and copy the
                     Google Maps link.
                 </p>
@@ -112,7 +112,7 @@ function MapLinks() {
                 </div>
 
                 {/* Map */}
-                <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 relative z-0">
+                <div className="mt-4 rounded-lg overflow-hidden border border-border relative z-0">
                     <MapContainer
                         center={mapCenter}
                         zoom={selectedCoords ? 16 : 14}
@@ -156,8 +156,8 @@ function MapLinks() {
 
                 {/* Action Buttons */}
                 {selectedMapUrl && (
-                    <div className="mt-4 p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                    <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="text-sm font-medium text-foreground mb-3">
                             {selectedLocationName}
                         </div>
                         <div className="flex flex-wrap gap-2">

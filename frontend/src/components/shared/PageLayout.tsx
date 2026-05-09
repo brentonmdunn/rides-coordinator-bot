@@ -20,7 +20,7 @@ function PageLayout({ header, spacedBody = false, children }: PageLayoutProps) {
             <EnvironmentBanner />
             <main
                 id="main-content"
-                className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50 dark:bg-zinc-950 py-12 px-4 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300"
+                className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background py-12 px-4 font-sans text-foreground transition-colors duration-300"
             >
                 <div
                     className={

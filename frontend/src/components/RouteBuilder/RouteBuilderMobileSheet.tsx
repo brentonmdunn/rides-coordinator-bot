@@ -31,16 +31,16 @@ export function RouteBuilderMobileSheet({
             }`}
             style={{ willChange: 'max-height' }}
         >
-            <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200 dark:border-zinc-700 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.12)] overflow-hidden h-full flex flex-col">
+            <div className="bg-card/95 backdrop-blur-md border-t border-border rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.12)] overflow-hidden h-full flex flex-col">
                 {/* Header bar — entire row is the expand/collapse tap target */}
                 <button
                     onClick={() => onSetSheetExpanded(!isSheetExpanded)}
                     aria-label={isSheetExpanded ? 'Collapse panel' : 'Expand panel'}
-                    className="flex items-center w-full min-h-[3rem] px-4 bg-slate-50/80 dark:bg-zinc-800/50 active:bg-slate-100 dark:active:bg-zinc-700/60 transition-colors text-left"
+                    className="flex items-center w-full min-h-[3rem] px-4 bg-muted/80 active:bg-muted transition-colors text-left"
                 >
                     {/* Location summary */}
                     <MapPin className="h-4 w-4 text-emerald-500 shrink-0 mr-2" />
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex-1 truncate">
+                    <span className="text-sm font-semibold text-foreground flex-1 truncate">
                         {selectedLocationKeys.length === 0
                             ? 'Tap pins to add stops'
                             : `${selectedLocationKeys.length} location${selectedLocationKeys.length !== 1 ? 's' : ''} selected`}
@@ -56,7 +56,7 @@ export function RouteBuilderMobileSheet({
                                 onChange={(e) => onToggleShowLabels(e.target.checked)}
                                 className="w-4 h-4 rounded accent-emerald-600"
                             />
-                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <span className="text-xs font-medium text-muted-foreground">
                                 Labels
                             </span>
                         </label>
@@ -65,7 +65,7 @@ export function RouteBuilderMobileSheet({
                         {selectedLocationKeys.length > 0 && (
                             <button
                                 onClick={() => panelProps.onClearAll()}
-                                className="flex items-center gap-1.5 text-xs font-medium text-red-500 dark:text-red-400 active:opacity-60 transition-opacity px-3 min-h-[44px] rounded-xl bg-red-50 dark:bg-red-900/20"
+                                className="flex items-center gap-1.5 text-xs font-medium text-destructive-text active:opacity-60 transition-opacity px-3 min-h-[44px] rounded-xl bg-destructive/10"
                             >
                                 <X className="h-3.5 w-3.5" />
                                 Clear
