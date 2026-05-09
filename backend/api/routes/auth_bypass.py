@@ -29,7 +29,7 @@ BYPASS_EMAIL = os.getenv("BYPASS_EMAIL", "bypass-emergency@local")
 SESSION_COOKIE = "rides_session"
 CSRF_COOKIE = "csrf_token"
 _IS_PROD = APP_ENV != "local"
-_COOKIE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
+_COOKIE_TTL = 24 * 60 * 60  # 24 hours — shared credential, shorter TTL limits blast radius
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -81,3 +81,9 @@ async def bypass_login(body: BypassLoginRequest) -> JSONResponse:
     )
     logger.info(f"Bypass login successful for '{BYPASS_EMAIL}'")
     return response
+
+
+@router.get("/api/auth/bypass/config")
+async def bypass_config() -> JSONResponse:
+    """Return whether emergency bypass login is available. Unauthenticated."""
+    return JSONResponse({"bypass_enabled": BYPASS_DISCORD})
