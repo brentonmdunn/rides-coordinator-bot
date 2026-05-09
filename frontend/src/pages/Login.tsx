@@ -19,7 +19,6 @@ function Login() {
     const [params] = useSearchParams()
     const errorCode = params.get('error')
     const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? 'Login failed. Please try again.') : null
-
     const [password, setPassword] = useState('')
     const [bypassError, setBypassError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
@@ -47,19 +46,19 @@ function Login() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-background px-4">
             <div className="w-full max-w-sm space-y-6">
                 <div className="text-center space-y-2">
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
+                    <h1 className="text-2xl font-bold text-foreground">
                         🚗 Rides Dashboard
                     </h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <p className="text-sm text-muted-foreground">
                         Sign in to continue
                     </p>
                 </div>
 
                 {errorMessage && (
-                    <div className="px-4 py-3 rounded-lg bg-destructive/15 border border-destructive/30 text-sm text-center text-red-700 dark:text-red-400">
+                    <div className="px-4 py-3 rounded-lg bg-destructive/15 border border-destructive/30 text-sm text-center text-destructive-text">
                         {errorMessage}
                     </div>
                 )}

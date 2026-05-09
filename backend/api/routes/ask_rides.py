@@ -8,11 +8,10 @@ from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
 from api.dependencies import require_bot, require_ready_bot
-from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, CacheNamespace, DaysOfWeek, JobName
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
-from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.locations_service import LocationsService
+from bot.services.message_schedule_service import MessageScheduleService
 from bot.utils.cache import invalidate_namespace
 from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
@@ -78,8 +77,7 @@ async def get_status():
 )
 async def get_pauses():
     """Get pause status for all ask rides jobs."""
-    async with AsyncSessionLocal() as session:
-        pauses = await MessageScheduleRepository.get_all_pause_statuses(session)
+    pauses = await MessageScheduleService.get_all_pauses()
     result = {}
     for pause in pauses:
         send_date = None
@@ -118,17 +116,15 @@ async def set_pause(job_name: str, request: PauseRequest):
 
     if not request.is_paused:
         # Resuming — clear the pause
-        async with AsyncSessionLocal() as session:
-            await MessageScheduleRepository.clear_pause(session, job_name)
+        await MessageScheduleService.clear_pause(job_name)
         await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
         logger.info(f"⏸️ Cleared pause for '{job_name}'")
         return {"success": True, "message": f"Resumed {job_name}"}
 
     # Setting a pause
-    async with AsyncSessionLocal() as session:
-        updated = await MessageScheduleRepository.set_pause(
-            session, job_name, request.is_paused, request.resume_after_date
-        )
+    updated = await MessageScheduleService.set_pause(
+        job_name, request.is_paused, request.resume_after_date
+    )
     if not updated:
         raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
 

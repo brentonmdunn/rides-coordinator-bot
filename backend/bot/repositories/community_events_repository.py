@@ -117,8 +117,8 @@ class EventsRepository:
             await member.add_roles(role, reason=reason)
             return True
         except discord.Forbidden:
-            logger.error(f"Failed to add role {role.name} to {member.name}: Forbidden.")
+            logger.exception(f"Failed to add role {role.name} to {member.name}: Forbidden.")
             return False
-        except discord.HTTPException as e:
-            logger.error(f"Failed to add role {role.name} to {member.name}: {e}")
+        except discord.HTTPException:
+            logger.exception(f"Failed to add role {role.name} to {member.name}")
             return False

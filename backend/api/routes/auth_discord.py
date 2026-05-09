@@ -29,7 +29,6 @@ DISCORD_REDIRECT_URI = os.getenv("DISCORD_OAUTH_REDIRECT_URI")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID")
 DISCORD_RIDE_COORDINATOR_ROLE_ID = os.getenv("DISCORD_RIDE_COORDINATOR_ROLE_ID")
-
 _DISCORD_AUTH_URL = "https://discord.com/api/oauth2/authorize"
 _DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
 _DISCORD_USER_URL = "https://discord.com/api/users/@me"
@@ -86,6 +85,10 @@ async def discord_callback(
     the Discord user, runs the identity-matching cascade, and issues a session.
     """
     if error or not code or not state:
+        if error:
+            logger.info("Discord OAuth denied by user: error=%s", error)
+        else:
+            logger.warning("OAuth callback missing code or state — possible malformed request")
         return _login_error_redirect("access_denied")
 
     cookie_state = request.cookies.get("oauth_state")
@@ -111,7 +114,11 @@ async def discord_callback(
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
             if not token_resp.is_success:
-                logger.error(f"Discord token exchange failed: {token_resp.status_code}")
+                logger.error(
+                    "Discord token exchange failed: status=%s body=%s",
+                    token_resp.status_code,
+                    token_resp.text,
+                )
                 return _login_error_redirect("token_exchange_failed")
             access_token = token_resp.json()["access_token"]
 
@@ -120,7 +127,11 @@ async def discord_callback(
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if not user_resp.is_success:
-                logger.error(f"Discord user fetch failed: {user_resp.status_code}")
+                logger.error(
+                    "Discord user fetch failed: status=%s body=%s",
+                    user_resp.status_code,
+                    user_resp.text,
+                )
                 return _login_error_redirect("user_fetch_failed")
             discord_user = user_resp.json()
 
@@ -133,6 +144,12 @@ async def discord_callback(
                 )
                 if member_resp.is_success:
                     guild_role_ids = set(member_resp.json().get("roles", []))
+                else:
+                    logger.warning(
+                        "Guild member fetch failed: status=%s body=%s",
+                        member_resp.status_code,
+                        member_resp.text,
+                    )
     except Exception:
         logger.exception("Error during Discord OAuth exchange")
         return _login_error_redirect("oauth_error")
@@ -153,21 +170,31 @@ async def discord_callback(
         and DISCORD_RIDE_COORDINATOR_ROLE_ID in guild_role_ids
     )
 
-    async with AsyncSessionLocal() as db_session:
-        account = await AuthService.match_or_reject(
-            db_session, discord_user_id, discord_username, email
-        )
-        if account is None and has_rc_role:
-            # Not manually invited but has the ride coordinator Discord role — auto-provision.
-            account = await AuthService.provision_from_guild_role(
+    try:
+        async with AsyncSessionLocal() as db_session:
+            account = await AuthService.match_or_reject(
                 db_session, discord_user_id, discord_username, email
             )
-        if not account:
-            logger.info(f"Login rejected: not invited (discord_username={discord_username})")
-            return _login_error_redirect("not_invited")
+            if account is None and has_rc_role:
+                # Not manually invited but has the ride coordinator Discord role — auto-provision.
+                account = await AuthService.provision_from_guild_role(
+                    db_session, discord_user_id, discord_username, email
+                )
+            if not account:
+                logger.info(f"Login rejected: not invited (discord_username={discord_username})")
+                return _login_error_redirect("not_invited")
 
-        session_id_plain, csrf_token = await AuthService.create_session(db_session, account.email)
+            session_id_plain, csrf_token = await AuthService.create_session(
+                db_session, account.email
+            )
+    except Exception:
+        logger.exception(
+            "Unexpected error during identity match or session creation (discord_username=%s)",
+            discord_username,
+        )
+        return _login_error_redirect("server_error")
 
+    logger.info("Login successful: discord_username=%s email=%s", discord_username, account.email)
     response = RedirectResponse(FRONTEND_BASE_URL)
     response.delete_cookie("oauth_state", path="/api/auth/discord/callback")
     _cookie_ttl = 30 * 24 * 60 * 60  # 30 days in seconds

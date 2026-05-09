@@ -504,7 +504,7 @@ function RouteBuilder() {
     const fullscreenOverlay = isFullscreenMounted
         ? createPortal(
             <div
-                className={`fixed inset-0 z-50 bg-white dark:bg-zinc-950 overflow-hidden transition-all duration-300 ease-out ${isFullscreenVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.97]'
+                className={`fixed inset-0 z-50 bg-background overflow-hidden transition-all duration-300 ease-out ${isFullscreenVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.97]'
                     }`}
                 onTransitionEnd={(e) => {
                     if (e.propertyName === 'opacity' && !isFullscreenVisible) {
@@ -527,14 +527,14 @@ function RouteBuilder() {
                 {/* Back button (top-left, near zoom controls) */}
                 <button
                     onClick={closeFullscreen}
-                    className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-slate-700 dark:text-slate-300"
+                    className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-muted transition-colors text-foreground"
                     title="Exit fullscreen (Esc)"
                     aria-label="Exit fullscreen map view"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     <span className="text-sm font-semibold">Back</span>
                     {!isMobile && (
-                        <span className="text-[10px] font-bold tracking-wider text-slate-400 dark:text-zinc-500 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded ml-1">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-1">
                             ESC
                         </span>
                     )}

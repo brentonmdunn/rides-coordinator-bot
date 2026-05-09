@@ -32,7 +32,7 @@ class CalendarRepository:
             return []
 
         try:
-            response = requests.get(ICAL_URL)
+            response = requests.get(ICAL_URL, timeout=10)
             response.raise_for_status()
             ical_data = response.text
 

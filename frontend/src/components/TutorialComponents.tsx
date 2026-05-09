@@ -8,7 +8,7 @@ interface TutorialSectionProps {
 export function TutorialSection({ title, children }: TutorialSectionProps) {
     return (
         <section className="mb-12">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
                 {title}
             </h2>
             {children}
@@ -22,7 +22,7 @@ interface TutorialSubheaderProps {
 
 export function TutorialSubheader({ children }: TutorialSubheaderProps) {
     return (
-        <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mt-6 mb-3">
+        <h3 className="text-xl font-semibold text-foreground mt-6 mb-3">
             {children}
         </h3>
     )
@@ -34,7 +34,7 @@ interface TutorialTextProps {
 
 export function TutorialText({ children }: TutorialTextProps) {
     return (
-        <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+        <p className="text-muted-foreground leading-relaxed mb-4">
             {children}
         </p>
     )
@@ -46,7 +46,7 @@ interface TutorialListProps {
 
 export function TutorialList({ children }: TutorialListProps) {
     return (
-        <ul className="list-disc pl-6 text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+        <ul className="list-disc pl-6 text-muted-foreground leading-relaxed mb-4">
             {children}
         </ul>
     )
@@ -62,7 +62,7 @@ export function TutorialTable({ headers, rows }: TutorialTableProps) {
         <div className="overflow-x-auto mt-4 mb-4">
             <table className="w-full border-collapse text-sm text-left">
                 <thead>
-                    <tr className="border-b border-slate-300 dark:border-zinc-700">
+                    <tr className="border-b border-border">
                         {headers.map((header, i) => (
                             <th key={i} className="py-2 px-4 font-semibold">{header}</th>
                         ))}
@@ -70,7 +70,7 @@ export function TutorialTable({ headers, rows }: TutorialTableProps) {
                 </thead>
                 <tbody>
                     {rows.map((row, i) => (
-                        <tr key={i} className="border-b border-slate-200 dark:border-zinc-800">
+                        <tr key={i} className="border-b border-border">
                             {row.map((cell, j) => (
                                 <td key={j} className="py-2 px-4">{cell}</td>
                             ))}

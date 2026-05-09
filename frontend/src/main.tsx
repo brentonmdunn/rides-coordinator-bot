@@ -11,6 +11,7 @@ import Login from './pages/Login.tsx'
 import { ThemeProvider } from "./components/theme-provider"
 
 const Learn = lazy(() => import('./pages/Learn.tsx'))
+const ReactionLog = lazy(() => import('./pages/ReactionLog.tsx'))
 
 const queryClient = new QueryClient()
 
@@ -20,12 +21,13 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <ErrorBoundary>
           <BrowserRouter>
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Loading…</div>}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>}>
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route element={<AuthGuard />}>
                   <Route path="/" element={<Home />} />
                   <Route path="/learn" element={<Learn />} />
+                  <Route path="/reaction-log" element={<ReactionLog />} />
                 </Route>
               </Routes>
             </Suspense>

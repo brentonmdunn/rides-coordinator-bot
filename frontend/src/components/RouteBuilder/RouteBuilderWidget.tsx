@@ -127,7 +127,7 @@ export function RouteBuilderWidget({
                     />
                     <button
                         onClick={onOpenFullscreen}
-                        className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-zinc-800 transition-colors"
+                        className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Open fullscreen map view"
                         aria-label="Open fullscreen map view"
                     >
@@ -153,7 +153,7 @@ export function RouteBuilderWidget({
                 <div className="space-y-6">
                     {/* Location Combobox */}
                     <div>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                        <span className="text-sm font-medium text-foreground mb-2 block">
                             Select Locations
                         </span>
                         <LocationCombobox
@@ -166,9 +166,9 @@ export function RouteBuilderWidget({
 
                     {/* Selected Locations with Drag & Drop */}
                     {selectedLocationKeys.length > 0 && (
-                        <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700">
+                        <div className="p-4 bg-muted/50 rounded-lg border border-border">
                             <div className="flex items-center justify-between gap-2 mb-3">
-                                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                <div className="text-sm font-medium text-foreground">
                                     Route Order ({selectedLocationKeys.length} location
                                     {selectedLocationKeys.length !== 1 ? 's' : ''})
                                 </div>
@@ -194,7 +194,7 @@ export function RouteBuilderWidget({
 
                     {/* Arrival Time Selection */}
                     <div>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                        <span className="text-sm font-medium text-foreground mb-2 block">
                             Arrival Time at Final Destination
                         </span>
                         <ArrivalTimeSelector
@@ -208,7 +208,7 @@ export function RouteBuilderWidget({
 
                     {/* Loading indicator */}
                     {routeLoading && (
-                        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
                             Generating route…
                         </div>
@@ -235,7 +235,7 @@ export function RouteBuilderWidget({
                 {/* Route Output */}
                 {routeOutput && (
                     <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                        <h3 className="text-lg font-semibold text-foreground">
                             Generated Route
                         </h3>
                         <EditableOutput
@@ -256,7 +256,7 @@ export function RouteBuilderWidget({
                 )}
 
                 {/* Static mini-map */}
-                <div className="mt-6 rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 relative z-0">
+                <div className="mt-6 rounded-lg overflow-hidden border border-border relative z-0">
                     <MapContainer
                         center={UCSD_CENTER}
                         zoom={14}

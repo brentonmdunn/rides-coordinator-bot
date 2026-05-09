@@ -81,6 +81,20 @@ class UserAccountsService:
         return True
 
     @staticmethod
+    async def list_accounts() -> list[UserAccount]:
+        """Return all user accounts ordered by email."""
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.get_all_accounts(session)
+
+    @staticmethod
+    async def update_role(email: str, role: str, role_edited_by: str = "") -> UserAccount | None:
+        """Update a user's role. Returns the updated account, or None if not found."""
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.update_role(
+                session, email, role, role_edited_by=role_edited_by
+            )
+
+    @staticmethod
     async def has_minimum_role(
         email: str, minimum_role: AccountRoles, session: AsyncSession | None = None
     ) -> bool:
