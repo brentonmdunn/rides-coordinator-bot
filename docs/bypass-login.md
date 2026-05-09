@@ -19,8 +19,8 @@ The login endpoint returns `404` when `BYPASS_DISCORD` is not set, so it is not 
 Run this once to produce the value for `BYPASS_PASSWORD`:
 
 ```python
-from passlib.context import CryptContext
-print(CryptContext(schemes=["bcrypt"], deprecated="auto").hash("your-password-here"))
+import bcrypt
+print(bcrypt.hashpw(b"your-password-here", bcrypt.gensalt()).decode())
 # Example output: $2b$12$abc123...
 ```
 
