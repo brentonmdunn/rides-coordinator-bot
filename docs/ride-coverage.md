@@ -37,8 +37,8 @@ The dashboard widget only renders during these windows. Outside them `is_in_visi
 
 | Ride type | Widget shows |
 |-----------|-------------|
-| Friday    | Friday 12:00 PM – Friday 11:59 PM |
-| Sunday    | Saturday 4:00 PM – Sunday 1:00 PM |
+| Friday    | Friday 11:00 AM – Friday 11:59 PM |
+| Sunday    | Saturday 3:00 PM – Sunday 1:00 PM |
 
 ### Message lookup window
 
@@ -46,7 +46,7 @@ Only grouping messages posted within these windows are recorded as coverage entr
 
 | Ride type | Accepted message times |
 |-----------|----------------------|
-| Friday    | Friday 12:00 PM – Friday 7:30 PM |
+| Friday    | Friday 11:00 AM – Friday 7:30 PM |
 | Sunday    | Saturday 3:00 PM – Sunday 10:30 AM |
 
 The DB query in `get_coverage_summary` also uses the start of this window as its `since` cutoff, so only entries from the current cycle are counted.

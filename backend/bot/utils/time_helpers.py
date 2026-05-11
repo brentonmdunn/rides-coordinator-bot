@@ -93,7 +93,7 @@ LATE_REACTION_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
 COVERAGE_WIDGET_WINDOWS: dict[str, TimeWindow] = {
     "friday": TimeWindow(
         start_day=DaysOfWeek.FRIDAY,
-        start_hour=12,
+        start_hour=11,
         start_minute=0,
         end_day=DaysOfWeek.FRIDAY,
         end_hour=23,
@@ -101,7 +101,7 @@ COVERAGE_WIDGET_WINDOWS: dict[str, TimeWindow] = {
     ),
     "sunday": TimeWindow(
         start_day=DaysOfWeek.SATURDAY,
-        start_hour=16,
+        start_hour=15,
         start_minute=0,
         end_day=DaysOfWeek.SUNDAY,
         end_hour=13,
@@ -113,7 +113,7 @@ COVERAGE_WIDGET_WINDOWS: dict[str, TimeWindow] = {
 COVERAGE_MESSAGE_LOOKUP_WINDOWS: dict[str, TimeWindow] = {
     "friday": TimeWindow(
         start_day=DaysOfWeek.FRIDAY,
-        start_hour=12,
+        start_hour=11,
         start_minute=0,
         end_day=DaysOfWeek.FRIDAY,
         end_hour=19,
