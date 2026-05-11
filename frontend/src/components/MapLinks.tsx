@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiFetch } from '../lib/api'
-import { useCopyToClipboard } from '../lib/utils'
+import { copyToClipboard } from '../lib/utils'
 import { useTheme } from './use-theme'
 import {
     Select,
@@ -11,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from './ui/select'
-import { Copy, Check, ExternalLink } from 'lucide-react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { Button } from './ui/button'
 import { SectionCard } from './shared'
 import type { PickupLocationsResponse } from '../types'
@@ -30,7 +30,6 @@ function MapLinks() {
         useState<PickupLocationsResponse | null>(null)
     const [locationsLoading, setLocationsLoading] = useState(true)
     const [selectedLocation, setSelectedLocation] = useState<string>('')
-    const { copiedText, copyToClipboard } = useCopyToClipboard(3000)
     const { theme } = useTheme()
 
     useEffect(() => {
@@ -69,11 +68,9 @@ function MapLinks() {
         ? [selectedCoords.lat, selectedCoords.lng]
         : UCSD_CENTER
 
-    const isCopied = copiedText === selectedMapUrl
-
     return (
         <SectionCard icon="📍" title="Pickup Directions" headerClassName="pb-2">
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                     Select a pickup location to view it on the map and copy the
                     Google Maps link.
                 </p>
@@ -115,7 +112,7 @@ function MapLinks() {
                 </div>
 
                 {/* Map */}
-                <div className="mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 relative z-0">
+                <div className="mt-4 rounded-lg overflow-hidden border border-border relative z-0">
                     <MapContainer
                         center={mapCenter}
                         zoom={selectedCoords ? 16 : 14}
@@ -159,8 +156,8 @@ function MapLinks() {
 
                 {/* Action Buttons */}
                 {selectedMapUrl && (
-                    <div className="mt-4 p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-100 dark:border-zinc-700 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                    <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="text-sm font-medium text-foreground mb-3">
                             {selectedLocationName}
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -170,22 +167,10 @@ function MapLinks() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => copyToClipboard(selectedMapUrl)}
-                                className={`min-w-[6.5rem] transition-colors duration-300 ${isCopied
-                                    ? 'border-green-500 text-green-600 dark:text-green-400'
-                                    : ''
-                                    }`}
+                                className="min-w-[6.5rem]"
                             >
-                                {isCopied ? (
-                                    <>
-                                        <Check className="h-4 w-4 mr-1.5" />
-                                        Copied!
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy className="h-4 w-4 mr-1.5" />
-                                        Copy Link
-                                    </>
-                                )}
+                                <Copy className="h-4 w-4 mr-1.5" />
+                                Copy Link
                             </Button>
                             <Button
                                 id="map-links-open-btn"

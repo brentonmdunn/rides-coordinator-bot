@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 from bot.core.bot_instance import set_bot_instance
 from bot.core.error_reporter import send_error_to_discord
-from bot.core.lifecycle import APP_ENV, attach_event_handlers, build_bot, load_extensions, startup
+from bot.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +36,20 @@ async def bot_lifespan():
             pass
         # Bot is shutdown
     """
+    if os.getenv("DISABLE_DISCORD_BOT", "").lower() == "true":
+        logger.warning(
+            "DISABLE_DISCORD_BOT=true — running in API-only mode, bot and all scheduled jobs are disabled"
+        )
+        yield None
+        return
+
     bot = build_bot()
     attach_event_handlers(bot, send_error_to_discord)
     set_bot_instance(bot)
 
     await startup()
 
-    if APP_ENV != "local":
-        await load_extensions(bot)
+    await load_extensions(bot)
 
     bot_task = asyncio.create_task(bot.start(TOKEN))
 

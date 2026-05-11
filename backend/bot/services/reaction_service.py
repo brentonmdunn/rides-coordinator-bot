@@ -77,13 +77,22 @@ class ReactionService:
             Dictionary with reactions mapping emojis to lists of usernames,
             username_to_name mapping. None if message not found.
         """
+        import discord
+
         channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
         message_id = await self.find_correct_message(event, channel_id)
         if not message_id:
             return None
 
         channel = self.bot.get_channel(channel_id)
-        message = await channel.fetch_message(message_id)
+        try:
+            message = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            logger.warning(
+                f"Message {message_id} for {event} not found (deleted?); clearing stale cache"
+            )
+            await self.find_correct_message.cache_set(event, channel_id, result=None)
+            return None
 
         reactions_by_emoji = defaultdict(list)
         all_usernames = set()
@@ -124,6 +133,8 @@ class ReactionService:
         if event not in (AskRidesMessage.FRIDAY_FELLOWSHIP, AskRidesMessage.SUNDAY_SERVICE):
             raise ValueError(f"Invalid event for driver reactions: {event}")
 
+        import discord
+
         channel_id = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 
         logger.debug("get_driver_reactions: looking up driver message")
@@ -132,7 +143,14 @@ class ReactionService:
             return None
 
         channel = self.bot.get_channel(channel_id)
-        message = await channel.fetch_message(message_id)
+        try:
+            message = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            logger.warning(
+                f"Message {message_id} for {event} not found (deleted?); clearing stale cache"
+            )
+            await self.find_driver_message.cache_set(event, channel_id, result=None)
+            return None
 
         reactions_by_emoji = defaultdict(list)
         all_usernames = set()

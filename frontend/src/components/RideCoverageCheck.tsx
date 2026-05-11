@@ -47,7 +47,7 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
 
     if (!coverage || !coverage.message_found) {
         return (
-            <div className="p-4 text-center text-slate-500">
+            <div className="p-4 text-center text-muted-foreground">
                 No {title.toLowerCase()} message found yet
             </div>
         )
@@ -58,30 +58,30 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
         : 0
 
     return (
-        <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-hidden">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="w-full px-4 py-3 flex items-center justify-between bg-muted hover:bg-muted/70 transition-colors"
             >
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">{emoji}</span>
                     <div className="text-left">
-                        <h3 className="font-semibold text-slate-900 dark:text-white">{title}</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <h3 className="font-semibold text-foreground">{title}</h3>
+                        <p className="text-sm text-muted-foreground">
                             {coverage.assigned} / {coverage.total} assigned ({percentAssigned}%)
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     {coverage.assigned === coverage.total ? (
-                        <span className="text-green-600 dark:text-green-400 font-medium">✓ Complete</span>
+                        <span className="text-success-text font-medium">✓ Complete</span>
                     ) : (
                         <span className="text-yellow-600 dark:text-yellow-400 font-medium">
                             {coverage.total - coverage.assigned} missing
                         </span>
                     )}
                     <svg
-                        className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        className={`w-5 h-5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -92,23 +92,23 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
             </button>
 
             {isExpanded && (
-                <div className="p-4 bg-white dark:bg-slate-900">
+                <div className="p-4 bg-card">
                     {coverage.users.length === 0 ? (
-                        <p className="text-center text-slate-500">No users reacted to this message</p>
+                        <p className="text-center text-muted-foreground">No users reacted to this message</p>
                     ) : (
                         <div className="space-y-2">
                             {coverage.users.map((user: RideCoverageUser) => (
                                 <div
                                     key={user.discord_username}
-                                    className="flex items-center justify-between px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-800"
+                                    className="flex items-center justify-between px-3 py-2 rounded-md bg-muted"
                                 >
-                                    <span className="font-mono text-sm text-slate-900 dark:text-slate-100">
+                                    <span className="font-mono text-sm text-foreground">
                                         {user.discord_username}
                                     </span>
                                     {user.has_ride ? (
-                                        <span className="text-green-600 dark:text-green-400 font-bold text-lg">✓</span>
+                                        <span className="text-success-text font-bold text-lg">✓</span>
                                     ) : (
-                                        <span className="text-red-600 dark:text-red-400 font-bold text-lg">✗</span>
+                                        <span className="text-destructive-text font-bold text-lg">✗</span>
                                     )}
                                 </div>
                             ))}
@@ -166,8 +166,8 @@ function RideCoverageCheck() {
         return null // Don't show anything while checking
     }
 
-    if (!messageCheck || !messageCheck.has_coverage_entries) {
-        return null // Hide widget when no drive messages have been posted yet
+    if (!messageCheck || !messageCheck.is_in_visibility_window) {
+        return null // Hide widget outside the coverage visibility window
     }
 
     return (
@@ -196,11 +196,11 @@ function RideCoverageCheck() {
                                     className="fixed inset-0 z-10"
                                     onClick={() => setShowMenu(false)}
                                 />
-                                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-xl py-1 w-48">
+                                <div className="absolute right-0 top-full mt-1 z-20 bg-popover border border-border rounded-md shadow-xl py-1 w-48">
                                     <button
                                         onClick={() => syncMutation.mutate()}
                                         disabled={syncMutation.isPending}
-                                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
+                                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
                                     >
                                         {syncMutation.isPending ? (
                                             <>
@@ -227,7 +227,7 @@ function RideCoverageCheck() {
             }
         >
                 {syncMutation.isSuccess && (
-                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-md text-sm flex items-center gap-2">
+                    <div className="mb-4 p-3 bg-success/10 text-success-text rounded-md text-sm flex items-center gap-2">
                         <Check className="h-4 w-4" />
                         <span>
                             Sync completed: {syncMutation.data?.entries_added || 0} added, {syncMutation.data?.entries_removed || 0} removed
@@ -235,7 +235,7 @@ function RideCoverageCheck() {
                     </div>
                 )}
                 {syncMutation.isError && (
-                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md text-sm">
+                    <div className="mb-4 p-3 bg-destructive/10 text-destructive-text rounded-md text-sm">
                         ✗ Sync failed. Please try again.
                     </div>
                 )}
@@ -250,25 +250,25 @@ function RideCoverageCheck() {
                     </p>
                     <ul className="space-y-1 mb-3">
                         <li className="flex items-center gap-2">
-                            <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+                            <span className="text-success-text font-bold">✓</span>
                             <span>User is covered (assigned to a driver)</span>
                         </li>
                         <li className="flex items-center gap-2">
-                            <span className="text-red-600 dark:text-red-400 font-bold">✗</span>
+                            <span className="text-destructive-text font-bold">✗</span>
                             <span>User not covered (needs a ride!)</span>
                         </li>
                     </ul>
 
                     <div className="space-y-3">
-                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <div className="border-t border-border pt-2">
+                            <p className="text-sm text-muted-foreground">
                                 This widget only appears once the first ride grouping message is posted in Discord.
                             </p>
                         </div>
 
-                        <div className="border-t border-slate-100 dark:border-slate-800 pt-2">
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Tools</p>
-                            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                        <div className="border-t border-border pt-2">
+                            <p className="text-sm font-medium text-foreground mb-1">Tools</p>
+                            <ul className="text-sm text-muted-foreground space-y-1">
                                 <li className="flex items-center gap-2">
                                     <RefreshCw className="h-3 w-3" />
                                     <span><strong>Refresh:</strong> Reloads data from database</span>

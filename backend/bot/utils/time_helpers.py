@@ -1,5 +1,6 @@
 """utils/time_helpers.py"""
 
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 import pytz
@@ -20,57 +21,243 @@ days_of_week_to_number = {
 
 DAYS_IN_WEEK = 7
 
-# Hour thresholds
-HOUR_1AM = 1
-HOUR_7AM = 7
-HOUR_10AM = 10
-HOUR_NOON = 12
-HOUR_7PM = 19
+# ---------------------------------------------------------------------------
+# Unified time-window configuration
+# ---------------------------------------------------------------------------
 
 
-def is_in_ride_day_window(day: str) -> bool:
+@dataclass(frozen=True)
+class TimeWindow:
     """
-    Checks if the current time in LA is within the target window for the given day.
+    A time window: start_day @ start_hour:start_minute → end_day @ end_hour:end_minute.
 
-    The windows are:
-    - Tuesday 7 PM to Wednesday 7 PM (for Wednesday)
-    - Thursday 7 PM to Friday 7 PM (for Friday)
-    - Saturday 10 AM to Sunday 10 AM (for Sunday)
+    *start_minute* and *end_minute* default to 0 for backwards compatibility.
+    The window may start and end on the same day.
+    """
+
+    start_day: DaysOfWeek
+    start_hour: int
+    end_day: DaysOfWeek
+    end_hour: int
+    start_minute: int = 0
+    end_minute: int = 0
+
+
+RIDE_DAY_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
+    DaysOfWeek.WEDNESDAY: TimeWindow(
+        start_day=DaysOfWeek.TUESDAY,
+        start_hour=19,
+        end_day=DaysOfWeek.WEDNESDAY,
+        end_hour=19,
+    ),
+    DaysOfWeek.FRIDAY: TimeWindow(
+        start_day=DaysOfWeek.THURSDAY,
+        start_hour=19,
+        end_day=DaysOfWeek.FRIDAY,
+        end_hour=19,
+    ),
+    DaysOfWeek.SUNDAY: TimeWindow(
+        start_day=DaysOfWeek.SATURDAY,
+        start_hour=10,
+        end_day=DaysOfWeek.SUNDAY,
+        end_hour=10,
+    ),
+}
+
+LATE_REACTION_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
+    DaysOfWeek.WEDNESDAY: TimeWindow(
+        start_day=DaysOfWeek.TUESDAY,
+        start_hour=19,
+        end_day=DaysOfWeek.WEDNESDAY,
+        end_hour=19,
+    ),
+    DaysOfWeek.FRIDAY: TimeWindow(
+        start_day=DaysOfWeek.THURSDAY,
+        start_hour=19,
+        end_day=DaysOfWeek.FRIDAY,
+        end_hour=19,
+    ),
+    DaysOfWeek.SUNDAY: TimeWindow(
+        start_day=DaysOfWeek.SATURDAY,
+        start_hour=10,
+        end_day=DaysOfWeek.SUNDAY,
+        end_hour=10,
+    ),
+}
+
+# ---------------------------------------------------------------------------
+# Ride-coverage widget and message-lookup windows
+# ---------------------------------------------------------------------------
+
+# Controls when the coverage widget is visible in the UI.
+COVERAGE_WIDGET_WINDOWS: dict[str, TimeWindow] = {
+    "friday": TimeWindow(
+        start_day=DaysOfWeek.FRIDAY,
+        start_hour=11,
+        start_minute=0,
+        end_day=DaysOfWeek.FRIDAY,
+        end_hour=23,
+        end_minute=59,
+    ),
+    "sunday": TimeWindow(
+        start_day=DaysOfWeek.SATURDAY,
+        start_hour=15,
+        start_minute=0,
+        end_day=DaysOfWeek.SUNDAY,
+        end_hour=13,
+        end_minute=0,
+    ),
+}
+
+# Controls which Discord grouping ("drive:") messages count as coverage entries.
+COVERAGE_MESSAGE_LOOKUP_WINDOWS: dict[str, TimeWindow] = {
+    "friday": TimeWindow(
+        start_day=DaysOfWeek.FRIDAY,
+        start_hour=11,
+        start_minute=0,
+        end_day=DaysOfWeek.FRIDAY,
+        end_hour=19,
+        end_minute=30,
+    ),
+    "sunday": TimeWindow(
+        start_day=DaysOfWeek.SATURDAY,
+        start_hour=15,
+        start_minute=0,
+        end_day=DaysOfWeek.SUNDAY,
+        end_hour=10,
+        end_minute=30,
+    ),
+}
+
+
+def is_in_coverage_widget_window(ride_type: str) -> bool:
+    """Return True if the coverage widget for *ride_type* should be visible right now."""
+    window = COVERAGE_WIDGET_WINDOWS.get(ride_type.lower())
+    return _check_time_window(window, datetime.now(tz=LA_TZ)) if window else False
+
+
+def is_in_any_coverage_message_lookup_window() -> bool:
+    """Return True if the current time falls in any coverage message lookup window."""
+    now = datetime.now(tz=LA_TZ)
+    return any(_check_time_window(w, now) for w in COVERAGE_MESSAGE_LOOKUP_WINDOWS.values())
+
+
+def is_message_in_any_coverage_lookup_window(message_dt: datetime) -> bool:
+    """
+    Return True if *message_dt* falls within any coverage message lookup window.
 
     Args:
-        day (str): The day to check (Wednesday, Friday, or Sunday).
+        message_dt: A timezone-aware datetime (e.g. ``message.created_at`` from Discord).
+    """
+    la_dt = message_dt.astimezone(LA_TZ)
+    return any(_check_time_window(w, la_dt) for w in COVERAGE_MESSAGE_LOOKUP_WINDOWS.values())
+
+
+def get_coverage_message_lookup_start(ride_type: str) -> datetime | None:
+    """
+    Return the start of the message lookup window for the most recent cycle.
+
+    For ``"friday"``: most recent Friday at 12:00 LA.
+    For ``"sunday"``: most recent Saturday at 15:00 LA.
+
+    Returns ``None`` if *ride_type* is unrecognized.
+    """
+    window = COVERAGE_MESSAGE_LOOKUP_WINDOWS.get(ride_type.lower())
+    if window is None:
+        return None
+
+    now = datetime.now(tz=LA_TZ)
+    target_weekday = int(days_of_week_to_number[window.start_day])
+    days_since = (now.weekday() - target_weekday) % DAYS_IN_WEEK
+    start_date = (now - timedelta(days=days_since)).date()
+
+    return LA_TZ.localize(
+        datetime(
+            start_date.year,
+            start_date.month,
+            start_date.day,
+            window.start_hour,
+            window.start_minute,
+            0,
+        )
+    )
+
+
+ACTIVE_HOURS_START = 7
+ACTIVE_HOURS_END = 1
+
+RIDE_CYCLE_START_DAY = DaysOfWeekNumber.WEDNESDAY
+RIDE_CYCLE_START_HOUR = 12
+RIDE_CYCLE_END_DAY = DaysOfWeekNumber.SUNDAY
+
+
+def _resolve_day(day: str | DaysOfWeek) -> DaysOfWeek | None:
+    """Resolve a day string or enum to a ``DaysOfWeek`` member."""
+    if isinstance(day, DaysOfWeek):
+        return day
+    try:
+        return DaysOfWeek(day.capitalize())
+    except ValueError:
+        return None
+
+
+def _check_time_window(window: TimeWindow, now: datetime) -> bool:
+    """Return True if *now* (LA-aware) falls inside *window*."""
+    weekday_enum = list(DaysOfWeek)[now.weekday()]
+    now_minutes = now.hour * 60 + now.minute
+    start_minutes = window.start_hour * 60 + window.start_minute
+    end_minutes = window.end_hour * 60 + window.end_minute
+
+    if window.start_day == window.end_day:
+        return weekday_enum == window.start_day and start_minutes <= now_minutes <= end_minutes
+    return (weekday_enum == window.start_day and now_minutes >= start_minutes) or (
+        weekday_enum == window.end_day and now_minutes < end_minutes
+    )
+
+
+def _is_in_window(day: str | DaysOfWeek, windows: dict[DaysOfWeek, TimeWindow]) -> bool:
+    """Check if the current LA time falls inside the window for *day*."""
+    day_enum = _resolve_day(day)
+    if day_enum is None:
+        return False
+
+    window = windows.get(day_enum)
+    if window is None:
+        return False
+
+    return _check_time_window(window, datetime.now(tz=LA_TZ))
+
+
+def is_in_ride_day_window(day: str | DaysOfWeek) -> bool:
+    """
+    Checks if the current time in LA is within the ride-day window for the given day.
+
+    Windows are defined in ``RIDE_DAY_WINDOWS``.
+
+    Args:
+        day: The day to check (Wednesday, Friday, or Sunday).
+             Accepts a string or a ``DaysOfWeek`` enum member.
 
     Returns:
         bool: True if the current time is within the window, False otherwise.
     """
-    now = datetime.now(tz=LA_TZ)
-    weekday_index = now.weekday()  # Monday = 0, Sunday = 6
-    hour = now.hour
+    return _is_in_window(day, RIDE_DAY_WINDOWS)
 
-    # Map weekday index (int) to DaysOfWeek enum
-    weekday_enum = list(DaysOfWeek)[weekday_index]
 
-    try:
-        day_enum = DaysOfWeek(day.capitalize())
-    except ValueError:
-        return False  # Invalid day passed in
+def is_in_late_reaction_window(day: str | DaysOfWeek) -> bool:
+    """
+    Checks if the current time in LA is within the late-reaction window for the given day.
 
-    if day_enum == DaysOfWeek.WEDNESDAY:
-        return (weekday_enum == DaysOfWeek.TUESDAY and hour >= HOUR_7PM) or (
-            weekday_enum == DaysOfWeek.WEDNESDAY and hour < HOUR_7PM
-        )
+    Windows are defined in ``LATE_REACTION_WINDOWS``.
 
-    if day_enum == DaysOfWeek.FRIDAY:
-        return (weekday_enum == DaysOfWeek.THURSDAY and hour >= HOUR_7PM) or (
-            weekday_enum == DaysOfWeek.FRIDAY and hour < HOUR_7PM
-        )
+    Args:
+        day: The day to check (Wednesday, Friday, or Sunday).
+             Accepts a string or a ``DaysOfWeek`` enum member.
 
-    if day_enum == DaysOfWeek.SUNDAY:
-        return (weekday_enum == DaysOfWeek.SATURDAY and hour >= HOUR_10AM) or (
-            weekday_enum == DaysOfWeek.SUNDAY and hour < HOUR_10AM
-        )
-
-    return False
+    Returns:
+        bool: True if the current time is within the window, False otherwise.
+    """
+    return _is_in_window(day, LATE_REACTION_WINDOWS)
 
 
 def get_next_date_str(day: DaysOfWeekNumber) -> str:
@@ -138,7 +325,7 @@ def is_active_hours() -> bool:
         True if within active hours, False otherwise.
     """
     hour = datetime.now(tz=LA_TZ).hour
-    return hour >= HOUR_7AM or hour < HOUR_1AM
+    return hour >= ACTIVE_HOURS_START or hour < ACTIVE_HOURS_END
 
 
 def is_ride_cycle_active() -> bool:
@@ -153,8 +340,8 @@ def is_ride_cycle_active() -> bool:
         True from Wednesday 12:00 PM through Sunday 11:59 PM, False otherwise.
     """
     now = datetime.now(tz=LA_TZ)
-    return (now.weekday() == DaysOfWeekNumber.WEDNESDAY and now.hour >= HOUR_NOON) or (
-        DaysOfWeekNumber.THURSDAY <= now.weekday() <= DaysOfWeekNumber.SUNDAY
+    return (now.weekday() == RIDE_CYCLE_START_DAY and now.hour >= RIDE_CYCLE_START_HOUR) or (
+        RIDE_CYCLE_START_DAY < now.weekday() <= RIDE_CYCLE_END_DAY
     )
 
 
@@ -169,11 +356,11 @@ def get_current_cycle_start() -> datetime:
         datetime of the most recent Wednesday at 12:00:00.
     """
     now = datetime.now(tz=LA_TZ)
-    days_since_wednesday = (now.weekday() - DaysOfWeekNumber.WEDNESDAY) % DAYS_IN_WEEK
-    if now.weekday() < DaysOfWeekNumber.WEDNESDAY:  # Monday or Tuesday — back to previous cycle
+    days_since_wednesday = (now.weekday() - RIDE_CYCLE_START_DAY) % DAYS_IN_WEEK
+    if now.weekday() < RIDE_CYCLE_START_DAY:  # Monday or Tuesday — back to previous cycle
         days_since_wednesday += DAYS_IN_WEEK
     week_start = now - timedelta(days=days_since_wednesday)
-    return week_start.replace(hour=HOUR_NOON, minute=0, second=0, microsecond=0)
+    return week_start.replace(hour=RIDE_CYCLE_START_HOUR, minute=0, second=0, microsecond=0)
 
 
 def get_send_wednesday(event_date: date) -> date:
@@ -186,8 +373,8 @@ def get_send_wednesday(event_date: date) -> date:
     Returns:
         The Wednesday immediately before the event date.
     """
-    days_to_subtract = (event_date.weekday() - DaysOfWeekNumber.WEDNESDAY) % DAYS_IN_WEEK
-    if days_to_subtract == 0 and event_date.weekday() != DaysOfWeekNumber.WEDNESDAY:
+    days_to_subtract = (event_date.weekday() - RIDE_CYCLE_START_DAY) % DAYS_IN_WEEK
+    if days_to_subtract == 0 and event_date.weekday() != RIDE_CYCLE_START_DAY:
         days_to_subtract = DAYS_IN_WEEK
     return event_date - timedelta(days=days_to_subtract)
 
@@ -205,9 +392,9 @@ def is_during_late_reaction_window(message_content: str) -> bool:
     """
     content = message_content.lower()
     return (
-        ("friday" in content and is_in_ride_day_window(DaysOfWeek.FRIDAY))
-        or ("sunday" in content and is_in_ride_day_window(DaysOfWeek.SUNDAY))
-        or ("wednesday" in content and is_in_ride_day_window(DaysOfWeek.WEDNESDAY))
+        ("friday" in content and is_in_late_reaction_window(DaysOfWeek.FRIDAY))
+        or ("sunday" in content and is_in_late_reaction_window(DaysOfWeek.SUNDAY))
+        or ("wednesday" in content and is_in_late_reaction_window(DaysOfWeek.WEDNESDAY))
     )
 
 
@@ -222,8 +409,8 @@ def get_next_wednesday_noon() -> datetime:
         datetime of the next ask-rides send time.
     """
     now = datetime.now(tz=LA_TZ)
-    days_until_wednesday = (DaysOfWeekNumber.WEDNESDAY - now.weekday()) % DAYS_IN_WEEK
-    if days_until_wednesday == 0 and now.hour >= HOUR_NOON:
+    days_until_wednesday = (RIDE_CYCLE_START_DAY - now.weekday()) % DAYS_IN_WEEK
+    if days_until_wednesday == 0 and now.hour >= RIDE_CYCLE_START_HOUR:
         days_until_wednesday = DAYS_IN_WEEK
     next_run = now + timedelta(days=days_until_wednesday)
-    return next_run.replace(hour=HOUR_NOON, minute=0, second=0, microsecond=0)
+    return next_run.replace(hour=RIDE_CYCLE_START_HOUR, minute=0, second=0, microsecond=0)

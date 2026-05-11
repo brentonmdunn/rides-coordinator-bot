@@ -11,9 +11,8 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from api.dependencies import require_ready_bot
 from bot.core.enums import PickupLocations
-from bot.services.group_rides_service import GroupRidesService
+from bot.services.route_service import RouteService
 from bot.utils.constants import MAP_LOCATIONS, get_map_links
 
 logger = logging.getLogger(__name__)
@@ -127,8 +126,6 @@ async def make_route(request: MakeRouteRequest):
         f"leave_time={request.leave_time}"
     )
 
-    bot = require_ready_bot()
-
     # Validate inputs
     if not request.locations:
         raise HTTPException(status_code=400, detail="At least one location must be provided")
@@ -137,13 +134,8 @@ async def make_route(request: MakeRouteRequest):
         raise HTTPException(status_code=400, detail="Leave time must be provided")
 
     try:
-        service = GroupRidesService(bot)
-
-        # Convert locations list to space-separated string (as expected by make_route)
         locations_str = " ".join(request.locations)
-
-        # Call the existing make_route method
-        route = service.make_route(locations_str, request.leave_time)
+        route = RouteService.make_route(locations_str, request.leave_time)
 
         logger.info(f"✅ Successfully generated route: {route}")
         return MakeRouteResponse(success=True, route=route)

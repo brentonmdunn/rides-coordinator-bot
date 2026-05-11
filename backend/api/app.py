@@ -18,10 +18,13 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from api.auth import cloudflare_access_middleware
+from api.auth_session import session_cookie_middleware
 from api.middleware.access_logger import AccessLogMiddleware
 from api.rate_limit import limiter
 from api.routes.admin_users import router as admin_users_router
 from api.routes.ask_rides import router as ask_rides_router
+from api.routes.auth_bypass import router as auth_bypass_router
+from api.routes.auth_discord import router as auth_discord_router
 from api.routes.cache_stats import router as cache_stats_router
 from api.routes.check_pickups import router as check_pickups_router
 from api.routes.example import router as example_router
@@ -31,8 +34,11 @@ from api.routes.health import router as health_router
 from api.routes.list_pickups import router as list_pickups_router
 from api.routes.locations import router as locations_router
 from api.routes.me import router as me_router
+from api.routes.reaction_log import router as reaction_log_router
+from api.routes.reaction_log_stream import router as reaction_log_stream_router
 from api.routes.route_builder import router as route_builder_router
 from api.routes.user_preferences import router as user_preferences_router
+from api.routes.usernames import router as usernames_router
 from bot.api import bot_lifespan
 
 # Configure logging
@@ -43,6 +49,7 @@ logger = logging.getLogger(__name__)
 CLOUDFLARE_TEAM_DOMAIN = os.getenv("CLOUDFLARE_TEAM_DOMAIN")
 CLOUDFLARE_AUD = os.getenv("CLOUDFLARE_AUD")
 APP_ENV = os.getenv("APP_ENV", "local")
+AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "cloudflare")  # "cloudflare" | "self"
 
 
 @asynccontextmanager
@@ -58,14 +65,15 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     if APP_ENV != "local":
-        if not CLOUDFLARE_TEAM_DOMAIN or not CLOUDFLARE_AUD:
+        if AUTH_PROVIDER == "self":
+            logger.info("Auth provider: self-hosted Discord OAuth + session cookies.")
+        elif not CLOUDFLARE_TEAM_DOMAIN or not CLOUDFLARE_AUD:
             logger.error(
                 "CRITICAL: Cloudflare Access environment variables are not set. "
                 "Authentication will fail."
             )
-
         else:
-            logger.info("Cloudflare Access configured for production.")
+            logger.info("Auth provider: Cloudflare Access.")
     else:
         logger.info("Running in LOCAL mode: Authentication is bypassed.")
 
@@ -86,7 +94,25 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# Add CORS middleware for development (allows frontend on different port)
+# Add authentication middleware based on AUTH_PROVIDER.
+# Must be registered BEFORE CORS so that CORS (added last) becomes the
+# outermost layer and attaches Access-Control-Allow-Origin to every response,
+# including 401s returned directly by the auth middleware.
+if AUTH_PROVIDER == "self":
+    app.middleware("http")(session_cookie_middleware)
+    app.include_router(auth_discord_router)
+    app.include_router(auth_bypass_router)
+    logger.info("Using self-hosted Discord OAuth middleware")
+else:
+    app.middleware("http")(cloudflare_access_middleware)
+    logger.info("Using Cloudflare Access middleware")
+
+# Add access logging middleware
+app.add_middleware(AccessLogMiddleware)
+logger.info("Access logging middleware enabled")
+
+# Add CORS middleware last so it is outermost and adds CORS headers to all
+# responses, including 401s emitted by the auth middleware above.
 if APP_ENV == "local":
     app.add_middleware(
         CORSMiddleware,
@@ -96,13 +122,6 @@ if APP_ENV == "local":
         allow_headers=["*"],
     )
     logger.info("CORS enabled for local development")
-
-# Add access logging middleware
-app.add_middleware(AccessLogMiddleware)
-logger.info("Access logging middleware enabled")
-
-# Add Cloudflare authentication middleware
-app.middleware("http")(cloudflare_access_middleware)
 
 # Include routers
 app.include_router(health_router)
@@ -119,6 +138,9 @@ app.include_router(check_pickups_router)
 app.include_router(route_builder_router)
 app.include_router(admin_users_router)
 app.include_router(user_preferences_router)
+app.include_router(usernames_router)
+app.include_router(reaction_log_router)
+app.include_router(reaction_log_stream_router)
 
 # Mount static files for React SPA (if directory exists)
 admin_ui_path = Path("admin_ui")
@@ -154,10 +176,12 @@ if admin_ui_path.is_dir():
         full_path = admin_ui_path / file_path
         if file_path and full_path.is_file():
             return FileResponse(full_path)
-        # Otherwise, serve the SPA index.html
+        # Otherwise, serve the SPA index.html.
+        # no-store prevents browsers from caching index.html across deploys,
+        # which would cause old hashed asset URLs to 404 and break the page.
         index_path = admin_ui_path / "index.html"
         if index_path.is_file():
-            return FileResponse(index_path)
+            return FileResponse(index_path, headers={"Cache-Control": "no-store"})
         # If no index.html, return 404
         raise HTTPException(status_code=404, detail="Not Found")
 

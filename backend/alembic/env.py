@@ -9,6 +9,7 @@ from alembic import context
 
 from bot.core.database import Base
 from bot.core.models import (  # noqa: F401
+    AuthSession,
     DiscordUsers,
     EventThreads,
     FeatureFlags,

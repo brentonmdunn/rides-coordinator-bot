@@ -1,22 +1,40 @@
 import { useEffect, useState } from 'react'
 import type { PickupLocationsResponse } from '../../types'
 
+export interface RouteGeometryResult {
+    /** Array of [lat, lng] pairs for the Leaflet Polyline, or null when unavailable. */
+    geometry: [number, number][] | null
+    /** Total OSRM driving duration in seconds, or null. */
+    totalDuration: number | null
+    /** Total OSRM driving distance in meters, or null. */
+    totalDistance: number | null
+    /** Per-leg durations in seconds (length === selectedLocationKeys.length - 1). */
+    legDurations: number[]
+}
+
+const EMPTY_RESULT: RouteGeometryResult = {
+    geometry: null,
+    totalDuration: null,
+    totalDistance: null,
+    legDurations: [],
+}
+
 /**
- * Fetches a driving route geometry from OSRM whenever `selectedLocationKeys`
- * or `locationsData` changes. Returns an array of [lat, lng] pairs suitable
- * for a Leaflet Polyline, or null if fewer than 2 locations are selected.
+ * Fetches a driving route from OSRM whenever `selectedLocationKeys` or
+ * `locationsData` changes. Returns the polyline geometry plus aggregate and
+ * per-leg metadata so callers can render ETA chips and per-leg drive times.
  */
 export function useRouteGeometry(
     selectedLocationKeys: string[],
     locationsData: PickupLocationsResponse | null | undefined,
     getLocationValue: (key: string) => string
-): [number, number][] | null {
-    const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null)
+): RouteGeometryResult {
+    const [result, setResult] = useState<RouteGeometryResult>(EMPTY_RESULT)
 
     useEffect(() => {
         if (!locationsData || selectedLocationKeys.length < 2) {
-            // Wait internally before resetting state to avoid synchronous state updates during render
-            Promise.resolve().then(() => setRouteGeometry(null))
+            // Defer to avoid synchronous state updates during render
+            Promise.resolve().then(() => setResult(EMPTY_RESULT))
             return
         }
 
@@ -28,7 +46,7 @@ export function useRouteGeometry(
             .filter(Boolean)
 
         if (coords.length < 2) {
-            Promise.resolve().then(() => setRouteGeometry(null))
+            Promise.resolve().then(() => setResult(EMPTY_RESULT))
             return
         }
 
@@ -44,11 +62,20 @@ export function useRouteGeometry(
                 if (!res.ok) return
                 const data = await res.json()
                 if (data.routes && data.routes.length > 0) {
-                    const latLngs = data.routes[0].geometry.coordinates.map(
+                    const route = data.routes[0]
+                    const latLngs: [number, number][] = route.geometry.coordinates.map(
                         (c: [number, number]) => [c[1], c[0]] as [number, number]
                     )
+                    const legDurations: number[] = Array.isArray(route.legs)
+                        ? route.legs.map((leg: { duration: number }) => leg.duration)
+                        : []
                     if (isMounted) {
-                        setRouteGeometry(latLngs)
+                        setResult({
+                            geometry: latLngs,
+                            totalDuration: typeof route.duration === 'number' ? route.duration : null,
+                            totalDistance: typeof route.distance === 'number' ? route.distance : null,
+                            legDurations,
+                        })
                     }
                 }
             } catch (err) {
@@ -63,5 +90,5 @@ export function useRouteGeometry(
         }
     }, [selectedLocationKeys, locationsData, getLocationValue])
 
-    return routeGeometry
+    return result
 }

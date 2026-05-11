@@ -36,7 +36,7 @@ async def _ask_drivers_template(
             await sent_message.add_reaction(emoji)
         return sent_message
     except discord.HTTPException as e:
-        logger.error(f"Failed to send message to channel {channel_id}: {e}")
+        logger.exception(f"Failed to send message to channel {channel_id}")
         await send_error_to_discord(
             f"**Error** in `_ask_drivers_template` for channel {channel_id}", error=e
         )

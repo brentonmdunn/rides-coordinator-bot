@@ -2,18 +2,34 @@
 
 Welcome to the central documentation hub for the Rides Coordinator Bot project.
 
-## Project Structure & Architecture
+## Project Overview
 
-The project consists of three main components working together:
+The project consists of three main components:
 
-1. **Discord Bot (Python):** Handles incoming slash commands, reactions, and direct engagement with users.
-2. **Backend API (FastAPI):** Controls business logic, talks to the SQLite database, and serves data. [Read the Backend Architecture Guide](../backend/docs/architecture.md)
-3. **Frontend Dashboard (React):** Administrative SPA allowing managers to visualize pickup coverages and coordinate rides. [View Frontend Environment Details](../frontend/ENV_CONFIG.md)
+1. **Discord Bot (Python):** Handles slash commands, reactions, and direct engagement with Discord users.
+2. **Backend API (FastAPI):** Business logic, database access, and the web dashboard API. Runs alongside the bot in a single process.
+3. **Frontend Dashboard (React):** Admin SPA for visualizing pickup coverage, coordinating rides, managing users, and controlling the bot's scheduled messages.
 
-## Development & Contribution
+---
 
-If you want to contribute, please start by reading the [Contributing Guide](../CONTRIBUTING.md) which details branching, PRs, and linting requirements.
+## Documentation Index
 
-## Deployment & Hosting
+| Document | Description |
+|----------|-------------|
+| [setup.md](setup.md) | Local development setup, environment variables, running tests |
+| [api-reference.md](api-reference.md) | All HTTP API endpoints with request/response shapes |
+| [bot-commands.md](bot-commands.md) | All Discord slash commands |
+| [scheduler.md](scheduler.md) | Scheduled jobs (APScheduler), how they work, how to pause them |
+| [database-schema.md](database-schema.md) | All database tables and their columns |
+| [feature-flags.md](feature-flags.md) | Feature flag reference and management |
+| [auth.md](auth.md) | Authentication — Discord OAuth flow, roles, sessions, invites |
+| [deployment.md](deployment.md) | Docker build, image promotion, environment configuration |
+| [CI_CD.md](CI_CD.md) | CI/CD image promotion strategy |
 
-- **CI/CD Image Promotion:** Understand how our Pull Requests generate test Docker images and how merges automatically promote those images to production. [Read CI/CD Strategy](CI_CD.md).
+---
+
+## Quick links
+
+- **Contributing:** See `CONTRIBUTING.md` at the repo root for branching, PR, and linting requirements.
+- **Frontend env config:** `frontend/ENV_CONFIG.md` explains `VITE_API_URL` and how dev vs. prod API calls work.
+- **AI assistant guide:** `CLAUDE.md` at the repo root contains project conventions for AI coding assistants — not end-user documentation.

@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
+from bot.core.models import UserAccount
+from bot.repositories.auth_sessions_repository import AuthSessionsRepository
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 
 ROLE_LEVELS: dict[str, int] = {
@@ -37,6 +39,60 @@ class UserAccountsService:
 
         async with AsyncSessionLocal() as session:
             return await UserAccountsRepository.get_or_create(session, email)
+
+    @staticmethod
+    async def get_account(email: str) -> UserAccount | None:
+        """Get an existing account by email without creating one."""
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.get_by_email(session, email)
+
+    @staticmethod
+    async def invite(
+        discord_username: str,
+        role: AccountRoles,
+        invited_by: str,
+    ) -> UserAccount | None:
+        """Create an invite record. Returns None if the username already has an account."""
+        async with AsyncSessionLocal() as session:
+            existing = await UserAccountsRepository.get_by_discord_username(
+                session, discord_username
+            )
+            if existing:
+                return None
+            return await UserAccountsRepository.create_invited(
+                session, discord_username, role, invited_by
+            )
+
+    @staticmethod
+    async def revoke(account_id: int) -> bool:
+        """Delete a user account / revoke an invite, and invalidate all active sessions."""
+        async with AsyncSessionLocal() as session:
+            account = await session.get(UserAccount, account_id)
+            if not account:
+                return False
+            email = account.email
+            await session.delete(account)
+            await session.commit()
+
+        if email:
+            async with AsyncSessionLocal() as session:
+                await AuthSessionsRepository.delete_by_email(session, email)
+
+        return True
+
+    @staticmethod
+    async def list_accounts() -> list[UserAccount]:
+        """Return all user accounts ordered by email."""
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.get_all_accounts(session)
+
+    @staticmethod
+    async def update_role(email: str, role: str, role_edited_by: str = "") -> UserAccount | None:
+        """Update a user's role. Returns the updated account, or None if not found."""
+        async with AsyncSessionLocal() as session:
+            return await UserAccountsRepository.update_role(
+                session, email, role, role_edited_by=role_edited_by
+            )
 
     @staticmethod
     async def has_minimum_role(

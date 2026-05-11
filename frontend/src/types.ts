@@ -85,6 +85,7 @@ export interface RideCoverage {
     assigned: number
     message_found: boolean
     has_coverage_entries: boolean
+    is_in_visibility_window: boolean
 }
 
 export interface PickupLocation {
