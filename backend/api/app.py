@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -87,6 +88,10 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(lifespan=lifespan)
+
+# Expose Prometheus metrics at /metrics for observability of API latency,
+# request volume, and error rates.
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # Wire up slowapi rate limiting. The limiter must be attached to app.state and
 # the SlowAPIMiddleware installed before any per-route limits take effect.
