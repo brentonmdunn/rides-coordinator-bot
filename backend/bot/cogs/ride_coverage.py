@@ -10,6 +10,10 @@ from bot.core.enums import ChannelIds
 from bot.core.error_reporter import send_error_to_discord
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
 from bot.services.ride_coverage_service import RideCoverageService
+from bot.utils.time_helpers import (
+    is_in_any_coverage_message_lookup_window,
+    is_message_in_any_coverage_lookup_window,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +45,12 @@ class RideCoverage(commands.Cog):
             return
 
         logger.debug(f"on_message: Received message {message.id} from {message.author}")
+
+        if not is_in_any_coverage_message_lookup_window():
+            logger.debug(
+                f"on_message: Message {message.id} received outside all coverage lookup windows, skipping"
+            )
+            return
 
         if not RideCoverageService.is_grouping_message(message):
             return
@@ -78,6 +88,13 @@ class RideCoverage(commands.Cog):
             return
 
         logger.debug(f"on_message_edit: Message {after.id} edited by {after.author}")
+
+        if not is_message_in_any_coverage_lookup_window(before.created_at):
+            logger.debug(
+                f"on_message_edit: Message {after.id} original post time is outside all "
+                f"coverage lookup windows, skipping"
+            )
+            return
 
         if not RideCoverageService.is_grouping_message(after):
             logger.debug(f"on_message_edit: Message {after.id} is not a grouping message, skipping")
