@@ -215,8 +215,8 @@ async def _ask_rides_template(
             allowed_mentions=discord.AllowedMentions(roles=True),
             embed=embed,
         )
-    except discord.HTTPException as e:
-        logger.error(f"Failed to send message to channel {channel_id}: {e}")
+    except discord.HTTPException:
+        logger.exception(f"Failed to send message to channel {channel_id}")
         return None
 
 
@@ -237,6 +237,8 @@ async def run_ask_rides_fri(
         logger.info("Blocking run_ask_rides_fri - job is paused")
         return
     sent_message = await _ask_rides_template(bot, _make_friday_msg, channel_id)
+    if not sent_message:
+        return
     for emoji in BOT_REACTIONS[JobName.FRIDAY]:
         await sent_message.add_reaction(emoji)
 
@@ -273,6 +275,8 @@ async def run_ask_rides_sun(
         return
 
     sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
+    if not sent_message:
+        return
     for emoji in BOT_REACTIONS[JobName.SUNDAY]:
         await sent_message.add_reaction(emoji)
 
@@ -299,6 +303,8 @@ async def run_ask_rides_sun_class(
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
     sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
+    if not sent_message:
+        return
     for emoji in BOT_REACTIONS[JobName.SUNDAY_CLASS]:
         await sent_message.add_reaction(emoji)
 
@@ -463,7 +469,7 @@ async def find_message_in_history(
 
     for message in messages:
         # Check if message is from current week
-        if message.created_at.replace(tzinfo=None) < current_week_start:
+        if message.created_at.astimezone(current_week_start.tzinfo) < current_week_start:
             continue
 
         if message.embeds and keyword.lower() in message.embeds[0].description.lower():

@@ -42,6 +42,15 @@ class LocationsService:
         self._housing = HousingGroupService()
 
     # ------------------------------------------------------------------
+    # Static helpers (no bot required)
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def get_all_discord_usernames() -> list[tuple[str, str]]:
+        """Return (discord_username, name) pairs for all rows with a non-null username."""
+        async with AsyncSessionLocal() as session:
+            return await LocationsRepository.get_all_discord_usernames(session)
+
+    # ------------------------------------------------------------------
     # CSV sync (delegates to CsvSyncService)
     # ------------------------------------------------------------------
     async def sync_locations(self):
@@ -195,11 +204,11 @@ class LocationsService:
             ask_rides_message = DAY_TO_ASK_RIDES_MESSAGE.get(JobName(day))
             if ask_rides_message is None:
                 raise ValueError(f"Invalid day: {day}")
-            message_id = await self._find_correct_message(ask_rides_message, channel_id)
+            message_id = await self.find_correct_message(ask_rides_message, channel_id)
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
-        usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
+        usernames_reacted = await self.get_usernames_who_reacted(channel_id, message_id, option)
 
         tmp_content = ""
         if not day:
@@ -211,12 +220,12 @@ class LocationsService:
             (day and day == JobName.SUNDAY)
             or ("service" in tmp_content and "sunday" in tmp_content)
         ) and (
-            class_message_id := await self._find_correct_message(
+            class_message_id := await self.find_correct_message(
                 AskRidesMessage.SUNDAY_CLASS, channel_id
             )
         ) is not None:
             # Avoid ``-=`` as it mutates the set in-place, which corrupts the cache.
-            usernames_reacted = usernames_reacted - await self._get_usernames_who_reacted(
+            usernames_reacted = usernames_reacted - await self.get_usernames_who_reacted(
                 channel_id, class_message_id
             )
 
@@ -233,7 +242,7 @@ class LocationsService:
     # ------------------------------------------------------------------
     # Delegation helpers (maintain backward compatibility)
     # ------------------------------------------------------------------
-    async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
+    async def find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
         """Delegates to ReactionService.find_correct_message."""
         return await self._reactions.find_correct_message(ask_rides_message, channel_id)
 
@@ -255,7 +264,7 @@ class LocationsService:
         """Delegates to ReactionService._find_all_driver_messages."""
         return await self._reactions._find_all_driver_messages(channel_id)
 
-    async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
+    async def get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Delegates to ReactionService.get_usernames_who_reacted."""
         return await self._reactions.get_usernames_who_reacted(channel_id, message_id, option)
 

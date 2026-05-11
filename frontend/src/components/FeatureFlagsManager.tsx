@@ -112,21 +112,21 @@ function FeatureFlagsManager() {
                 )}
 
                 {!flagsLoading && !flagsError && featureFlags.length > 0 && (
-                    <div className="rounded-lg border border-slate-200 dark:border-zinc-800 overflow-x-auto w-full max-w-[calc(100vw-3rem)]">
+                    <div className="rounded-lg border border-border overflow-x-auto w-full max-w-[calc(100vw-3rem)]">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-50 dark:bg-zinc-800/50 text-slate-900 dark:text-slate-100 font-semibold border-b border-slate-200 dark:border-zinc-800">
+                            <thead className="bg-muted text-foreground font-semibold border-b border-border">
                                 <tr>
                                     <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4">Feature Flag</th>
                                     <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4 text-center w-[100px] sm:w-[120px]">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                            <tbody className="divide-y divide-border">
                                 {featureFlags.map((flag) => (
                                     <tr
                                         key={flag.id}
-                                        className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors"
+                                        className="hover:bg-muted/50 transition-colors"
                                     >
-                                        <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono text-slate-700 dark:text-slate-300 break-all">
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono text-foreground break-all">
                                             {flag.feature}
                                         </td>
                                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
@@ -145,7 +145,7 @@ function FeatureFlagsManager() {
                 )}
 
                 {!flagsLoading && !flagsError && featureFlags.length === 0 && (
-                    <p className="text-slate-500 italic p-4 text-center bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                    <p className="text-muted-foreground italic p-4 text-center bg-muted/50 rounded-lg">
                         No feature flags found.
                     </p>
                 )}

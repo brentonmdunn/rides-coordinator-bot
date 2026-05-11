@@ -35,11 +35,11 @@ class CsvSyncService:
         if not LSCC_PPL_CSV_URL:
             raise Exception("LSCC_PPL_CSV_URL environment variable not set.")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             response = await client.get(LSCC_PPL_CSV_URL)
 
         if response.status_code != 200:
-            raise Exception("Failed to retrieve data.")
+            raise Exception(f"Failed to retrieve data. Status code: {response.status_code}")
 
         csv_data = response.content.decode("utf-8")
         csv_file = io.StringIO(csv_data)

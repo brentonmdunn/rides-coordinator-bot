@@ -1,3 +1,4 @@
+export { default as BackLink } from './BackLink'
 export { default as ChannelIdField } from './ChannelIdField'
 export { default as InsetPanel } from './InsetPanel'
 export { default as LabeledField } from './LabeledField'

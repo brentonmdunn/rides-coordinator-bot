@@ -13,7 +13,8 @@ from api.auth import require_admin
 from api.constants import ADMIN_EMAILS
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
-from bot.repositories.user_accounts_repository import UserAccountsRepository
+from bot.core.models import UserAccount
+from bot.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,72 @@ class UpdateRoleRequest(BaseModel):
     role: str
 
 
+class InviteUserRequest(BaseModel):
+    """Request model for inviting a new user by Discord username."""
+
+    discord_username: str
+    role: str = AccountRoles.VIEWER
+
+
+@router.post("/users/invite", dependencies=[Depends(require_admin)])
+async def invite_user(body: InviteUserRequest, request: Request):
+    """
+    Invite a new user by Discord username (admin only).
+
+    Creates a user_accounts row with no email. Email is populated on first Discord login.
+    """
+    user = getattr(request.state, "user", None) or {}
+    invited_by = user.get("email", "")
+
+    valid_roles = tuple(r.value for r in AccountRoles)
+    if body.role not in valid_roles:
+        raise HTTPException(
+            status_code=400,
+            detail=f"role must be one of: {', '.join(valid_roles)}",
+        )
+
+    account = await UserAccountsService.invite(
+        body.discord_username.strip(), AccountRoles(body.role), invited_by
+    )
+    if account is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"An account for '{body.discord_username}' already exists.",
+        )
+    logger.info(f"👤 Admin invited Discord user '{body.discord_username}' with role '{body.role}'")
+    return {
+        "id": account.id,
+        "discord_username": account.discord_username,
+        "email": account.email,
+        "role": account.role,
+        "invited_by": account.invited_by,
+    }
+
+
+@router.delete("/users/{account_id}", dependencies=[Depends(require_admin)])
+async def revoke_user(account_id: int, request: Request):
+    """
+    Remove a user account or revoke a pending invite (admin only).
+
+    Cannot revoke root admins from ADMIN_EMAILS.
+    """
+    async with AsyncSessionLocal() as session:
+        account = await session.get(UserAccount, account_id)
+
+    if not account:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if account.email in ADMIN_EMAILS:
+        raise HTTPException(status_code=400, detail="Cannot revoke a root admin.")
+
+    deleted = await UserAccountsService.revoke(account_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    logger.info(f"👤 Admin revoked account id={account_id}")
+    return {"ok": True}
+
+
 @router.get("/users", dependencies=[Depends(require_admin)])
 async def list_users(request: Request):
     """
@@ -34,8 +101,7 @@ async def list_users(request: Request):
     Returns:
         JSON with list of all user accounts.
     """
-    async with AsyncSessionLocal() as session:
-        accounts = await UserAccountsRepository.get_all_accounts(session)
+    accounts = await UserAccountsService.list_accounts()
 
     user = getattr(request.state, "user", None) or {}
     current_user_email = user.get("email", "")
@@ -45,8 +111,11 @@ async def list_users(request: Request):
             {
                 "id": account.id,
                 "email": account.email,
+                "discord_username": account.discord_username,
+                "discord_user_id": account.discord_user_id,
                 "role": account.role,
                 "role_edited_by": account.role_edited_by,
+                "invited_by": account.invited_by,
                 "created_at": account.created_at.isoformat() if account.created_at else None,
             }
             for account in accounts
@@ -91,10 +160,7 @@ async def update_user_role(email: str, body: UpdateRoleRequest, request: Request
             detail=f"role must be one of: {', '.join(valid_roles)}",
         )
 
-    async with AsyncSessionLocal() as session:
-        updated = await UserAccountsRepository.update_role(
-            session, email, body.role, role_edited_by=current_user_email
-        )
+    updated = await UserAccountsService.update_role(email, body.role, current_user_email)
     if not updated:
         raise HTTPException(status_code=404, detail=f"User '{email}' not found")
 

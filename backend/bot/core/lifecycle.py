@@ -18,6 +18,7 @@ from bot.core.database import (
     AsyncSessionLocal,
     init_db,
     seed_admin_accounts,
+    seed_bypass_account,
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
@@ -56,6 +57,8 @@ async def startup() -> None:
         await seed_message_schedule_pauses(session)
     async with AsyncSessionLocal() as session:
         await seed_admin_accounts(session)
+    async with AsyncSessionLocal() as session:
+        await seed_bypass_account(session)
     async with AsyncSessionLocal() as session:
         await FeatureFlagsRepository.initialize_cache(session)
     await _disable_features_for_local_env()
@@ -108,8 +111,8 @@ async def load_extensions(bot: Bot) -> None:
         try:
             await bot.load_extension(extension)
             logger.info(f"✅ Loaded extension: {extension}")
-        except Exception as e:
-            logger.warning(f"❌ Failed to load extension {extension}: {e}")
+        except Exception:
+            logger.exception(f"❌ Failed to load extension {extension}")
 
     if APP_ENV == "local":
         cogs_testing_path = Path.cwd() / "bot" / "cogs_testing"
@@ -123,8 +126,8 @@ async def load_extensions(bot: Bot) -> None:
             try:
                 await bot.load_extension(extension)
                 logger.info(f"✅ Loaded extension: {extension}")
-            except Exception as e:
-                logger.warning(f"❌ Failed to load extension {extension}: {e}")
+            except Exception:
+                logger.exception(f"❌ Failed to load extension {extension}")
 
 
 def attach_event_handlers(bot: Bot, send_error_fn: _SendErrorFn) -> None:
@@ -177,7 +180,7 @@ def attach_event_handlers(bot: Bot, send_error_fn: _SendErrorFn) -> None:
                     ephemeral=True,
                 )
         except Exception:
-            pass
+            logger.exception("Failed to send Discord error response for app command")
 
         cmd_name = interaction.command.name if interaction.command else "Unknown"
         channel_mention = interaction.channel.mention if interaction.channel else "Unknown"

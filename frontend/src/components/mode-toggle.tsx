@@ -6,14 +6,14 @@ export function ModeToggle() {
     const { setTheme, theme } = useTheme()
 
     return (
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-zinc-800 rounded-lg border border-slate-200 dark:border-zinc-700">
+        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg border border-border">
             <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme("light")}
                 className={`h-8 w-8 rounded-md transition-all ${theme === "light"
-                    ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                 title="Light Mode"
             >
@@ -25,8 +25,8 @@ export function ModeToggle() {
                 size="icon"
                 onClick={() => setTheme("system")}
                 className={`h-8 w-8 rounded-md transition-all ${theme === "system"
-                    ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                 title="System (Auto)"
             >
@@ -38,8 +38,8 @@ export function ModeToggle() {
                 size="icon"
                 onClick={() => setTheme("dark")}
                 className={`h-8 w-8 rounded-md transition-all ${theme === "dark"
-                    ? "bg-white text-slate-900 shadow-sm dark:bg-zinc-600 dark:text-slate-100"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                 title="Dark Mode"
             >

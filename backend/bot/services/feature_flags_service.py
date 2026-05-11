@@ -72,6 +72,24 @@ class FeatureFlagsService:
         logger.info(f"modify_feature_flag: {feature_name} set to {new_state}")
         return True, f"✅ Feature flag `{feature_name}` is now **{new_state}**."
 
+    @staticmethod
+    async def list_flags():
+        """Return all feature flag rows."""
+        async with AsyncSessionLocal() as session:
+            return await FeatureFlagsRepository.get_all_feature_flags(session)
+
+    @staticmethod
+    async def get_flag(feature_name: str):
+        """Return a single feature flag row, or None if not found."""
+        async with AsyncSessionLocal() as session:
+            return await FeatureFlagsRepository.get_feature_flag(session, feature_name)
+
+    @staticmethod
+    async def reinitialize_cache() -> None:
+        """Re-populate the in-memory feature flag cache from the database."""
+        async with AsyncSessionLocal() as session:
+            await FeatureFlagsRepository.initialize_cache(session)
+
     async def list_feature_flags_embed(self, session: AsyncSession | None = None) -> discord.Embed:
         """
         Return a Discord embed listing all feature flags and their current states.

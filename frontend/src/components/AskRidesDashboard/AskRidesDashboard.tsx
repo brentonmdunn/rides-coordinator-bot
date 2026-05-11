@@ -5,6 +5,7 @@ import ErrorMessage from "../ErrorMessage"
 import type { AskRidesStatus } from '../../types'
 import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
+import { ListSkeleton } from '../LoadingSkeleton'
 
 import { Button } from '../ui/button'
 import ConfirmDialog from '../ConfirmDialog'
@@ -113,7 +114,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                             <span><span className="font-medium">Disabled:</span> The feature flag for this job is turned off.</span>
                         </li>
                     </ul>
-                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+                    <p className="mt-3 text-sm text-muted-foreground">
                         Use the <span className="font-medium">⏸️ Pause</span> / <span className="font-medium">▶️ Resume</span> buttons on each card to temporarily skip a job. Use the <span className="font-medium">📨 Send now</span> button to manually trigger all ask rides messages if the scheduled send was missed (e.g. due to a service crash).
                     </p>
                 </InfoPanel>
@@ -130,11 +131,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                     </div>
                 )}
 
-                {askRidesLoading && (
-                    <div className="p-8 text-center text-slate-500 animate-pulse">
-                        Loading ask rides status...
-                    </div>
-                )}
+                {askRidesLoading && <ListSkeleton rows={3} />}
 
                 <div className="mb-6">
                     <ErrorMessage message={askRidesError} />

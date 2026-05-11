@@ -74,18 +74,18 @@ function DriverReactions() {
                     onClose={() => setShowInfo(false)}
                     title="About Driver Reactions"
                 >
-                    <div className="mb-3 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200 dark:border-zinc-700">
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <div className="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
+                        <p className="text-sm font-medium text-foreground">
                             Currently viewing: <strong>{capitalize(activeDay)}</strong>
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                             Automatically switches based on current time. Click refresh to reset.
                         </p>
                     </div>
                     <p className="mb-2">
                         This widget tracks emoji reactions from drivers in the driver chat channel.
                     </p>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                         <li>Automatically switches between <strong>Friday</strong> and <strong>Sunday</strong> based on the current time.</li>
                         <li>Use the day toggle buttons to manually switch between Friday and Sunday views.</li>
                         <li>Click the refresh button to return to automatic mode and update data.</li>
@@ -122,38 +122,38 @@ function DriverReactions() {
                 {!loading && !error && data && (
                     <>
                         {!data.message_found ? (
-                            <div className="text-center py-4 text-slate-500 italic">
+                            <div className="text-center py-4 text-muted-foreground italic">
                                 No driver message found for {capitalize(activeDay)}.
                             </div>
                         ) : (
                             <div className="space-y-4">
                                 {Object.keys(data.reactions).length === 0 ? (
-                                    <div className="text-center py-4 text-slate-500">No reactions found yet.</div>
+                                    <div className="text-center py-4 text-muted-foreground">No reactions found yet.</div>
                                 ) : (
-                                    <details className="group border border-slate-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 overflow-hidden">
-                                        <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors select-none list-none [&::-webkit-details-marker]:hidden">
+                                    <details className="group border border-border rounded-lg bg-card overflow-hidden">
+                                        <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors select-none list-none [&::-webkit-details-marker]:hidden">
                                             <span className="sr-only">Show driver reaction details</span>
                                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                                                 {Object.entries(data.reactions).map(([emoji, usernames]) => (
                                                     <div key={emoji} className="flex items-center gap-2">
                                                         <span className="text-xl">{emoji}</span>
-                                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                        <span className="text-sm font-medium text-foreground">
                                                             {usernames.length}
                                                         </span>
                                                     </div>
                                                 ))}
                                             </div>
-                                            <span className="text-slate-400 group-open:rotate-180 transition-transform duration-200 ml-4">
+                                            <span className="text-muted-foreground group-open:rotate-180 transition-transform duration-200 ml-4">
                                                 ▼
                                             </span>
                                         </summary>
-                                        <div className="px-4 pb-4 pt-0 border-t border-slate-100 dark:border-zinc-800/50">
+                                        <div className="px-4 pb-4 pt-0 border-t border-border">
                                             <div className="space-y-4 mt-4">
                                                 {Object.entries(data.reactions).map(([emoji, usernames]) => (
                                                     <div key={emoji}>
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <span className="text-lg">{emoji}</span>
-                                                            <span className="text-sm font-medium text-slate-500 uppercase tracking-widest text-xs">
+                                                            <span className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-xs">
                                                                 {usernames.length} {usernames.length === 1 ? 'Driver' : 'Drivers'}
                                                             </span>
                                                         </div>
