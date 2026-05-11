@@ -166,8 +166,8 @@ function RideCoverageCheck() {
         return null // Don't show anything while checking
     }
 
-    if (!messageCheck || !messageCheck.has_coverage_entries) {
-        return null // Hide widget when no drive messages have been posted yet
+    if (!messageCheck || !messageCheck.is_in_visibility_window) {
+        return null // Hide widget outside the coverage visibility window
     }
 
     return (

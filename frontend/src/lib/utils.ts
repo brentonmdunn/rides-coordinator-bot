@@ -30,7 +30,8 @@ export function getAutomaticDay(): 'friday' | 'sunday' {
   const day = now.getDay()
   const hour = now.getHours()
 
-  if (day === 6 || day === 0 || (day === 5 && hour >= 22)) {
+  // Sunday widget: Saturday 4PM or later, or Sunday before 1PM
+  if ((day === 6 && hour >= 16) || (day === 0 && hour < 13)) {
     return 'sunday'
   }
   return 'friday'
