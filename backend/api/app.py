@@ -13,10 +13,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from api.auth import cloudflare_access_middleware
 from api.auth_session import session_cookie_middleware
 from api.middleware.access_logger import AccessLogMiddleware
+from api.rate_limit import limiter
 from api.routes.admin_users import router as admin_users_router
 from api.routes.ask_rides import router as ask_rides_router
 from api.routes.auth_bypass import router as auth_bypass_router
@@ -83,6 +87,12 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(lifespan=lifespan)
+
+# Wire up slowapi rate limiting. The limiter must be attached to app.state and
+# the SlowAPIMiddleware installed before any per-route limits take effect.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Add authentication middleware based on AUTH_PROVIDER.
 # Must be registered BEFORE CORS so that CORS (added last) becomes the
