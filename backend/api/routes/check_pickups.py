@@ -30,6 +30,9 @@ class PickupCoverageResponse(BaseModel):
     assigned: int = Field(description="Number of users who have been grouped into rides")
     message_found: bool = Field(description="Whether the original ask-rides message was found")
     has_coverage_entries: bool = Field(description="Whether coverage data exists for this week")
+    is_in_visibility_window: bool = Field(
+        description="Whether the coverage widget should be visible right now"
+    )
 
 
 class SyncCoverageResponse(BaseModel):

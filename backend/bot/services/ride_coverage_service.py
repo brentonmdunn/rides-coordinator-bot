@@ -8,7 +8,12 @@ from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AskRidesMessage, ChannelIds, JobName
 from bot.core.error_reporter import send_error_to_discord
 from bot.repositories.ride_coverage_repository import RideCoverageRepository
-from bot.utils.time_helpers import get_last_sunday
+from bot.utils.time_helpers import (
+    get_coverage_message_lookup_start,
+    get_last_sunday,
+    is_in_coverage_widget_window,
+    is_message_in_any_coverage_lookup_window,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +63,13 @@ class RideCoverageService:
                         continue
 
                     if not self.is_grouping_message(message):
+                        continue
+
+                    if not is_message_in_any_coverage_lookup_window(message.created_at):
+                        logger.debug(
+                            f"sync_ride_coverage: Skipping message {message.id} — "
+                            f"outside all coverage lookup windows"
+                        )
                         continue
 
                     passenger_usernames = self.extract_passengers(message)
@@ -184,6 +196,7 @@ class RideCoverageService:
                 "assigned": 0,
                 "message_found": False,
                 "has_coverage_entries": False,
+                "is_in_visibility_window": is_in_coverage_widget_window(ride_type),
             }
 
         usernames_reacted = await locations_service.get_usernames_who_reacted(
@@ -200,11 +213,11 @@ class RideCoverageService:
                 )
                 usernames_reacted -= class_usernames
 
-        last_sunday = get_last_sunday()
+        coverage_since = get_coverage_message_lookup_start(ride_type) or get_last_sunday()
         usernames_list = [str(u) for u in usernames_reacted]
         async with AsyncSessionLocal() as session:
             covered_usernames = await RideCoverageRepository.get_bulk_coverage_status(
-                session, usernames_list, since=last_sunday
+                session, usernames_list, since=coverage_since
             )
 
         users = []
@@ -223,4 +236,5 @@ class RideCoverageService:
             "assigned": assigned_count,
             "message_found": True,
             "has_coverage_entries": assigned_count > 0,
+            "is_in_visibility_window": is_in_coverage_widget_window(ride_type),
         }
