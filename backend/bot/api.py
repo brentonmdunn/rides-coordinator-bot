@@ -60,6 +60,7 @@ async def bot_lifespan():
 
     await load_extensions(bot)
 
+    assert TOKEN is not None  # guarded by sys.exit(1) above when DISABLE_DISCORD_BOT is false
     bot_task = asyncio.create_task(bot.start(TOKEN))
 
     try:

@@ -162,8 +162,11 @@ class ThreadService:
             StarterMessageError: If the starter message can't be found.
             discord.Forbidden: If bot permissions are missing.
         """
+        parent = thread.parent
+        if not isinstance(parent, discord.TextChannel):
+            raise StarterMessageError("This thread's parent channel is not a text channel.")
         try:
-            starter_message = await thread.parent.fetch_message(thread.id)
+            starter_message = await parent.fetch_message(thread.id)
         except discord.NotFound:
             raise StarterMessageError(  # noqa
                 "Could not find the message that started this thread. Has it been deleted?"

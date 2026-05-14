@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
+from typing import TypedDict
 
 import discord
 import requests
@@ -28,6 +29,13 @@ LOCATIONS_CHANNELS_WHITELIST = [
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
     ChannelIds.SERVING__RETREAT_BOT_SPAM,
 ]
+
+
+class GroupData(TypedDict):
+    count: int
+    people: str
+    filter: list[str]
+    emoji: str
 
 
 class Col(IntEnum):
@@ -137,26 +145,26 @@ class Retreat(commands.Cog):
         # Build Embed
         embed = discord.Embed(title="Housing Breakdown", color=discord.Color.blue())
 
-        groups = {
-            "Scholars (no Eighth)": {
-                "count": 0,
-                "people": "",
-                "filter": SCHOLARS_LOCATIONS,
-                "emoji": Emoji.SCHOLARS,
-            },
-            "Warren + Pepper Canyon": {
-                "count": 0,
-                "people": "",
-                "filter": ["warren", "pepper canyon"],
-                "emoji": Emoji.WARREN_PCYN,
-            },
-            "Rita + Eighth": {
-                "count": 0,
-                "people": "",
-                "filter": ["rita", "eighth"],
-                "emoji": Emoji.RITA,
-            },
-            "Off Campus": {"count": 0, "people": "", "filter": [], "emoji": Emoji.GLOBE},
+        groups: dict[str, GroupData] = {
+            "Scholars (no Eighth)": GroupData(
+                count=0,
+                people="",
+                filter=list(SCHOLARS_LOCATIONS),
+                emoji=Emoji.SCHOLARS,
+            ),
+            "Warren + Pepper Canyon": GroupData(
+                count=0,
+                people="",
+                filter=["warren", "pepper canyon"],
+                emoji=Emoji.WARREN_PCYN,
+            ),
+            "Rita + Eighth": GroupData(
+                count=0,
+                people="",
+                filter=["rita", "eighth"],
+                emoji=Emoji.RITA,
+            ),
+            "Off Campus": GroupData(count=0, people="", filter=[], emoji=Emoji.GLOBE),
         }
 
         for location, people in locations_people.items():

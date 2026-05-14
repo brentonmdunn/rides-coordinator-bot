@@ -7,7 +7,7 @@ Business logic for Discord OAuth identity matching and server-side session manag
 import hashlib
 import hmac
 import secrets
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,7 +89,7 @@ class AuthService:
         session_id_plain = secrets.token_urlsafe(32)
         csrf_token = secrets.token_urlsafe(32)
         session_id_hash = _hash_token(session_id_plain)
-        expires_at = datetime.utcnow() + timedelta(days=SESSION_TTL_DAYS)
+        expires_at = datetime.now(UTC) + timedelta(days=SESSION_TTL_DAYS)
 
         await AuthSessionsRepository.create(session, session_id_hash, email, csrf_token, expires_at)
         return session_id_plain, csrf_token
@@ -106,7 +106,7 @@ class AuthService:
         auth_session = await AuthSessionsRepository.get_by_hash(session, session_id_hash)
         if not auth_session:
             return None
-        if auth_session.expires_at < datetime.utcnow():
+        if auth_session.expires_at < datetime.now(UTC):
             await AuthSessionsRepository.delete_by_hash(session, session_id_hash)
             return None
         return auth_session
@@ -116,7 +116,7 @@ class AuthService:
         session: AsyncSession, session_id_plain: str, auth_session: AuthSession
     ) -> None:
         """Slide the session expiry if it hasn't been touched recently."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if (now - auth_session.last_activity_at) < timedelta(
             minutes=SESSION_TOUCH_THROTTLE_MINUTES
         ):
@@ -151,12 +151,20 @@ class AuthService:
                 email=email or f"{discord_username}@discord.placeholder",
                 role=AccountRoles.RIDE_COORDINATOR,
             )
-            return await UserAccountsRepository.link_discord_identity(
+            linked = await UserAccountsRepository.link_discord_identity(
                 session, account.id, discord_user_id, discord_username, email
             )
+            if linked is None:
+                raise RuntimeError("link_discord_identity returned None unexpectedly")
+            return linked
         except IntegrityError:
             await session.rollback()
-            return await UserAccountsRepository.get_by_discord_user_id(session, discord_user_id)
+            fetched = await UserAccountsRepository.get_by_discord_user_id(session, discord_user_id)
+            if fetched is None:
+                raise RuntimeError(  # noqa: B904
+                    "get_by_discord_user_id returned None after IntegrityError"
+                )
+            return fetched
 
     @staticmethod
     def verify_csrf(expected: str, provided: str | None) -> bool:

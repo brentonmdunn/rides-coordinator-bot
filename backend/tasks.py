@@ -54,6 +54,12 @@ def clean(c):
 
 
 @task
+def typecheck(c):
+    """Run ty type checker."""
+    c.run("ty check .")
+
+
+@task
 def migrate(c, message):
     """Generate a new Alembic migration. Usage: uv run invoke migrate -m 'description'."""
     c.run(f'alembic revision --autogenerate -m "{message}"')

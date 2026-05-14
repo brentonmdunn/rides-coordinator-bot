@@ -9,6 +9,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any, cast
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -111,7 +112,7 @@ async def guard_metrics(request: Request, call_next) -> Response:
 # Wire up slowapi rate limiting. The limiter must be attached to app.state and
 # the SlowAPIMiddleware installed before any per-route limits take effect.
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
 app.add_middleware(SlowAPIMiddleware)
 
 # Add authentication middleware based on AUTH_PROVIDER.

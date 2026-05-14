@@ -82,7 +82,7 @@ async def switch_role(request: Request, body: RoleSwitchRequest):
     if not email:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    updated = await UserAccountsService.update_role(email, body.role)
+    updated = await UserAccountsService.update_role(email, AccountRoles(body.role))
     if not updated:
         raise HTTPException(status_code=404, detail="Account not found")
 

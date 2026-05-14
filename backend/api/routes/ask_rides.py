@@ -215,7 +215,7 @@ async def get_ask_rides_reactions(message_type: str):
     bot = require_bot()
 
     # Map message_type to AskRidesMessage enum
-    type_to_event = {
+    type_to_event: dict[str, AskRidesMessage] = {
         JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
         JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
         JobName.SUNDAY_CLASS: AskRidesMessage.SUNDAY_CLASS,

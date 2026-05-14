@@ -1,4 +1,5 @@
 from datetime import time
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -119,7 +120,7 @@ class TestLlmInputDrivers:
         # The function `llm_input_drivers` expects a list of integers.
         # Python's f-string will convert other types to strings.
         assert (
-            llm_input_drivers([1, 2.5, "3"])
+            llm_input_drivers(cast(list[int], [1, 2.5, "3"]))  # intentionally wrong types
             == "Driver0 has capacity 1, Driver1 has capacity 2.5, Driver2 has capacity 3"
         )
 

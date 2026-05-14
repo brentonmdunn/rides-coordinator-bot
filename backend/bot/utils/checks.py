@@ -9,6 +9,7 @@ import discord
 from discord import app_commands
 
 from bot.core.database import AsyncSessionLocal
+from bot.core.enums import FeatureFlagNames
 from bot.core.error_reporter import send_error_to_discord
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
@@ -38,7 +39,7 @@ def is_admin():
     return app_commands.check(predicate)
 
 
-def feature_flag_enabled(feature: str, enable_logs: bool = True):
+def feature_flag_enabled(feature: FeatureFlagNames, enable_logs: bool = True):
     """
     A decorator that checks if a feature flag is enabled before executing a command or job.
 

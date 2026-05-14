@@ -29,6 +29,9 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
 ]
 
+[tool.ty.src]
+exclude = ["tests", "bot/jobs_disabled", "bot/cogs_disabled"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 pythonpath = ["."]
@@ -40,7 +43,9 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
     "ruff>=0.13.0",
+    "ty>=0.0.35",
 ]
+
 
 [tool.ruff]
 line-length = 100

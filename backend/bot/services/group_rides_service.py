@@ -276,6 +276,10 @@ class GroupRidesService:
 
         channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
 
+        if message_id is None:
+            await interaction.followup.send("Could not find the rides message.")
+            return
+
         try:
             output = await self._process_ride_grouping(
                 message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
@@ -285,8 +289,10 @@ class GroupRidesService:
             return
 
         await interaction.followup.send(output[0])
-        for message in output[1:]:
-            await interaction.channel.send(message)
+        channel = interaction.channel
+        if isinstance(channel, (discord.TextChannel, discord.Thread)):
+            for message in output[1:]:
+                await channel.send(message)
 
     def get_pickup_location_fuzzy(self, input_loc: str) -> PickupLocations | None:
         """Delegates to RouteService.get_pickup_location_fuzzy."""

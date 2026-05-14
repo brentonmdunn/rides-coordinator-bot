@@ -1,7 +1,7 @@
 """Unit tests for AuthService — identity matching cascade and session helpers."""
 
 import hashlib
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -40,8 +40,8 @@ def _make_session(
 ) -> AuthSession:
     s = MagicMock(spec=AuthSession)
     s.email = email
-    s.expires_at = expires_at or (datetime.utcnow() + timedelta(days=30))
-    s.last_activity_at = last_activity_at or datetime.utcnow()
+    s.expires_at = expires_at or (datetime.now(UTC) + timedelta(days=30))
+    s.last_activity_at = last_activity_at or datetime.now(UTC)
     s.csrf_token = "csrf-token-value"
     return s
 
@@ -176,7 +176,7 @@ async def test_match_branch2_race_condition_falls_back_to_branch1():
         ),
         patch(
             "bot.services.auth_service.UserAccountsRepository.link_discord_identity",
-            new=AsyncMock(side_effect=IntegrityError(None, None, None)),
+            new=AsyncMock(side_effect=IntegrityError(None, None, Exception("mock"))),
         ),
     ):
         result = await AuthService.match_or_reject(session, "u999", "alice", "a@e.com")
@@ -330,7 +330,7 @@ async def test_get_session_not_found_returns_none():
 
 @pytest.mark.asyncio
 async def test_get_session_expired_deletes_and_returns_none():
-    expired = _make_session(expires_at=datetime.utcnow() - timedelta(seconds=1))
+    expired = _make_session(expires_at=datetime.now(UTC) - timedelta(seconds=1))
     session = AsyncMock()
 
     with (
@@ -356,7 +356,7 @@ async def test_get_session_expired_deletes_and_returns_none():
 
 @pytest.mark.asyncio
 async def test_touch_session_slides_expiry_when_stale():
-    old_activity = datetime.utcnow() - timedelta(minutes=SESSION_TOUCH_THROTTLE_MINUTES + 1)
+    old_activity = datetime.now(UTC) - timedelta(minutes=SESSION_TOUCH_THROTTLE_MINUTES + 1)
     auth_session = _make_session(last_activity_at=old_activity)
     session = AsyncMock()
 
@@ -371,7 +371,7 @@ async def test_touch_session_slides_expiry_when_stale():
 
 @pytest.mark.asyncio
 async def test_touch_session_skips_when_recent():
-    recent_activity = datetime.utcnow() - timedelta(seconds=30)
+    recent_activity = datetime.now(UTC) - timedelta(seconds=30)
     auth_session = _make_session(last_activity_at=recent_activity)
     session = AsyncMock()
 
@@ -460,7 +460,7 @@ async def test_provision_from_guild_role_race_condition_recovers():
     with (
         patch(
             "bot.services.auth_service.UserAccountsRepository.create_account",
-            new=AsyncMock(side_effect=IntegrityError(None, None, None)),
+            new=AsyncMock(side_effect=IntegrityError(None, None, Exception("mock"))),
         ),
         patch(
             "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",

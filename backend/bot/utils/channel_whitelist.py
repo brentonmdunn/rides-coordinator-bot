@@ -8,12 +8,12 @@ from bot.core.enums import ChannelIds
 
 logger = logging.getLogger(__name__)
 
-BOT_TESTING_CHANNELS = {
+BOT_TESTING_CHANNELS: set[int] = {
     ChannelIds.BOT_STUFF__BOTS,
     ChannelIds.BOT_STUFF__BOT_SPAM_2,
     ChannelIds.BOT_STUFF__BOT_LOGS,
 }
-LOCATIONS_CHANNELS_WHITELIST = BOT_TESTING_CHANNELS | {
+LOCATIONS_CHANNELS_WHITELIST: set[int] = BOT_TESTING_CHANNELS | {
     ChannelIds.SERVING__DRIVER_BOT_SPAM,
     ChannelIds.SERVING__LEADERSHIP,
     ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
@@ -22,7 +22,7 @@ LOCATIONS_CHANNELS_WHITELIST = BOT_TESTING_CHANNELS | {
 
 async def cmd_is_allowed(
     interaction: discord.Interaction,
-    channel_id: int,
+    channel_id: int | None,
     whitelisted_channels: set[int] = BOT_TESTING_CHANNELS,
 ) -> bool:
     """
@@ -30,23 +30,24 @@ async def cmd_is_allowed(
 
     Args:
         interaction (discord.Interaction): The interaction object.
-        channel_id (int): The ID of the channel where the command was invoked.
+        channel_id (int | None): The ID of the channel where the command was invoked.
         whitelisted_channels (set[int], optional): A set of allowed channel IDs.
             Defaults to BOT_TESTING_CHANNELS.
 
     Returns:
         bool: True if the command is allowed, False otherwise.
     """
-    if channel_id in whitelisted_channels:
+    if channel_id is None or channel_id in whitelisted_channels:
         return True
 
+    cmd_name = interaction.command.qualified_name if interaction.command else "unknown"
     await interaction.response.send_message(
-        f"`/{interaction.data['name']}` cannot be used in #{interaction.channel}.",
+        f"`/{cmd_name}` cannot be used in #{interaction.channel}.",
         ephemeral=True,
     )
     logger.info(
         "/%s not allowed in #%s by %s",
-        interaction.data["name"],
+        cmd_name,
         interaction.channel,
         interaction.user,
     )

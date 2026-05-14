@@ -172,7 +172,7 @@ class LocationsRepository:
         )
         result = await session.execute(stmt)
         person = result.first()
-        return person
+        return (person[0], person[1]) if person is not None else None
 
     @staticmethod
     async def get_all_discord_usernames(session: AsyncSession) -> list[tuple[str, str]]:

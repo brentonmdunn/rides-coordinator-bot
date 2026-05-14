@@ -62,4 +62,4 @@ class WhoisRepository:
             )
         )
         result = await session.execute(stmt)
-        return result.all()
+        return list(result.all())

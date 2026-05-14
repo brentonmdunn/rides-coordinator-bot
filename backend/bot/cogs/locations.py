@@ -164,7 +164,9 @@ class Locations(commands.Cog):
         """
         try:
             message_id_int = int(message_id)
-            channel_id_int = int(channel_id) if channel_id else None
+            channel_id_int = (
+                int(channel_id) if channel_id else int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+            )
         except ValueError:
             await interaction.response.send_message(
                 "Message ID and Channel ID must be integers.", ephemeral=True
@@ -200,6 +202,8 @@ class Locations(commands.Cog):
             else "**All locations** (slight rate limit warning so all don't send at once)"
         )
         await interaction.response.send_message(header)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
         for loc, _coords in MAP_LOCATIONS.items():
             if search_term and search_term not in loc.value.lower():
                 continue

@@ -78,7 +78,8 @@ async def toggle_feature_flag(feature_name: str, update: FeatureFlagUpdate):
                 },
             }
 
-        await FeatureFlagsService.modify_feature_flag(feature_name, update.enabled)
+        svc = FeatureFlagsService()
+        await svc.modify_feature_flag(feature_name, update.enabled)
         await FeatureFlagsService.reinitialize_cache()
         await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
 

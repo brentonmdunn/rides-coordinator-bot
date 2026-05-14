@@ -64,7 +64,8 @@ class Reactions(commands.Cog):
 
     async def cog_load(self):
         """Wait until the bot is ready to get the cog."""
-        self.locations_cog = self.bot.get_cog("Locations")
+        cog = self.bot.get_cog("Locations")
+        self.locations_cog = cog if isinstance(cog, Locations) else None
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -85,6 +86,9 @@ class Reactions(commands.Cog):
             payload.user_id,
             payload.emoji,
         )
+        if payload.guild_id is None:
+            logger.debug("_handle_reaction_add: guild_id is None, skipping")
+            return
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             logger.debug("_handle_reaction_add: guild not found, skipping")
@@ -168,6 +172,9 @@ class Reactions(commands.Cog):
             payload.user_id,
             payload.emoji,
         )
+        if payload.guild_id is None:
+            logger.debug("_handle_reaction_remove: guild_id is None, skipping")
+            return
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             logger.debug("_handle_reaction_remove: guild not found, skipping")
@@ -414,12 +421,12 @@ class Reactions(commands.Cog):
                 self.locations_cog
                 and (
                     message_id
-                    == await self.locations_cog.service._find_correct_message(
+                    == await self.locations_cog.service.find_correct_message(
                         AskRidesMessage.FRIDAY_FELLOWSHIP,
                         ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
                     )
                     or message_id
-                    == await self.locations_cog.service._find_correct_message(
+                    == await self.locations_cog.service.find_correct_message(
                         AskRidesMessage.SUNDAY_SERVICE, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
                     )
                 )
