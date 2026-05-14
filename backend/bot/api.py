@@ -6,6 +6,7 @@ Bot instance access is in bot.core.bot_instance; error reporting is in bot.core.
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 import sys
@@ -70,7 +71,12 @@ async def bot_lifespan():
 
     finally:
         logger.info("🛑 Shutting down Discord bot...")
-        await bot.close()
-        await bot_task
+        try:
+            await asyncio.wait_for(bot.close(), timeout=10.0)
+        except TimeoutError:
+            logger.warning("Bot close timed out after 10s — forcing task cancellation")
+        bot_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await bot_task
         set_bot_instance(None)
         logger.info("✅ Discord bot shutdown complete")

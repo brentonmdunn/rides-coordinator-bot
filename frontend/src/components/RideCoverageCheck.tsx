@@ -35,7 +35,6 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
         // Disable aggressive refetching to avoid rate limits
         refetchOnWindowFocus: false,
         refetchOnMount: false,
-        refetchOnReconnect: false,
     })
 
     if (isLoading) {
@@ -141,7 +140,6 @@ function RideCoverageCheck() {
         staleTime: QUERY_STALE_5_MIN,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
-        refetchOnReconnect: false,
     })
 
     const syncMutation = useMutation({

@@ -28,13 +28,14 @@ mkdir -p "$ADMIN_UI_DIR"
 
 # Remove old files (but keep .gitkeep if it exists)
 echo -e "${BLUE}🧹 Cleaning old files...${NC}"
+GITKEEP_TMP="$SCRIPT_DIR/.gitkeep.tmp"
+
 if [ -f "$ADMIN_UI_DIR/.gitkeep" ]; then
-    # Save .gitkeep temporarily
-    mv "$ADMIN_UI_DIR/.gitkeep" /tmp/.gitkeep.tmp
+    mv "$ADMIN_UI_DIR/.gitkeep" "$GITKEEP_TMP"
 fi
 rm -rf "$ADMIN_UI_DIR"/*
-if [ -f /tmp/.gitkeep.tmp ]; then
-    mv /tmp/.gitkeep.tmp "$ADMIN_UI_DIR/.gitkeep"
+if [ -f "$GITKEEP_TMP" ]; then
+    mv "$GITKEEP_TMP" "$ADMIN_UI_DIR/.gitkeep"
 fi
 
 # Copy new files
