@@ -1,6 +1,15 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { toast } from "sonner"
+import {
+  DAY_SUNDAY,
+  DAY_FRIDAY,
+  DAY_SATURDAY,
+  SUNDAY_WIDGET_START_HOUR,
+  SUNDAY_WIDGET_END_HOUR,
+  FRIDAY_WARNING_HOUR,
+  SUNDAY_WARNING_HOUR,
+} from './constants'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -31,7 +40,7 @@ export function getAutomaticDay(): 'friday' | 'sunday' {
   const hour = now.getHours()
 
   // Sunday widget: Saturday 4PM or later, or Sunday before 1PM
-  if ((day === 6 && hour >= 16) || (day === 0 && hour < 13)) {
+  if ((day === DAY_SATURDAY && hour >= SUNDAY_WIDGET_START_HOUR) || (day === DAY_SUNDAY && hour < SUNDAY_WIDGET_END_HOUR)) {
     return 'sunday'
   }
   return 'friday'
@@ -40,11 +49,11 @@ export function getAutomaticDay(): 'friday' | 'sunday' {
 // Friday after noon — show warning that Friday rides need drivers
 export function isFridayWarningWindow(): boolean {
   const now = new Date()
-  return now.getDay() === 5 && now.getHours() >= 12
+  return now.getDay() === DAY_FRIDAY && now.getHours() >= FRIDAY_WARNING_HOUR
 }
 
 // Saturday after 5 PM — show warning that Sunday rides need drivers
 export function isSundayWarningWindow(): boolean {
   const now = new Date()
-  return now.getDay() === 6 && now.getHours() >= 17
+  return now.getDay() === DAY_SATURDAY && now.getHours() >= SUNDAY_WARNING_HOUR
 }

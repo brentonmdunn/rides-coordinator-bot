@@ -6,6 +6,12 @@ from datetime import date, datetime, timedelta
 import pytz
 
 from bot.core.enums import DaysOfWeek, DaysOfWeekNumber
+from bot.utils.constants import (
+    ACTIVE_HOURS_END,
+    ACTIVE_HOURS_START,
+    DAYS_IN_WEEK,
+    RIDE_CYCLE_START_HOUR,
+)
 
 LA_TZ = pytz.timezone("America/Los_Angeles")
 
@@ -18,8 +24,6 @@ days_of_week_to_number = {
     DaysOfWeek.SATURDAY: DaysOfWeekNumber.SATURDAY,
     DaysOfWeek.SUNDAY: DaysOfWeekNumber.SUNDAY,
 }
-
-DAYS_IN_WEEK = 7
 
 # ---------------------------------------------------------------------------
 # Unified time-window configuration
@@ -183,11 +187,7 @@ def get_coverage_message_lookup_start(ride_type: str) -> datetime | None:
     )
 
 
-ACTIVE_HOURS_START = 7
-ACTIVE_HOURS_END = 1
-
 RIDE_CYCLE_START_DAY = DaysOfWeekNumber.WEDNESDAY
-RIDE_CYCLE_START_HOUR = 12
 RIDE_CYCLE_END_DAY = DaysOfWeekNumber.SUNDAY
 
 

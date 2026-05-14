@@ -25,6 +25,7 @@ import { createNumberedIcon, defaultMarkerIcon } from './numberedMarker'
 import type { TimeModeKey } from './routeBuilderConstants'
 import type { PickupLocationsResponse } from '../../types'
 import { useUsernames } from '../../hooks/useUsernames'
+import { TOOLTIP_OFFSET_SELECTED, TOOLTIP_OFFSET_UNSELECTED, ROUTE_POLYLINE_WEIGHT, ROUTE_POLYLINE_OPACITY } from '../../lib/constants'
 
 export interface RouteBuilderWidgetProps {
     theme: string
@@ -303,7 +304,7 @@ export function RouteBuilderWidget({
                                         },
                                     }}
                                 >
-                                    <Tooltip direction="top" offset={[0, isSelected ? -10 : -36]}>
+                                    <Tooltip direction="top" offset={[0, isSelected ? TOOLTIP_OFFSET_SELECTED : TOOLTIP_OFFSET_UNSELECTED]}>
                                         <span className="font-medium">
                                             {isSelected ? `${orderIndex + 1}. ` : ''}
                                             {loc.value}
@@ -314,7 +315,7 @@ export function RouteBuilderWidget({
                         })}
 
                         {routeGeometry && (
-                            <Polyline positions={routeGeometry} color="#10b981" weight={4} opacity={0.8} />
+                            <Polyline positions={routeGeometry} color="#10b981" weight={ROUTE_POLYLINE_WEIGHT} opacity={ROUTE_POLYLINE_OPACITY} />
                         )}
                     </MapContainer>
                 </div>

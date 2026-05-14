@@ -16,6 +16,11 @@ from typing import Any, TypeVar
 
 from bot.core.enums import CacheNamespace, FeatureFlagNames
 from bot.utils.cache_backends import get_backend
+from bot.utils.constants import (
+    CACHE_DEFAULT_MAX_SIZE,
+    REACTION_CACHE_ACTIVE_TTL,
+    REACTION_CACHE_OFF_HOURS_TTL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +31,6 @@ _namespace_registry: dict[str, list[Callable]] = {}
 
 # Global registry: namespace -> list of (func_name, stats_callable)
 _func_registry: dict[str, list[tuple[str, Callable]]] = {}
-
-# Cache TTL constants (in seconds)
-ACTIVE_HOURS_REACTION_TTL = 65 * 60  # 65 minutes
-OFF_HOURS_REACTION_TTL = 7 * 60 * 60  # 7 hours
 
 
 def _get_reaction_cache_ttl() -> int:
@@ -45,8 +46,8 @@ def _get_reaction_cache_ttl() -> int:
     from bot.utils.time_helpers import is_active_hours
 
     if is_active_hours():
-        return ACTIVE_HOURS_REACTION_TTL
-    return OFF_HOURS_REACTION_TTL
+        return REACTION_CACHE_ACTIVE_TTL
+    return REACTION_CACHE_OFF_HOURS_TTL
 
 
 def _is_cache_enabled() -> bool:
@@ -62,7 +63,7 @@ def _make_cache_key(*args, **kwargs) -> str:
 
 
 def alru_cache(
-    maxsize: int = 128,
+    maxsize: int = CACHE_DEFAULT_MAX_SIZE,
     ttl: int | float | Callable[[], int | float] | None = None,
     ignore_self: bool = False,
     namespace: CacheNamespace = CacheNamespace.DEFAULT,

@@ -16,9 +16,7 @@ from bot.core.enums import AccountRoles
 from bot.core.models import AuthSession, UserAccount
 from bot.repositories.auth_sessions_repository import AuthSessionsRepository
 from bot.repositories.user_accounts_repository import UserAccountsRepository
-
-SESSION_TTL_DAYS = 30
-TOUCH_THROTTLE_MINUTES = 5
+from bot.utils.constants import SESSION_TOUCH_THROTTLE_MINUTES, SESSION_TTL_DAYS
 
 
 def _hash_token(token: str) -> str:
@@ -119,7 +117,9 @@ class AuthService:
     ) -> None:
         """Slide the session expiry if it hasn't been touched recently."""
         now = datetime.utcnow()
-        if (now - auth_session.last_activity_at) < timedelta(minutes=TOUCH_THROTTLE_MINUTES):
+        if (now - auth_session.last_activity_at) < timedelta(
+            minutes=SESSION_TOUCH_THROTTLE_MINUTES
+        ):
             return
         new_expires = now + timedelta(days=SESSION_TTL_DAYS)
         session_id_hash = _hash_token(session_id_plain)

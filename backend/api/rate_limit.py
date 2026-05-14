@@ -10,6 +10,8 @@ client cannot monopolize expensive endpoints (e.g. the LLM-backed
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from api.constants import DEFAULT_RATE_LIMIT
+
 # Default limit applies to every route that uses `limiter.limit(...)` without
 # overriding. Individual routes can apply tighter limits via decorators.
-limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
+limiter = Limiter(key_func=get_remote_address, default_limits=[DEFAULT_RATE_LIMIT])

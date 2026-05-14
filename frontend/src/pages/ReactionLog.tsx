@@ -12,6 +12,7 @@ import {
 } from '../components/ui/select'
 import { BackLink, PageHeader, PageLayout } from '../components/shared'
 import { ModeToggle } from '../components/mode-toggle'
+import { QUERY_STALE_1_MIN } from '../lib/constants'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -233,7 +234,7 @@ function ReactionLog() {
             const res = await apiFetch('/api/reaction-log')
             return res.json() as Promise<ReactionLogResponse>
         },
-        staleTime: 60_000,
+        staleTime: QUERY_STALE_1_MIN,
     })
 
     const availableEmojis = Array.from(

@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from api.constants import GROUP_RIDES_DEFAULT_CAPACITY, GROUP_RIDES_RATE_LIMIT
 from api.dependencies import parse_int_param, require_bot, validate_ride_type
 from api.rate_limit import limiter
 from bot.core.enums import ChannelIds, JobName
@@ -23,7 +24,8 @@ class GroupRidesRequest(BaseModel):
         default=None, description="Required only when ride_type is 'message_id'"
     )
     driver_capacity: str = Field(
-        default="44444", description="String of integers representing seats per driver"
+        default=GROUP_RIDES_DEFAULT_CAPACITY,
+        description="String of integers representing seats per driver",
     )
     channel_id: str = Field(
         default=str(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)),
@@ -50,7 +52,7 @@ class GroupRidesResponse(BaseModel):
     summary="Group Rides",
     description="Automatically group people from pickup locations into cars based on driver capacity.",
 )
-@limiter.limit("10/minute")
+@limiter.limit(GROUP_RIDES_RATE_LIMIT)
 async def group_rides(request: Request, body: GroupRidesRequest):
     """
     Group rides based on ride type (Friday, Sunday, or custom message ID).

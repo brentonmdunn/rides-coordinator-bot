@@ -13,6 +13,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from api.constants import BYPASS_SESSION_TTL, CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
 from bot.core.database import AsyncSessionLocal
 from bot.repositories.user_accounts_repository import UserAccountsRepository
 from bot.services.auth_service import AuthService
@@ -26,10 +27,10 @@ BYPASS_DISCORD = os.getenv("BYPASS_DISCORD", "").lower() == "true"
 BYPASS_PASSWORD_HASH = os.getenv("BYPASS_PASSWORD", "")
 BYPASS_EMAIL = os.getenv("BYPASS_EMAIL", "bypass-emergency@local")
 
-SESSION_COOKIE = "rides_session"
-CSRF_COOKIE = "csrf_token"
+SESSION_COOKIE = SESSION_COOKIE_NAME
+CSRF_COOKIE = CSRF_COOKIE_NAME
 _IS_PROD = APP_ENV != "local"
-_COOKIE_TTL = 24 * 60 * 60  # 24 hours — shared credential, shorter TTL limits blast radius
+_COOKIE_TTL = BYPASS_SESSION_TTL  # 24 hours — shared credential, shorter TTL limits blast radius
 
 
 class BypassLoginRequest(BaseModel):

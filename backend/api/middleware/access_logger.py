@@ -13,6 +13,7 @@ from pathlib import Path
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from api.constants import ACCESS_LOG_BACKUP_COUNT, ACCESS_LOG_MAX_BYTES
 from bot.core.logger import txn_id_var
 
 # Configure access logger
@@ -28,8 +29,8 @@ ACCESS_LOG_FILE = LOG_DIR / "access.log"
 # Rotating file handler for access logs
 access_file_handler = RotatingFileHandler(
     ACCESS_LOG_FILE,
-    maxBytes=20 * 1024 * 1024,  # 20 MB (access logs can be larger)
-    backupCount=10,  # Keep more history for access logs
+    maxBytes=ACCESS_LOG_MAX_BYTES,  # 20 MB (access logs can be larger)
+    backupCount=ACCESS_LOG_BACKUP_COUNT,  # Keep more history for access logs
     encoding="utf-8",
 )
 

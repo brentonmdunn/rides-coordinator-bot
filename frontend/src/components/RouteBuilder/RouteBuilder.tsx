@@ -29,6 +29,18 @@ import '@luomus/leaflet-smooth-wheel-zoom'
 import { setupLeafletIcons } from '../MapConstants'
 
 import { PRESET_TIME_MAP, PRESET_TIMES, type TimeModeKey } from './routeBuilderConstants'
+import {
+    QUERY_STALE_5_MIN,
+    LOCATION_TOGGLE_DELAY_MS,
+    ROUTE_GENERATION_DEBOUNCE_MS,
+    MAP_PADDING_FRACTION,
+    MAP_PADDING_MIN_DEGREES,
+    ROUTE_BUILDER_STORAGE_KEY,
+    RB_PARAM_STOPS,
+    RB_PARAM_TIME_MODE,
+    RB_PARAM_LEAVE_TIME,
+    RB_PARAM_DRIVER,
+} from '../../lib/constants'
 import { useRouteGeometry } from './useRouteGeometry'
 import { formatDuration, formatTripSummary } from './routeBuilderFormat'
 
@@ -61,13 +73,13 @@ function useIsMobile(breakpoint = 640) {
 // Persistence (localStorage + URL search params)
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'routeBuilder.state.v1'
+const STORAGE_KEY = ROUTE_BUILDER_STORAGE_KEY
 
 const URL_KEYS = {
-    stops: 'rb_stops',
-    timeMode: 'rb_time_mode',
-    leaveTime: 'rb_leave_time',
-    driver: 'rb_driver',
+    stops: RB_PARAM_STOPS,
+    timeMode: RB_PARAM_TIME_MODE,
+    leaveTime: RB_PARAM_LEAVE_TIME,
+    driver: RB_PARAM_DRIVER,
 } as const
 
 const VALID_TIME_MODES: ReadonlySet<TimeModeKey> = new Set(
@@ -202,7 +214,7 @@ function RouteBuilder() {
             const res = await apiFetch(`/api/check-pickups/driver-reactions/${driverDay}`)
             return res.json()
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: QUERY_STALE_5_MIN,
     })
 
     const uniqueDrivers = driverData
@@ -373,8 +385,8 @@ function RouteBuilder() {
 
         const lats = coords.map((c) => c.lat)
         const lngs = coords.map((c) => c.lng)
-        const latPadding = (Math.max(...lats) - Math.min(...lats)) * 0.1 || 0.01
-        const lngPadding = (Math.max(...lngs) - Math.min(...lngs)) * 0.1 || 0.01
+        const latPadding = (Math.max(...lats) - Math.min(...lats)) * MAP_PADDING_FRACTION || MAP_PADDING_MIN_DEGREES
+        const lngPadding = (Math.max(...lngs) - Math.min(...lngs)) * MAP_PADDING_FRACTION || MAP_PADDING_MIN_DEGREES
 
         setMapBounds([
             [Math.min(...lats) - latPadding, Math.min(...lngs) - lngPadding],
@@ -419,7 +431,7 @@ function RouteBuilder() {
         )
         // Clear after the 0.35s bounce animation so any unrelated re-render
         // (e.g. changing the preset time) doesn't replay the animation.
-        setTimeout(() => setLastToggledLocation(null), 400)
+        setTimeout(() => setLastToggledLocation(null), LOCATION_TOGGLE_DELAY_MS)
     }
 
     const generateRoute = useCallback(async () => {
@@ -460,7 +472,7 @@ function RouteBuilder() {
             setSelectedDriver('')
             return
         }
-        const timer = setTimeout(() => generateRoute(), 300)
+        const timer = setTimeout(() => generateRoute(), ROUTE_GENERATION_DEBOUNCE_MS)
         return () => clearTimeout(timer)
     }, [selectedLocationKeys, leaveTime, generateRoute])
 
