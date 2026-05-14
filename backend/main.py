@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -14,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
+if not TOKEN:
+    logger.error("CRITICAL: TOKEN is not set")
+    sys.exit(1)
 
 
 async def main() -> None:
@@ -23,8 +27,16 @@ async def main() -> None:
     set_bot_instance(bot)
 
     async with bot:
-        await startup()
-        await load_extensions(bot)
+        try:
+            await startup()
+        except Exception:
+            logger.exception("Startup failed")
+            sys.exit(1)
+        try:
+            await load_extensions(bot)
+        except Exception:
+            logger.exception("Failed to load extensions")
+            sys.exit(1)
         await bot.start(TOKEN)
 
 
