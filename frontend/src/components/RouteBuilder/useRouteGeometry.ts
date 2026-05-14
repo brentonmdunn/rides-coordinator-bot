@@ -79,6 +79,7 @@ export function useRouteGeometry(
                             totalDuration: typeof route.duration === 'number' ? route.duration : null,
                             totalDistance: typeof route.distance === 'number' ? route.distance : null,
                             legDurations,
+                            error: null,
                         })
                     }
                 }
