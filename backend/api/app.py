@@ -10,7 +10,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -53,6 +53,7 @@ CLOUDFLARE_TEAM_DOMAIN = os.getenv("CLOUDFLARE_TEAM_DOMAIN")
 CLOUDFLARE_AUD = os.getenv("CLOUDFLARE_AUD")
 APP_ENV = os.getenv("APP_ENV", "local")
 AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "cloudflare")  # "cloudflare" | "self"
+METRICS_TOKEN = os.getenv("METRICS_TOKEN")
 
 
 @asynccontextmanager
@@ -95,6 +96,17 @@ app = FastAPI(lifespan=lifespan)
 # Expose Prometheus metrics at /metrics for observability of API latency,
 # request volume, and error rates.
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+
+@app.middleware("http")
+async def guard_metrics(request: Request, call_next) -> Response:
+    """Require Bearer token on /metrics when METRICS_TOKEN is set."""
+    if request.url.path == "/metrics" and METRICS_TOKEN:
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {METRICS_TOKEN}":
+            return Response("Unauthorized", status_code=401)
+    return await call_next(request)
+
 
 # Wire up slowapi rate limiting. The limiter must be attached to app.state and
 # the SlowAPIMiddleware installed before any per-route limits take effect.
