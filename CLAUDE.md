@@ -372,7 +372,9 @@ All run from `backend/` with `uv run invoke <task>`:
 ### Before Committing
 
 - Always run `uv run invoke format` and `uv run invoke lint` after modifying Python code.
+- Always run `uv run ty check` after modifying Python code.
 - Always run `npm run lint` after modifying frontend code.
+- Always run `npx tsc --noEmit` after modifying frontend code.
 - You do not need to ask before running these commands and fixing code based on the output.
 
 ## Development
