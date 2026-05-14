@@ -216,6 +216,7 @@ function LoadingSkeleton() {
 
 function ReactionLog() {
     const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+    const [streamError, setStreamError] = useState(false)
 
     const { data, isLoading, isError, error } = useQuery<ReactionLogResponse>({
         queryKey: ['reaction-log', filters],
@@ -247,6 +248,10 @@ function ReactionLog() {
             void queryClient.invalidateQueries({ queryKey: ['reaction-log'] })
             void queryClient.invalidateQueries({ queryKey: ['reaction-log-all-emojis'] })
         }
+        es.onerror = () => {
+            setStreamError(true)
+            es.close()
+        }
         return () => es.close()
     }, [queryClient])
 
@@ -268,6 +273,11 @@ function ReactionLog() {
                 />
             }
         >
+            {streamError && (
+                <div className="bg-warning/10 border border-warning/30 text-warning-text rounded-lg px-4 py-3 text-sm">
+                    Live feed disconnected. Refresh to reconnect.
+                </div>
+            )}
             {/* Filter bar */}
             <div className="bg-card border border-border rounded-lg p-4 space-y-4">
                 {/* Ride type buttons */}
