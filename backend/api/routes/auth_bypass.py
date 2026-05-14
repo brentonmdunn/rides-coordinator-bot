@@ -59,6 +59,9 @@ async def bypass_login(body: BypassLoginRequest) -> JSONResponse:
             logger.error(f"Bypass account '{BYPASS_EMAIL}' not found — was seeding skipped?")
             return JSONResponse({"detail": "Server misconfigured"}, status_code=500)
 
+        if account.email is None:
+            logger.error(f"Bypass account '{BYPASS_EMAIL}' has no email — was it seeded correctly?")
+            return JSONResponse({"detail": "Server misconfigured"}, status_code=500)
         session_id_plain, csrf_token = await AuthService.create_session(db_session, account.email)
 
     response = JSONResponse({"ok": True})

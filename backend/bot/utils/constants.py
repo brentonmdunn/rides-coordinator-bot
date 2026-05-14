@@ -71,7 +71,7 @@ def get_map_links() -> dict[PickupLocations, str]:
     Returns:
         Dictionary mapping PickupLocations to Google Maps URL strings.
     """
-    return {loc: get_map_url(loc) for loc in MAP_LOCATIONS}
+    return {loc: url for loc in MAP_LOCATIONS if (url := get_map_url(loc)) is not None}
 
 
 # Session / auth (bot side)

@@ -61,7 +61,7 @@ async def startup() -> None:
 
         backend = RedisBackend(redis_url)
         try:
-            await asyncio.wait_for(backend._redis.ping(), timeout=REDIS_CONNECTION_TIMEOUT)
+            await asyncio.wait_for(backend._redis.ping(), timeout=REDIS_CONNECTION_TIMEOUT)  # ty: ignore[invalid-argument-type]
             logger.info("Redis connection established")
             set_backend(backend)
         except Exception:
@@ -202,7 +202,11 @@ def attach_event_handlers(bot: Bot, send_error_fn: _SendErrorFn) -> None:
             logger.exception("Failed to send Discord error response for app command")
 
         cmd_name = interaction.command.name if interaction.command else "Unknown"
-        channel_mention = interaction.channel.mention if interaction.channel else "Unknown"
+        channel_mention = (
+            interaction.channel.mention
+            if isinstance(interaction.channel, discord.TextChannel)
+            else "Unknown"
+        )
         error_msg = (
             "**App Command Error**\n"
             f"Command: `{cmd_name}`\n"

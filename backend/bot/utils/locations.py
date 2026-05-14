@@ -71,9 +71,11 @@ def lookup_time(query: LocationQuery) -> int:
         The travel time as an integer, or raises an exception if the path is not found.
     """
     logger.debug(f"{query=}")
-    distances = {location: float("inf") for location in LOCATIONS_MATRIX}
+    distances: dict[PickupLocations | str, float] = {
+        location: float("inf") for location in LOCATIONS_MATRIX
+    }
     distances[query.start_location] = 0
-    priority_queue = [(0, query.start_location)]
+    priority_queue: list[tuple[float, PickupLocations | str]] = [(0, query.start_location)]
 
     while priority_queue:
         current_distance, current_location = heapq.heappop(priority_queue)
@@ -82,7 +84,7 @@ def lookup_time(query: LocationQuery) -> int:
             continue
 
         if current_location == query.end_location:
-            return distances[query.end_location]
+            return int(distances[query.end_location])
 
         for neighbor, time in LOCATIONS_MATRIX.get(current_location, []):
             distance = current_distance + time

@@ -40,6 +40,10 @@ class Admin(commands.Cog):
         """
         await interaction.response.defer()
 
+        if not interaction.guild:
+            await interaction.followup.send("This command must be used in a server.")
+            return
+
         try:
             success_count, failed_users = await AdminService.assign_roles_from_csv(
                 role, discord_usernames, interaction.guild
@@ -90,6 +94,14 @@ class Admin(commands.Cog):
             discord_usernames: Space-separated Discord usernames.
         """
         await interaction.response.defer()
+
+        if not interaction.guild:
+            await interaction.followup.send("This command must be used in a server.")
+            return
+
+        if not isinstance(interaction.channel, discord.TextChannel):
+            await interaction.followup.send("This command must be used in a text channel.")
+            return
 
         try:
             success_count, failed_users = await AdminService.add_users_to_channel(

@@ -17,10 +17,12 @@ This project contains both a Discord bot (Python) and a frontend web UI.
 
 - Use `uv` to run Python or any Python-associated libraries (e.g., `uv run pytest`)
 - Use **Ruff** for linting and formatting
+- Use **ty** for Python type checking (`uv run ty check`)
 - After modifying any Python code, always run:
   ```
   uv run invoke format
   uv run invoke lint
+  uv run ty check
   ```
 
 ---
@@ -361,6 +363,7 @@ All run from `backend/` with `uv run invoke <task>`:
 - `uv run invoke lint` — Run Ruff linter
 - `uv run invoke format` — Format code with Ruff
 - `uv run invoke fix` — Autofix lint errors
+- `uv run invoke typecheck` — Run ty type checker
 - `uv run invoke all` — Run lint + fix + format
 - `uv run invoke test` — Run pytest
 - `uv run invoke clean` — Remove dev commands
@@ -372,7 +375,9 @@ All run from `backend/` with `uv run invoke <task>`:
 ### Before Committing
 
 - Always run `uv run invoke format` and `uv run invoke lint` after modifying Python code.
+- Always run `uv run ty check` after modifying Python code.
 - Always run `npm run lint` after modifying frontend code.
+- Always run `npx tsc --noEmit` after modifying frontend code.
 - You do not need to ask before running these commands and fixing code based on the output.
 
 ## Development

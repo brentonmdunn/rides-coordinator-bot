@@ -195,6 +195,11 @@ async def discord_callback(
                 logger.info(f"Login rejected: not invited (discord_username={discord_username})")
                 return _login_error_redirect("not_invited")
 
+            if account.email is None:
+                logger.error(
+                    "Account has no email after match (discord_username=%s)", discord_username
+                )
+                return _login_error_redirect("server_error")
             session_id_plain, csrf_token = await AuthService.create_session(
                 db_session, account.email
             )

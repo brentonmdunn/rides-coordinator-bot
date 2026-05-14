@@ -5,7 +5,7 @@ Data access layer for server-side session management.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,13 +74,13 @@ class AuthSessionsRepository:
         """Delete all sessions for a given email. Returns the number of rows removed."""
         result = await session.execute(delete(AuthSession).where(AuthSession.email == email))
         await session.commit()
-        return result.rowcount
+        return result.rowcount or 0
 
     @staticmethod
     async def delete_expired(session: AsyncSession) -> int:
         """Delete all expired sessions and return the number of rows removed."""
         result = await session.execute(
-            delete(AuthSession).where(AuthSession.expires_at < datetime.utcnow())
+            delete(AuthSession).where(AuthSession.expires_at < datetime.now(UTC))
         )
         await session.commit()
-        return result.rowcount
+        return result.rowcount or 0

@@ -1,6 +1,7 @@
 """Group Rides API Routes."""
 
 import logging
+from typing import cast
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -89,7 +90,9 @@ async def group_rides(request: Request, body: GroupRidesRequest):
         )
 
         return GroupRidesResponse(
-            success=True, summary=result.get("summary"), groupings=result.get("groupings")
+            success=True,
+            summary=cast(str | None, result.get("summary")),
+            groupings=cast(list[str] | None, result.get("groupings")),
         )
 
     except ValueError as e:

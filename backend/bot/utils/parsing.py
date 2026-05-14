@@ -95,8 +95,10 @@ def get_message_and_embed_content(
             if embed.description:
                 text_blobs.append(embed.description.lower())
             for field in embed.fields:
-                text_blobs.append(field.name.lower())
-                text_blobs.append(field.value.lower())
+                if field.name:
+                    text_blobs.append(field.name.lower())
+                if field.value:
+                    text_blobs.append(field.value.lower())
 
     return " ".join(text_blobs)
 

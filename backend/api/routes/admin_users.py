@@ -160,7 +160,9 @@ async def update_user_role(email: str, body: UpdateRoleRequest, request: Request
             detail=f"role must be one of: {', '.join(valid_roles)}",
         )
 
-    updated = await UserAccountsService.update_role(email, body.role, current_user_email)
+    updated = await UserAccountsService.update_role(
+        email, AccountRoles(body.role), current_user_email
+    )
     if not updated:
         raise HTTPException(status_code=404, detail=f"User '{email}' not found")
 

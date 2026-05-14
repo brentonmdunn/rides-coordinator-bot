@@ -114,4 +114,4 @@ class FeatureFlagsRepository:
         )
         stmt = select(FeatureFlagsModel).order_by(order_logic, FeatureFlagsModel.feature)
         result = await session.execute(stmt)
-        return result.scalars().all()
+        return list(result.scalars().all())

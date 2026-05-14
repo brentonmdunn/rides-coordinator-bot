@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -10,7 +11,7 @@ from bot.services.locations_service import LocationsService
 async def test_pickup_location_found():
     """Should list people when get_location returns results."""
     svc = LocationsService(bot=None)
-    svc.get_location = AsyncMock(return_value=[("Alice", "Revelle"), ("Bob", "ERC")])
+    svc.get_location: Any = AsyncMock(return_value=[("Alice", "Revelle"), ("Bob", "ERC")])
 
     result = await svc.pickup_location("Alice")
 
@@ -23,7 +24,7 @@ async def test_pickup_location_found():
 async def test_pickup_location_none():
     """Should handle no results gracefully."""
     svc = LocationsService(bot=None)
-    svc.get_location = AsyncMock(return_value=[])
+    svc.get_location: Any = AsyncMock(return_value=[])
 
     result = await svc.pickup_location("Unknown")
     assert result == "No people found."
@@ -66,15 +67,16 @@ async def test_sync_locations(monkeypatch):
 @pytest.mark.asyncio
 async def test_sort_locations_with_cache_and_miss():
     """Should call sync_locations() on cache miss and then resolve names."""
-    mock_person_hit = MagicMock(name="PersonHit", location="Revelle")
+    # _sort_locations uses person[0] (name) and person[1] (location), so use tuples
+    mock_person_hit = ("PersonHit", "Revelle")
     mock_person_miss = None
-    mock_person_after_sync = MagicMock(name="PersonMiss", location="ERC")
+    mock_person_after_sync = ("PersonMiss", "ERC")
 
     svc = LocationsService(bot=None)
-    svc.get_name_location_no_sync = AsyncMock(
+    svc.get_name_location_no_sync: Any = AsyncMock(
         side_effect=[mock_person_hit, mock_person_miss, mock_person_after_sync]
     )
-    svc.sync_locations = AsyncMock()
+    svc.sync_locations: Any = AsyncMock()
 
     result, found = await svc._sort_locations({"u_hit", "u_miss"})
 
@@ -125,16 +127,16 @@ async def test_list_locations_adds_non_discord_pickups():
     ]
 
     svc = LocationsService(bot=None)
-    svc.repo = mock_repo
-    svc.get_name_location_no_sync = AsyncMock(
-        return_value=MagicMock(name="Alice", location="Revelle")
+    svc.repo: Any = mock_repo  # type: ignore[attr-defined]
+    svc.get_name_location_no_sync: Any = AsyncMock(
+        return_value=("Alice", "Revelle")  # _sort_locations uses person[0]/person[1]
     )
 
     result = await svc._sort_locations({"Alice"})
     locations_people, _ = result
 
     # manually call the post-processing logic (simulating what list_locations does)
-    pickups = await svc.repo.get_non_discord_pickups(JobName.FRIDAY)
+    pickups = await mock_repo.get_non_discord_pickups(JobName.FRIDAY)
     for pickup in pickups:
         locations_people[pickup.location].append((pickup.name, None))
 

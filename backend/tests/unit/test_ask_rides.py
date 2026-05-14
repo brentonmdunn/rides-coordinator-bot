@@ -105,5 +105,6 @@ class TestMakeSundayMsg:
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/26")
     def test_message_contains_emojis(self, mock_date, mock_wildcard):
         result = _make_sunday_msg()
+        assert result is not None
         assert "🍔" in result
         assert "🏠" in result

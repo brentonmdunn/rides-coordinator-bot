@@ -163,7 +163,8 @@ class GroupRides(commands.Cog):
         try:
             drive_formatted = self.service.make_route(locations, leave_time)
             await interaction.response.send_message(drive_formatted)
-            await interaction.channel.send("```\n" + drive_formatted + "\n```")
+            if isinstance(interaction.channel, discord.TextChannel):
+                await interaction.channel.send("```\n" + drive_formatted + "\n```")
         except ValueError as e:
             await interaction.response.send_message(str(e))
 

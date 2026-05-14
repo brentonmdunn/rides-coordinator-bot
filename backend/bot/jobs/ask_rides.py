@@ -9,7 +9,6 @@ import os
 from collections.abc import Callable
 
 import discord
-from discord.abc import Messageable
 from discord.ext.commands import Bot
 
 from bot.core.database import AsyncSessionLocal
@@ -134,7 +133,7 @@ def _make_sunday_msg() -> str | None:
         f"React to this message if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10am)!\n\n"
         "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
         "🏠 = ride to church and back to campus/apt (arrive back ~1:00pm)\n"
-        f"✳️ = something else (please DM {ping_user(os.getenv('MAIN_RIDES_COORD_USER_ID'))})"
+        f"✳️ = something else (please DM {ping_user(int(os.getenv('MAIN_RIDES_COORD_USER_ID', '0')))})"
     )
 
 
@@ -153,7 +152,7 @@ def _format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
-RIDE_TYPES_CONFIG = {
+RIDE_TYPES_CONFIG: dict[JobName, dict[str, str | discord.Color]] = {
     JobName.FRIDAY: {
         "title": "Rides to Friday Fellowship",
         "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
@@ -189,25 +188,30 @@ async def _ask_rides_template(
     """
     Helper method for ask rides jobs.
     """
-    channel: Messageable | None = bot.get_channel(channel_id)
-    if not channel:
+    raw_channel = bot.get_channel(channel_id)
+    if not isinstance(raw_channel, discord.TextChannel):
         logger.warning(f"Channel not found with ID: {channel_id}")
         return None
+    channel: discord.TextChannel = raw_channel
 
     message: str | None = make_message()
     if not message:
         logger.error("make_message() returned None, skipping message send.")
         return None
 
-    title = DEFAULT_RIDE_TITLE
-    color = DEFAULT_RIDE_COLOR
+    title: str = DEFAULT_RIDE_TITLE
+    color: discord.Color = DEFAULT_RIDE_COLOR
 
     message_lower = message.lower()
 
     for keyword, config in RIDE_TYPES_CONFIG.items():
         if keyword in message_lower:
-            title = config["title"]
-            color = config["color"]
+            cfg_title = config["title"]
+            cfg_color = config["color"]
+            if isinstance(cfg_title, str):
+                title = cfg_title
+            if isinstance(cfg_color, discord.Color):
+                color = cfg_color
             break
 
     embed = discord.Embed(
@@ -269,13 +273,11 @@ async def run_ask_rides_sun(
         return
     if not await _should_send_ask_rides_sun():
         logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
-        channel: Messageable | None = bot.get_channel(
-            ChannelIds.SERVING__DRIVER_BOT_SPAM,
-        )
-        if not channel:
+        wildcard_channel = bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+        if not isinstance(wildcard_channel, discord.TextChannel):
             logger.info("Error channel not found")
             return
-        await channel.send(
+        await wildcard_channel.send(
             "Widlcard detected on <https://www.lsccsd.com/calendar> so sunday rides were not sent."
         )
         return
@@ -319,8 +321,8 @@ async def run_ask_rides_header(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Run the job to send the ask rides header."""
-    channel: Messageable | None = bot.get_channel(channel_id)
-    if not channel:
+    channel = bot.get_channel(channel_id)
+    if not isinstance(channel, discord.TextChannel):
         logger.info("Error channel not found")
         return
 
@@ -459,7 +461,7 @@ def get_next_run_time() -> str:
 
 
 async def find_message_in_history(
-    messages: list[discord.Message], job_type: str, current_week_start
+    messages: list[discord.Message], job_type: JobName, current_week_start
 ) -> dict | None:
     """
     Find the most recent message for a job type in the provided messages list.
@@ -478,7 +480,8 @@ async def find_message_in_history(
         if message.created_at.astimezone(current_week_start.tzinfo) < current_week_start:
             continue
 
-        if message.embeds and keyword.lower() in message.embeds[0].description.lower():
+        description = message.embeds[0].description if message.embeds else None
+        if description and keyword.lower() in description.lower():
             # Found a matching message from current week
             reactions_dict = {}
             for reaction in message.reactions:
@@ -536,7 +539,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
     # Fetch last messages - OPTIMIZED: Fetch history once
     try:
         channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        if channel:
+        if isinstance(channel, discord.TextChannel):
             current_week_start = get_current_cycle_start()
 
             # Fetch recent messages (last 20)

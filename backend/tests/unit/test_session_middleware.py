@@ -1,6 +1,6 @@
 """Unit tests for session_cookie_middleware."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -24,11 +24,11 @@ def _make_auth_session(
     s.email = email
     s.csrf_token = csrf_token
     s.expires_at = (
-        datetime.utcnow() - timedelta(seconds=1)
+        datetime.now(UTC) - timedelta(seconds=1)
         if expired
-        else datetime.utcnow() + timedelta(days=30)
+        else datetime.now(UTC) + timedelta(days=30)
     )
-    s.last_activity_at = datetime.utcnow()
+    s.last_activity_at = datetime.now(UTC)
     return s
 
 

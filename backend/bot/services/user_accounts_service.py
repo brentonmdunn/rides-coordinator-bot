@@ -87,7 +87,9 @@ class UserAccountsService:
             return await UserAccountsRepository.get_all_accounts(session)
 
     @staticmethod
-    async def update_role(email: str, role: str, role_edited_by: str = "") -> UserAccount | None:
+    async def update_role(
+        email: str, role: AccountRoles, role_edited_by: str = ""
+    ) -> UserAccount | None:
         """Update a user's role. Returns the updated account, or None if not found."""
         async with AsyncSessionLocal() as session:
             return await UserAccountsRepository.update_role(

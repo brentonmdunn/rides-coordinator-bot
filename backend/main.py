@@ -37,6 +37,7 @@ async def main() -> None:
         except Exception:
             logger.exception("Failed to load extensions")
             sys.exit(1)
+        assert TOKEN is not None
         await bot.start(TOKEN)
 
 
