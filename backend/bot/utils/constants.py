@@ -72,3 +72,44 @@ def get_map_links() -> dict[PickupLocations, str]:
         Dictionary mapping PickupLocations to Google Maps URL strings.
     """
     return {loc: get_map_url(loc) for loc in MAP_LOCATIONS}
+
+
+# Session / auth (bot side)
+SESSION_TTL_DAYS = 30
+SESSION_TOUCH_THROTTLE_MINUTES = 5
+
+# LLM
+GEMINI_MODEL = "gemini-2.5-flash"
+LLM_RETRY_ATTEMPTS = 4
+LLM_RETRY_WAIT_SECONDS = 5
+LLM_JSON_CODEBOX_START_OFFSET = 8
+LLM_JSON_CODEBOX_END_OFFSET = -3
+
+# Ride grouping
+RIDE_GROUPING_PICKUP_ADJUSTMENT = 1
+
+# Ride coverage
+COVERAGE_STATUS_DEFAULT_HOURS = 24
+
+# Ask rides job
+ASK_RIDES_ACTIVE_CACHE_TTL = 60  # seconds (during Wednesday active period)
+ASK_RIDES_HOURLY_CACHE_TTL = 60 * 60  # seconds (during active hours)
+ASK_RIDES_OFF_HOURS_CACHE_TTL = 7 * 60 * 60  # seconds (off-hours)
+ASK_RIDES_MESSAGE_HISTORY_LIMIT = 20
+
+# Cache
+CACHE_DEFAULT_MAX_SIZE = 128
+REACTION_CACHE_ACTIVE_TTL = 65 * 60  # 65 minutes
+REACTION_CACHE_OFF_HOURS_TTL = 7 * 60 * 60  # 7 hours
+
+# Time helpers
+DAYS_IN_WEEK = 7
+ACTIVE_HOURS_START = 7  # 7 AM
+ACTIVE_HOURS_END = 1  # 1 AM next day
+RIDE_CYCLE_START_HOUR = 12  # noon
+
+# Lifecycle
+REDIS_CONNECTION_TIMEOUT = 5.0
+
+# Default group rides capacity
+GROUP_RIDES_DEFAULT_CAPACITY = "44444"

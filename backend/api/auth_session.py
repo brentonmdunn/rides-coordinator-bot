@@ -13,6 +13,7 @@ import os
 
 from fastapi import Request, Response
 
+from api.constants import CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from bot.core.database import AsyncSessionLocal
 from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
 from bot.services.auth_service import AuthService
@@ -23,8 +24,7 @@ APP_ENV = os.getenv("APP_ENV", "local")
 # Set LOCAL_USE_DISCORD_OAUTH=true to test real Discord OAuth flow in local dev.
 # When false (default), all requests get the dev@example.com mock user.
 LOCAL_USE_DISCORD_OAUTH = os.getenv("LOCAL_USE_DISCORD_OAUTH", "false").lower() == "true"
-SESSION_COOKIE_NAME = "rides_session"
-CSRF_HEADER = "X-CSRF-Token"
+CSRF_HEADER = CSRF_HEADER_NAME
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 # Paths that don't require a session (OAuth flow + health check).

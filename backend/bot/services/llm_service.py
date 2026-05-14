@@ -8,6 +8,13 @@ import tenacity
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from bot.core.schemas import LLMOutputError, LLMOutputNominal
+from bot.utils.constants import (
+    GEMINI_MODEL,
+    LLM_JSON_CODEBOX_END_OFFSET,
+    LLM_JSON_CODEBOX_START_OFFSET,
+    LLM_RETRY_ATTEMPTS,
+    LLM_RETRY_WAIT_SECONDS,
+)
 from bot.utils.genai.prompt import (
     CUSTOM_INSTRUCTIONS,
     GROUP_RIDES_PROMPT,
@@ -16,10 +23,6 @@ from bot.utils.genai.prompt import (
 )
 
 logger = logging.getLogger(__name__)
-
-# LLM_MODEL = "gemini-2.5-pro"
-LLM_MODEL = "gemini-2.5-flash"
-NUM_RETRY_ATTEMPTS = 4
 
 
 def log_retry_attempt(retry_state):
@@ -45,11 +48,11 @@ class LLMService:
 
     def __init__(self):
         """Initialize the LLMService."""
-        self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
+        self.llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
 
     @tenacity.retry(
-        stop=tenacity.stop_after_attempt(NUM_RETRY_ATTEMPTS),
-        wait=tenacity.wait_fixed(5),
+        stop=tenacity.stop_after_attempt(LLM_RETRY_ATTEMPTS),
+        wait=tenacity.wait_fixed(LLM_RETRY_WAIT_SECONDS),
         retry=tenacity.retry_if_exception_type(Exception),
         before_sleep=log_retry_attempt,
     )
@@ -122,10 +125,8 @@ class LLMService:
 
             # Original logic fallback
             if "json" in ai_response.content:
-                codebox_beginning_idx = 8
-                codebox_ending_idx = -3
                 llm_result = json.loads(
-                    ai_response.content[codebox_beginning_idx:codebox_ending_idx]
+                    ai_response.content[LLM_JSON_CODEBOX_START_OFFSET:LLM_JSON_CODEBOX_END_OFFSET]
                 )
             else:
                 llm_result = json.loads(ai_response.content)

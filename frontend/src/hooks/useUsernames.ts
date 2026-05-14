@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
+import { QUERY_STALE_5_MIN } from '../lib/constants'
 
 export interface UsernameEntry {
     username: string
@@ -14,6 +15,6 @@ export function useUsernames() {
             const data = await res.json()
             return data.users as UsernameEntry[]
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: QUERY_STALE_5_MIN,
     })
 }

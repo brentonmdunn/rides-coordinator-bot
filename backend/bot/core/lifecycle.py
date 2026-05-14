@@ -24,6 +24,7 @@ from bot.core.database import (
 )
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.utils.constants import REDIS_CONNECTION_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ async def startup() -> None:
 
         backend = RedisBackend(redis_url)
         try:
-            await asyncio.wait_for(backend._redis.ping(), timeout=5.0)
+            await asyncio.wait_for(backend._redis.ping(), timeout=REDIS_CONNECTION_TIMEOUT)
             logger.info("Redis connection established")
             set_backend(backend)
         except Exception:

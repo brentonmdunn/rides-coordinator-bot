@@ -7,8 +7,7 @@ from rapidfuzz import fuzz, process
 
 from bot.core.enums import PickupLocations
 from bot.core.schemas import LocationQuery
-from bot.services.ride_grouping import PICKUP_ADJUSTMENT
-from bot.utils.constants import get_map_url
+from bot.utils.constants import RIDE_GROUPING_PICKUP_ADJUSTMENT, get_map_url
 from bot.utils.locations import lookup_time
 from bot.utils.parsing import parse_time
 
@@ -88,7 +87,7 @@ class RouteService:
         reversed_locations = list(reversed(locations_list_actual))
         for idx, location in enumerate(reversed_locations):
             if idx != 0:
-                time_between = PICKUP_ADJUSTMENT + lookup_time(
+                time_between = RIDE_GROUPING_PICKUP_ADJUSTMENT + lookup_time(
                     LocationQuery(start_location=location, end_location=reversed_locations[idx - 1])
                 )
                 logger.debug(f"{time_between=}")

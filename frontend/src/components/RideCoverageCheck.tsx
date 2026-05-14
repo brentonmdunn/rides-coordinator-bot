@@ -7,6 +7,7 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import { Button } from './ui/button'
 import { RefreshCw, MoreVertical, CloudDownload, Check } from 'lucide-react'
 import { getAutomaticDay } from '../lib/utils'
+import { QUERY_STALE_5_MIN, COVERAGE_PERCENTAGE_MULTIPLIER } from '../lib/constants'
 import { CoverageSkeleton } from './LoadingSkeleton'
 import { RefreshIconButton, SectionCard } from './shared'
 
@@ -30,7 +31,7 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
             return response.json()
         },
         // Cache data for 5 minutes to prevent excessive Discord API calls
-        staleTime: 5 * 60 * 1000,
+        staleTime: QUERY_STALE_5_MIN,
         // Disable aggressive refetching to avoid rate limits
         refetchOnWindowFocus: false,
         refetchOnMount: false,
@@ -54,7 +55,7 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
     }
 
     const percentAssigned = coverage.total > 0
-        ? Math.round((coverage.assigned / coverage.total) * 100)
+        ? Math.round((coverage.assigned / coverage.total) * COVERAGE_PERCENTAGE_MULTIPLIER)
         : 0
 
     return (
@@ -137,7 +138,7 @@ function RideCoverageCheck() {
             const response = await apiFetch(`/api/check-pickups/${currentRideType}`)
             return response.json()
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: QUERY_STALE_5_MIN,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         refetchOnReconnect: false,

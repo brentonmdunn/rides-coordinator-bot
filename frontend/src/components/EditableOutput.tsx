@@ -1,6 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import { Button } from './ui/button'
 import type { UsernameEntry } from '../hooks/useUsernames'
+import {
+    COPY_FEEDBACK_MS,
+    MENTION_DROPDOWN_MAX_HEIGHT,
+    MENTION_DROPDOWN_LINE_HEIGHT_FALLBACK,
+    MENTION_DROPDOWN_OFFSET,
+} from '../lib/constants'
 
 interface EditableOutputProps {
     value: string
@@ -101,8 +107,8 @@ function measureAtPosition(
 
     const textareaRect = textarea.getBoundingClientRect()
     const containerRect = container.getBoundingClientRect()
-    const lineHeight = parseFloat(cs.lineHeight) || 20
-    const dropdownMaxH = 152
+    const lineHeight = parseFloat(cs.lineHeight) || MENTION_DROPDOWN_LINE_HEIGHT_FALLBACK
+    const dropdownMaxH = MENTION_DROPDOWN_MAX_HEIGHT
 
     // Subtract scrollTop because the textarea may have scrolled.
     const relTop = textareaRect.top - containerRect.top + caretTop - textarea.scrollTop
@@ -110,9 +116,9 @@ function measureAtPosition(
 
     const spaceBelow = containerRect.height - relTop - lineHeight
     if (spaceBelow >= dropdownMaxH || spaceBelow >= relTop) {
-        return { top: relTop + lineHeight + 4, left: relLeft }
+        return { top: relTop + lineHeight + MENTION_DROPDOWN_OFFSET, left: relLeft }
     }
-    return { top: relTop - dropdownMaxH - 4, left: relLeft }
+    return { top: relTop - dropdownMaxH - MENTION_DROPDOWN_OFFSET, left: relLeft }
 }
 
 function EditableOutput({
@@ -276,7 +282,7 @@ function EditableOutput({
                     </Button>
                 )}
                 <Button
-                    onClick={() => { onCopy(); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+                    onClick={() => { onCopy(); setCopied(true); setTimeout(() => setCopied(false), COPY_FEEDBACK_MS) }}
                     size="sm"
                     variant={copied ? 'default' : 'outline'}
                     className={`h-8 px-2 text-xs bg-card hover:bg-muted ${

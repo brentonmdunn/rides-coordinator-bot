@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
+import { UPCOMING_DATES_PAGE_SIZE } from '../../lib/constants'
 import { Button } from '../ui/button'
 import {
     Dialog,
@@ -35,7 +36,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
     const { data: upcomingDates, isLoading: datesLoading } = useQuery<{ dates: UpcomingDate[]; has_more: boolean }>({
         queryKey: ['upcomingDates', jobName, dateOffset],
         queryFn: async () => {
-            const response = await apiFetch(`/api/ask-rides/upcoming-dates/${jobName}?count=4&offset=${dateOffset}`)
+            const response = await apiFetch(`/api/ask-rides/upcoming-dates/${jobName}?count=${UPCOMING_DATES_PAGE_SIZE}&offset=${dateOffset}`)
             return response.json()
         },
         enabled: showModal,
@@ -123,7 +124,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    onClick={() => setDateOffset((prev) => Math.max(0, prev - 4))}
+                                    onClick={() => setDateOffset((prev) => Math.max(0, prev - UPCOMING_DATES_PAGE_SIZE))}
                                     disabled={dateOffset === 0}
                                     aria-label="Previous dates"
                                 >
@@ -135,7 +136,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    onClick={() => setDateOffset((prev) => prev + 4)}
+                                    onClick={() => setDateOffset((prev) => prev + UPCOMING_DATES_PAGE_SIZE)}
                                     aria-label="Next dates"
                                 >
                                     →

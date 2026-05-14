@@ -21,6 +21,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.auth import cloudflare_access_middleware
 from api.auth_session import session_cookie_middleware
+from api.constants import CORS_LOCALHOST_5173, CORS_LOCALHOST_5174
 from api.middleware.access_logger import AccessLogMiddleware
 from api.rate_limit import limiter
 from api.routes.admin_users import router as admin_users_router
@@ -123,7 +124,7 @@ logger.info("Access logging middleware enabled")
 if APP_ENV == "local":
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:5174"],  # Vite dev server
+        allow_origins=[CORS_LOCALHOST_5173, CORS_LOCALHOST_5174],  # Vite dev server
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

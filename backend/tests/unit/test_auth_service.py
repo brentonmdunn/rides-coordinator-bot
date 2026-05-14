@@ -9,7 +9,8 @@ from sqlalchemy.exc import IntegrityError
 
 from bot.core.enums import AccountRoles
 from bot.core.models import AuthSession, UserAccount
-from bot.services.auth_service import TOUCH_THROTTLE_MINUTES, AuthService, _hash_token
+from bot.services.auth_service import AuthService, _hash_token
+from bot.utils.constants import SESSION_TOUCH_THROTTLE_MINUTES
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -355,7 +356,7 @@ async def test_get_session_expired_deletes_and_returns_none():
 
 @pytest.mark.asyncio
 async def test_touch_session_slides_expiry_when_stale():
-    old_activity = datetime.utcnow() - timedelta(minutes=TOUCH_THROTTLE_MINUTES + 1)
+    old_activity = datetime.utcnow() - timedelta(minutes=SESSION_TOUCH_THROTTLE_MINUTES + 1)
     auth_session = _make_session(last_activity_at=old_activity)
     session = AsyncMock()
 

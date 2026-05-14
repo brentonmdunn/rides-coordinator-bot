@@ -230,7 +230,9 @@ class TestCalculatePickupTime:
     sample_route_so_far = [[p_warren]]  # noqa
 
     @patch("bot.services.ride_grouping.lookup_time")
-    @patch("bot.services.ride_grouping.PICKUP_ADJUSTMENT", 2)  # Mock the constant to be 2 minutes
+    @patch(
+        "bot.services.ride_grouping.RIDE_GROUPING_PICKUP_ADJUSTMENT", 2
+    )  # Mock the constant to be 2 minutes
     def test_simple_calculation(self, mock_lookup_time):
         """Should correctly calculate a new pickup time by subtracting travel and adjustment time."""
         # Arrange: Mock the travel time between Innovation (the stop we are calculating)

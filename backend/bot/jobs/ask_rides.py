@@ -31,6 +31,12 @@ from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
 from bot.utils.checks import feature_flag_enabled
+from bot.utils.constants import (
+    ASK_RIDES_ACTIVE_CACHE_TTL,
+    ASK_RIDES_HOURLY_CACHE_TTL,
+    ASK_RIDES_MESSAGE_HISTORY_LIMIT,
+    ASK_RIDES_OFF_HOURS_CACHE_TTL,
+)
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import (
     get_current_cycle_start,
@@ -89,12 +95,12 @@ def _get_dynamic_ttl() -> int:
 
     # Wednesday is weekday 2 (0=Monday) — extra-short TTL around message send time
     if now.weekday() == 2 and 11 <= now.hour < 13:
-        return 60  # Short TTL during active period
+        return ASK_RIDES_ACTIVE_CACHE_TTL  # Short TTL during active period
 
     if is_active_hours():
-        return 60 * 60  # 1 hour during active hours
+        return ASK_RIDES_HOURLY_CACHE_TTL  # 1 hour during active hours
 
-    return 7 * 60 * 60  # 7 hours during off-hours
+    return ASK_RIDES_OFF_HOURS_CACHE_TTL  # 7 hours during off-hours
 
 
 def _make_wednesday_msg() -> str | None:
@@ -534,7 +540,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
             current_week_start = get_current_cycle_start()
 
             # Fetch recent messages (last 20)
-            messages = [msg async for msg in channel.history(limit=20)]
+            messages = [msg async for msg in channel.history(limit=ASK_RIDES_MESSAGE_HISTORY_LIMIT)]
 
             friday_last_msg = await find_message_in_history(
                 messages, JobName.FRIDAY, current_week_start

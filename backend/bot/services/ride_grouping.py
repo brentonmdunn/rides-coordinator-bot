@@ -5,12 +5,10 @@ from datetime import datetime, timedelta
 
 from bot.core.enums import PickupLocations
 from bot.core.schemas import LocationQuery, Passenger
-from bot.utils.constants import get_map_url
+from bot.utils.constants import RIDE_GROUPING_PICKUP_ADJUSTMENT, get_map_url
 from bot.utils.locations import lookup_time
 
 logger = logging.getLogger(__name__)
-
-PICKUP_ADJUSTMENT = 1
 
 LocationsPeopleType = dict[str, list[tuple[str, str]]]
 PassengersByLocation = dict[PickupLocations, list[Passenger]]
@@ -100,7 +98,7 @@ def calculate_pickup_time(
     Returns:
         datetime.time: The calculated pickup time.
     """
-    time_between = PICKUP_ADJUSTMENT + lookup_time(
+    time_between = RIDE_GROUPING_PICKUP_ADJUSTMENT + lookup_time(
         LocationQuery(
             start_location=grouped_by_location[len(grouped_by_location) - offset][
                 0

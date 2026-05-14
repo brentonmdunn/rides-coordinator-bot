@@ -3,6 +3,7 @@ import { apiFetch } from '../lib/api'
 import type { RideCoverage } from '../types'
 import { AlertTriangle } from 'lucide-react'
 import { isFridayWarningWindow, isSundayWarningWindow } from '../lib/utils'
+import { QUERY_STALE_5_MIN } from '../lib/constants'
 
 function RideCoverageWarning() {
     // Check Friday ride coverage
@@ -12,7 +13,7 @@ function RideCoverageWarning() {
             const response = await apiFetch('/api/check-pickups/friday')
             return response.json()
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: QUERY_STALE_5_MIN,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         refetchOnReconnect: false,
@@ -25,7 +26,7 @@ function RideCoverageWarning() {
             const response = await apiFetch('/api/check-pickups/sunday')
             return response.json()
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: QUERY_STALE_5_MIN,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
         refetchOnReconnect: false,
