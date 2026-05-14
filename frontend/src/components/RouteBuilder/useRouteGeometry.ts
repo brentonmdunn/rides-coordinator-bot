@@ -10,6 +10,8 @@ export interface RouteGeometryResult {
     totalDistance: number | null
     /** Per-leg durations in seconds (length === selectedLocationKeys.length - 1). */
     legDurations: number[]
+    /** Non-null when the route fetch failed. */
+    error: string | null
 }
 
 const EMPTY_RESULT: RouteGeometryResult = {
@@ -17,6 +19,7 @@ const EMPTY_RESULT: RouteGeometryResult = {
     totalDuration: null,
     totalDistance: null,
     legDurations: [],
+    error: null,
 }
 
 /**
@@ -30,6 +33,7 @@ export function useRouteGeometry(
     getLocationValue: (key: string) => string
 ): RouteGeometryResult {
     const [result, setResult] = useState<RouteGeometryResult>(EMPTY_RESULT)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         if (!locationsData || selectedLocationKeys.length < 2) {
@@ -75,11 +79,15 @@ export function useRouteGeometry(
                             totalDuration: typeof route.duration === 'number' ? route.duration : null,
                             totalDistance: typeof route.distance === 'number' ? route.distance : null,
                             legDurations,
+                            error: null,
                         })
                     }
                 }
             } catch (err) {
                 console.error('Failed to fetch route geometry', err)
+                if (isMounted) {
+                    setError('Failed to load route. Check your connection and try again.')
+                }
             }
         }
 
@@ -90,5 +98,5 @@ export function useRouteGeometry(
         }
     }, [selectedLocationKeys, locationsData, getLocationValue])
 
-    return result
+    return { ...result, error }
 }

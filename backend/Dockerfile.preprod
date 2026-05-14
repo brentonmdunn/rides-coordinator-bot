@@ -46,5 +46,8 @@ ENV GOOGLE_API_KEY=""
 # Expose port
 EXPOSE 7999
 
-# Run the application
+# Run migrations then start the application
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "-m", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "7999"]

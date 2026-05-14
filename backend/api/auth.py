@@ -7,6 +7,7 @@ and role-based access control dependencies.
 
 import logging
 import os
+import time
 from collections.abc import Callable
 
 import httpx
@@ -24,28 +25,31 @@ CLOUDFLARE_TEAM_DOMAIN = os.getenv("CLOUDFLARE_TEAM_DOMAIN")
 CLOUDFLARE_AUD = os.getenv("CLOUDFLARE_AUD")
 APP_ENV = os.getenv("APP_ENV", "local")
 
-# Cache for Cloudflare public keys
+# Cache for Cloudflare public keys — refreshed every hour
 _cloudflare_keys = None
+_cloudflare_keys_fetched_at: float = 0.0
+_CLOUDFLARE_KEYS_TTL = 3600.0
 
 
 async def get_cloudflare_keys():
     """
-    Fetch and cache public keys from Cloudflare.
+    Fetch and cache public keys from Cloudflare. Refreshes every hour.
 
     Returns:
         List of public keys or empty list if fetch fails.
     """
-    global _cloudflare_keys
-    if _cloudflare_keys is None:
+    global _cloudflare_keys, _cloudflare_keys_fetched_at
+    if _cloudflare_keys is None or time.time() - _cloudflare_keys_fetched_at > _CLOUDFLARE_KEYS_TTL:
         if not CLOUDFLARE_TEAM_DOMAIN:
             logger.warning("CLOUDFLARE_TEAM_DOMAIN environment variable is not set")
             return []
         url = f"https://{CLOUDFLARE_TEAM_DOMAIN}/cdn-cgi/access/certs"
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(url)
                 resp.raise_for_status()
                 _cloudflare_keys = resp.json()["keys"]
+                _cloudflare_keys_fetched_at = time.time()
                 logger.info("Successfully fetched Cloudflare public keys")
         except Exception:
             logger.exception(f"Failed to fetch Cloudflare keys from {url}")

@@ -6,6 +6,7 @@ Main FastAPI application with Discord bot integration and Cloudflare authenticat
 
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -70,9 +71,10 @@ async def lifespan(app: FastAPI):
             logger.info("Auth provider: self-hosted Discord OAuth + session cookies.")
         elif not CLOUDFLARE_TEAM_DOMAIN or not CLOUDFLARE_AUD:
             logger.error(
-                "CRITICAL: Cloudflare Access environment variables are not set. "
-                "Authentication will fail."
+                "CRITICAL: CLOUDFLARE_TEAM_DOMAIN and CLOUDFLARE_AUD must be set when "
+                "AUTH_PROVIDER=cloudflare."
             )
+            sys.exit(1)
         else:
             logger.info("Auth provider: Cloudflare Access.")
     else:

@@ -325,6 +325,7 @@ function RouteBuilder() {
         totalDuration,
         totalDistance,
         legDurations,
+        error: geometryError,
     } = useRouteGeometry(selectedLocationKeys, locationsData, getLocationValue)
 
     const tripSummary = useMemo(
@@ -607,6 +608,11 @@ function RouteBuilder() {
                 legLabels={legLabels}
                 lastToggledLocation={lastToggledLocation}
             />
+            {geometryError && (
+                <div className="bg-warning/10 border border-warning/30 text-warning-text rounded-lg px-3 py-2 text-sm mt-2">
+                    {geometryError}
+                </div>
+            )}
 
             {fullscreenOverlay}
         </>
