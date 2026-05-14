@@ -69,20 +69,24 @@ async def session_cookie_middleware(request: Request, call_next) -> Response:
     if not session_id_plain:
         return Response("Unauthorized", status_code=401)
 
-    async with AsyncSessionLocal() as db_session:
-        auth_session = await AuthService.get_session(db_session, session_id_plain)
-        if not auth_session:
-            return Response("Unauthorized", status_code=401)
+    try:
+        async with AsyncSessionLocal() as db_session:
+            auth_session = await AuthService.get_session(db_session, session_id_plain)
+            if not auth_session:
+                return Response("Unauthorized", status_code=401)
 
-        # CSRF check for state-changing requests.
-        if request.method not in SAFE_METHODS:
-            csrf_header = request.headers.get(CSRF_HEADER)
-            if not AuthService.verify_csrf(auth_session.csrf_token, csrf_header):
-                logger.warning(f"CSRF check failed for {request.method} {path}")
-                return Response("Forbidden", status_code=403)
+            # CSRF check for state-changing requests.
+            if request.method not in SAFE_METHODS:
+                csrf_header = request.headers.get(CSRF_HEADER)
+                if not AuthService.verify_csrf(auth_session.csrf_token, csrf_header):
+                    logger.warning(f"CSRF check failed for {request.method} {path}")
+                    return Response("Forbidden", status_code=403)
 
-        # Slide expiry (throttled inside touch_session).
-        await AuthService.touch_session(db_session, session_id_plain, auth_session)
+            # Slide expiry (throttled inside touch_session).
+            await AuthService.touch_session(db_session, session_id_plain, auth_session)
+    except Exception:
+        logger.exception("DB error during session validation")
+        return Response("Unauthorized", status_code=401)
 
     email = auth_session.email
     request.state.user = {"email": email}

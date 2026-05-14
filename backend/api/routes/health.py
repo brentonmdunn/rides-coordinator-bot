@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 from bot.core.bot_instance import get_bot
 from bot.core.database import AsyncSessionLocal
+from bot.core.lifecycle import get_failed_extensions
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,8 @@ async def health_check():
         Status dictionary with overall health and component statuses.
     """
     bot = get_bot()
-    bot_ok = bot is not None and bot.is_ready()
+    failed_extensions = get_failed_extensions()
+    bot_ok = bot is not None and bot.is_ready() and len(failed_extensions) == 0
 
     db_ok = False
     try:
@@ -39,11 +41,14 @@ async def health_check():
 
     overall = "ok" if (bot_ok and db_ok) else "degraded"
 
-    return {
+    result: dict = {
         "status": overall,
-        "bot": "connected" if bot_ok else "unavailable",
+        "bot": "connected" if (bot is not None and bot.is_ready()) else "unavailable",
         "database": "connected" if db_ok else "unavailable",
     }
+    if failed_extensions:
+        result["failed_extensions"] = sorted(failed_extensions)
+    return result
 
 
 @router.get("/api/environment")
