@@ -101,7 +101,7 @@ async def discord_callback(
         return _login_error_redirect("server_misconfigured")
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             token_resp = await client.post(
                 _DISCORD_TOKEN_URL,
                 data={

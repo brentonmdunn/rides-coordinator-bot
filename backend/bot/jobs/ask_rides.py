@@ -243,9 +243,9 @@ async def run_ask_rides_fri(
         await sent_message.add_reaction(emoji)
 
 
-def _should_send_ask_rides_sun() -> bool:
+async def _should_send_ask_rides_sun() -> bool:
     """Helper method to determine if we should send the Sunday rides message."""
-    gcal_event_summaries = CalendarRepository.get_event_summaries(
+    gcal_event_summaries = await CalendarRepository.get_event_summaries(
         get_next_date_obj(DaysOfWeek.SUNDAY)
     )
     return all("wildcard" not in event.lower() for event in gcal_event_summaries)
@@ -261,7 +261,7 @@ async def run_ask_rides_sun(
     if paused:
         logger.info("Blocking run_ask_rides_sun - job is paused")
         return
-    if not _should_send_ask_rides_sun():
+    if not await _should_send_ask_rides_sun():
         logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
         channel: Messageable | None = bot.get_channel(
             ChannelIds.SERVING__DRIVER_BOT_SPAM,
@@ -281,9 +281,9 @@ async def run_ask_rides_sun(
         await sent_message.add_reaction(emoji)
 
 
-def _should_send_ask_rides_sun_class() -> bool:
+async def _should_send_ask_rides_sun_class() -> bool:
     """Helper method to determine if we should send the Sunday class rides message."""
-    gcal_event_summaries = CalendarRepository.get_event_summaries(
+    gcal_event_summaries = await CalendarRepository.get_event_summaries(
         get_next_date_obj(DaysOfWeek.SUNDAY)
     )
     return any("sunday school" in event.lower() for event in gcal_event_summaries)
@@ -299,7 +299,7 @@ async def run_ask_rides_sun_class(
     if paused:
         logger.info("Blocking run_ask_rides_sun_class - job is paused")
         return
-    if not _should_send_ask_rides_sun_class():
+    if not await _should_send_ask_rides_sun_class():
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
     sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
