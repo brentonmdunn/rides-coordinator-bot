@@ -87,10 +87,15 @@ class FeatureFlagsRepository:
             .where(FeatureFlagsModel.feature == feature_name)
             .values(enabled=enabled)
         )
-        await session.execute(stmt)
-        await session.commit()
-
+        # Update cache before commit to minimize stale-read window.
+        # Invalidate on failure so the next read falls back to DB.
         FeatureFlagsRepository._cache[feature_name] = enabled
+        try:
+            await session.execute(stmt)
+            await session.commit()
+        except Exception:
+            FeatureFlagsRepository._cache.pop(feature_name, None)
+            raise
 
     @staticmethod
     async def get_all_feature_flags(session: AsyncSession) -> list[FeatureFlagsModel]:

@@ -6,6 +6,8 @@ This module handles the database connection, session creation, and initializatio
 
 import logging
 import os
+import re
+import sys
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -27,6 +29,8 @@ engine = create_async_engine(
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 APP_ENV = os.getenv("APP_ENV", "local")
+
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 async def init_db():
@@ -97,6 +101,9 @@ async def seed_admin_accounts(session: AsyncSession):
         admin_emails.add("dev@example.com")
 
     for email in admin_emails:
+        if not EMAIL_RE.match(email):
+            logger.error(f"Invalid email in ADMIN_EMAILS: {email!r} — fix the env var and restart")
+            sys.exit(1)
         result = await session.execute(select(UserAccount).where(UserAccount.email == email))
         existing = result.scalars().first()
 
