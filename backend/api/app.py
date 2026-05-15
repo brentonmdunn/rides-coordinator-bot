@@ -6,19 +6,28 @@ Main FastAPI application with Discord bot integration and Cloudflare authenticat
 
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any, cast
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from api.auth import cloudflare_access_middleware
 from api.auth_session import session_cookie_middleware
+from api.constants import CORS_LOCALHOST_5173, CORS_LOCALHOST_5174
 from api.middleware.access_logger import AccessLogMiddleware
+from api.rate_limit import limiter
 from api.routes.admin_users import router as admin_users_router
 from api.routes.ask_rides import router as ask_rides_router
+from api.routes.auth_bypass import router as auth_bypass_router
 from api.routes.auth_discord import router as auth_discord_router
 from api.routes.cache_stats import router as cache_stats_router
 from api.routes.check_pickups import router as check_pickups_router
@@ -29,6 +38,8 @@ from api.routes.health import router as health_router
 from api.routes.list_pickups import router as list_pickups_router
 from api.routes.locations import router as locations_router
 from api.routes.me import router as me_router
+from api.routes.reaction_log import router as reaction_log_router
+from api.routes.reaction_log_stream import router as reaction_log_stream_router
 from api.routes.route_builder import router as route_builder_router
 from api.routes.user_preferences import router as user_preferences_router
 from api.routes.usernames import router as usernames_router
@@ -43,6 +54,7 @@ CLOUDFLARE_TEAM_DOMAIN = os.getenv("CLOUDFLARE_TEAM_DOMAIN")
 CLOUDFLARE_AUD = os.getenv("CLOUDFLARE_AUD")
 APP_ENV = os.getenv("APP_ENV", "local")
 AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "cloudflare")  # "cloudflare" | "self"
+METRICS_TOKEN = os.getenv("METRICS_TOKEN")
 
 
 @asynccontextmanager
@@ -62,9 +74,10 @@ async def lifespan(app: FastAPI):
             logger.info("Auth provider: self-hosted Discord OAuth + session cookies.")
         elif not CLOUDFLARE_TEAM_DOMAIN or not CLOUDFLARE_AUD:
             logger.error(
-                "CRITICAL: Cloudflare Access environment variables are not set. "
-                "Authentication will fail."
+                "CRITICAL: CLOUDFLARE_TEAM_DOMAIN and CLOUDFLARE_AUD must be set when "
+                "AUTH_PROVIDER=cloudflare."
             )
+            sys.exit(1)
         else:
             logger.info("Auth provider: Cloudflare Access.")
     else:
@@ -81,6 +94,27 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(lifespan=lifespan)
 
+# Expose Prometheus metrics at /metrics for observability of API latency,
+# request volume, and error rates.
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+
+@app.middleware("http")
+async def guard_metrics(request: Request, call_next) -> Response:
+    """Require Bearer token on /metrics when METRICS_TOKEN is set."""
+    if request.url.path == "/metrics" and METRICS_TOKEN:
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {METRICS_TOKEN}":
+            return Response("Unauthorized", status_code=401)
+    return await call_next(request)
+
+
+# Wire up slowapi rate limiting. The limiter must be attached to app.state and
+# the SlowAPIMiddleware installed before any per-route limits take effect.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
+app.add_middleware(SlowAPIMiddleware)
+
 # Add authentication middleware based on AUTH_PROVIDER.
 # Must be registered BEFORE CORS so that CORS (added last) becomes the
 # outermost layer and attaches Access-Control-Allow-Origin to every response,
@@ -88,6 +122,7 @@ app = FastAPI(lifespan=lifespan)
 if AUTH_PROVIDER == "self":
     app.middleware("http")(session_cookie_middleware)
     app.include_router(auth_discord_router)
+    app.include_router(auth_bypass_router)
     logger.info("Using self-hosted Discord OAuth middleware")
 else:
     app.middleware("http")(cloudflare_access_middleware)
@@ -102,7 +137,7 @@ logger.info("Access logging middleware enabled")
 if APP_ENV == "local":
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:5174"],  # Vite dev server
+        allow_origins=[CORS_LOCALHOST_5173, CORS_LOCALHOST_5174],  # Vite dev server
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -125,6 +160,8 @@ app.include_router(route_builder_router)
 app.include_router(admin_users_router)
 app.include_router(user_preferences_router)
 app.include_router(usernames_router)
+app.include_router(reaction_log_router)
+app.include_router(reaction_log_stream_router)
 
 # Mount static files for React SPA (if directory exists)
 admin_ui_path = Path("admin_ui")

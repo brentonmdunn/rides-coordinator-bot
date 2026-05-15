@@ -6,6 +6,12 @@ from datetime import date, datetime, timedelta
 import pytz
 
 from bot.core.enums import DaysOfWeek, DaysOfWeekNumber
+from bot.utils.constants import (
+    ACTIVE_HOURS_END,
+    ACTIVE_HOURS_START,
+    DAYS_IN_WEEK,
+    RIDE_CYCLE_START_HOUR,
+)
 
 LA_TZ = pytz.timezone("America/Los_Angeles")
 
@@ -19,8 +25,6 @@ days_of_week_to_number = {
     DaysOfWeek.SUNDAY: DaysOfWeekNumber.SUNDAY,
 }
 
-DAYS_IN_WEEK = 7
-
 # ---------------------------------------------------------------------------
 # Unified time-window configuration
 # ---------------------------------------------------------------------------
@@ -28,12 +32,19 @@ DAYS_IN_WEEK = 7
 
 @dataclass(frozen=True)
 class TimeWindow:
-    """A time window: start_day @ start_hour → end_day @ end_hour."""
+    """
+    A time window: start_day @ start_hour:start_minute → end_day @ end_hour:end_minute.
+
+    *start_minute* and *end_minute* default to 0 for backwards compatibility.
+    The window may start and end on the same day.
+    """
 
     start_day: DaysOfWeek
     start_hour: int
     end_day: DaysOfWeek
     end_hour: int
+    start_minute: int = 0
+    end_minute: int = 0
 
 
 RIDE_DAY_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
@@ -78,11 +89,105 @@ LATE_REACTION_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
     ),
 }
 
-ACTIVE_HOURS_START = 7
-ACTIVE_HOURS_END = 1
+# ---------------------------------------------------------------------------
+# Ride-coverage widget and message-lookup windows
+# ---------------------------------------------------------------------------
+
+# Controls when the coverage widget is visible in the UI.
+COVERAGE_WIDGET_WINDOWS: dict[str, TimeWindow] = {
+    "friday": TimeWindow(
+        start_day=DaysOfWeek.FRIDAY,
+        start_hour=11,
+        start_minute=0,
+        end_day=DaysOfWeek.FRIDAY,
+        end_hour=23,
+        end_minute=59,
+    ),
+    "sunday": TimeWindow(
+        start_day=DaysOfWeek.SATURDAY,
+        start_hour=15,
+        start_minute=0,
+        end_day=DaysOfWeek.SUNDAY,
+        end_hour=13,
+        end_minute=0,
+    ),
+}
+
+# Controls which Discord grouping ("drive:") messages count as coverage entries.
+COVERAGE_MESSAGE_LOOKUP_WINDOWS: dict[str, TimeWindow] = {
+    "friday": TimeWindow(
+        start_day=DaysOfWeek.FRIDAY,
+        start_hour=11,
+        start_minute=0,
+        end_day=DaysOfWeek.FRIDAY,
+        end_hour=19,
+        end_minute=30,
+    ),
+    "sunday": TimeWindow(
+        start_day=DaysOfWeek.SATURDAY,
+        start_hour=15,
+        start_minute=0,
+        end_day=DaysOfWeek.SUNDAY,
+        end_hour=10,
+        end_minute=30,
+    ),
+}
+
+
+def is_in_coverage_widget_window(ride_type: str) -> bool:
+    """Return True if the coverage widget for *ride_type* should be visible right now."""
+    window = COVERAGE_WIDGET_WINDOWS.get(ride_type.lower())
+    return _check_time_window(window, datetime.now(tz=LA_TZ)) if window else False
+
+
+def is_in_any_coverage_message_lookup_window() -> bool:
+    """Return True if the current time falls in any coverage message lookup window."""
+    now = datetime.now(tz=LA_TZ)
+    return any(_check_time_window(w, now) for w in COVERAGE_MESSAGE_LOOKUP_WINDOWS.values())
+
+
+def is_message_in_any_coverage_lookup_window(message_dt: datetime) -> bool:
+    """
+    Return True if *message_dt* falls within any coverage message lookup window.
+
+    Args:
+        message_dt: A timezone-aware datetime (e.g. ``message.created_at`` from Discord).
+    """
+    la_dt = message_dt.astimezone(LA_TZ)
+    return any(_check_time_window(w, la_dt) for w in COVERAGE_MESSAGE_LOOKUP_WINDOWS.values())
+
+
+def get_coverage_message_lookup_start(ride_type: str) -> datetime | None:
+    """
+    Return the start of the message lookup window for the most recent cycle.
+
+    For ``"friday"``: most recent Friday at 12:00 LA.
+    For ``"sunday"``: most recent Saturday at 15:00 LA.
+
+    Returns ``None`` if *ride_type* is unrecognized.
+    """
+    window = COVERAGE_MESSAGE_LOOKUP_WINDOWS.get(ride_type.lower())
+    if window is None:
+        return None
+
+    now = datetime.now(tz=LA_TZ)
+    target_weekday = int(days_of_week_to_number[window.start_day])
+    days_since = (now.weekday() - target_weekday) % DAYS_IN_WEEK
+    start_date = (now - timedelta(days=days_since)).date()
+
+    return LA_TZ.localize(
+        datetime(
+            start_date.year,
+            start_date.month,
+            start_date.day,
+            window.start_hour,
+            window.start_minute,
+            0,
+        )
+    )
+
 
 RIDE_CYCLE_START_DAY = DaysOfWeekNumber.WEDNESDAY
-RIDE_CYCLE_START_HOUR = 12
 RIDE_CYCLE_END_DAY = DaysOfWeekNumber.SUNDAY
 
 
@@ -96,6 +201,20 @@ def _resolve_day(day: str | DaysOfWeek) -> DaysOfWeek | None:
         return None
 
 
+def _check_time_window(window: TimeWindow, now: datetime) -> bool:
+    """Return True if *now* (LA-aware) falls inside *window*."""
+    weekday_enum = list(DaysOfWeek)[now.weekday()]
+    now_minutes = now.hour * 60 + now.minute
+    start_minutes = window.start_hour * 60 + window.start_minute
+    end_minutes = window.end_hour * 60 + window.end_minute
+
+    if window.start_day == window.end_day:
+        return weekday_enum == window.start_day and start_minutes <= now_minutes <= end_minutes
+    return (weekday_enum == window.start_day and now_minutes >= start_minutes) or (
+        weekday_enum == window.end_day and now_minutes < end_minutes
+    )
+
+
 def _is_in_window(day: str | DaysOfWeek, windows: dict[DaysOfWeek, TimeWindow]) -> bool:
     """Check if the current LA time falls inside the window for *day*."""
     day_enum = _resolve_day(day)
@@ -106,13 +225,7 @@ def _is_in_window(day: str | DaysOfWeek, windows: dict[DaysOfWeek, TimeWindow]) 
     if window is None:
         return False
 
-    now = datetime.now(tz=LA_TZ)
-    weekday_enum = list(DaysOfWeek)[now.weekday()]
-    hour = now.hour
-
-    return (weekday_enum == window.start_day and hour >= window.start_hour) or (
-        weekday_enum == window.end_day and hour < window.end_hour
-    )
+    return _check_time_window(window, datetime.now(tz=LA_TZ))
 
 
 def is_in_ride_day_window(day: str | DaysOfWeek) -> bool:

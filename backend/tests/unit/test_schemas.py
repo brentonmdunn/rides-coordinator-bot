@@ -1,5 +1,7 @@
 """Unit tests for bot.core.schemas (Pydantic models)."""
 
+from typing import cast
+
 import pytest
 from pydantic import ValidationError
 
@@ -32,7 +34,7 @@ class TestIdentity:
 
     def test_name_required(self):
         with pytest.raises(ValidationError):
-            Identity(username="alice")
+            Identity(**cast(dict, {"username": "alice"}))  # intentionally missing required `name`
 
     def test_empty_name(self):
         ident = Identity(name="")
@@ -59,7 +61,10 @@ class TestLocationQuery:
 
     def test_invalid_location_raises(self):
         with pytest.raises(ValidationError):
-            LocationQuery(start_location="nonexistent", end_location=PickupLocations.MUIR)
+            LocationQuery(
+                start_location=cast(PickupLocations, "nonexistent"),  # intentionally invalid
+                end_location=PickupLocations.MUIR,
+            )
 
 
 class TestRidesUser:
@@ -77,7 +82,7 @@ class TestRidesUser:
         with pytest.raises(ValidationError):
             RidesUser(
                 identity=Identity(name="Bob"),
-                location="Mars",
+                location=cast(CampusLivingLocations, "Mars"),  # intentionally invalid
             )
 
 
@@ -96,7 +101,9 @@ class TestPassenger:
 
     def test_missing_fields_raise(self):
         with pytest.raises(ValidationError):
-            Passenger(identity=Identity(name="X"))
+            Passenger(
+                **cast(dict, {"identity": Identity(name="X")})
+            )  # intentionally missing required fields
 
 
 class TestLLMPassenger:
@@ -108,7 +115,9 @@ class TestLLMPassenger:
 
     def test_invalid_location(self):
         with pytest.raises(ValidationError):
-            LLMPassenger(name="Alice", location="InvalidPlace")
+            LLMPassenger(
+                name="Alice", location=cast(PickupLocations, "InvalidPlace")
+            )  # intentionally invalid
 
 
 class TestLLMOutputNominal:

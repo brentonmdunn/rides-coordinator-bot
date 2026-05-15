@@ -1,11 +1,14 @@
 """Group Rides API Routes."""
 
 import logging
+from typing import cast
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from api.constants import GROUP_RIDES_DEFAULT_CAPACITY, GROUP_RIDES_RATE_LIMIT
 from api.dependencies import parse_int_param, require_bot, validate_ride_type
+from api.rate_limit import limiter
 from bot.core.enums import ChannelIds, JobName
 from bot.services.group_rides_service import GroupRidesService
 
@@ -22,7 +25,8 @@ class GroupRidesRequest(BaseModel):
         default=None, description="Required only when ride_type is 'message_id'"
     )
     driver_capacity: str = Field(
-        default="44444", description="String of integers representing seats per driver"
+        default=GROUP_RIDES_DEFAULT_CAPACITY,
+        description="String of integers representing seats per driver",
     )
     channel_id: str = Field(
         default=str(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)),
@@ -49,26 +53,29 @@ class GroupRidesResponse(BaseModel):
     summary="Group Rides",
     description="Automatically group people from pickup locations into cars based on driver capacity.",
 )
-async def group_rides(request: GroupRidesRequest):
+@limiter.limit(GROUP_RIDES_RATE_LIMIT)
+async def group_rides(request: Request, body: GroupRidesRequest):
     """
     Group rides based on ride type (Friday, Sunday, or custom message ID).
 
     Args:
-        request: Request containing ride_type, optional message_id, driver_capacity, and channel_id
+        request: FastAPI request (required by slowapi for rate limiting).
+        body: Request body containing ride_type, optional message_id,
+            driver_capacity, and channel_id.
 
     Returns:
         GroupRidesResponse with success status and either groupings or error message
     """
     bot = require_bot()
-    validate_ride_type(request.ride_type)
-    channel_id_int = parse_int_param(request.channel_id, "Channel ID")
+    validate_ride_type(body.ride_type)
+    channel_id_int = parse_int_param(body.channel_id, "Channel ID")
 
-    if request.ride_type == "message_id":
-        if not request.message_id:
+    if body.ride_type == "message_id":
+        if not body.message_id:
             raise HTTPException(
                 status_code=400, detail="message_id is required when ride_type is 'message_id'"
             )
-        message_id_int: int | None = parse_int_param(request.message_id, "Message ID")
+        message_id_int: int | None = parse_int_param(body.message_id, "Message ID")
     else:
         message_id_int = None
 
@@ -77,15 +84,15 @@ async def group_rides(request: GroupRidesRequest):
         service = GroupRidesService(bot)
         result = await service.group_rides_api(
             message_id=message_id_int,
-            day=request.ride_type
-            if request.ride_type in [JobName.FRIDAY, JobName.SUNDAY]
-            else None,
-            driver_capacity=request.driver_capacity,
+            day=body.ride_type if body.ride_type in [JobName.FRIDAY, JobName.SUNDAY] else None,
+            driver_capacity=body.driver_capacity,
             channel_id=channel_id_int,
         )
 
         return GroupRidesResponse(
-            success=True, summary=result.get("summary"), groupings=result.get("groupings")
+            success=True,
+            summary=cast(str | None, result.get("summary")),
+            groupings=cast(list[str] | None, result.get("groupings")),
         )
 
     except ValueError as e:

@@ -9,6 +9,7 @@ from bot.core.logger import log_cmd
 from bot.services.group_rides_service import GroupRidesService
 from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from bot.utils.checks import feature_flag_enabled
+from bot.utils.constants import GROUP_RIDES_DEFAULT_CAPACITY
 
 
 class GroupRides(commands.Cog):
@@ -31,7 +32,7 @@ class GroupRides(commands.Cog):
     async def group_rides_friday(
         self,
         interaction: discord.Interaction,
-        driver_capacity: str = "44444",
+        driver_capacity: str = GROUP_RIDES_DEFAULT_CAPACITY,
         custom_prompt: str | None = None,
         legacy_prompt: bool = False,
     ):
@@ -68,7 +69,7 @@ class GroupRides(commands.Cog):
     async def group_rides_sunday(
         self,
         interaction: discord.Interaction,
-        driver_capacity: str = "44444",
+        driver_capacity: str = GROUP_RIDES_DEFAULT_CAPACITY,
         custom_prompt: str | None = None,
         legacy_prompt: bool = False,
     ):
@@ -106,7 +107,7 @@ class GroupRides(commands.Cog):
         self,
         interaction: discord.Interaction,
         message_id: str,
-        driver_capacity: str = "44444",
+        driver_capacity: str = GROUP_RIDES_DEFAULT_CAPACITY,
         legacy_prompt: bool = False,
     ):
         """
@@ -162,7 +163,8 @@ class GroupRides(commands.Cog):
         try:
             drive_formatted = self.service.make_route(locations, leave_time)
             await interaction.response.send_message(drive_formatted)
-            await interaction.channel.send("```\n" + drive_formatted + "\n```")
+            if isinstance(interaction.channel, discord.TextChannel):
+                await interaction.channel.send("```\n" + drive_formatted + "\n```")
         except ValueError as e:
             await interaction.response.send_message(str(e))
 

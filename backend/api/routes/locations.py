@@ -70,7 +70,7 @@ async def get_pickups_by_message(
         )
 
         # Use the service's grouping helper to get structured data
-        grouped_data = service._group_locations_by_housing(
+        grouped_data = service.group_locations_by_housing(
             locations_people, usernames_reacted, location_found
         )
 

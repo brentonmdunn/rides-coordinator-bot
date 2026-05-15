@@ -3,11 +3,18 @@
 import json
 import logging
 import os
+import re
 
+import httpx
 import tenacity
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from bot.core.schemas import LLMOutputError, LLMOutputNominal
+from bot.utils.constants import (
+    GEMINI_MODEL,
+    LLM_RETRY_ATTEMPTS,
+    LLM_RETRY_WAIT_SECONDS,
+)
 from bot.utils.genai.prompt import (
     CUSTOM_INSTRUCTIONS,
     GROUP_RIDES_PROMPT,
@@ -17,9 +24,12 @@ from bot.utils.genai.prompt import (
 
 logger = logging.getLogger(__name__)
 
-# LLM_MODEL = "gemini-2.5-pro"
-LLM_MODEL = "gemini-2.5-flash"
-NUM_RETRY_ATTEMPTS = 4
+
+def _is_transient_llm_error(exc: BaseException) -> bool:
+    if isinstance(exc, (httpx.TransportError, httpx.TimeoutException)):
+        return True
+    msg = str(exc).lower()
+    return any(kw in msg for kw in ("rate limit", "quota", "503", "429", "timeout", "connection"))
 
 
 def log_retry_attempt(retry_state):
@@ -45,12 +55,12 @@ class LLMService:
 
     def __init__(self):
         """Initialize the LLMService."""
-        self.llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
+        self.llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, temperature=0)
 
     @tenacity.retry(
-        stop=tenacity.stop_after_attempt(NUM_RETRY_ATTEMPTS),
-        wait=tenacity.wait_fixed(5),
-        retry=tenacity.retry_if_exception_type(Exception),
+        stop=tenacity.stop_after_attempt(LLM_RETRY_ATTEMPTS),
+        wait=tenacity.wait_fixed(LLM_RETRY_WAIT_SECONDS),
+        retry=tenacity.retry_if_exception(_is_transient_llm_error),
         before_sleep=log_retry_attempt,
     )
     def generate_ride_groups(
@@ -109,27 +119,16 @@ class LLMService:
         logger.debug(f"Raw LLM output={ai_response}")
 
         def preprocess_llm_result(ai_response):
-            # Attempt to be robust to optional markdown code blocks
             content = ai_response.content
-            if "```json" in content:
+            # Try to extract from ```json ... ``` or ``` ... ``` code block
+            match = re.search(r"```(?:json)?\s*([\s\S]*?)```", content)
+            if match:
                 try:
-                    start = content.find("```json") + 7
-                    end = content.rfind("```")
-                    json_str = content[start:end].strip()
-                    return json.loads(json_str)
+                    return json.loads(match.group(1).strip())
                 except Exception:
                     pass
-
-            # Original logic fallback
-            if "json" in ai_response.content:
-                codebox_beginning_idx = 8
-                codebox_ending_idx = -3
-                llm_result = json.loads(
-                    ai_response.content[codebox_beginning_idx:codebox_ending_idx]
-                )
-            else:
-                llm_result = json.loads(ai_response.content)
-            return llm_result
+            # Fall back to raw parse
+            return json.loads(content.strip())
 
         # Sometimes the LLM decides to put a code box even if it is directed not to
         llm_result = preprocess_llm_result(ai_response)

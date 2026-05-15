@@ -1,17 +1,15 @@
 import type { HousingGroup } from '../types'
 import { Card } from './ui/card'
 import { Button } from './ui/button'
-import { Copy, Check } from 'lucide-react'
-import { cn } from '../lib/utils'
+import { Copy } from 'lucide-react'
 
 interface PickupGroupProps {
     groupName: string
     groupData: HousingGroup
-    copiedUsername: string | null
     onCopy: (text: string) => void
 }
 
-function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGroupProps) {
+function PickupGroup({ groupName, groupData, onCopy }: PickupGroupProps) {
     return (
         <Card className="rounded-lg overflow-hidden border border-border shadow-none">
             {/* Group Header */}
@@ -33,8 +31,6 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
 
                     const copySummary = people.map(p => getTag(p)).join(' ');
 
-                    const isCopied = copiedUsername === copySummary;
-
                     return (
                         <div key={locationName} className="p-4 bg-card">
                             <div className="capitalize font-medium text-foreground mb-2 flex items-center justify-between">
@@ -49,23 +45,11 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                                     size="sm"
                                     disabled={people.length === 0}
                                     onClick={() => onCopy(copySummary)}
-                                    className={cn(
-                                        "h-7 px-2 text-xs gap-1.5 transition-all text-muted-foreground hover:text-foreground",
-                                        isCopied && "text-success border-success/50 bg-success/5 hover:text-success"
-                                    )}
+                                    className="h-7 px-2 text-xs gap-1.5 transition-all text-muted-foreground hover:text-foreground"
                                     title="Copy usernames for tagging"
                                 >
-                                    {isCopied ? (
-                                        <>
-                                            <Check className="h-3.5 w-3.5" />
-                                            <span>Copied</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy className="h-3.5 w-3.5" />
-                                            <span>Copy Tags</span>
-                                        </>
-                                    )}
+                                    <Copy className="h-3.5 w-3.5" />
+                                    <span>Copy Tags</span>
                                 </Button>
                             </div>
                             <div className="text-muted-foreground ml-4">
@@ -74,15 +58,11 @@ function PickupGroup({ groupName, groupData, copiedUsername, onCopy }: PickupGro
                                         {person.discord_username ? (
                                             <button
                                                 onClick={() => onCopy("@" + person.discord_username!)}
-                                                className={`hover:text-info hover:underline cursor-pointer transition-colors break-all text-left ${copiedUsername === "@" + person.discord_username
-                                                    ? 'text-success font-medium'
-                                                    : ''
-                                                    }`}
+                                                className="hover:text-info hover:underline cursor-pointer transition-colors break-all text-left"
                                                 title={`Click to copy @${person.discord_username}`}
                                                 aria-label={`Copy @${person.discord_username} to clipboard`}
                                             >
                                                 {person.name}
-                                                {copiedUsername === "@" + person.discord_username && ' ✓'}
                                             </button>
                                         ) : (
                                             <span>{person.name}</span>

@@ -6,6 +6,8 @@ This module handles the database connection, session creation, and initializatio
 
 import logging
 import os
+import re
+import sys
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -18,10 +20,17 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./db/bot.db")
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 APP_ENV = os.getenv("APP_ENV", "local")
+
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 async def init_db():
@@ -92,6 +101,9 @@ async def seed_admin_accounts(session: AsyncSession):
         admin_emails.add("dev@example.com")
 
     for email in admin_emails:
+        if not EMAIL_RE.match(email):
+            logger.error(f"Invalid email in ADMIN_EMAILS: {email!r} — fix the env var and restart")
+            sys.exit(1)
         result = await session.execute(select(UserAccount).where(UserAccount.email == email))
         existing = result.scalars().first()
 
@@ -103,5 +115,26 @@ async def seed_admin_accounts(session: AsyncSession):
             account = UserAccount(email=email, role=AccountRoles.ADMIN)
             session.add(account)
             logger.info(f"👤 Seeded admin account for '{email}'.")
+
+    await session.commit()
+
+
+async def seed_bypass_account(session: AsyncSession) -> None:
+    """Seeds the emergency bypass account if BYPASS_DISCORD=true."""
+    if os.getenv("BYPASS_DISCORD", "").lower() != "true":
+        return
+
+    email = os.getenv("BYPASS_EMAIL", "bypass-emergency@local")
+    result = await session.execute(select(UserAccount).where(UserAccount.email == email))
+    existing = result.scalars().first()
+
+    if existing:
+        if existing.role != AccountRoles.RIDE_COORDINATOR:
+            existing.role = AccountRoles.RIDE_COORDINATOR
+            logger.info(f"👤 Updated bypass account '{email}' to ride_coordinator role.")
+    else:
+        account = UserAccount(email=email, role=AccountRoles.RIDE_COORDINATOR)
+        session.add(account)
+        logger.info(f"👤 Seeded bypass account '{email}' with ride_coordinator role.")
 
     await session.commit()

@@ -38,10 +38,10 @@ class ThreadService:
             thread_members = await thread.fetch_members()
             return {member.id for member in thread_members}
         except discord.Forbidden:
-            logger.error(f"Missing permissions to fetch members for thread {thread.id}")
+            logger.exception(f"Missing permissions to fetch members for thread {thread.id}")
             return set()
-        except Exception as e:
-            logger.error(f"Failed to fetch thread members: {e}")
+        except Exception:
+            logger.exception("Failed to fetch thread members")
             return set()
 
     @staticmethod
@@ -52,13 +52,13 @@ class ThreadService:
             logger.info(f"Added user {user.name} to thread {thread.name} on reaction.")
             return True
         except discord.Forbidden:
-            logger.error(
+            logger.exception(
                 f"Failed to add user {user.name} to thread {thread.name} "
                 "due to insufficient permissions."
             )
             return False
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while adding user to thread: {e}")
+        except Exception:
+            logger.exception("An unexpected error occurred while adding user to thread")
             return False
 
     @staticmethod
@@ -71,13 +71,13 @@ class ThreadService:
             )
             return True
         except discord.Forbidden:
-            logger.error(
+            logger.exception(
                 f"Failed to remove user {user.name} from thread {thread.name} "
                 "due to insufficient permissions."
             )
             return False
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while removing user from thread: {e}")
+        except Exception:
+            logger.exception("An unexpected error occurred while removing user from thread")
             return False
 
     @staticmethod
@@ -162,8 +162,11 @@ class ThreadService:
             StarterMessageError: If the starter message can't be found.
             discord.Forbidden: If bot permissions are missing.
         """
+        parent = thread.parent
+        if not isinstance(parent, discord.TextChannel):
+            raise StarterMessageError("This thread's parent channel is not a text channel.")
         try:
-            starter_message = await thread.parent.fetch_message(thread.id)
+            starter_message = await parent.fetch_message(thread.id)
         except discord.NotFound:
             raise StarterMessageError(  # noqa
                 "Could not find the message that started this thread. Has it been deleted?"

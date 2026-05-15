@@ -9,6 +9,8 @@ import discord
 from discord import app_commands
 
 from bot.core.database import AsyncSessionLocal
+from bot.core.enums import FeatureFlagNames
+from bot.core.error_reporter import send_error_to_discord
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,7 @@ def is_admin():
     return app_commands.check(predicate)
 
 
-def feature_flag_enabled(feature: str, enable_logs: bool = True):
+def feature_flag_enabled(feature: FeatureFlagNames, enable_logs: bool = True):
     """
     A decorator that checks if a feature flag is enabled before executing a command or job.
 
@@ -80,13 +82,17 @@ def feature_flag_enabled(feature: str, enable_logs: bool = True):
                         )
                     if feature_flag is not None:
                         feature_is_enabled = feature_flag
-            except Exception as e:
+            except Exception:
                 if enable_logs:
-                    logger.error("Error fetching feature flag '%s': %s", feature, e)
+                    logger.exception("Error fetching feature flag '%s'", feature)
                 if interaction:
                     await interaction.response.send_message(
                         "Sorry, there was an error checking the command's availability.",
                         ephemeral=True,
+                    )
+                else:
+                    await send_error_to_discord(
+                        f"**Error** checking feature flag `{feature}` in scheduled job"
                     )
                 return
 

@@ -35,7 +35,7 @@ class CsvSyncService:
         if not LSCC_PPL_CSV_URL:
             raise Exception("LSCC_PPL_CSV_URL environment variable not set.")
 
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
             response = await client.get(LSCC_PPL_CSV_URL)
 
         if response.status_code != 200:

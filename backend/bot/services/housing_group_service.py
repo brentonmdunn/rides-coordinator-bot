@@ -1,6 +1,7 @@
 """Service for grouping locations into housing categories and building embeds."""
 
 import logging
+from typing import TypedDict
 
 import discord
 
@@ -12,6 +13,15 @@ from bot.utils.constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class HousingGroupData(TypedDict):
+    """Structure for a single housing group entry."""
+
+    count: int
+    locations: dict[str, list]
+    filter: list[str]
+    emoji: Emoji
 
 
 class HousingGroupService:
@@ -29,26 +39,31 @@ class HousingGroupService:
         Returns:
             A dictionary with housing groups and unknown users.
         """
-        housing_groups = {
-            "Scholars": {
-                "count": 0,
-                "locations": {},
-                "filter": SCHOLARS_LOCATIONS,
-                "emoji": Emoji.SCHOLARS,
-            },
-            "Warren + Pepper Canyon": {
-                "count": 0,
-                "locations": {},
-                "filter": WARREN_PEPPER_CANYON_LOCATIONS,
-                "emoji": Emoji.WARREN_PCYN,
-            },
-            "Rita": {
-                "count": 0,
-                "locations": {},
-                "filter": RITA_LOCATIONS,
-                "emoji": Emoji.RITA,
-            },
-            "Off Campus": {"count": 0, "locations": {}, "filter": [], "emoji": Emoji.GLOBE},
+        housing_groups: dict[str, HousingGroupData] = {
+            "Scholars": HousingGroupData(
+                count=0,
+                locations={},
+                filter=SCHOLARS_LOCATIONS,
+                emoji=Emoji.SCHOLARS,
+            ),
+            "Warren + Pepper Canyon": HousingGroupData(
+                count=0,
+                locations={},
+                filter=WARREN_PEPPER_CANYON_LOCATIONS,
+                emoji=Emoji.WARREN_PCYN,
+            ),
+            "Rita": HousingGroupData(
+                count=0,
+                locations={},
+                filter=RITA_LOCATIONS,
+                emoji=Emoji.RITA,
+            ),
+            "Off Campus": HousingGroupData(
+                count=0,
+                locations={},
+                filter=[],
+                emoji=Emoji.GLOBE,
+            ),
         }
 
         for location, people_username_list in locations_people.items():

@@ -10,6 +10,8 @@ Acts as a thin coordinator that delegates to:
 import logging
 from collections import defaultdict
 
+import discord
+
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
@@ -204,28 +206,32 @@ class LocationsService:
             ask_rides_message = DAY_TO_ASK_RIDES_MESSAGE.get(JobName(day))
             if ask_rides_message is None:
                 raise ValueError(f"Invalid day: {day}")
-            message_id = await self._find_correct_message(ask_rides_message, channel_id)
+            message_id = await self.find_correct_message(ask_rides_message, channel_id)
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
-        usernames_reacted = await self._get_usernames_who_reacted(channel_id, message_id, option)
+        if message_id is None:
+            raise ValueError("message_id must be provided when day is not specified")
+
+        usernames_reacted = await self.get_usernames_who_reacted(channel_id, message_id, option)
 
         tmp_content = ""
         if not day:
             tmp_channel = self.bot.get_channel(int(channel_id))
-            tmp_message = await tmp_channel.fetch_message(int(message_id))
-            tmp_content = get_message_and_embed_content(tmp_message).lower()
+            if isinstance(tmp_channel, (discord.TextChannel, discord.Thread)):
+                tmp_message = await tmp_channel.fetch_message(int(message_id))
+                tmp_content = get_message_and_embed_content(tmp_message).lower()
 
         if (
             (day and day == JobName.SUNDAY)
             or ("service" in tmp_content and "sunday" in tmp_content)
         ) and (
-            class_message_id := await self._find_correct_message(
+            class_message_id := await self.find_correct_message(
                 AskRidesMessage.SUNDAY_CLASS, channel_id
             )
         ) is not None:
             # Avoid ``-=`` as it mutates the set in-place, which corrupts the cache.
-            usernames_reacted = usernames_reacted - await self._get_usernames_who_reacted(
+            usernames_reacted = usernames_reacted - await self.get_usernames_who_reacted(
                 channel_id, class_message_id
             )
 
@@ -242,7 +248,7 @@ class LocationsService:
     # ------------------------------------------------------------------
     # Delegation helpers (maintain backward compatibility)
     # ------------------------------------------------------------------
-    async def _find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
+    async def find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
         """Delegates to ReactionService.find_correct_message."""
         return await self._reactions.find_correct_message(ask_rides_message, channel_id)
 
@@ -264,7 +270,7 @@ class LocationsService:
         """Delegates to ReactionService._find_all_driver_messages."""
         return await self._reactions._find_all_driver_messages(channel_id)
 
-    async def _get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
+    async def get_usernames_who_reacted(self, channel_id: int, message_id: int, option=None):
         """Delegates to ReactionService.get_usernames_who_reacted."""
         return await self._reactions.get_usernames_who_reacted(channel_id, message_id, option)
 
@@ -302,16 +308,17 @@ class LocationsService:
         cache_miss = []
         for username in usernames_reacted:
             person = await self.get_name_location_no_sync(username)
-            if person is None or person.location is None:
+            # person is tuple[str, str] = (name, location)
+            if person is None or person[1] is None:
                 cache_miss.append(username)
                 continue
-            locations_people[person.location].append((person.name, username))
+            locations_people[person[1]].append((person[0], username))
             location_found.add(username)
         if cache_miss:
             await self.sync_locations()
             for username in cache_miss:
                 person = await self.get_name_location_no_sync(username)
-                if person and person.location:
-                    locations_people[person.location].append((person.name, username))
+                if person and person[1]:
+                    locations_people[person[1]].append((person[0], username))
                     location_found.add(username)
         return locations_people, location_found

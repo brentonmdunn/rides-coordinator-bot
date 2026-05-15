@@ -74,26 +74,26 @@ export function SortableLocationItem({
             {legLabel && index > 0 && (
                 <div
                     aria-hidden="true"
-                    className="my-1 ml-6 text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                    className="my-1 ml-6 text-[11px] font-medium text-muted-foreground"
                 >
                     {legLabel}
                 </div>
             )}
-            <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-md transition-all">
+            <div className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-md transition-all">
                 <div
                     {...attributes}
                     {...listeners}
                     className="cursor-grab active:cursor-grabbing touch-none"
                 >
-                    <GripVertical className="h-4 w-4 text-slate-400" />
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <span className="flex-1 text-sm text-slate-900 dark:text-slate-100">
+                <span className="flex-1 text-sm text-foreground">
                     {index + 1}. {locationValue}
                 </span>
                 <button
                     type="button"
                     onClick={onRemove}
-                    className="text-slate-400 hover:text-red-500 transition-colors"
+                    className="text-muted-foreground hover:text-destructive transition-colors"
                     title="Remove location"
                 >
                     <X className="h-4 w-4" />
@@ -192,8 +192,8 @@ export function ArrivalTimeSelector({
                             type="button"
                             onClick={() => onTimeModeChange(opt.key, opt.time)}
                             className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${timeMode === opt.key
-                                ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-zinc-800 dark:text-slate-300 dark:border-zinc-600 dark:hover:bg-zinc-700'
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-card text-foreground border-border hover:bg-muted'
                                 }`}
                         >
                             {opt.shortLabel}
@@ -237,7 +237,7 @@ export function ArrivalTimeSelector({
                         required
                         className="w-full max-w-md"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                         Supports formats: "7:10pm", "7p", "19:10"
                     </p>
                 </div>

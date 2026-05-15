@@ -1,32 +1,30 @@
-import { useState } from "react"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { toast } from "sonner"
+import {
+  DAY_SUNDAY,
+  DAY_FRIDAY,
+  DAY_SATURDAY,
+  SUNDAY_WIDGET_START_HOUR,
+  SUNDAY_WIDGET_END_HOUR,
+  FRIDAY_WARNING_HOUR,
+  SUNDAY_WARNING_HOUR,
+} from './constants'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/**
- * Custom hook for copying text to clipboard with temporary feedback
- * @param timeout - Duration in milliseconds to show the copied state (default: 2000ms)
- * @returns Object with copiedText state and copyToClipboard function
- */
-export function useCopyToClipboard(timeout = 2000) {
-  const [copiedText, setCopiedText] = useState<string | null>(null)
+export async function copyToClipboard(text: string | null) {
+  if (!text) return
 
-  const copyToClipboard = async (text: string | null) => {
-    if (!text) return
-
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopiedText(text)
-      setTimeout(() => setCopiedText(null), timeout)
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error)
-    }
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success('Copied to clipboard')
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error)
+    toast.error('Failed to copy to clipboard')
   }
-
-  return { copiedText, copyToClipboard }
 }
 
 /**
@@ -41,7 +39,8 @@ export function getAutomaticDay(): 'friday' | 'sunday' {
   const day = now.getDay()
   const hour = now.getHours()
 
-  if (day === 6 || day === 0 || (day === 5 && hour >= 22)) {
+  // Sunday widget: Saturday 4PM or later, or Sunday before 1PM
+  if ((day === DAY_SATURDAY && hour >= SUNDAY_WIDGET_START_HOUR) || (day === DAY_SUNDAY && hour < SUNDAY_WIDGET_END_HOUR)) {
     return 'sunday'
   }
   return 'friday'
@@ -50,11 +49,11 @@ export function getAutomaticDay(): 'friday' | 'sunday' {
 // Friday after noon — show warning that Friday rides need drivers
 export function isFridayWarningWindow(): boolean {
   const now = new Date()
-  return now.getDay() === 5 && now.getHours() >= 12
+  return now.getDay() === DAY_FRIDAY && now.getHours() >= FRIDAY_WARNING_HOUR
 }
 
 // Saturday after 5 PM — show warning that Sunday rides need drivers
 export function isSundayWarningWindow(): boolean {
   const now = new Date()
-  return now.getDay() === 6 && now.getHours() >= 17
+  return now.getDay() === DAY_SATURDAY && now.getHours() >= SUNDAY_WARNING_HOUR
 }

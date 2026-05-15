@@ -1,7 +1,6 @@
 import logging
 
 import discord
-from discord.abc import Messageable
 from discord.ext.commands import Bot
 
 from bot.core.database import AsyncSessionLocal
@@ -23,10 +22,11 @@ logger = logging.getLogger(__name__)
 async def _ask_drivers_template(
     bot: Bot, message: str, emojis: list[str], channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 ) -> discord.Message | None:
-    channel: Messageable | None = bot.get_channel(channel_id)
-    if not channel:
+    raw_channel = bot.get_channel(channel_id)
+    if not isinstance(raw_channel, discord.TextChannel):
         logger.warning(f"Channel not found with ID: {channel_id}")
         return None
+    channel: discord.TextChannel = raw_channel
 
     try:
         sent_message = await channel.send(
@@ -36,7 +36,7 @@ async def _ask_drivers_template(
             await sent_message.add_reaction(emoji)
         return sent_message
     except discord.HTTPException as e:
-        logger.error(f"Failed to send message to channel {channel_id}: {e}")
+        logger.exception(f"Failed to send message to channel {channel_id}")
         await send_error_to_discord(
             f"**Error** in `_ask_drivers_template` for channel {channel_id}", error=e
         )

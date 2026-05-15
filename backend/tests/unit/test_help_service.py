@@ -11,6 +11,7 @@ def test_help_embed_structure(fake_bot):
 
     assert isinstance(embed, discord.Embed)
     assert embed.title == "Available Slash Commands"
+    assert embed.description is not None
     assert "Here are the commands" in embed.description
     assert embed.color == discord.Color.blue()
 

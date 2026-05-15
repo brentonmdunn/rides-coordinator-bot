@@ -18,7 +18,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
-import { getAutomaticDay, useCopyToClipboard } from '../../lib/utils'
+import { getAutomaticDay, copyToClipboard } from '../../lib/utils'
 import { apiFetch } from '../../lib/api'
 import { useTheme } from '../use-theme'
 import type { PickupLocationsResponse, MakeRouteResponse, UserPreferences } from '../../types'
@@ -29,6 +29,18 @@ import '@luomus/leaflet-smooth-wheel-zoom'
 import { setupLeafletIcons } from '../MapConstants'
 
 import { PRESET_TIME_MAP, PRESET_TIMES, type TimeModeKey } from './routeBuilderConstants'
+import {
+    QUERY_STALE_5_MIN,
+    LOCATION_TOGGLE_DELAY_MS,
+    ROUTE_GENERATION_DEBOUNCE_MS,
+    MAP_PADDING_FRACTION,
+    MAP_PADDING_MIN_DEGREES,
+    ROUTE_BUILDER_STORAGE_KEY,
+    RB_PARAM_STOPS,
+    RB_PARAM_TIME_MODE,
+    RB_PARAM_LEAVE_TIME,
+    RB_PARAM_DRIVER,
+} from '../../lib/constants'
 import { useRouteGeometry } from './useRouteGeometry'
 import { formatDuration, formatTripSummary } from './routeBuilderFormat'
 
@@ -61,13 +73,13 @@ function useIsMobile(breakpoint = 640) {
 // Persistence (localStorage + URL search params)
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'routeBuilder.state.v1'
+const STORAGE_KEY = ROUTE_BUILDER_STORAGE_KEY
 
 const URL_KEYS = {
-    stops: 'rb_stops',
-    timeMode: 'rb_time_mode',
-    leaveTime: 'rb_leave_time',
-    driver: 'rb_driver',
+    stops: RB_PARAM_STOPS,
+    timeMode: RB_PARAM_TIME_MODE,
+    leaveTime: RB_PARAM_LEAVE_TIME,
+    driver: RB_PARAM_DRIVER,
 } as const
 
 const VALID_TIME_MODES: ReadonlySet<TimeModeKey> = new Set(
@@ -187,7 +199,6 @@ function RouteBuilder() {
     const [originalRouteOutput, setOriginalRouteOutput] = useState<string>('')
     const [routeLoading, setRouteLoading] = useState(false)
     const [routeError, setRouteError] = useState<string>('')
-    const { copiedText, copyToClipboard } = useCopyToClipboard(5000)
 
     // --- Driver state ---
     const [selectedDriver, setSelectedDriver] = useState(initialPersisted.current.driver)
@@ -203,7 +214,7 @@ function RouteBuilder() {
             const res = await apiFetch(`/api/check-pickups/driver-reactions/${driverDay}`)
             return res.json()
         },
-        staleTime: 5 * 60 * 1000,
+        staleTime: QUERY_STALE_5_MIN,
     })
 
     const uniqueDrivers = driverData
@@ -326,6 +337,7 @@ function RouteBuilder() {
         totalDuration,
         totalDistance,
         legDurations,
+        error: geometryError,
     } = useRouteGeometry(selectedLocationKeys, locationsData, getLocationValue)
 
     const tripSummary = useMemo(
@@ -373,8 +385,8 @@ function RouteBuilder() {
 
         const lats = coords.map((c) => c.lat)
         const lngs = coords.map((c) => c.lng)
-        const latPadding = (Math.max(...lats) - Math.min(...lats)) * 0.1 || 0.01
-        const lngPadding = (Math.max(...lngs) - Math.min(...lngs)) * 0.1 || 0.01
+        const latPadding = (Math.max(...lats) - Math.min(...lats)) * MAP_PADDING_FRACTION || MAP_PADDING_MIN_DEGREES
+        const lngPadding = (Math.max(...lngs) - Math.min(...lngs)) * MAP_PADDING_FRACTION || MAP_PADDING_MIN_DEGREES
 
         setMapBounds([
             [Math.min(...lats) - latPadding, Math.min(...lngs) - lngPadding],
@@ -419,7 +431,7 @@ function RouteBuilder() {
         )
         // Clear after the 0.35s bounce animation so any unrelated re-render
         // (e.g. changing the preset time) doesn't replay the animation.
-        setTimeout(() => setLastToggledLocation(null), 400)
+        setTimeout(() => setLastToggledLocation(null), LOCATION_TOGGLE_DELAY_MS)
     }
 
     const generateRoute = useCallback(async () => {
@@ -460,7 +472,7 @@ function RouteBuilder() {
             setSelectedDriver('')
             return
         }
-        const timer = setTimeout(() => generateRoute(), 300)
+        const timer = setTimeout(() => generateRoute(), ROUTE_GENERATION_DEBOUNCE_MS)
         return () => clearTimeout(timer)
     }, [selectedLocationKeys, leaveTime, generateRoute])
 
@@ -492,7 +504,6 @@ function RouteBuilder() {
         onChangeRouteOutput: setRouteOutput,
         onCopyRoute: () => copyToClipboard(routeCopyContent),
         onRevertRoute: revertRoute,
-        copied: copiedText === routeCopyContent,
         drivers: uniqueDrivers,
         driverUsernameToName: driverData?.username_to_name ?? {},
         selectedDriver,
@@ -506,7 +517,7 @@ function RouteBuilder() {
     const fullscreenOverlay = isFullscreenMounted
         ? createPortal(
             <div
-                className={`fixed inset-0 z-50 bg-white dark:bg-zinc-950 overflow-hidden transition-all duration-300 ease-out ${isFullscreenVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.97]'
+                className={`fixed inset-0 z-50 bg-background overflow-hidden transition-all duration-300 ease-out ${isFullscreenVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.97]'
                     }`}
                 onTransitionEnd={(e) => {
                     if (e.propertyName === 'opacity' && !isFullscreenVisible) {
@@ -529,14 +540,14 @@ function RouteBuilder() {
                 {/* Back button (top-left, near zoom controls) */}
                 <button
                     onClick={closeFullscreen}
-                    className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200 dark:border-zinc-700 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-slate-700 dark:text-slate-300"
+                    className="absolute top-24 left-4 z-[1000] flex items-center gap-2 px-3 py-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-muted transition-colors text-foreground"
                     title="Exit fullscreen (Esc)"
                     aria-label="Exit fullscreen map view"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     <span className="text-sm font-semibold">Back</span>
                     {!isMobile && (
-                        <span className="text-[10px] font-bold tracking-wider text-slate-400 dark:text-zinc-500 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded ml-1">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-1">
                             ESC
                         </span>
                     )}
@@ -599,7 +610,6 @@ function RouteBuilder() {
                 onChangeRouteOutput={setRouteOutput}
                 onCopyRoute={() => copyToClipboard(routeCopyContent)}
                 onRevertRoute={revertRoute}
-                copied={copiedText === routeCopyContent}
                 drivers={uniqueDrivers}
                 driverUsernameToName={driverData?.username_to_name ?? {}}
                 selectedDriver={selectedDriver}
@@ -610,6 +620,11 @@ function RouteBuilder() {
                 legLabels={legLabels}
                 lastToggledLocation={lastToggledLocation}
             />
+            {geometryError && (
+                <div className="bg-warning/10 border border-warning/30 text-warning-text rounded-lg px-3 py-2 text-sm mt-2">
+                    {geometryError}
+                </div>
+            )}
 
             {fullscreenOverlay}
         </>

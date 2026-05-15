@@ -5,7 +5,7 @@ Data access layer for user account management.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -170,7 +170,7 @@ class UserAccountsRepository:
             discord_username=discord_username,
             role=role,
             invited_by=invited_by,
-            invited_at=datetime.utcnow(),
+            invited_at=datetime.now(UTC),
         )
         session.add(account)
         await session.commit()

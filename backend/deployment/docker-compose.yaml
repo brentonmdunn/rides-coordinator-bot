@@ -2,7 +2,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
-    restart: unless-stopped
+    restart: on-failure:5
     volumes:
       - redis-data:/data
     healthcheck:
@@ -15,7 +15,7 @@ services:
     image: brentonmdunn/ride-bot:latest
     container_name: ride-bot
     pull_policy: always
-    restart: unless-stopped
+    restart: on-failure:5
     env_file:
       - .env
     environment:

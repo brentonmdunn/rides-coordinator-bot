@@ -1,7 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
+import { UPCOMING_DATES_PAGE_SIZE } from '../../lib/constants'
 import { Button } from '../ui/button'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '../ui/dialog'
 import type { AskRidesJobStatus, UpcomingDate } from '../../types'
 
 interface PauseControlsProps {
@@ -25,11 +33,10 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
 
     const isPaused = job.pause?.is_paused ?? false
 
-    // Always fetch initial dates when the modal is open — lightweight call
     const { data: upcomingDates, isLoading: datesLoading } = useQuery<{ dates: UpcomingDate[]; has_more: boolean }>({
         queryKey: ['upcomingDates', jobName, dateOffset],
         queryFn: async () => {
-            const response = await apiFetch(`/api/ask-rides/upcoming-dates/${jobName}?count=4&offset=${dateOffset}`)
+            const response = await apiFetch(`/api/ask-rides/upcoming-dates/${jobName}?count=${UPCOMING_DATES_PAGE_SIZE}&offset=${dateOffset}`)
             return response.json()
         },
         enabled: showModal,
@@ -55,7 +62,6 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
         pauseMutation.mutate({ is_paused: false })
     }
 
-    // Don't show controls if the feature flag is off
     if (!job.enabled) return null
 
     return (
@@ -88,180 +94,90 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                 </Button>
             )}
 
-            {/* Pause Modal — single-screen with all options visible */}
-            {showModal && (
-                <PauseModal
-                    onClose={() => setShowModal(false)}
-                    pauseMutation={pauseMutation}
-                    datesLoading={datesLoading}
-                    upcomingDates={upcomingDates}
-                    dateOffset={dateOffset}
-                    setDateOffset={setDateOffset}
-                />
-            )}
-        </>
-    )
-}
-
-function PauseModal({
-    onClose,
-    pauseMutation,
-    datesLoading,
-    upcomingDates,
-    dateOffset,
-    setDateOffset,
-}: {
-    onClose: () => void
-    pauseMutation: ReturnType<typeof useMutation<unknown, Error, { is_paused: boolean; resume_after_date?: string | null }>>
-    datesLoading: boolean
-    upcomingDates: { dates: UpcomingDate[]; has_more: boolean } | undefined
-    dateOffset: number
-    setDateOffset: React.Dispatch<React.SetStateAction<number>>
-}) {
-    const modalRef = useRef<HTMLDivElement>(null)
-    const previousFocusRef = useRef<HTMLElement | null>(null)
-
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            onClose()
-            return
-        }
-        if (e.key === 'Tab' && modalRef.current) {
-            const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-                'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-            )
-            const first = focusable[0]
-            const last = focusable[focusable.length - 1]
-            if (e.shiftKey) {
-                if (document.activeElement === first) {
-                    e.preventDefault()
-                    last.focus()
-                }
-            } else {
-                if (document.activeElement === last) {
-                    e.preventDefault()
-                    first.focus()
-                }
-            }
-        }
-    }, [onClose])
-
-    useEffect(() => {
-        previousFocusRef.current = document.activeElement as HTMLElement
-        document.addEventListener('keydown', handleKeyDown)
-        requestAnimationFrame(() => {
-            const firstButton = modalRef.current?.querySelector<HTMLElement>('button')
-            firstButton?.focus()
-        })
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown)
-            previousFocusRef.current?.focus()
-        }
-    }, [handleKeyDown])
-
-    return (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-                    onClick={onClose}
-                >
-                    <div
-                        ref={modalRef}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="pause-modal-title"
-                        aria-describedby="pause-modal-description"
-                        className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-slate-200 dark:border-zinc-700 p-6 max-w-sm mx-4 w-full"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <h3 id="pause-modal-title" className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                            Pause messages
-                        </h3>
-                        <p id="pause-modal-description" className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+            <Dialog open={showModal} onOpenChange={(open) => { if (!open) setShowModal(false) }}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Pause messages</DialogTitle>
+                        <DialogDescription>
                             Skip sending until you resume or until a specific event.
-                        </p>
+                        </DialogDescription>
+                    </DialogHeader>
 
-                        <div className="flex flex-col gap-2">
-                            {/* Indefinite pause — always available */}
-                            <button
-                                onClick={() => pauseMutation.mutate({ is_paused: true, resume_after_date: null })}
-                                disabled={pauseMutation.isPending}
-                                className="w-full text-left px-4 py-3 rounded-md border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600 transition-colors"
-                            >
-                                <div className="font-medium text-slate-900 dark:text-white">Pause indefinitely</div>
-                                <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                                    Manually resume when ready
-                                </div>
-                            </button>
+                    <div className="flex flex-col gap-2">
+                        {/* Indefinite pause */}
+                        <Button
+                            variant="outline"
+                            onClick={() => pauseMutation.mutate({ is_paused: true, resume_after_date: null })}
+                            disabled={pauseMutation.isPending}
+                            className="w-full h-auto flex-col items-start px-4 py-3 text-left"
+                        >
+                            <div className="font-medium">Pause indefinitely</div>
+                            <div className="text-sm text-muted-foreground mt-0.5 font-normal">
+                                Manually resume when ready
+                            </div>
+                        </Button>
 
-                            {/* Divider with date navigation */}
-                            <div className="flex items-center gap-3 my-1">
-                                <div className="flex-1 h-px bg-slate-200 dark:bg-zinc-700" />
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setDateOffset((prev) => Math.max(0, prev - 4))}
-                                        disabled={dateOffset === 0}
-                                        className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                        aria-label="Previous dates"
-                                    >
-                                        ←
-                                    </button>
-                                    <span className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium">
-                                        or skip until
+                        {/* Divider with date navigation */}
+                        <div className="flex items-center gap-3 my-1">
+                            <div className="flex-1 h-px bg-border" />
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => setDateOffset((prev) => Math.max(0, prev - UPCOMING_DATES_PAGE_SIZE))}
+                                    disabled={dateOffset === 0}
+                                    aria-label="Previous dates"
+                                >
+                                    ←
+                                </Button>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium px-1">
+                                    or skip until
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => setDateOffset((prev) => prev + UPCOMING_DATES_PAGE_SIZE)}
+                                    aria-label="Next dates"
+                                >
+                                    →
+                                </Button>
+                            </div>
+                            <div className="flex-1 h-px bg-border" />
+                        </div>
+
+                        {/* Date cards */}
+                        {datesLoading ? (
+                            <div className="py-4 text-center text-muted-foreground animate-pulse text-sm">
+                                Loading upcoming dates...
+                            </div>
+                        ) : (
+                            upcomingDates?.dates.map((d: UpcomingDate) => (
+                                <Button
+                                    key={d.event_date}
+                                    variant="outline"
+                                    onClick={() => pauseMutation.mutate({ is_paused: true, resume_after_date: d.event_date })}
+                                    disabled={pauseMutation.isPending}
+                                    className="w-full h-auto flex items-center justify-between px-4 py-2.5 text-left hover:bg-info/10 hover:border-info/40"
+                                >
+                                    <span className="font-medium">
+                                        {formatEventDate(d.event_date)}
                                     </span>
-                                    <button
-                                        onClick={() => setDateOffset((prev) => prev + 4)}
-                                        className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                                        aria-label="Next dates"
-                                    >
-                                        →
-                                    </button>
-                                </div>
-                                <div className="flex-1 h-px bg-slate-200 dark:bg-zinc-700" />
-                            </div>
-
-                            {/* Date cards */}
-                            {datesLoading ? (
-                                <div className="py-4 text-center text-slate-500 animate-pulse text-sm">
-                                    Loading upcoming dates...
-                                </div>
-                            ) : (
-                                upcomingDates?.dates.map((d: UpcomingDate) => (
-                                    <button
-                                        key={d.event_date}
-                                        onClick={() => pauseMutation.mutate({ is_paused: true, resume_after_date: d.event_date })}
-                                        disabled={pauseMutation.isPending}
-                                        className="w-full text-left px-4 py-2.5 rounded-md border border-slate-200 dark:border-zinc-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-800 transition-colors group"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium text-slate-900 dark:text-white">
-                                                {formatEventDate(d.event_date)}
-                                            </span>
-                                            <span className="text-xs text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors">
-                                                sends {formatEventDate(d.send_date)}
-                                            </span>
-                                        </div>
-                                    </button>
-                                ))
-                            )}
-                        </div>
-
-                        {/* Cancel */}
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                onClick={onClose}
-                                className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-
-                        {pauseMutation.isError && (
-                            <div className="mt-3 px-3 py-2 rounded-md bg-destructive/15 text-destructive-text text-sm">
-                                ❌ {pauseMutation.error instanceof Error ? pauseMutation.error.message : 'Failed to update pause'}
-                            </div>
+                                    <span className="text-xs text-muted-foreground font-normal">
+                                        sends {formatEventDate(d.send_date)}
+                                    </span>
+                                </Button>
+                            ))
                         )}
                     </div>
-                </div>
+
+                    {pauseMutation.isError && (
+                        <div className="px-3 py-2 rounded-md bg-destructive/15 text-destructive-text text-sm">
+                            ❌ {pauseMutation.error instanceof Error ? pauseMutation.error.message : 'Failed to update pause'}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </>
     )
 }
 

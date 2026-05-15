@@ -13,6 +13,7 @@ import os
 
 from fastapi import Request, Response
 
+from api.constants import CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from bot.core.database import AsyncSessionLocal
 from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
 from bot.services.auth_service import AuthService
@@ -23,8 +24,7 @@ APP_ENV = os.getenv("APP_ENV", "local")
 # Set LOCAL_USE_DISCORD_OAUTH=true to test real Discord OAuth flow in local dev.
 # When false (default), all requests get the dev@example.com mock user.
 LOCAL_USE_DISCORD_OAUTH = os.getenv("LOCAL_USE_DISCORD_OAUTH", "false").lower() == "true"
-SESSION_COOKIE_NAME = "rides_session"
-CSRF_HEADER = "X-CSRF-Token"
+CSRF_HEADER = CSRF_HEADER_NAME
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 # Paths that don't require a session (OAuth flow + health check).
@@ -33,6 +33,8 @@ _EXEMPT_PATHS = {
     "/api/auth/discord/login",
     "/api/auth/discord/callback",
     "/api/auth/logout",
+    "/api/auth/bypass/login",
+    "/api/auth/bypass/config",
 }
 
 
@@ -67,20 +69,24 @@ async def session_cookie_middleware(request: Request, call_next) -> Response:
     if not session_id_plain:
         return Response("Unauthorized", status_code=401)
 
-    async with AsyncSessionLocal() as db_session:
-        auth_session = await AuthService.get_session(db_session, session_id_plain)
-        if not auth_session:
-            return Response("Unauthorized", status_code=401)
+    try:
+        async with AsyncSessionLocal() as db_session:
+            auth_session = await AuthService.get_session(db_session, session_id_plain)
+            if not auth_session:
+                return Response("Unauthorized", status_code=401)
 
-        # CSRF check for state-changing requests.
-        if request.method not in SAFE_METHODS:
-            csrf_header = request.headers.get(CSRF_HEADER)
-            if not AuthService.verify_csrf(auth_session.csrf_token, csrf_header):
-                logger.warning(f"CSRF check failed for {request.method} {path}")
-                return Response("Forbidden", status_code=403)
+            # CSRF check for state-changing requests.
+            if request.method not in SAFE_METHODS:
+                csrf_header = request.headers.get(CSRF_HEADER)
+                if not AuthService.verify_csrf(auth_session.csrf_token, csrf_header):
+                    logger.warning(f"CSRF check failed for {request.method} {path}")
+                    return Response("Forbidden", status_code=403)
 
-        # Slide expiry (throttled inside touch_session).
-        await AuthService.touch_session(db_session, session_id_plain, auth_session)
+            # Slide expiry (throttled inside touch_session).
+            await AuthService.touch_session(db_session, session_id_plain, auth_session)
+    except Exception:
+        logger.exception("DB error during session validation")
+        return Response("Unauthorized", status_code=401)
 
     email = auth_session.email
     request.state.user = {"email": email}

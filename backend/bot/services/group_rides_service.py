@@ -104,7 +104,7 @@ class GroupRidesService:
 
     async def _filter_class_attendees(self, usernames_reacted: set, channel_id: int) -> set:
         """Remove Sunday class attendees from the reacted set."""
-        class_message_id = await self.locations_service._find_correct_message(
+        class_message_id = await self.locations_service.find_correct_message(
             AskRidesMessage.SUNDAY_CLASS, channel_id
         )
         if class_message_id is None:
@@ -266,7 +266,7 @@ class GroupRidesService:
             if ask_message is None:
                 raise ValueError("Invalid day")
 
-            message_id = await self.locations_service._find_correct_message(
+            message_id = await self.locations_service.find_correct_message(
                 ask_message, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
             )
 
@@ -275,6 +275,10 @@ class GroupRidesService:
                 return
 
         channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+
+        if message_id is None:
+            await interaction.followup.send("Could not find the rides message.")
+            return
 
         try:
             output = await self._process_ride_grouping(
@@ -285,8 +289,10 @@ class GroupRidesService:
             return
 
         await interaction.followup.send(output[0])
-        for message in output[1:]:
-            await interaction.channel.send(message)
+        channel = interaction.channel
+        if isinstance(channel, (discord.TextChannel, discord.Thread)):
+            for message in output[1:]:
+                await channel.send(message)
 
     def get_pickup_location_fuzzy(self, input_loc: str) -> PickupLocations | None:
         """Delegates to RouteService.get_pickup_location_fuzzy."""
@@ -338,7 +344,7 @@ class GroupRidesService:
             if ask_message is None:
                 raise ValueError("day must be 'friday' or 'sunday'")
 
-            message_id = await self.locations_service._find_correct_message(ask_message, channel_id)
+            message_id = await self.locations_service.find_correct_message(ask_message, channel_id)
 
             if message_id is None:
                 raise ValueError(f"Could not find the {day} rides message. It may not exist yet.")

@@ -14,7 +14,6 @@ from api.constants import ADMIN_EMAILS
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import AccountRoles
 from bot.core.models import UserAccount
-from bot.repositories.user_accounts_repository import UserAccountsRepository
 from bot.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
@@ -102,8 +101,7 @@ async def list_users(request: Request):
     Returns:
         JSON with list of all user accounts.
     """
-    async with AsyncSessionLocal() as session:
-        accounts = await UserAccountsRepository.get_all_accounts(session)
+    accounts = await UserAccountsService.list_accounts()
 
     user = getattr(request.state, "user", None) or {}
     current_user_email = user.get("email", "")
@@ -162,10 +160,9 @@ async def update_user_role(email: str, body: UpdateRoleRequest, request: Request
             detail=f"role must be one of: {', '.join(valid_roles)}",
         )
 
-    async with AsyncSessionLocal() as session:
-        updated = await UserAccountsRepository.update_role(
-            session, email, body.role, role_edited_by=current_user_email
-        )
+    updated = await UserAccountsService.update_role(
+        email, AccountRoles(body.role), current_user_email
+    )
     if not updated:
         raise HTTPException(status_code=404, detail=f"User '{email}' not found")
 

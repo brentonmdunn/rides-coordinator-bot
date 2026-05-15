@@ -3,6 +3,8 @@
 import logging
 from collections import defaultdict
 
+import discord
+
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     AskRidesMessage,
@@ -203,7 +205,7 @@ class ReactionService:
         if not channel:
             return results
 
-        most_recent: dict[AskRidesMessage, object] = {}
+        most_recent: dict[AskRidesMessage, discord.Message] = {}
         async for message in channel.history(after=last_sunday):
             combined_text = get_message_and_embed_content(message, message_content=False).lower()
             for msg_type in AskRidesMessage:
@@ -266,7 +268,7 @@ class ReactionService:
 
         driver_role_mention = f"<@&{RoleIds.DRIVER}>"
 
-        most_recent: dict[AskRidesMessage, object] = {}
+        most_recent: dict[AskRidesMessage, discord.Message] = {}
         async for message in channel.history(after=last_sunday):
             if driver_role_mention not in message.content:
                 continue

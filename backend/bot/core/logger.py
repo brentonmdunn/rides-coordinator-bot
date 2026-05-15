@@ -138,15 +138,18 @@ def log_cmd(func):
 
     @functools.wraps(func)
     async def wrapper(self, interaction: discord.Interaction, *args: Any, **kwargs: Any) -> Any:
-        command_name = interaction.data.get("name", "unknown_command")
+        data = interaction.data or {}
+        command_name = data.get("name", "unknown_command")
         user = interaction.user
         channel = interaction.channel
 
         # Extract and format arguments from the interaction data
-        options = interaction.data.get("options", [])
+        options = data.get("options", []) or []
         arg_list = []
         for option in options:
-            arg_list.append(f"{option['name']}:{option['value']}")
+            name = option.get("name", "")
+            value = option.get("value", "")
+            arg_list.append(f"{name}:{value}")
 
         # Create a string of comma-separated arguments
         args_str = ", ".join(arg_list)

@@ -4,8 +4,8 @@ import datetime
 import logging
 from os import getenv
 
+import httpx
 import recurring_ical_events
-import requests
 from icalendar import Calendar
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class CalendarRepository:
     """Repository for accessing calendar events."""
 
     @staticmethod
-    def get_events_on_date(target_date: datetime.date) -> list:
+    async def get_events_on_date(target_date: datetime.date) -> list:
         """
         Downloads iCal data from a URL and extracts all events on a specific date.
 
@@ -32,17 +32,16 @@ class CalendarRepository:
             return []
 
         try:
-            response = requests.get(ICAL_URL)
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(ICAL_URL)
             response.raise_for_status()
             ical_data = response.text
 
             calendar = Calendar.from_ical(ical_data)
-
             events = recurring_ical_events.of(calendar).at(target_date)
-
             return events
 
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             logger.warning(f"Error downloading calendar: {e}")
             return []
         except ValueError as e:
@@ -50,7 +49,7 @@ class CalendarRepository:
             return []
 
     @staticmethod
-    def get_event_summaries(target_date: datetime.date) -> list[str]:
+    async def get_event_summaries(target_date: datetime.date) -> list[str]:
         """
         Get a list of event summaries for a specific date.
 
@@ -60,7 +59,7 @@ class CalendarRepository:
         Returns:
             A list of event summary strings.
         """
-        events_for_day = CalendarRepository.get_events_on_date(target_date)
+        events_for_day = await CalendarRepository.get_events_on_date(target_date)
 
         if events_for_day:
             event_summary = []

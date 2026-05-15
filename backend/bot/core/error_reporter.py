@@ -44,6 +44,9 @@ async def send_error_to_discord(
     bot = get_bot()
     if not bot:
         logger.warning("Could not send error to Discord: Bot is not ready")
+        print(f"[error_reporter fallback] {error_msg}", file=sys.stderr)  # noqa: T201
+        if tb_text:
+            print(tb_text, file=sys.stderr)  # noqa: T201
         return
 
     if tb_text is None:
@@ -70,6 +73,10 @@ async def send_error_to_discord(
                     full_msg += f"\n```python\n{tb_text}\n```"
                 await channel.send(full_msg)
         else:
-            logger.warning(f"Error channel {error_channel_id} not found or not a text channel")
+            msg = f"Error channel {error_channel_id} not found or not a text channel"
+            logger.warning(msg)
+            print(f"[error_reporter fallback] {msg}\n{error_msg}", file=sys.stderr)  # noqa: T201
+            if tb_text:
+                print(tb_text, file=sys.stderr)  # noqa: T201
     except Exception:
         logger.exception(f"Failed to send error to Discord channel {error_channel_id}")

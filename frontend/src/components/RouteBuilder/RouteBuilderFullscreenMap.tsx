@@ -14,6 +14,14 @@ import '@luomus/leaflet-smooth-wheel-zoom'
 import { UCSD_CENTER } from '../MapConstants'
 import { createNumberedIcon, defaultMarkerIcon } from './numberedMarker'
 import type { PickupLocationsResponse } from '../../types'
+import {
+    MAP_INITIAL_ZOOM,
+    MAP_SMOOTH_WHEEL_ZOOM,
+    TOOLTIP_OFFSET_SELECTED,
+    TOOLTIP_OFFSET_UNSELECTED,
+    ROUTE_POLYLINE_WEIGHT,
+    ROUTE_POLYLINE_OPACITY,
+} from '../../lib/constants'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,11 +63,11 @@ export function RouteBuilderFullscreenMap({
     return (
         <MapContainer
             center={UCSD_CENTER}
-            zoom={14}
+            zoom={MAP_INITIAL_ZOOM}
             scrollWheelZoom={false}
             // @ts-expect-error - smoothWheelZoom is an extended option from the plugin
             smoothWheelZoom={true}
-            smoothSensitivity={1.5}
+            smoothSensitivity={MAP_SMOOTH_WHEEL_ZOOM}
             style={{ height: '100%', width: '100%' }}
         >
             {theme === 'dark' ? (
@@ -99,7 +107,7 @@ export function RouteBuilderFullscreenMap({
                         }}
                     >
                         {showLocationLabels && (
-                            <Tooltip permanent direction="top" offset={[0, isSelected ? -10 : -36]}>
+                            <Tooltip permanent direction="top" offset={[0, isSelected ? TOOLTIP_OFFSET_SELECTED : TOOLTIP_OFFSET_UNSELECTED]}>
                                 <span className="font-medium">{loc.value}</span>
                             </Tooltip>
                         )}
@@ -108,7 +116,7 @@ export function RouteBuilderFullscreenMap({
             })}
 
             {routeGeometry && (
-                <Polyline positions={routeGeometry} color="#10b981" weight={4} opacity={0.8} />
+                <Polyline positions={routeGeometry} color="#10b981" weight={ROUTE_POLYLINE_WEIGHT} opacity={ROUTE_POLYLINE_OPACITY} />
             )}
         </MapContainer>
     )

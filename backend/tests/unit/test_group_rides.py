@@ -1,4 +1,5 @@
 from datetime import time
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -120,7 +121,7 @@ class TestLlmInputDrivers:
         # The function `llm_input_drivers` expects a list of integers.
         # Python's f-string will convert other types to strings.
         assert (
-            llm_input_drivers([1, 2.5, "3"])
+            llm_input_drivers(cast(list[int], [1, 2.5, "3"]))  # intentionally wrong types
             == "Driver0 has capacity 1, Driver1 has capacity 2.5, Driver2 has capacity 3"
         )
 
@@ -231,7 +232,9 @@ class TestCalculatePickupTime:
     sample_route_so_far = [[p_warren]]  # noqa
 
     @patch("bot.services.ride_grouping.lookup_time")
-    @patch("bot.services.ride_grouping.PICKUP_ADJUSTMENT", 2)  # Mock the constant to be 2 minutes
+    @patch(
+        "bot.services.ride_grouping.RIDE_GROUPING_PICKUP_ADJUSTMENT", 2
+    )  # Mock the constant to be 2 minutes
     def test_simple_calculation(self, mock_lookup_time):
         """Should correctly calculate a new pickup time by subtracting travel and adjustment time."""
         # Arrange: Mock the travel time between Innovation (the stop we are calculating)

@@ -64,7 +64,7 @@ class NonDiscordRides(Base):
     __tablename__ = "non_discord_rides"
 
     name: Mapped[str] = mapped_column(primary_key=True)
-    date: Mapped[date] = mapped_column(primary_key=True)
+    date: Mapped[date] = mapped_column(primary_key=True)  # ty: ignore[invalid-type-form]
     location: Mapped[str | None]
 
 
@@ -150,3 +150,19 @@ class UserPreferences(Base):
     show_map_labels: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class RideReactionEvent(Base):
+    """Model representing a single reaction or unreaction on an ask-rides announcement message."""
+
+    __tablename__ = "ride_reaction_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    message_id: Mapped[str] = mapped_column(index=True)
+    discord_username: Mapped[str]
+    display_name: Mapped[str | None]
+    emoji: Mapped[str]
+    action: Mapped[str]  # "add" or "remove"
+    occurred_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
+    ride_date: Mapped[date | None]
+    ride_type: Mapped[str | None]  # "friday", "sunday", "sunday_class", "wednesday"

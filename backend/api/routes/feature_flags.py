@@ -10,9 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.auth import require_admin
-from bot.core.database import AsyncSessionLocal
 from bot.core.enums import CacheNamespace
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.services.feature_flags_service import FeatureFlagsService
 from bot.utils.cache import invalidate_namespace
 
 logger = logging.getLogger(__name__)
@@ -35,8 +34,7 @@ async def list_feature_flags():
         JSON with list of all feature flags
     """
     try:
-        async with AsyncSessionLocal() as session:
-            flags = await FeatureFlagsRepository.get_all_feature_flags(session)
+        flags = await FeatureFlagsService.list_flags()
 
         return {
             "flags": [
@@ -61,40 +59,33 @@ async def toggle_feature_flag(feature_name: str, update: FeatureFlagUpdate):
         JSON with success status and updated flag info
     """
     try:
-        async with AsyncSessionLocal() as session:
-            flag = await FeatureFlagsRepository.get_feature_flag(session, feature_name)
+        flag = await FeatureFlagsService.get_flag(feature_name)
 
-            if not flag:
-                raise HTTPException(
-                    status_code=404, detail=f"Feature flag '{feature_name}' not found"
-                )
+        if not flag:
+            raise HTTPException(status_code=404, detail=f"Feature flag '{feature_name}' not found")
 
-            if flag.enabled == update.enabled:
-                return {
-                    "success": False,
-                    "message": (
-                        f"Feature flag '{feature_name}' is already "
-                        f"{'enabled' if update.enabled else 'disabled'}"
-                    ),
-                    "flag": {
-                        "id": flag.id,
-                        "feature": flag.feature,
-                        "enabled": flag.enabled,
-                    },
-                }
+        if flag.enabled == update.enabled:
+            return {
+                "success": False,
+                "message": (
+                    f"Feature flag '{feature_name}' is already "
+                    f"{'enabled' if update.enabled else 'disabled'}"
+                ),
+                "flag": {
+                    "id": flag.id,
+                    "feature": flag.feature,
+                    "enabled": flag.enabled,
+                },
+            }
 
-            await FeatureFlagsRepository.update_feature_flag(session, feature_name, update.enabled)
-
-        async with AsyncSessionLocal() as session:
-            await FeatureFlagsRepository.initialize_cache(session)
+        svc = FeatureFlagsService()
+        await svc.modify_feature_flag(feature_name, update.enabled)
+        await FeatureFlagsService.reinitialize_cache()
         await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
 
-        async with AsyncSessionLocal() as session:
-            updated_flag = await FeatureFlagsRepository.get_feature_flag(session, feature_name)
+        updated_flag = await FeatureFlagsService.get_flag(feature_name)
 
-        logger.info(
-            f"✅ Feature flag '{feature_name}' {'enabled' if update.enabled else 'disabled'}"
-        )
+        logger.info(f"Feature flag '{feature_name}' {'enabled' if update.enabled else 'disabled'}")
 
         return {
             "success": True,

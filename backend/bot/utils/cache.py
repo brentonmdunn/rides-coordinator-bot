@@ -12,10 +12,15 @@ import hashlib
 import logging
 import pickle
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from bot.core.enums import CacheNamespace, FeatureFlagNames
 from bot.utils.cache_backends import get_backend
+from bot.utils.constants import (
+    CACHE_DEFAULT_MAX_SIZE,
+    REACTION_CACHE_ACTIVE_TTL,
+    REACTION_CACHE_OFF_HOURS_TTL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +31,6 @@ _namespace_registry: dict[str, list[Callable]] = {}
 
 # Global registry: namespace -> list of (func_name, stats_callable)
 _func_registry: dict[str, list[tuple[str, Callable]]] = {}
-
-# Cache TTL constants (in seconds)
-ACTIVE_HOURS_REACTION_TTL = 65 * 60  # 65 minutes
-OFF_HOURS_REACTION_TTL = 7 * 60 * 60  # 7 hours
 
 
 def _get_reaction_cache_ttl() -> int:
@@ -45,8 +46,8 @@ def _get_reaction_cache_ttl() -> int:
     from bot.utils.time_helpers import is_active_hours
 
     if is_active_hours():
-        return ACTIVE_HOURS_REACTION_TTL
-    return OFF_HOURS_REACTION_TTL
+        return REACTION_CACHE_ACTIVE_TTL
+    return REACTION_CACHE_OFF_HOURS_TTL
 
 
 def _is_cache_enabled() -> bool:
@@ -62,7 +63,7 @@ def _make_cache_key(*args, **kwargs) -> str:
 
 
 def alru_cache(
-    maxsize: int = 128,
+    maxsize: int = CACHE_DEFAULT_MAX_SIZE,
     ttl: int | float | Callable[[], int | float] | None = None,
     ignore_self: bool = False,
     namespace: CacheNamespace = CacheNamespace.DEFAULT,
@@ -86,7 +87,7 @@ def alru_cache(
         locks: dict[str, asyncio.Lock] = {}
         stats = {"hits": 0, "misses": 0}
         ns_key = str(namespace)
-        func_prefix = func.__qualname__
+        func_prefix = cast(Any, func).__qualname__
 
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
@@ -120,7 +121,7 @@ def alru_cache(
             locks.pop(key, None)
 
             # Calculate TTL (support dynamic TTL via callable)
-            current_ttl = ttl() if callable(ttl) else ttl
+            current_ttl = cast(Callable[[], int | float], ttl)() if callable(ttl) else ttl
 
             # Store in backend
             await backend.set(ns_key, key, result, current_ttl)
@@ -132,7 +133,7 @@ def alru_cache(
             locks.clear()
             stats["hits"] = 0
             stats["misses"] = 0
-            logger.info(f"Cache cleared for {func.__name__}")
+            logger.info(f"Cache cleared for {cast(Any, func).__name__}")
 
         async def cache_set(*args, result):
             """
@@ -143,7 +144,7 @@ def alru_cache(
             """
             backend = get_backend()
             key = _make_cache_key(func_prefix, *args)
-            current_ttl = ttl() if callable(ttl) else ttl
+            current_ttl = cast(Callable[[], int | float], ttl)() if callable(ttl) else ttl
             await backend.set(ns_key, key, result, current_ttl)
 
         async def cache_invalidate(*args):
@@ -155,12 +156,12 @@ def alru_cache(
             backend = get_backend()
             key = _make_cache_key(func_prefix, *args)
             await backend.delete(ns_key, key)
-            logger.info(f"Cache explicitly invalidated for {func.__name__}")
+            logger.info(f"Cache explicitly invalidated for {cast(Any, func).__name__}")
 
         def cache_info() -> dict:
             """Return cache statistics for this function."""
             return {
-                "func": func.__name__,
+                "func": cast(Any, func).__name__,
                 "namespace": ns_key,
                 "hits": stats["hits"],
                 "misses": stats["misses"],
@@ -171,11 +172,12 @@ def alru_cache(
                 ),
             }
 
-        wrapper.cache_clear = cache_clear
-        wrapper.cache_set = cache_set
-        wrapper.cache_invalidate = cache_invalidate
-        wrapper.cache_info = cache_info
-        wrapper.cache_namespace = ns_key
+        w = cast(Any, wrapper)
+        w.cache_clear = cache_clear
+        w.cache_set = cache_set
+        w.cache_invalidate = cache_invalidate
+        w.cache_info = cache_info
+        w.cache_namespace = ns_key
 
         # Register for namespace invalidation
         if ns_key not in _namespace_registry:
@@ -185,7 +187,7 @@ def alru_cache(
         # Register for global stats lookup
         if ns_key not in _func_registry:
             _func_registry[ns_key] = []
-        _func_registry[ns_key].append((func.__name__, cache_info))
+        _func_registry[ns_key].append((cast(Any, func).__name__, cache_info))
 
         return wrapper
 
