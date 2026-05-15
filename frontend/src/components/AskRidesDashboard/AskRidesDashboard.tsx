@@ -64,7 +64,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                             disabled={sendNowMutation.isPending}
                             variant="warning"
                             size="sm"
-                            className="gap-1.5"
+                            className="hidden sm:flex gap-1.5"
                         >
                             {sendNowMutation.isPending ? (
                                 <>
@@ -84,6 +84,24 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                 </>
             }
         >
+                {canManage && (
+                    <Button
+                        onClick={() => setShowConfirm(true)}
+                        disabled={sendNowMutation.isPending}
+                        variant="warning"
+                        size="sm"
+                        className="sm:hidden w-full gap-1.5 mb-4"
+                    >
+                        {sendNowMutation.isPending ? (
+                            <>
+                                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Sending...
+                            </>
+                        ) : (
+                            '📨 Send now'
+                        )}
+                    </Button>
+                )}
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}
