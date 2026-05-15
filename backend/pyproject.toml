@@ -32,10 +32,6 @@ dependencies = [
 [tool.ty.src]
 exclude = ["tests", "bot/jobs_disabled", "bot/cogs_disabled"]
 
-[tool.pytest.ini_options]
-asyncio_mode = "strict"
-pythonpath = ["."]
-
 [dependency-groups]
 dev = [
     "invoke>=2.2.0",

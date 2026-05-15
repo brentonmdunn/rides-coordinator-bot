@@ -155,14 +155,16 @@ async def test_get_location_returns_cached_results():
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
             new_callable=AsyncMock,
             return_value=[("Alice", "Revelle")],
-        ):
-            svc.sync_locations = AsyncMock()
-            result = await svc.get_location("Alice")
+        ),
+    ):
+        svc.sync_locations = AsyncMock()
+        result = await svc.get_location("Alice")
 
     assert result == [("Alice", "Revelle")]
     svc.sync_locations.assert_not_awaited()
@@ -187,12 +189,14 @@ async def test_get_location_triggers_sync_on_cache_miss():
 
     svc.sync_locations = AsyncMock()
 
-    with patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
             side_effect=fake_lookup,
-        ):
-            result = await svc.get_location("Bob")
+        ),
+    ):
+        result = await svc.get_location("Bob")
 
     assert result == [("Bob", "Warren")]
     svc.sync_locations.assert_awaited_once()
@@ -210,13 +214,15 @@ async def test_get_location_returns_none_after_sync_miss():
 
     svc.sync_locations = AsyncMock()
 
-    with patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
             new_callable=AsyncMock,
             return_value=[],
-        ):
-            result = await svc.get_location("Nobody")
+        ),
+    ):
+        result = await svc.get_location("Nobody")
 
     assert result is None
 
@@ -230,14 +236,16 @@ async def test_get_location_discord_only_uses_discord_check():
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.locations_service.LocationsRepository.get_location_check_discord",
             new_callable=AsyncMock,
             return_value=[("Alice", "Revelle")],
-        ) as mock_discord_check:
-            svc.sync_locations = AsyncMock()
-            result = await svc.get_location("alice", discord_only=True)
+        ) as mock_discord_check,
+    ):
+        svc.sync_locations = AsyncMock()
+        result = await svc.get_location("alice", discord_only=True)
 
     assert result == [("Alice", "Revelle")]
     mock_discord_check.assert_awaited_once()
@@ -253,13 +261,15 @@ async def test_get_name_location_no_sync_delegates_to_repo():
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.locations_service.LocationsRepository.get_name_location",
             new_callable=AsyncMock,
             return_value=fake_person,
-        ):
-            result = await svc.get_name_location_no_sync("alice")
+        ),
+    ):
+        result = await svc.get_name_location_no_sync("alice")
 
     assert result is fake_person
 
@@ -336,12 +346,14 @@ async def test_list_locations_no_day_uses_message_id():
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.locations_service.LocationsRepository.get_non_discord_pickups",
             new_callable=AsyncMock,
             return_value=[],
-        ):
-            locations_people, reacted, found = await svc.list_locations(message_id=999)
+        ),
+    ):
+        _, reacted, _ = await svc.list_locations(message_id=999)
 
     assert "alice" in reacted

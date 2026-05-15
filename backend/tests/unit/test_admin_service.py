@@ -73,7 +73,7 @@ async def test_assign_roles_skips_already_assigned():
     alice = _make_member("alice", roles=[role])
     guild = _make_guild({"alice": alice})
 
-    count, failed = await AdminService.assign_roles_from_csv(role, "alice", guild)
+    count, _failed = await AdminService.assign_roles_from_csv(role, "alice", guild)
 
     assert count == 0
     alice.add_roles.assert_not_awaited()

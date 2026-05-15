@@ -104,7 +104,7 @@ async def test_determine_event_type_sunday():
 @pytest.mark.asyncio
 async def test_determine_event_type_invalid_raises():
     svc = _make_service()
-    with pytest.raises(ValueError, match="friday.*sunday"):
+    with pytest.raises(ValueError, match=r"friday.*sunday"):
         await svc._determine_event_type("wednesday potluck")
 
 
@@ -331,7 +331,7 @@ async def test_group_rides_api_uses_default_channel_id():
     svc = _make_service()
     svc._process_ride_grouping = AsyncMock(return_value=["summary"])
 
-    result = await svc.group_rides_api(message_id=9999)
+    await svc.group_rides_api(message_id=9999)
 
     # Verify _process_ride_grouping was called (channel_id should default to rides announcements)
     svc._process_ride_grouping.assert_awaited_once()
@@ -409,9 +409,9 @@ async def test_process_ride_grouping_raises_on_llm_exception():
             new=AsyncMock(side_effect=RuntimeError("LLM down")),
         ),
         patch("bot.services.group_rides_service.send_error_to_discord", new=AsyncMock()),
+        pytest.raises(ValueError, match="Could not process"),
     ):
-        with pytest.raises(ValueError, match="Could not process"):
-            await svc._process_ride_grouping(1234, "44444", 9999)
+        await svc._process_ride_grouping(1234, "44444", 9999)
 
 
 # ---------------------------------------------------------------------------

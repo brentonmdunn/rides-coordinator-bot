@@ -186,15 +186,17 @@ async def test_get_ask_rides_reactions_aggregates_users():
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("bot.services.reaction_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.reaction_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.reaction_service.LocationsRepository.get_names_for_usernames",
             new_callable=AsyncMock,
             return_value={"alice": "Alice Smith", "bob": "Bob Jones"},
-        ):
-            result = await svc.get_ask_rides_reactions.__wrapped__(
-                svc, AskRidesMessage.FRIDAY_FELLOWSHIP
-            )
+        ),
+    ):
+        result = await svc.get_ask_rides_reactions.__wrapped__(
+            svc, AskRidesMessage.FRIDAY_FELLOWSHIP
+        )
 
     assert "alice" in result["reactions"].get("👍", [])
     assert result["username_to_name"]["alice"] == "Alice Smith"
@@ -345,15 +347,17 @@ async def test_get_driver_reactions_aggregates_reactions():
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("bot.services.reaction_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.reaction_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.reaction_service.LocationsRepository.get_names_for_usernames",
             new_callable=AsyncMock,
             return_value={"alice": "Alice Smith", "bob": "Bob Jones"},
-        ):
-            result = await svc.get_driver_reactions.__wrapped__(
-                svc, AskRidesMessage.FRIDAY_FELLOWSHIP
-            )
+        ),
+    ):
+        result = await svc.get_driver_reactions.__wrapped__(
+            svc, AskRidesMessage.FRIDAY_FELLOWSHIP
+        )
 
     assert result is not None
     assert "alice" in result["reactions"].get("👍", [])
@@ -383,15 +387,17 @@ async def test_get_driver_reactions_filters_bot_users():
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("bot.services.reaction_service.AsyncSessionLocal", return_value=mock_session_cm):
-        with patch(
+    with (
+        patch("bot.services.reaction_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
             "bot.services.reaction_service.LocationsRepository.get_names_for_usernames",
             new_callable=AsyncMock,
             return_value={"driver_human": "Driver Human"},
-        ):
-            result = await svc.get_driver_reactions.__wrapped__(
-                svc, AskRidesMessage.FRIDAY_FELLOWSHIP
-            )
+        ),
+    ):
+        result = await svc.get_driver_reactions.__wrapped__(
+            svc, AskRidesMessage.FRIDAY_FELLOWSHIP
+        )
 
     assert "driver_human" in result["reactions"].get("👍", [])
     assert "AutoBot" not in result["reactions"].get("👍", [])

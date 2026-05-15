@@ -193,7 +193,7 @@ async def test_create_account_with_custom_role():
     session = AsyncMock(spec=AsyncSession)
     session.refresh = AsyncMock()
 
-    result = await UserAccountsRepository.create_account(
+    await UserAccountsRepository.create_account(
         session, "admin@example.com", AccountRoles.ADMIN
     )
 
