@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - staging
+    paths-ignore:
+      - 'portfolio/**'
+      - '.github/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
