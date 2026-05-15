@@ -148,7 +148,10 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  *:focus-visible {
+    @apply outline-ring/50;
   }
 
   html,
