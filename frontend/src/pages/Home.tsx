@@ -143,7 +143,7 @@ function Home() {
                 <div className="flex gap-8">
                     <SectionNav isAdmin={isAdmin} />
 
-                    <div className="flex-1 min-w-0 grid gap-8">
+                    <div className="flex-1 min-w-0 grid grid-cols-1 gap-8">
                         <RideCoverageWarning />
 
                         <div id="ask-rides">

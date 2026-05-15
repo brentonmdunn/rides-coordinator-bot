@@ -20,7 +20,7 @@ function PageLayout({ header, spacedBody = false, children }: PageLayoutProps) {
             <EnvironmentBanner />
             <main
                 id="main-content"
-                className="relative min-h-screen w-full max-w-[100vw] bg-background py-12 px-4 font-sans text-foreground transition-colors duration-300"
+                className="relative min-h-screen w-full overflow-x-clip bg-background py-12 px-4 font-sans text-foreground transition-colors duration-300"
             >
                 {/* Cohere mesh gradient wash — subtle behind-the-fold decoration */}
                 <div className="pointer-events-none absolute inset-0 cohere-mesh opacity-60" />
