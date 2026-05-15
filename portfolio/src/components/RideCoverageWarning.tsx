@@ -1,0 +1,73 @@
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '../lib/api'
+import type { RideCoverage } from '../types'
+import { AlertTriangle } from 'lucide-react'
+import { isFridayWarningWindow, isSundayWarningWindow } from '../lib/utils'
+import { QUERY_STALE_5_MIN } from '../lib/constants'
+
+function RideCoverageWarning() {
+    // Check Friday ride coverage
+    const { data: fridayData } = useQuery<RideCoverage>({
+        queryKey: ['rideCoverage', 'friday'],
+        queryFn: async () => {
+            const response = await apiFetch('/api/check-pickups/friday')
+            return response.json()
+        },
+        staleTime: QUERY_STALE_5_MIN,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
+    })
+
+    // Check Sunday ride coverage
+    const { data: sundayData } = useQuery<RideCoverage>({
+        queryKey: ['rideCoverage', 'sunday'],
+        queryFn: async () => {
+            const response = await apiFetch('/api/check-pickups/sunday')
+            return response.json()
+        },
+        staleTime: QUERY_STALE_5_MIN,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
+    })
+
+    const fridayNeedsDrivers = fridayData?.message_found && !fridayData?.has_coverage_entries
+    const sundayNeedsDrivers = sundayData?.message_found && !sundayData?.has_coverage_entries
+
+    const shouldShowFridayWarning = fridayNeedsDrivers && isFridayWarningWindow()
+    const shouldShowSundayWarning = sundayNeedsDrivers && isSundayWarningWindow()
+
+    // Don't show anything if no warnings needed
+    if (!shouldShowFridayWarning && !shouldShowSundayWarning) {
+        return null
+    }
+
+    // Determine warning message
+    let message = ''
+    if (shouldShowFridayWarning && shouldShowSundayWarning) {
+        message = 'Ride requests have been sent for Friday Fellowship and Sunday Service, but no drivers have posted groupings yet.'
+    } else if (shouldShowFridayWarning) {
+        message = 'The request for rides has been sent for Friday Fellowship, but no drivers have posted groupings yet.'
+    } else if (shouldShowSundayWarning) {
+        message = 'The request for rides has been sent for Sunday Service, but no drivers have posted groupings yet.'
+    }
+
+    return (
+        <div className="p-4 bg-warning/15 border-l-4 border-warning rounded-md">
+            <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-warning-text flex-shrink-0 mt-0.5" />
+                <div>
+                    <h3 className="font-semibold text-warning-text mb-1">
+                        ⚠️ Rides Needed
+                    </h3>
+                    <p className="text-sm text-warning-text">
+                        {message}
+                    </p>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+export default RideCoverageWarning
