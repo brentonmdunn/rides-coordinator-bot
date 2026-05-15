@@ -383,10 +383,12 @@ async def _was_ask_rides_sent_early_this_week(
     during the current week. Used to skip the automated send when it was already triggered
     manually.
     """
-    channel = bot.get_channel(channel_id)
-    if not channel:
-        logger.warning(f"Channel not found with ID: {channel_id}")
+    raw_channel = bot.get_channel(channel_id)
+    if not isinstance(raw_channel, discord.TextChannel):
+        if raw_channel is None:
+            logger.warning(f"Channel not found with ID: {channel_id}")
         return False
+    channel = raw_channel
 
     now = datetime.now(tz=LA_TZ)
     week_monday = (now - timedelta(days=now.weekday())).replace(
