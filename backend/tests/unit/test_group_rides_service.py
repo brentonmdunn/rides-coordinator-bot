@@ -236,7 +236,7 @@ def test_validate_capacity_spaced_digits():
 async def test_filter_class_attendees_no_class_message():
     """If no class message found, original set is returned unchanged."""
     svc = _make_service()
-    svc.locations_service._find_correct_message = AsyncMock(return_value=None)
+    svc.locations_service.find_correct_message = AsyncMock(return_value=None)
 
     original = {"alice", "bob"}
     result = await svc._filter_class_attendees(original, channel_id=12345)
@@ -246,7 +246,7 @@ async def test_filter_class_attendees_no_class_message():
 @pytest.mark.asyncio
 async def test_filter_class_attendees_removes_class_goers():
     svc = _make_service()
-    svc.locations_service._find_correct_message = AsyncMock(return_value=9999)
+    svc.locations_service.find_correct_message = AsyncMock(return_value=9999)
     # list_locations returns (locations_people, usernames_reacted, location_found)
     svc.locations_service.list_locations = AsyncMock(return_value=({}, {"alice"}, {"alice"}))
 
@@ -304,7 +304,7 @@ async def test_group_rides_api_raises_when_invalid_day():
 @pytest.mark.asyncio
 async def test_group_rides_api_day_message_not_found_raises():
     svc = _make_service()
-    svc.locations_service._find_correct_message = AsyncMock(return_value=None)
+    svc.locations_service.find_correct_message = AsyncMock(return_value=None)
 
     with pytest.raises(ValueError, match="Could not find"):
         await svc.group_rides_api(day="friday")
@@ -435,8 +435,12 @@ async def test_group_rides_sends_error_on_value_error():
 
 @pytest.mark.asyncio
 async def test_group_rides_sends_multiple_messages():
+    import discord
+
     svc = _make_service()
     interaction = AsyncMock()
+    interaction.channel = MagicMock(spec=discord.TextChannel)
+    interaction.channel.send = AsyncMock()
     svc._process_ride_grouping = AsyncMock(return_value=["first", "second", "third"])
 
     await svc.group_rides(interaction, driver_capacity="444", message_id=1234)
@@ -449,7 +453,7 @@ async def test_group_rides_sends_multiple_messages():
 async def test_group_rides_day_not_found_sends_message():
     svc = _make_service()
     interaction = AsyncMock()
-    svc.locations_service._find_correct_message = AsyncMock(return_value=None)
+    svc.locations_service.find_correct_message = AsyncMock(return_value=None)
 
     await svc.group_rides(interaction, driver_capacity="444", day="friday")
 

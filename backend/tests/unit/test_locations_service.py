@@ -332,8 +332,8 @@ async def test_list_locations_no_day_uses_message_id():
     svc.bot = MagicMock()
     svc.bot.get_channel.return_value = fake_channel
 
-    svc._get_usernames_who_reacted = AsyncMock(return_value={"alice"})
-    svc._find_correct_message = AsyncMock(return_value=None)
+    svc.get_usernames_who_reacted = AsyncMock(return_value={"alice"})
+    svc._find_correct_message = AsyncMock(return_value=None)  # not called in message_id path
 
     fake_person = MagicMock()
     fake_person.location = "Revelle"

@@ -98,15 +98,16 @@ async def test_get_names_for_usernames_maps_correctly():
 
 @pytest.mark.asyncio
 async def test_get_name_location_returns_tuple():
-    fake_row = MagicMock()
     session = AsyncMock()
     result_obj = MagicMock()
+    fake_row = MagicMock()
+    fake_row.__getitem__ = MagicMock(side_effect=lambda i: ("Alice", "Revelle")[i])
     result_obj.first.return_value = fake_row
     session.execute = AsyncMock(return_value=result_obj)
 
     result = await LocationsRepository.get_name_location(session, "alice")
 
-    assert result is fake_row
+    assert result == ("Alice", "Revelle")
 
 
 @pytest.mark.asyncio
