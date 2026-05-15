@@ -1,0 +1,186 @@
+import { useState, useEffect, useCallback } from 'react'
+import { getAutomaticDay } from '../lib/utils'
+import { apiFetch } from '../lib/api'
+import { Button } from './ui/button'
+import { InfoToggleButton, InfoPanel } from './InfoHelp'
+import ErrorMessage from "./ErrorMessage"
+import { ListSkeleton } from './LoadingSkeleton'
+
+import { CopyPill } from './CopyPill'
+import { RefreshIconButton, SectionCard } from './shared'
+
+interface DriverReactionsData {
+    day: string
+    reactions: Record<string, string[]>
+    username_to_name: Record<string, string>
+    message_found: boolean
+}
+
+function DriverReactions() {
+    const [data, setData] = useState<DriverReactionsData | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const [activeDay, setActiveDay] = useState<'friday' | 'sunday'>('friday')
+
+    const [showInfo, setShowInfo] = useState(false)
+
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+    const fetchDataForDay = async (day: 'friday' | 'sunday') => {
+        setLoading(true)
+        setError('')
+        try {
+            const response = await apiFetch(`/api/check-pickups/driver-reactions/${day}`)
+            const result = await response.json()
+            setData(result)
+            setActiveDay(day)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Unknown error')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const updateDayAndFetch = useCallback(async () => {
+        await fetchDataForDay(getAutomaticDay())
+    }, [])
+
+    const handleDayToggle = async (day: 'friday' | 'sunday') => {
+        setActiveDay(day)
+        await fetchDataForDay(day)
+    }
+
+    useEffect(() => {
+        updateDayAndFetch()
+    }, [updateDayAndFetch])
+
+    return (
+        <SectionCard
+            icon="🚙"
+            title={`Driver Reactions (${capitalize(activeDay)})`}
+            actions={
+                <>
+                    <RefreshIconButton onClick={updateDayAndFetch} isLoading={loading} />
+                    <InfoToggleButton
+                        isOpen={showInfo}
+                        onClick={() => setShowInfo(!showInfo)}
+                        title="About Driver Reactions"
+                    />
+                </>
+            }
+        >
+                <InfoPanel
+                    isOpen={showInfo}
+                    onClose={() => setShowInfo(false)}
+                    title="About Driver Reactions"
+                >
+                    <div className="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
+                        <p className="text-sm font-medium text-foreground">
+                            Currently viewing: <strong>{capitalize(activeDay)}</strong>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Automatically switches based on current time. Click refresh to reset.
+                        </p>
+                    </div>
+                    <p className="mb-2">
+                        This widget tracks emoji reactions from drivers in the driver chat channel.
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                        <li>Automatically switches between <strong>Friday</strong> and <strong>Sunday</strong> based on the current time.</li>
+                        <li>Use the day toggle buttons to manually switch between Friday and Sunday views.</li>
+                        <li>Click the refresh button to return to automatic mode and update data.</li>
+                        <li>Expand the dropdown to see who reacted with each emoji.</li>
+                        <li>Click on any driver's username to copy it to your clipboard.</li>
+                    </ul>
+                </InfoPanel>
+
+                <div className="mb-4 flex gap-2">
+                    <Button
+                        variant={activeDay === 'friday' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleDayToggle('friday')}
+                        disabled={loading}
+                        className="flex-1"
+                    >
+                        Friday
+                    </Button>
+                    <Button
+                        variant={activeDay === 'sunday' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleDayToggle('sunday')}
+                        disabled={loading}
+                        className="flex-1"
+                    >
+                        Sunday
+                    </Button>
+                </div>
+
+                {loading && <ListSkeleton rows={4} />}
+
+                {error && <ErrorMessage message={error} />}
+
+                {!loading && !error && data && (
+                    <>
+                        {!data.message_found ? (
+                            <div className="text-center py-4 text-muted-foreground italic">
+                                No driver message found for {capitalize(activeDay)}.
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {Object.keys(data.reactions).length === 0 ? (
+                                    <div className="text-center py-4 text-muted-foreground">No reactions found yet.</div>
+                                ) : (
+                                    <details className="group border border-border rounded-lg bg-card overflow-hidden">
+                                        <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors select-none list-none [&::-webkit-details-marker]:hidden">
+                                            <span className="sr-only">Show driver reaction details</span>
+                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                                                {Object.entries(data.reactions).map(([emoji, usernames]) => (
+                                                    <div key={emoji} className="flex items-center gap-2">
+                                                        <span className="text-xl">{emoji}</span>
+                                                        <span className="text-sm font-medium text-foreground">
+                                                            {usernames.length}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <span className="text-muted-foreground group-open:rotate-180 transition-transform duration-200 ml-4">
+                                                ▼
+                                            </span>
+                                        </summary>
+                                        <div className="px-4 pb-4 pt-0 border-t border-border">
+                                            <div className="space-y-4 mt-4">
+                                                {Object.entries(data.reactions).map(([emoji, usernames]) => (
+                                                    <div key={emoji}>
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-lg">{emoji}</span>
+                                                            <span className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-xs">
+                                                                {usernames.length} {usernames.length === 1 ? 'Driver' : 'Drivers'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {usernames.map((username) => {
+                                                                const displayName = data.username_to_name[username] || ("@" + username)
+                                                                return (
+                                                                    <CopyPill
+                                                                        key={username}
+                                                                        copyStr={"@" + username}
+                                                                        displayStr={displayName}
+                                                                    />
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </details>
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
+        </SectionCard>
+    )
+}
+
+export default DriverReactions
