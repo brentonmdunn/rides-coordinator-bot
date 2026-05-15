@@ -38,7 +38,7 @@ function PickupLocations() {
 
     return (
         <SectionCard
-            icon="📍"
+            icon={undefined}
             title="List Pickups"
             actions={
                 <>
@@ -60,7 +60,7 @@ function PickupLocations() {
                 title="How to use List Pickups"
             >
                 <ol className="list-decimal list-inside space-y-1.5">
-                    <li>Select a <span className="font-medium">Ride Type</span> (e.g., Friday Fellowship).</li>
+                    <li>Select a <span className="font-medium">Ride Type</span> (e.g., Weekly Event 1).</li>
                     <li>If "Custom Message ID" is selected, copy & paste the Discord message ID.</li>
                     <li>Click <span className="font-medium">Fetch Pickups</span> to load the list.</li>
                     <li>Click on any person's name to copy their Discord username to your clipboard.</li>

@@ -19,9 +19,9 @@ interface MessageTypeOption {
 }
 
 const MESSAGE_TYPES: MessageTypeOption[] = [
-    { value: 'friday', label: 'Friday Fellowship', emoji: '🎉' },
-    { value: 'sunday', label: 'Sunday Service', emoji: '⛪' },
-    { value: 'sunday_class', label: 'Sunday Class', emoji: '📖' }
+    { value: 'friday', label: 'Weekly Event 1', emoji: '' },
+    { value: 'sunday', label: 'Weekly Event 2', emoji: '' },
+    { value: 'sunday_class', label: 'Weekly Office Hours', emoji: '' }
 ]
 
 function ReactionDetails() {
@@ -80,7 +80,7 @@ function ReactionDetails() {
 
     return (
         <SectionCard
-            icon="📋"
+            icon={undefined}
             title="Ask Rides Reactions"
             actions={
                 <>
@@ -131,7 +131,6 @@ function ReactionDetails() {
                             disabled={loading}
                             className="flex-1 min-w-[120px] w-full md:w-auto"
                         >
-                            <span className="mr-2">{type.emoji}</span>
                             {type.label}
 
                         </Button>

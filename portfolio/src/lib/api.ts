@@ -215,7 +215,7 @@ function getUpcomingDates() {
         dates.push({
             event_date: friday.toISOString().slice(0, 10),
             send_date: sendDate.toISOString().slice(0, 10),
-            label: 'Friday Fellowship',
+            label: 'Weekly Event 1',
         })
         const sunday = new Date(friday)
         sunday.setDate(friday.getDate() + 2)
@@ -224,52 +224,55 @@ function getUpcomingDates() {
         dates.push({
             event_date: sunday.toISOString().slice(0, 10),
             send_date: sundaySend.toISOString().slice(0, 10),
-            label: 'Sunday Service',
+            label: 'Weekly Event 2',
         })
     }
-    return dates.slice(0, 8)
+    return { dates: dates.slice(0, 8), has_more: false }
 }
 
 function getPickupLocations(): PickupLocationsResponse {
     return {
         locations: [
-            { key: 'price_center', value: 'Price Center' },
-            { key: 'revelle', value: 'Revelle College' },
-            { key: 'muir', value: 'Muir College' },
-            { key: 'warren', value: 'Warren College' },
-            { key: 'marshall', value: 'Marshall College' },
-            { key: 'erc', value: 'Eleanor Roosevelt College' },
-            { key: 'sixth', value: 'Sixth College' },
-            { key: 'seventh', value: 'Seventh College' },
-            { key: 'pepper_canyon', value: 'Pepper Canyon Apartments' },
-            { key: 'the_village', value: 'The Village' },
-            { key: 'matthews', value: 'Matthews Campus Apartments' },
+            { key: 'sixth', value: 'Sixth loop' },
+            { key: 'seventh', value: 'Seventh mail room' },
+            { key: 'marshall', value: 'Marshall uppers' },
+            { key: 'erc', value: 'ERC across from bamboo' },
+            { key: 'muir', value: 'Muir tennis courts' },
+            { key: 'eighth', value: 'Eighth basketball courts' },
+            { key: 'innovation', value: 'Innovation' },
+            { key: 'rita', value: 'Rita' },
+            { key: 'warren_eql', value: 'Warren Equality Ln' },
+            { key: 'warren_jst', value: 'Warren Justice Ln' },
+            { key: 'geisel_loop', value: 'Geisel Loop' },
+            { key: 'pcyn_loop', value: 'Pepper Canyon Loop' },
         ],
         map_links: {
-            'Price Center': 'https://maps.google.com/?q=Price+Center+UCSD',
-            'Revelle College': 'https://maps.google.com/?q=Revelle+College+UCSD',
-            'Muir College': 'https://maps.google.com/?q=Muir+College+UCSD',
-            'Warren College': 'https://maps.google.com/?q=Warren+College+UCSD',
-            'Marshall College': 'https://maps.google.com/?q=Marshall+College+UCSD',
-            'Eleanor Roosevelt College': 'https://maps.google.com/?q=Eleanor+Roosevelt+College+UCSD',
-            'Sixth College': 'https://maps.google.com/?q=Sixth+College+UCSD',
-            'Seventh College': 'https://maps.google.com/?q=Seventh+College+UCSD',
-            'Pepper Canyon Apartments': 'https://maps.google.com/?q=Pepper+Canyon+Apartments+UCSD',
-            'The Village': 'https://maps.google.com/?q=The+Village+UCSD',
-            'Matthews Campus Apartments': 'https://maps.google.com/?q=Matthews+Campus+Apartments+UCSD',
+            'Sixth loop': 'https://www.google.com/maps?q=32.881096,-117.242020',
+            'Seventh mail room': 'https://www.google.com/maps?q=32.888203,-117.242347',
+            'Marshall uppers': 'https://www.google.com/maps?q=32.883187,-117.241281',
+            'ERC across from bamboo': 'https://www.google.com/maps?q=32.885294,-117.242357',
+            'Muir tennis courts': 'https://www.google.com/maps?q=32.878133,-117.243361',
+            'Eighth basketball courts': 'https://www.google.com/maps?q=32.873411,-117.242997',
+            'Innovation': 'https://www.google.com/maps?q=32.879118,-117.231663',
+            'Rita': 'https://www.google.com/maps?q=32.873065,-117.235532',
+            'Warren Equality Ln': 'https://www.google.com/maps?q=32.883587,-117.233687',
+            'Warren Justice Ln': 'https://www.google.com/maps?q=32.883156,-117.232222',
+            'Geisel Loop': 'https://www.google.com/maps?q=32.881598,-117.238614',
+            'Pepper Canyon Loop': 'https://www.google.com/maps?q=32.878366,-117.234230',
         },
         coordinates: {
-            'Price Center': { lat: 32.8800, lng: -117.2359 },
-            'Revelle College': { lat: 32.8752, lng: -117.2408 },
-            'Muir College': { lat: 32.8779, lng: -117.2381 },
-            'Warren College': { lat: 32.8823, lng: -117.2336 },
-            'Marshall College': { lat: 32.8807, lng: -117.2367 },
-            'Eleanor Roosevelt College': { lat: 32.8838, lng: -117.2312 },
-            'Sixth College': { lat: 32.8845, lng: -117.2298 },
-            'Seventh College': { lat: 32.8863, lng: -117.2274 },
-            'Pepper Canyon Apartments': { lat: 32.8768, lng: -117.2342 },
-            'The Village': { lat: 32.8891, lng: -117.2251 },
-            'Matthews Campus Apartments': { lat: 32.8712, lng: -117.2390 },
+            'Sixth loop':              { lat: 32.881096, lng: -117.242020 },
+            'Seventh mail room':       { lat: 32.888203, lng: -117.242347 },
+            'Marshall uppers':         { lat: 32.883187, lng: -117.241281 },
+            'ERC across from bamboo':  { lat: 32.885294, lng: -117.242357 },
+            'Muir tennis courts':      { lat: 32.878133, lng: -117.243361 },
+            'Eighth basketball courts':{ lat: 32.873411, lng: -117.242997 },
+            'Innovation':              { lat: 32.879118, lng: -117.231663 },
+            'Rita':                    { lat: 32.873065, lng: -117.235532 },
+            'Warren Equality Ln':      { lat: 32.883587, lng: -117.233687 },
+            'Warren Justice Ln':       { lat: 32.883156, lng: -117.232222 },
+            'Geisel Loop':             { lat: 32.881598, lng: -117.238614 },
+            'Pepper Canyon Loop':      { lat: 32.878366, lng: -117.234230 },
         },
     }
 }
@@ -441,7 +444,7 @@ function getReactionLog() {
                 message_id: '1234567890123456789',
                 ride_type: 'friday',
                 ride_date: friday.toISOString().slice(0, 10),
-                label: 'Friday Fellowship',
+                label: 'Weekly Event 1',
                 events: [
                     { id: 1, discord_username: 'anastasia_w', display_name: 'Anastasia Wobbleknee', emoji: '✋', action: 'add', occurred_at: ts(friday, 2) },
                     { id: 2, discord_username: 'millicent_snork', display_name: 'Millicent Snorklewhistle', emoji: '✋', action: 'add', occurred_at: ts(friday, 5) },
@@ -464,7 +467,7 @@ function getReactionLog() {
                 message_id: '9876543210987654321',
                 ride_type: 'sunday',
                 ride_date: sunday.toISOString().slice(0, 10),
-                label: 'Sunday Service',
+                label: 'Weekly Event 2',
                 events: [
                     { id: 16, discord_username: 'percival_thunder', display_name: 'Percival Thunderbottom', emoji: '🚗', action: 'add', occurred_at: ts(sunday, 3) },
                     { id: 17, discord_username: 'anastasia_w', display_name: 'Anastasia Wobbleknee', emoji: '✋', action: 'add', occurred_at: ts(sunday, 9) },
@@ -509,6 +512,12 @@ function getMockData(endpoint: string): unknown {
         return getRideCoverage('sunday')
     }
 
+    // GET /api/check-pickups/driver-reactions/:day
+    if (path.startsWith('/api/check-pickups/driver-reactions/')) {
+        const day = path.split('/api/check-pickups/driver-reactions/')[1] as 'friday' | 'sunday'
+        return getDriverReactions(day)
+    }
+
     // GET /api/check-pickups (with ride type in query or body — not used here, fallback)
     if (path.startsWith('/api/check-pickups')) {
         return getRideCoverage('friday')
@@ -519,8 +528,8 @@ function getMockData(endpoint: string): unknown {
         return getAskRidesStatus()
     }
 
-    // GET /api/ask-rides/upcoming-dates
-    if (path === '/api/ask-rides/upcoming-dates') {
+    // GET /api/ask-rides/upcoming-dates (with optional /:jobName suffix)
+    if (path.startsWith('/api/ask-rides/upcoming-dates')) {
         return getUpcomingDates()
     }
 
@@ -528,12 +537,6 @@ function getMockData(endpoint: string): unknown {
     if (path.startsWith('/api/ask-rides/reactions/')) {
         const type = path.split('/api/ask-rides/reactions/')[1]
         return getAskRidesReactions(type)
-    }
-
-    // GET /api/check-pickups/driver-reactions/:day
-    if (path.startsWith('/api/check-pickups/driver-reactions/')) {
-        const day = path.split('/api/check-pickups/driver-reactions/')[1] as 'friday' | 'sunday'
-        return getDriverReactions(day)
     }
 
     // GET /api/driver-reactions (generic fallback)
@@ -596,6 +599,66 @@ function getMockData(endpoint: string): unknown {
 
 function applyMutation(endpoint: string, method: string, body: unknown): unknown {
     const path = endpoint.split('?')[0]
+
+    // POST /api/list-pickups — return fake LocationData
+    if (path === '/api/list-pickups' && method === 'POST') {
+        const locationData = {
+            housing_groups: {
+                'On Campus': {
+                    emoji: '🏫',
+                    count: 7,
+                    locations: {
+                        'Revelle College': [
+                            { name: 'Bartholomew Quigglesworth', discord_username: 'bartholomew_q' },
+                            { name: 'Anastasia Wobbleknee', discord_username: 'anastasia_w' },
+                        ],
+                        'Warren College': [
+                            { name: 'Cornelius Bumblebee', discord_username: 'cornelius_bee' },
+                            { name: 'Millicent Snorklewhistle', discord_username: 'millicent_snork' },
+                        ],
+                        'Sixth College': [
+                            { name: 'Theodora Bumblesnatch', discord_username: 'theodora_b' },
+                            { name: 'Leopold Whiffington', discord_username: 'leopold_w' },
+                        ],
+                        'Seventh College': [
+                            { name: 'Clementine Puddlejumper', discord_username: 'clementine_p' },
+                        ],
+                    },
+                },
+                'Apartments': {
+                    emoji: '🏠',
+                    count: 5,
+                    locations: {
+                        'Pepper Canyon Apartments': [
+                            { name: 'Percival Thunderbottom', discord_username: 'percival_thunder' },
+                            { name: 'Reginald Fluffington', discord_username: 'reginald_fluff' },
+                        ],
+                        'The Village': [
+                            { name: 'Wilhelmina Bananabottom', discord_username: 'wilhelmina_bb' },
+                            { name: 'Montgomery Wobblebottom', discord_username: 'montgomery_wb' },
+                        ],
+                        'Matthews Campus Apartments': [
+                            { name: 'Gertrude Noodlehair', discord_username: 'gertrude_n' },
+                        ],
+                    },
+                },
+            },
+            unknown_users: ['new_rider_1', 'mystery_rider'],
+        }
+        return { success: true, data: locationData }
+    }
+
+    // POST /api/make-route — return a fake formatted route
+    if (path === '/api/make-route' && method === 'POST') {
+        const payload = body as { locations?: string[]; leave_time?: string } | null
+        const locations = payload?.locations ?? ['Sixth loop', 'Marshall uppers', 'Muir tennis courts']
+        const leaveTime = payload?.leave_time ?? '6:40pm'
+        const stops = locations.map((loc, i) => `${i + 1}. ${loc}`).join('\n')
+        return {
+            success: true,
+            route: `🚗 Route — Leave ${leaveTime}\n\n${stops}\n\n📍 Destination: Church`,
+        }
+    }
 
     // POST /api/group-rides — return a plausible grouping
     if (path === '/api/group-rides' && method === 'POST') {

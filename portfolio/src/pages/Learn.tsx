@@ -23,7 +23,7 @@ function Learn() {
 
                             <TutorialSubheader>What does a ride coordinator do?</TutorialSubheader>
                             <TutorialText>
-                                Ride coordinators are responsible for organizing rides to Friday Fellowship and Sunday Service (and all class if it is happening on Sunday).
+                                Ride coordinators are responsible for organizing rides to Weekly Event 1 and Weekly Event 2 (and all class if it is happening on Sunday).
                                 They can help other events if they want to, but it is not required. <b>Your primary goal is to make sure everyone who needs a ride can get one.
                                     Your secondary goal is to minimize the amount of drivers and the amount of time that drivers spend driving.</b> Campus is large, and a good route
                                 can make the difference between a 5 minute drive and a 20 minute drive.
@@ -49,8 +49,8 @@ function Learn() {
                             <TutorialList>
                                 <li>Ridebot will post a message in <code>#rides-announcements</code> on Wednesday noon asking for who needs a ride.</li>
                                 <li>Around this time, you should use <code>/ask-drivers</code> in <code>#driver-chat-wooooo</code> to ask for drivers.</li>
-                                <li>For Friday Fellowship, create ride groups and send them out in <code>#rides-announcements</code> around Friday noon.</li>
-                                <li>For Sunday Service (and class if applicable), create ride groups and send them out in <code>#rides-announcements</code> around Saturday evening.</li>
+                                <li>For Weekly Event 1, create ride groups and send them out in <code>#rides-announcements</code> around Friday noon.</li>
+                                <li>For Weekly Event 2 (and class if applicable), create ride groups and send them out in <code>#rides-announcements</code> around Saturday evening.</li>
                             </TutorialList>
 
                             <TutorialText>

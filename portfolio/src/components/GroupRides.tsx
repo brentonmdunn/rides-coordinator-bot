@@ -92,7 +92,7 @@ function GroupRides() {
 
     return (
         <SectionCard
-            icon="🚗"
+            icon={undefined}
             title="Group Rides"
             actions={
                 <>

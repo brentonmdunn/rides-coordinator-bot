@@ -56,7 +56,7 @@ function DriverReactions() {
 
     return (
         <SectionCard
-            icon="🚙"
+            icon={undefined}
             title={`Driver Reactions (${capitalize(activeDay)})`}
             actions={
                 <>

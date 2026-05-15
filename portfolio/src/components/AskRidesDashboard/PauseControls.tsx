@@ -80,7 +80,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                             Resuming...
                         </>
                     ) : (
-                        '▶️ Resume'
+                        'Resume'
                     )}
                 </Button>
             ) : (
@@ -90,7 +90,7 @@ function PauseControls({ jobName, job }: PauseControlsProps) {
                     size="sm"
                     className="gap-1.5 w-full"
                 >
-                    ⏸️ Pause
+                    Pause
                 </Button>
             )}
 

@@ -15,7 +15,6 @@ function PickupGroup({ groupName, groupData, onCopy }: PickupGroupProps) {
             {/* Group Header */}
             <div className="bg-muted px-4 py-3 border-b border-border">
                 <h4 className="font-semibold text-foreground flex items-center gap-2 m-0 text-base">
-                    <span>{groupData.emoji}</span>
                     <span className="capitalize">{groupName}</span>
                     <span className="text-sm font-normal text-muted-foreground">
                         ({groupData.count} {groupData.count === 1 ? 'person' : 'people'})

@@ -40,7 +40,7 @@ function Home() {
             header={
                 <PageHeader
                     centerOnMobile
-                    title="🚗 Admin Dashboard"
+                    title="Admin Dashboard"
                     description="Manage rides, view pickups, and configure bot settings all in one place."
                     actions={
                         <div className="flex flex-wrap justify-center md:justify-end gap-2">

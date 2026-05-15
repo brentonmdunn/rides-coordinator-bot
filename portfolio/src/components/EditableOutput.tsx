@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react'
 import { Button } from './ui/button'
 import type { UsernameEntry } from '../hooks/useUsernames'
 import {
-    COPY_FEEDBACK_MS,
     MENTION_DROPDOWN_MAX_HEIGHT,
     MENTION_DROPDOWN_LINE_HEIGHT_FALLBACK,
     MENTION_DROPDOWN_OFFSET,
@@ -12,7 +11,7 @@ interface EditableOutputProps {
     value: string
     originalValue: string
     onChange: (value: string) => void
-    onCopy: () => void
+    onCopy?: () => void
     onRevert: () => void
     minHeight?: string
     placeholder?: string
@@ -125,7 +124,6 @@ function EditableOutput({
     value,
     originalValue,
     onChange,
-    onCopy,
     onRevert,
     minHeight = 'min-h-[80px]',
     placeholder = '',
@@ -135,7 +133,7 @@ function EditableOutput({
     const containerRef = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightRef = useRef<HTMLDivElement>(null)
-    const [copied, setCopied] = useState(false)
+
     const [cursorPos, setCursorPos] = useState(0)
     const [activeIndex, setActiveIndex] = useState(0)
     const [dropdownOpen, setDropdownOpen] = useState(true)
@@ -160,7 +158,7 @@ function EditableOutput({
                 return (
                     <span
                         key={i}
-                        className={copied
+                        className={false
                             ? 'bg-emerald-400 dark:bg-emerald-500 rounded transition-colors duration-150'
                             : 'bg-emerald-100 dark:bg-emerald-900/40 rounded transition-colors duration-300'}
                     >
@@ -170,7 +168,7 @@ function EditableOutput({
             }
             return <span key={i}>{part}</span>
         })
-    }, [value, usernames, validUsernameSet, copied])
+    }, [value, usernames, validUsernameSet, false])
 
     const mentionQuery = usernames ? getMentionQuery(value, cursorPos) : null
     const suggestions: UsernameEntry[] =
@@ -281,18 +279,6 @@ function EditableOutput({
                         ↩ Revert
                     </Button>
                 )}
-                <Button
-                    onClick={() => { onCopy(); setCopied(true); setTimeout(() => setCopied(false), COPY_FEEDBACK_MS) }}
-                    size="sm"
-                    variant={copied ? 'default' : 'outline'}
-                    className={`h-8 px-2 text-xs bg-card hover:bg-muted ${
-                        copied
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent dark:bg-emerald-600 dark:hover:bg-emerald-700'
-                            : 'text-foreground'
-                    }`}
-                >
-                    {copied ? 'Copied!' : 'Copy'}
-                </Button>
             </div>
 
             {/* Overlay wrapper: highlight div behind, textarea on top */}
