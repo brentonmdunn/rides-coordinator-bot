@@ -66,7 +66,7 @@ function FeatureFlagsManager() {
 
     return (
         <SectionCard
-            icon="⚙️"
+            icon={undefined}
             title="Feature Flags"
             actions={
                 <>

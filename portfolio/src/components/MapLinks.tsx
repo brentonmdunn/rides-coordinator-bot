@@ -69,7 +69,7 @@ function MapLinks() {
         : UCSD_CENTER
 
     return (
-        <SectionCard icon="📍" title="Pickup Directions" headerClassName="pb-2">
+        <SectionCard icon={undefined} title="Pickup Directions" headerClassName="pb-2">
                 <p className="text-sm text-muted-foreground mb-4">
                     Select a pickup location to view it on the map and copy the
                     Google Maps link.

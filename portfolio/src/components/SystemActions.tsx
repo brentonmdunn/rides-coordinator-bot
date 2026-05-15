@@ -23,7 +23,7 @@ function SystemActions() {
 
     return (
         <SectionCard
-            icon="⚠️"
+            icon={undefined}
             title="System Actions"
             titleClassName="text-destructive-text"
         >

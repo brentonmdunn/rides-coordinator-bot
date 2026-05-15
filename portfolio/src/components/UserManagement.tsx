@@ -121,7 +121,7 @@ function UserManagement() {
     const errorMsg = error instanceof Error ? error.message : ''
 
     return (
-        <SectionCard icon="👥" title="User Management">
+        <SectionCard icon={undefined} title="User Management">
                 {isLoading && <TableSkeleton rows={3} cols={3} />}
 
                 <div className="mb-6">
