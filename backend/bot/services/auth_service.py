@@ -23,6 +23,11 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _as_utc(dt: datetime) -> datetime:
+    # SQLite returns naive datetimes; treat them as UTC.
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+
 class AuthService:
     """Service for Discord OAuth matching and session lifecycle."""
 
@@ -106,7 +111,7 @@ class AuthService:
         auth_session = await AuthSessionsRepository.get_by_hash(session, session_id_hash)
         if not auth_session:
             return None
-        if auth_session.expires_at < datetime.now(UTC):
+        if _as_utc(auth_session.expires_at) < datetime.now(UTC):
             await AuthSessionsRepository.delete_by_hash(session, session_id_hash)
             return None
         return auth_session
@@ -117,7 +122,7 @@ class AuthService:
     ) -> None:
         """Slide the session expiry if it hasn't been touched recently."""
         now = datetime.now(UTC)
-        if (now - auth_session.last_activity_at) < timedelta(
+        if (now - _as_utc(auth_session.last_activity_at)) < timedelta(
             minutes=SESSION_TOUCH_THROTTLE_MINUTES
         ):
             return
