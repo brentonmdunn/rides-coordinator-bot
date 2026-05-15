@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, AlertTriangle } from 'lucide-react'
 import { Button } from './ui/button'
 import ConfirmDialog from './ConfirmDialog'
 import { SectionCard } from './shared'
@@ -23,7 +23,7 @@ function SystemActions() {
 
     return (
         <SectionCard
-            icon="⚠️"
+            icon={<AlertTriangle className="h-4 w-4" />}
             title="System Actions"
             titleClassName="text-destructive-text"
         >

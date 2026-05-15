@@ -3,9 +3,9 @@ import { apiFetch } from '../lib/api'
 import type { AccountRole } from '../types'
 
 const ROLES: { value: AccountRole; label: string; description: string }[] = [
-    { value: 'admin', label: '🔑 Admin', description: 'Full access' },
-    { value: 'ride_coordinator', label: '🚗 Ride Coordinator', description: 'Manage rides' },
-    { value: 'viewer', label: '👁️ Viewer', description: 'Read only' },
+    { value: 'admin', label: 'Admin', description: 'Full access' },
+    { value: 'ride_coordinator', label: 'Ride Coordinator', description: 'Manage rides' },
+    { value: 'viewer', label: 'Viewer', description: 'Read only' },
 ]
 
 interface RoleSwitcherProps {
@@ -33,7 +33,7 @@ function RoleSwitcher({ currentRole }: RoleSwitcherProps) {
 
     return (
         <div className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400 dark:from-amber-600 dark:via-amber-500 dark:to-orange-500">
-            <div className="max-w-4xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
+            <div className="max-w-5xl mx-auto px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-amber-950 dark:text-amber-50">
                     <span className="text-sm font-semibold tracking-wide uppercase opacity-80">
                         Dev Mode

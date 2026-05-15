@@ -1,3 +1,4 @@
+import { BookOpen } from 'lucide-react'
 import { ModeToggle } from '../components/mode-toggle'
 import { BackLink, PageHeader, PageLayout } from '../components/shared'
 import { TutorialSection, TutorialSubheader, TutorialText, TutorialList, TutorialTable } from '../components/TutorialComponents'
@@ -5,16 +6,17 @@ import { TutorialSection, TutorialSubheader, TutorialText, TutorialList, Tutoria
 function Learn() {
     return (
         <PageLayout
+            spacedBody
             header={
                 <PageHeader
                     eyebrow={<BackLink to="/" />}
-                    title="📚 How to Use Ridebot"
+                    title={<span className="inline-flex items-center gap-2"><BookOpen className="h-6 w-6 shrink-0" />How to Use Ridebot</span>}
                     description="A complete guide to coordinating rides with Ridebot."
                     actions={<ModeToggle />}
                 />
             }
         >
-            <article className="prose prose-slate dark:prose-invert max-w-none">
+            <article className="prose prose-slate dark:prose-invert max-w-3xl">
                         <TutorialSection title="Introduction">
                             <TutorialText>
                                 Yay thanks for being a ride coordinator! This guide will walk you through everything you need to know

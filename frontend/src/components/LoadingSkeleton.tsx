@@ -32,6 +32,22 @@ export function ListSkeleton({ rows = 3 }: { rows?: number }) {
     )
 }
 
+export function GridSkeleton({ count = 6 }: { count?: number }) {
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {Array.from({ length: count }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
+                    <div className="space-y-1.5 flex-1">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="h-3 w-16" />
+                    </div>
+                    <Skeleton className="h-5 w-10 rounded-full" />
+                </div>
+            ))}
+        </div>
+    )
+}
+
 export function CoverageSkeleton() {
     return (
         <div className="space-y-3">

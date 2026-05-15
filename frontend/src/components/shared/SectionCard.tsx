@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 import { cn } from '@/lib/utils'
 
 interface SectionCardProps {
-    /** An emoji string or icon node rendered before the title. */
+    /** An icon node rendered before the title. */
     icon?: ReactNode
     /** The card title contents. */
     title: ReactNode
@@ -44,13 +44,19 @@ function SectionCard({
 
     return (
         <Card className={cardClassName}>
+            {/* Teal gradient strip at top of every section card */}
+            <div className="h-0.5 bg-gradient-to-r from-transparent via-accent/50 to-transparent rounded-t-xl" />
             <CardHeader className={cn(defaultHeaderClassName, headerClassName)}>
-                <CardTitle className={titleClassName}>
-                    {icon != null && <span>{icon}</span>}
-                    <span>{title}</span>
+                <CardTitle className={cn(actions ? 'min-w-0' : undefined, titleClassName)}>
+                    {icon != null && (
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-accent/10 text-base shrink-0">
+                            {icon}
+                        </span>
+                    )}
+                    <span className="min-w-0 break-words">{title}</span>
                 </CardTitle>
                 {actions && (
-                    <div className="flex items-center gap-2">{actions}</div>
+                    <div className="flex items-center gap-2 shrink-0">{actions}</div>
                 )}
             </CardHeader>
             <CardContent className={contentClassName}>{children}</CardContent>

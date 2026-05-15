@@ -11,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from './ui/select'
-import { Copy, ExternalLink } from 'lucide-react'
+import { Copy, ExternalLink, Navigation } from 'lucide-react'
 import { Button } from './ui/button'
 import { SectionCard } from './shared'
 import type { PickupLocationsResponse } from '../types'
@@ -69,7 +69,7 @@ function MapLinks() {
         : UCSD_CENTER
 
     return (
-        <SectionCard icon="📍" title="Pickup Directions" headerClassName="pb-2">
+        <SectionCard icon={<Navigation className="h-4 w-4" />} title="Pickup Directions" headerClassName="pb-2">
                 <p className="text-sm text-muted-foreground mb-4">
                     Select a pickup location to view it on the map and copy the
                     Google Maps link.

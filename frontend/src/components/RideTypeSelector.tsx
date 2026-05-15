@@ -1,3 +1,5 @@
+import { Sparkles, Church, Hash } from 'lucide-react'
+
 type RideType = 'friday' | 'sunday' | 'message_id'
 
 interface RideTypeSelectorProps {
@@ -23,7 +25,7 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                         }
                     `}
                 >
-                    <span className="text-lg">🎉</span>
+                    <Sparkles className="h-4 w-4" />
                     <span>Friday Fellowship</span>
                 </button>
 
@@ -38,7 +40,7 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                         }
                     `}
                 >
-                    <span className="text-lg">⛪</span>
+                    <Church className="h-4 w-4" />
                     <span>Sunday Service</span>
                 </button>
 
@@ -53,7 +55,7 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                         }
                     `}
                 >
-                    <span className="text-lg">🔢</span>
+                    <Hash className="h-4 w-4" />
                     <span>Custom Message ID</span>
                 </button>
             </div>

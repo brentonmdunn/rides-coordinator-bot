@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import type React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import ErrorMessage from "./ErrorMessage"
 import type { RideCoverage, RideCoverageUser } from '../types'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import { Button } from './ui/button'
-import { RefreshCw, MoreVertical, CloudDownload, Check } from 'lucide-react'
+import { RefreshCw, MoreVertical, CloudDownload, Check, Target, Sparkles, Church } from 'lucide-react'
 import { getAutomaticDay } from '../lib/utils'
 import { QUERY_STALE_5_MIN, COVERAGE_PERCENTAGE_MULTIPLIER } from '../lib/constants'
 import { CoverageSkeleton } from './LoadingSkeleton'
@@ -14,10 +15,10 @@ import { RefreshIconButton, SectionCard } from './shared'
 interface RideDayProps {
     rideType: 'friday' | 'sunday'
     title: string
-    emoji: string
+    icon: React.ReactNode
 }
 
-function RideDay({ rideType, title, emoji }: RideDayProps) {
+function RideDay({ rideType, title, icon }: RideDayProps) {
     const [isExpanded, setIsExpanded] = useState(false)
 
     const {
@@ -64,7 +65,7 @@ function RideDay({ rideType, title, emoji }: RideDayProps) {
                 className="w-full px-4 py-3 flex items-center justify-between bg-muted hover:bg-muted/70 transition-colors"
             >
                 <div className="flex items-center gap-3">
-                    <span className="text-2xl">{emoji}</span>
+                    <span className="text-muted-foreground">{icon}</span>
                     <div className="text-left">
                         <h3 className="font-semibold text-foreground">{title}</h3>
                         <p className="text-sm text-muted-foreground">
@@ -173,7 +174,7 @@ function RideCoverageCheck() {
         <SectionCard
             cardClassName="!overflow-visible"
             headerClassName="!overflow-visible"
-            icon="🎯"
+            icon={<Target className="h-4 w-4" />}
             title="Ride Coverage Check"
             actions={
                 <>
@@ -283,9 +284,9 @@ function RideCoverageCheck() {
 
                 <div className="space-y-4">
                     {currentRideType === 'sunday' ? (
-                        <RideDay rideType="sunday" title="Sunday Service" emoji="⛪" />
+                        <RideDay rideType="sunday" title="Sunday Service" icon={<Church className="h-5 w-5" />} />
                     ) : (
-                        <RideDay rideType="friday" title="Friday Fellowship" emoji="🎉" />
+                        <RideDay rideType="friday" title="Friday Fellowship" icon={<Sparkles className="h-5 w-5" />} />
                     )}
                 </div>
         </SectionCard>

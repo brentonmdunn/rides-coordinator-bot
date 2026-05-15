@@ -8,7 +8,7 @@
  * and lets users click pins to toggle them — matching the fullscreen view.
  */
 
-import { Clock, Expand } from 'lucide-react'
+import { Clock, Expand, Map } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -115,9 +115,10 @@ export function RouteBuilderWidget({
 
     return (
         <Card>
+            <div className="h-0.5 bg-gradient-to-r from-transparent via-accent/50 to-transparent rounded-t-xl" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="flex items-center gap-2">
-                    <span>🗺️</span>
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-accent/10 shrink-0"><Map className="h-4 w-4" /></span>
                     <span>Route Builder</span>
                 </CardTitle>
                 <div className="flex items-center gap-2">
