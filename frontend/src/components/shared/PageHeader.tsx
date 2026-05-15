@@ -28,7 +28,7 @@ function PageHeader({
 
     return (
         <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
-            <div className={`flex-1 ${titleAlign}`}>
+            <div className={`flex-1 min-w-0 ${titleAlign}`}>
                 {eyebrow}
                 <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl mb-3">
                     {title}
@@ -37,7 +37,7 @@ function PageHeader({
                 <div className={`h-0.5 w-16 bg-gradient-to-r from-accent to-info rounded-full mb-4 ${centerOnMobile ? 'mx-auto md:mx-0' : ''}`} />
                 {description != null && (
                     <p
-                        className={`text-base text-muted-foreground max-w-2xl ${descriptionAlign}`.trim()}
+                        className={`text-base text-muted-foreground w-full max-w-2xl ${descriptionAlign}`.trim()}
                     >
                         {description}
                     </p>

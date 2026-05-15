@@ -151,11 +151,9 @@
     @apply border-border outline-ring/50;
   }
 
-  html {
-    overflow-x: clip;
-  }
-
+  html,
   body {
+    overflow-x: clip;
     margin: 0 !important;
     padding: 0 !important;
     font-family: "Plus Jakarta Sans", system-ui, sans-serif;
