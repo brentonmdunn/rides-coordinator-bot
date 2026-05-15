@@ -24,7 +24,8 @@ function DriverReactions() {
 
     const [showInfo, setShowInfo] = useState(false)
 
-    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+    const dayLabel = (day: 'friday' | 'sunday') =>
+        day === 'friday' ? 'Weekly Event 1' : 'Weekly Event 2'
 
     const fetchDataForDay = async (day: 'friday' | 'sunday') => {
         setLoading(true)
@@ -57,7 +58,7 @@ function DriverReactions() {
     return (
         <SectionCard
             icon={undefined}
-            title={`Driver Reactions (${capitalize(activeDay)})`}
+            title={`Driver Reactions (${dayLabel(activeDay)})`}
             actions={
                 <>
                     <RefreshIconButton onClick={updateDayAndFetch} isLoading={loading} />
@@ -76,7 +77,7 @@ function DriverReactions() {
                 >
                     <div className="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
                         <p className="text-sm font-medium text-foreground">
-                            Currently viewing: <strong>{capitalize(activeDay)}</strong>
+                            Currently viewing: <strong>{dayLabel(activeDay)}</strong>
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                             Automatically switches based on current time. Click refresh to reset.
@@ -86,8 +87,8 @@ function DriverReactions() {
                         This widget tracks emoji reactions from drivers in the driver chat channel.
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                        <li>Automatically switches between <strong>Friday</strong> and <strong>Sunday</strong> based on the current time.</li>
-                        <li>Use the day toggle buttons to manually switch between Friday and Sunday views.</li>
+                        <li>Automatically switches between <strong>Weekly Event 1</strong> and <strong>Weekly Event 2</strong> based on the current time.</li>
+                        <li>Use the toggle buttons to manually switch between Weekly Event 1 and Weekly Event 2 views.</li>
                         <li>Click the refresh button to return to automatic mode and update data.</li>
                         <li>Expand the dropdown to see who reacted with each emoji.</li>
                         <li>Click on any driver's username to copy it to your clipboard.</li>
@@ -102,7 +103,7 @@ function DriverReactions() {
                         disabled={loading}
                         className="flex-1"
                     >
-                        Friday
+                        Weekly Event 1
                     </Button>
                     <Button
                         variant={activeDay === 'sunday' ? 'default' : 'outline'}
@@ -111,7 +112,7 @@ function DriverReactions() {
                         disabled={loading}
                         className="flex-1"
                     >
-                        Sunday
+                        Weekly Event 2
                     </Button>
                 </div>
 
@@ -123,7 +124,7 @@ function DriverReactions() {
                     <>
                         {!data.message_found ? (
                             <div className="text-center py-4 text-muted-foreground italic">
-                                No driver message found for {capitalize(activeDay)}.
+                                No driver message found for {dayLabel(activeDay)}.
                             </div>
                         ) : (
                             <div className="space-y-4">
