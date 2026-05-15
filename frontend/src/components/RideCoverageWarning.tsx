@@ -54,14 +54,23 @@ function RideCoverageWarning() {
     }
 
     return (
-        <div className="p-4 bg-warning/15 border-l-4 border-warning rounded-md">
-            <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-warning-text flex-shrink-0 mt-0.5" />
-                <div>
-                    <h3 className="font-semibold text-warning-text mb-1">
-                        ⚠️ Rides Needed
-                    </h3>
-                    <p className="text-sm text-warning-text">
+        <div className="relative overflow-hidden rounded-xl border border-warning/40 bg-warning/10">
+            {/* Gradient accent strip */}
+            <div className="h-1 bg-gradient-to-r from-warning via-warning/60 to-transparent" />
+            <div className="flex items-start gap-4 px-5 py-4">
+                <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                    {/* Pulsing dot */}
+                    <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-warning" />
+                    </span>
+                    <AlertTriangle className="h-5 w-5 text-warning-text" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-warning-text text-sm mb-0.5">
+                        Action Required — Rides Unassigned
+                    </p>
+                    <p className="text-sm text-warning-text/80">
                         {message}
                     </p>
                 </div>

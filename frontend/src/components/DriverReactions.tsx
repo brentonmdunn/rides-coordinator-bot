@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
-import { Button } from './ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
+import { SegmentedControl } from './ui/segmented-control'
 import ErrorMessage from "./ErrorMessage"
 import { ListSkeleton } from './LoadingSkeleton'
 
@@ -94,25 +94,16 @@ function DriverReactions() {
                     </ul>
                 </InfoPanel>
 
-                <div className="mb-4 flex gap-2">
-                    <Button
-                        variant={activeDay === 'friday' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDayToggle('friday')}
+                <div className="mb-4">
+                    <SegmentedControl
+                        options={[
+                            { value: 'friday', label: 'Friday' },
+                            { value: 'sunday', label: 'Sunday' },
+                        ]}
+                        value={activeDay}
+                        onChange={handleDayToggle}
                         disabled={loading}
-                        className="flex-1"
-                    >
-                        Friday
-                    </Button>
-                    <Button
-                        variant={activeDay === 'sunday' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleDayToggle('sunday')}
-                        disabled={loading}
-                        className="flex-1"
-                    >
-                        Sunday
-                    </Button>
+                    />
                 </div>
 
                 {loading && <ListSkeleton rows={4} />}

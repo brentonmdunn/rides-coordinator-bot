@@ -5,6 +5,7 @@ import { TutorialSection, TutorialSubheader, TutorialText, TutorialList, Tutoria
 function Learn() {
     return (
         <PageLayout
+            spacedBody
             header={
                 <PageHeader
                     eyebrow={<BackLink to="/" />}
@@ -14,7 +15,7 @@ function Learn() {
                 />
             }
         >
-            <article className="prose prose-slate dark:prose-invert max-w-none">
+            <article className="prose prose-slate dark:prose-invert max-w-3xl">
                         <TutorialSection title="Introduction">
                             <TutorialText>
                                 Yay thanks for being a ride coordinator! This guide will walk you through everything you need to know

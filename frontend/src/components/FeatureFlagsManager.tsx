@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { FeatureFlag } from '../types'
-import { TableSkeleton } from './LoadingSkeleton'
+import { GridSkeleton } from './LoadingSkeleton'
 import { SectionCard } from './shared'
 
 interface FeatureFlagsResponse {
@@ -99,7 +99,7 @@ function FeatureFlagsManager() {
                         <li>Disabling a flag will stop all associated automated jobs.</li>
                     </ul>
                 </InfoPanel>
-                {flagsLoading && <TableSkeleton rows={5} cols={2} />}
+                {flagsLoading && <GridSkeleton count={6} />}
 
                 <div className="mb-6">
                     <ErrorMessage message={flagsError} />
@@ -112,35 +112,28 @@ function FeatureFlagsManager() {
                 )}
 
                 {!flagsLoading && !flagsError && featureFlags.length > 0 && (
-                    <div className="rounded-lg border border-border overflow-x-auto w-full max-w-[calc(100vw-3rem)]">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted text-foreground font-semibold border-b border-border">
-                                <tr>
-                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4">Feature Flag</th>
-                                    <th scope="col" className="px-3 sm:px-6 py-3 sm:py-4 text-center w-[100px] sm:w-[120px]">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {featureFlags.map((flag) => (
-                                    <tr
-                                        key={flag.id}
-                                        className="hover:bg-muted/50 transition-colors"
-                                    >
-                                        <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono text-foreground break-all">
-                                            {flag.feature}
-                                        </td>
-                                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
-                                            <Switch
-                                                checked={flag.enabled}
-                                                onCheckedChange={(checked) => handleToggle(flag.feature, checked)}
-                                                disabled={!isEditMode || toggleMutation.isPending}
-                                                aria-label={`Toggle ${flag.feature}`}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {featureFlags.map((flag) => (
+                            <div
+                                key={flag.id}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium text-foreground font-mono truncate">
+                                        {flag.feature}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {flag.enabled ? 'Enabled' : 'Disabled'}
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={flag.enabled}
+                                    onCheckedChange={(checked) => handleToggle(flag.feature, checked)}
+                                    disabled={!isEditMode || toggleMutation.isPending}
+                                    aria-label={`Toggle ${flag.feature}`}
+                                />
+                            </div>
+                        ))}
                     </div>
                 )}
 
