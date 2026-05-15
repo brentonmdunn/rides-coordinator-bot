@@ -347,9 +347,9 @@ async def run_ask_rides_header(
             session, FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
         )
 
-    sun_should_send = _should_send_ask_rides_sun()
+    sun_should_send = await _should_send_ask_rides_sun()
     sun_condition = sun_flag and not sun_paused and sun_should_send
-    sun_class_should_send = _should_send_ask_rides_sun_class()
+    sun_class_should_send = await _should_send_ask_rides_sun_class()
     sun_class_condition = sun_class_flag and not sun_class_paused and sun_class_should_send
     fri_condition = fri_flag and not fri_paused
     wed_condition = wed_flag
@@ -583,8 +583,10 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         }
 
     # Check conditions
-    sunday_will_send = _should_send_ask_rides_sun() if sunday_enabled else False
-    sunday_class_will_send = _should_send_ask_rides_sun_class() if sunday_class_enabled else False
+    sunday_will_send = await _should_send_ask_rides_sun() if sunday_enabled else False
+    sunday_class_will_send = (
+        await _should_send_ask_rides_sun_class() if sunday_class_enabled else False
+    )
 
     # Fetch last messages - OPTIMIZED: Fetch history once
     try:
