@@ -108,28 +108,31 @@ function Home() {
                         title="🚗 Admin Dashboard"
                         description="Manage rides, view pickups, and configure bot settings all in one place."
                         actions={
-                            <div className="flex flex-wrap justify-center md:justify-end gap-2">
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link to="/reaction-log">
-                                        <History className="w-4 h-4" />
-                                        Reaction Log
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link to="/learn">
-                                        <BookOpen className="w-4 h-4" />
-                                        Learn
-                                    </Link>
-                                </Button>
-                                <ModeToggle />
+                            <div className="flex flex-col items-center md:items-end gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link to="/reaction-log">
+                                            <History className="w-4 h-4" />
+                                            Reaction Log
+                                        </Link>
+                                    </Button>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link to="/learn">
+                                            <BookOpen className="w-4 h-4" />
+                                            Learn
+                                        </Link>
+                                    </Button>
+                                    <ModeToggle />
+                                </div>
                                 {!isLocal && (
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => logout()}
                                         title={meData?.email ?? ''}
+                                        className="text-xs text-muted-foreground"
                                     >
-                                        Sign out
+                                        Sign out ({meData?.email})
                                     </Button>
                                 )}
                             </div>

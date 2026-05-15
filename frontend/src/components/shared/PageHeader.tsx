@@ -27,22 +27,24 @@ function PageHeader({
     const descriptionAlign = centerOnMobile ? 'mx-auto md:mx-0' : ''
 
     return (
-        <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-12">
+        <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
             <div className={`flex-1 ${titleAlign}`}>
                 {eyebrow}
-                <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl mb-4">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl mb-3">
                     {title}
                 </h1>
+                {/* Teal gradient accent underline */}
+                <div className={`h-0.5 w-16 bg-gradient-to-r from-accent to-info rounded-full mb-4 ${centerOnMobile ? 'mx-auto md:mx-0' : ''}`} />
                 {description != null && (
                     <p
-                        className={`text-lg text-muted-foreground max-w-2xl ${descriptionAlign}`.trim()}
+                        className={`text-base text-muted-foreground max-w-2xl ${descriptionAlign}`.trim()}
                     >
                         {description}
                     </p>
                 )}
             </div>
             {actions != null && (
-                <div className="flex items-center gap-3 justify-center md:justify-end">
+                <div className="flex items-center gap-2 justify-center md:justify-end">
                     {actions}
                 </div>
             )}
