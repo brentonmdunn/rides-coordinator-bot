@@ -54,7 +54,7 @@ type RideTypeOption = { value: RideType; label: string }
 const RIDE_TYPE_OPTIONS: RideTypeOption[] = [
     { value: 'friday', label: 'Friday' },
     { value: 'sunday', label: 'Sunday' },
-    { value: 'sunday_class', label: 'Sunday Class' },
+    { value: 'sunday_class', label: 'Weekly Office Hours' },
     { value: 'wednesday', label: 'Wednesday' },
 ]
 
@@ -252,7 +252,7 @@ function ReactionLog() {
             header={
                 <PageHeader
                     eyebrow={<BackLink to="/" />}
-                    title="📜 Reaction Log"
+                    title="Reaction Log"
                     description="Chronological log of emoji reactions added or removed from ride messages."
                     actions={<ModeToggle />}
                 />

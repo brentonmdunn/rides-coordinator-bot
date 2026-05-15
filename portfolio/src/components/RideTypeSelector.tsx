@@ -23,8 +23,7 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                         }
                     `}
                 >
-                    <span className="text-lg">🎉</span>
-                    <span>Friday Fellowship</span>
+                    <span>Weekly Event 1</span>
                 </button>
 
                 <button
@@ -38,8 +37,7 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                         }
                     `}
                 >
-                    <span className="text-lg">⛪</span>
-                    <span>Sunday Service</span>
+                    <span>Weekly Event 2</span>
                 </button>
 
                 <button
@@ -53,7 +51,6 @@ export default function RideTypeSelector({ value, onChange }: RideTypeSelectorPr
                         }
                     `}
                 >
-                    <span className="text-lg">🔢</span>
                     <span>Custom Message ID</span>
                 </button>
             </div>

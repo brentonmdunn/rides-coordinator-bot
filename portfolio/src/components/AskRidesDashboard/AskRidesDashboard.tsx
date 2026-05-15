@@ -54,7 +54,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 
     return (
         <SectionCard
-            icon="📅"
+            icon={undefined}
             title="Ask Rides Status Dashboard"
             actions={
                 <>
@@ -139,14 +139,14 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 
                 {!askRidesLoading && !askRidesError && askRidesStatus && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Friday Fellowship */}
-                        <StatusCard title="🎉 Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
+                        {/* Weekly Event 1 */}
+                        <StatusCard title="Weekly Event 1" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
 
-                        {/* Sunday Service */}
-                        <StatusCard title="⛪ Sunday Service" jobName="sunday" job={askRidesStatus.sunday} canManage={canManage} />
+                        {/* Weekly Event 2 */}
+                        <StatusCard title="Weekly Event 2" jobName="sunday" job={askRidesStatus.sunday} canManage={canManage} />
 
-                        {/* Sunday Class */}
-                        <StatusCard title="📖 Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
+                        {/* Weekly Office Hours */}
+                        <StatusCard title="Weekly Office Hours" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
                     </div>
                 )}
             <ConfirmDialog

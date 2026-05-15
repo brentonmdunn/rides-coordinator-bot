@@ -46,11 +46,11 @@ function RideCoverageWarning() {
     // Determine warning message
     let message = ''
     if (shouldShowFridayWarning && shouldShowSundayWarning) {
-        message = 'Ride requests have been sent for Friday Fellowship and Sunday Service, but no drivers have posted groupings yet.'
+        message = 'Ride requests have been sent for Weekly Event 1 and Weekly Event 2, but no drivers have posted groupings yet.'
     } else if (shouldShowFridayWarning) {
-        message = 'The request for rides has been sent for Friday Fellowship, but no drivers have posted groupings yet.'
+        message = 'The request for rides has been sent for Weekly Event 1, but no drivers have posted groupings yet.'
     } else if (shouldShowSundayWarning) {
-        message = 'The request for rides has been sent for Sunday Service, but no drivers have posted groupings yet.'
+        message = 'The request for rides has been sent for Weekly Event 2, but no drivers have posted groupings yet.'
     }
 
     return (

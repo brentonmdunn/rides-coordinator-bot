@@ -173,7 +173,7 @@ function RideCoverageCheck() {
         <SectionCard
             cardClassName="!overflow-visible"
             headerClassName="!overflow-visible"
-            icon="🎯"
+            icon={undefined}
             title="Ride Coverage Check"
             actions={
                 <>
@@ -283,9 +283,9 @@ function RideCoverageCheck() {
 
                 <div className="space-y-4">
                     {currentRideType === 'sunday' ? (
-                        <RideDay rideType="sunday" title="Sunday Service" emoji="⛪" />
+                        <RideDay rideType="sunday" title="Weekly Event 2" emoji="" />
                     ) : (
-                        <RideDay rideType="friday" title="Friday Fellowship" emoji="🎉" />
+                        <RideDay rideType="friday" title="Weekly Event 1" emoji="" />
                     )}
                 </div>
         </SectionCard>
