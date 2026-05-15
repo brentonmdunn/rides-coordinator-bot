@@ -27,7 +27,7 @@ function PageLayout({ header, spacedBody = false, children }: PageLayoutProps) {
                 <div
                     className={
                         spacedBody
-                            ? 'relative max-w-5xl mx-auto space-y-8 overflow-x-hidden'
+                            ? 'relative max-w-5xl mx-auto space-y-8'
                             : 'relative max-w-5xl mx-auto'
                     }
                 >
