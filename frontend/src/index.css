@@ -151,7 +151,7 @@
     @apply border-border;
   }
   *:focus-visible {
-    @apply outline-ring/50;
+    @apply outline-ring;
   }
 
   html,
