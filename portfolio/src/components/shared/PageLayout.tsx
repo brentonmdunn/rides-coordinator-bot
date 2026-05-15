@@ -20,13 +20,15 @@ function PageLayout({ header, spacedBody = false, children }: PageLayoutProps) {
             <EnvironmentBanner />
             <main
                 id="main-content"
-                className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background py-12 px-4 font-sans text-foreground transition-colors duration-300"
+                className="relative min-h-screen w-full overflow-x-clip bg-background py-12 px-4 font-sans text-foreground transition-colors duration-300"
             >
+                {/* Cohere mesh gradient wash — subtle behind-the-fold decoration */}
+                <div className="pointer-events-none absolute inset-0 cohere-mesh opacity-60" />
                 <div
                     className={
                         spacedBody
-                            ? 'max-w-4xl mx-auto space-y-8 overflow-x-hidden'
-                            : 'max-w-4xl mx-auto'
+                            ? 'relative max-w-5xl mx-auto space-y-8'
+                            : 'relative max-w-5xl mx-auto'
                     }
                 >
                     {header}
