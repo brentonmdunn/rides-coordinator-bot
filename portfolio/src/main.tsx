@@ -21,7 +21,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <DemoBanner />
         <ErrorBoundary>
-          <BrowserRouter basename="/rides-coordinator-bot">
+          <BrowserRouter>
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>}>
               <Routes>
                 <Route path="/login" element={<Login />} />
