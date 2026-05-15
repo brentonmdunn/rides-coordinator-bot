@@ -7,6 +7,7 @@ Scheduled jobs for asking for rides.
 import logging
 import os
 from collections.abc import Callable
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext.commands import Bot
@@ -38,6 +39,7 @@ from bot.utils.constants import (
 )
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import (
+    LA_TZ,
     get_current_cycle_start,
     get_next_date_obj,
     get_next_date_str,
@@ -380,6 +382,51 @@ async def run_ask_rides_header(
         )
 
 
+async def _was_ask_rides_sent_early_this_week(
+    bot: Bot,
+    channel_id: int = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+) -> bool:
+    """
+    Return True if any ask rides embed was sent Mon-Wed (before the scheduled noon run)
+    during the current week. Used to skip the automated send when it was already triggered
+    manually.
+    """
+    raw_channel = bot.get_channel(channel_id)
+    if not isinstance(raw_channel, discord.TextChannel):
+        if raw_channel is None:
+            logger.warning(f"Channel not found with ID: {channel_id}")
+        return False
+    channel = raw_channel
+
+    now = datetime.now(tz=LA_TZ)
+    week_monday = (now - timedelta(days=now.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
+    # Substrings present in each ride type's embed description
+    keywords = ["friday night fellowship", "sunday service", "bible theology class"]
+
+    try:
+        async for message in channel.history(limit=50):
+            msg_time = message.created_at.astimezone(LA_TZ)
+            if msg_time < week_monday:
+                # history is newest-first; nothing older will match
+                break
+            if not message.embeds:
+                continue
+            embed_desc = (message.embeds[0].description or "").lower()
+            if any(kw in embed_desc for kw in keywords):
+                logger.info(
+                    "Early ask rides message detected (sent %s) - skipping scheduled send",
+                    msg_time.strftime("%A %Y-%m-%d %H:%M"),
+                )
+                return True
+    except Exception:
+        logger.exception("Error while checking for early ask rides send")
+
+    return False
+
+
 @log_job
 async def run_ask_rides_all(
     bot: Bot,
@@ -387,6 +434,9 @@ async def run_ask_rides_all(
     drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
 ) -> None:
     """Run the job to send all ask rides messages."""
+    if await _was_ask_rides_sent_early_this_week(bot, rides_channel_id):
+        logger.info("Skipping run_ask_rides_all - messages already sent earlier this week")
+        return
     await run_ask_rides_header(bot, rides_channel_id)
     await run_ask_rides_fri(bot, rides_channel_id)
     await run_ask_rides_sun_class(bot, rides_channel_id)
