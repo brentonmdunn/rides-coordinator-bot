@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MapPin } from 'lucide-react'
 import { copyToClipboard } from '../lib/utils'
 import { Button } from './ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
@@ -38,7 +39,7 @@ function PickupLocations() {
 
     return (
         <SectionCard
-            icon="📍"
+            icon={<MapPin className="h-4 w-4" />}
             title="List Pickups"
             actions={
                 <>

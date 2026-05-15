@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 import { cn } from '@/lib/utils'
 
 interface SectionCardProps {
-    /** An emoji string or icon node rendered before the title. */
+    /** An icon node rendered before the title. */
     icon?: ReactNode
     /** The card title contents. */
     title: ReactNode

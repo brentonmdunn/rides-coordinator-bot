@@ -1,7 +1,7 @@
 import { Suspense, lazy, useMemo } from 'react'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { Link } from 'react-router-dom'
-import { BookOpen, History } from 'lucide-react'
+import { BookOpen, History, Car, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import type { AccountRole } from '../types'
@@ -28,14 +28,14 @@ const UserManagement = lazy(() => import('../components/UserManagement'))
 const SystemActions = lazy(() => import('../components/SystemActions'))
 
 const NAV_ITEMS = [
-    { id: 'ask-rides', label: 'Ask Rides', icon: '📣' },
-    { id: 'reactions', label: 'Reactions', icon: '🔔' },
-    { id: 'driver-reactions', label: 'Driver Reactions', icon: '🚙' },
-    { id: 'ride-coverage', label: 'Coverage', icon: '✅' },
-    { id: 'pickup-locations', label: 'Pickups', icon: '📍' },
-    { id: 'group-rides', label: 'Group Rides', icon: '👥' },
-    { id: 'route-builder', label: 'Route Builder', icon: '🗺️' },
-    { id: 'map-links', label: 'Map Links', icon: '🔗' },
+    { id: 'ask-rides', label: 'Ask Rides', icon: <CalendarDays className="h-4 w-4" /> },
+    { id: 'reactions', label: 'Reactions', icon: <ClipboardList className="h-4 w-4" /> },
+    { id: 'driver-reactions', label: 'Driver Reactions', icon: <Car className="h-4 w-4" /> },
+    { id: 'ride-coverage', label: 'Coverage', icon: <Target className="h-4 w-4" /> },
+    { id: 'pickup-locations', label: 'Pickups', icon: <MapPin className="h-4 w-4" /> },
+    { id: 'group-rides', label: 'Group Rides', icon: <Users className="h-4 w-4" /> },
+    { id: 'route-builder', label: 'Route Builder', icon: <Map className="h-4 w-4" /> },
+    { id: 'map-links', label: 'Map Links', icon: <Navigation className="h-4 w-4" /> },
 ]
 
 const SECTION_IDS = NAV_ITEMS.map((item) => item.id)
@@ -47,7 +47,7 @@ function SectionNav({ isAdmin }: { isAdmin: boolean }) {
         if (!isAdmin) return NAV_ITEMS
         return [
             ...NAV_ITEMS,
-            { id: 'admin', label: 'Admin', icon: '🔑' },
+            { id: 'admin', label: 'Admin', icon: <Shield className="h-4 w-4" /> },
         ]
     }, [isAdmin])
 
@@ -70,7 +70,7 @@ function SectionNav({ isAdmin }: { isAdmin: boolean }) {
                                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                             )}
                         >
-                            <span className="text-base leading-none">{item.icon}</span>
+                            {item.icon}
                             <span>{item.label}</span>
                             {isActive && (
                                 <span className="ml-auto w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
@@ -105,7 +105,7 @@ function Home() {
                 header={
                     <PageHeader
                         centerOnMobile
-                        title="🚗 Admin Dashboard"
+                        title="Admin Dashboard"
                         description="Manage rides, view pickups, and configure bot settings all in one place."
                         actions={
                             <div className="flex flex-col items-center md:items-end gap-2">

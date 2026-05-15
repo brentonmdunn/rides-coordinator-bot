@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Sparkles, Church, BookOpen, ClipboardList } from 'lucide-react'
+import type React from 'react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch, ApiError } from '../lib/api'
 import { Button } from './ui/button'
@@ -15,13 +17,13 @@ type MessageType = 'friday' | 'sunday' | 'sunday_class'
 interface MessageTypeOption {
     value: MessageType
     label: string
-    emoji: string
+    icon: React.ReactNode
 }
 
 const MESSAGE_TYPES: MessageTypeOption[] = [
-    { value: 'friday', label: 'Friday Fellowship', emoji: '🎉' },
-    { value: 'sunday', label: 'Sunday Service', emoji: '⛪' },
-    { value: 'sunday_class', label: 'Sunday Class', emoji: '📖' }
+    { value: 'friday', label: 'Friday Fellowship', icon: <Sparkles className="h-4 w-4" /> },
+    { value: 'sunday', label: 'Sunday Service', icon: <Church className="h-4 w-4" /> },
+    { value: 'sunday_class', label: 'Sunday Class', icon: <BookOpen className="h-4 w-4" /> },
 ]
 
 function ReactionDetails() {
@@ -80,7 +82,7 @@ function ReactionDetails() {
 
     return (
         <SectionCard
-            icon="📋"
+            icon={<ClipboardList className="h-4 w-4" />}
             title="Ask Rides Reactions"
             actions={
                 <>
@@ -131,7 +133,7 @@ function ReactionDetails() {
                             disabled={loading}
                             className="flex-1 min-w-[120px] w-full md:w-auto"
                         >
-                            <span className="mr-2">{type.emoji}</span>
+                            {type.icon}
                             {type.label}
 
                         </Button>

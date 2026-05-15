@@ -3,9 +3,9 @@ import { apiFetch } from '../lib/api'
 import type { AccountRole } from '../types'
 
 const ROLES: { value: AccountRole; label: string; description: string }[] = [
-    { value: 'admin', label: '🔑 Admin', description: 'Full access' },
-    { value: 'ride_coordinator', label: '🚗 Ride Coordinator', description: 'Manage rides' },
-    { value: 'viewer', label: '👁️ Viewer', description: 'Read only' },
+    { value: 'admin', label: 'Admin', description: 'Full access' },
+    { value: 'ride_coordinator', label: 'Ride Coordinator', description: 'Manage rides' },
+    { value: 'viewer', label: 'Viewer', description: 'Read only' },
 ]
 
 interface RoleSwitcherProps {

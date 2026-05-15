@@ -1,3 +1,4 @@
+import { BookOpen } from 'lucide-react'
 import { ModeToggle } from '../components/mode-toggle'
 import { BackLink, PageHeader, PageLayout } from '../components/shared'
 import { TutorialSection, TutorialSubheader, TutorialText, TutorialList, TutorialTable } from '../components/TutorialComponents'
@@ -9,7 +10,7 @@ function Learn() {
             header={
                 <PageHeader
                     eyebrow={<BackLink to="/" />}
-                    title="📚 How to Use Ridebot"
+                    title={<span className="inline-flex items-center gap-2"><BookOpen className="h-6 w-6 shrink-0" />How to Use Ridebot</span>}
                     description="A complete guide to coordinating rides with Ridebot."
                     actions={<ModeToggle />}
                 />

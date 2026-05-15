@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Users } from 'lucide-react'
 import { apiFetch } from '../lib/api'
 import { copyToClipboard } from '../lib/utils'
 import { useUsernames } from '../hooks/useUsernames'
@@ -92,7 +93,7 @@ function GroupRides() {
 
     return (
         <SectionCard
-            icon="🚗"
+            icon={<Users className="h-4 w-4" />}
             title="Group Rides"
             actions={
                 <>

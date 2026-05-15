@@ -14,6 +14,7 @@ import {
 } from './ui/select'
 import ConfirmDialog from './ConfirmDialog'
 import { TableSkeleton } from './LoadingSkeleton'
+import { Users } from 'lucide-react'
 import { SectionCard } from './shared'
 
 interface UserAccount {
@@ -34,9 +35,9 @@ interface UsersResponse {
 }
 
 const ROLES: { value: AccountRole; label: string }[] = [
-    { value: 'admin', label: '🔑 Admin' },
-    { value: 'ride_coordinator', label: '🚗 Ride Coordinator' },
-    { value: 'viewer', label: '👁️ Viewer' },
+    { value: 'admin', label: 'Admin' },
+    { value: 'ride_coordinator', label: 'Ride Coordinator' },
+    { value: 'viewer', label: 'Viewer' },
 ]
 
 const ROLE_COLORS: Record<AccountRole, string> = {
@@ -121,7 +122,7 @@ function UserManagement() {
     const errorMsg = error instanceof Error ? error.message : ''
 
     return (
-        <SectionCard icon="👥" title="User Management">
+        <SectionCard icon={<Users className="h-4 w-4" />} title="User Management">
                 {isLoading && <TableSkeleton rows={3} cols={3} />}
 
                 <div className="mb-6">

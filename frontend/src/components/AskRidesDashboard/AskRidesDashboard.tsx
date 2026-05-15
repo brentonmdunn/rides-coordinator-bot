@@ -7,6 +7,7 @@ import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 import { ListSkeleton } from '../LoadingSkeleton'
 
+import { CalendarDays } from 'lucide-react'
 import { Button } from '../ui/button'
 import ConfirmDialog from '../ConfirmDialog'
 import { SectionCard } from '../shared'
@@ -54,7 +55,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 
     return (
         <SectionCard
-            icon="📅"
+            icon={<CalendarDays className="h-4 w-4" />}
             title="Ask Rides Status Dashboard"
             actions={
                 <>
@@ -158,13 +159,13 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                 {!askRidesLoading && !askRidesError && askRidesStatus && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Friday Fellowship */}
-                        <StatusCard title="🎉 Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
+                        <StatusCard title="Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
 
                         {/* Sunday Service */}
-                        <StatusCard title="⛪ Sunday Service" jobName="sunday" job={askRidesStatus.sunday} canManage={canManage} />
+                        <StatusCard title="Sunday Service" jobName="sunday" job={askRidesStatus.sunday} canManage={canManage} />
 
                         {/* Sunday Class */}
-                        <StatusCard title="📖 Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
+                        <StatusCard title="Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
                     </div>
                 )}
             <ConfirmDialog

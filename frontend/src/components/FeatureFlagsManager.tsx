@@ -7,6 +7,7 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
 import type { FeatureFlag } from '../types'
 import { GridSkeleton } from './LoadingSkeleton'
+import { Settings } from 'lucide-react'
 import { SectionCard } from './shared'
 
 interface FeatureFlagsResponse {
@@ -66,7 +67,7 @@ function FeatureFlagsManager() {
 
     return (
         <SectionCard
-            icon="⚙️"
+            icon={<Settings className="h-4 w-4" />}
             title="Feature Flags"
             actions={
                 <>

@@ -12,6 +12,7 @@ import {
 } from '../components/ui/select'
 import { BackLink, PageHeader, PageLayout } from '../components/shared'
 import { ModeToggle } from '../components/mode-toggle'
+import { ScrollText } from 'lucide-react'
 import { QUERY_STALE_1_MIN } from '../lib/constants'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -268,7 +269,7 @@ function ReactionLog() {
             header={
                 <PageHeader
                     eyebrow={<BackLink to="/" />}
-                    title="📜 Reaction Log"
+                    title={<span className="inline-flex items-center gap-2"><ScrollText className="h-6 w-6 shrink-0" />Reaction Log</span>}
                     description="Chronological log of emoji reactions added or removed from ride messages."
                     actions={<ModeToggle />}
                 />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Car } from 'lucide-react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
@@ -56,7 +57,7 @@ function DriverReactions() {
 
     return (
         <SectionCard
-            icon="🚙"
+            icon={<Car className="h-4 w-4" />}
             title={`Driver Reactions (${capitalize(activeDay)})`}
             actions={
                 <>
