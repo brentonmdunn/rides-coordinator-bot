@@ -355,9 +355,7 @@ async def test_get_driver_reactions_aggregates_reactions():
             return_value={"alice": "Alice Smith", "bob": "Bob Jones"},
         ),
     ):
-        result = await svc.get_driver_reactions.__wrapped__(
-            svc, AskRidesMessage.FRIDAY_FELLOWSHIP
-        )
+        result = await svc.get_driver_reactions.__wrapped__(svc, AskRidesMessage.FRIDAY_FELLOWSHIP)
 
     assert result is not None
     assert "alice" in result["reactions"].get("👍", [])
@@ -395,9 +393,7 @@ async def test_get_driver_reactions_filters_bot_users():
             return_value={"driver_human": "Driver Human"},
         ),
     ):
-        result = await svc.get_driver_reactions.__wrapped__(
-            svc, AskRidesMessage.FRIDAY_FELLOWSHIP
-        )
+        result = await svc.get_driver_reactions.__wrapped__(svc, AskRidesMessage.FRIDAY_FELLOWSHIP)
 
     assert "driver_human" in result["reactions"].get("👍", [])
     assert "AutoBot" not in result["reactions"].get("👍", [])
