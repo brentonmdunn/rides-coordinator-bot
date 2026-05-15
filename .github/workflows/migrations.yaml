@@ -36,6 +36,14 @@ jobs:
       - name: Sync dependencies
         run: uv sync
 
+      - name: Check for multiple migration heads
+        run: |
+          heads=$(uv run alembic heads | wc -l)
+          if [ "$heads" -gt 1 ]; then
+            echo "ERROR: Multiple Alembic heads detected. Run 'alembic merge heads' to fix."
+            exit 1
+          fi
+
       - name: Run migrations to head and check for drift
         run: |
           mkdir -p db
@@ -44,3 +52,8 @@ jobs:
             echo "::error::Model changes detected without a corresponding migration. Run 'alembic revision --autogenerate -m \"description\"' to generate one."
             exit 1
           }
+
+      - name: Test downgrade
+        run: |
+          uv run alembic downgrade -1
+          uv run alembic upgrade head

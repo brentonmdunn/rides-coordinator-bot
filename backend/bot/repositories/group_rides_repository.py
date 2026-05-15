@@ -15,7 +15,7 @@ class GroupRidesRepository:
         """Initialize the GroupRidesRepository."""
         self.bot = bot
 
-    async def fetch_message(self, channel_id: int, message_id: int) -> discord.Message:
+    async def fetch_message(self, channel_id: int, message_id: int) -> discord.Message | None:
         """
         Fetches a message from a channel.
 
@@ -34,6 +34,10 @@ class GroupRidesRepository:
             except discord.NotFound:
                 logger.warning(f"fetch_message: channel {channel_id} not found")
                 return None
+
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            logger.warning(f"fetch_message: channel {channel_id} is not a text channel or thread")
+            return None
 
         try:
             return await channel.fetch_message(message_id)

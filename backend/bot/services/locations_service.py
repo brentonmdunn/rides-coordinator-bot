@@ -10,6 +10,8 @@ Acts as a thin coordinator that delegates to:
 import logging
 from collections import defaultdict
 
+import discord
+
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
@@ -208,13 +210,17 @@ class LocationsService:
             if message_id is None:
                 raise NoMatchingMessageFoundError()
 
+        if message_id is None:
+            raise ValueError("message_id must be provided when day is not specified")
+
         usernames_reacted = await self.get_usernames_who_reacted(channel_id, message_id, option)
 
         tmp_content = ""
         if not day:
             tmp_channel = self.bot.get_channel(int(channel_id))
-            tmp_message = await tmp_channel.fetch_message(int(message_id))
-            tmp_content = get_message_and_embed_content(tmp_message).lower()
+            if isinstance(tmp_channel, (discord.TextChannel, discord.Thread)):
+                tmp_message = await tmp_channel.fetch_message(int(message_id))
+                tmp_content = get_message_and_embed_content(tmp_message).lower()
 
         if (
             (day and day == JobName.SUNDAY)
@@ -302,16 +308,17 @@ class LocationsService:
         cache_miss = []
         for username in usernames_reacted:
             person = await self.get_name_location_no_sync(username)
-            if person is None or person.location is None:
+            # person is tuple[str, str] = (name, location)
+            if person is None or person[1] is None:
                 cache_miss.append(username)
                 continue
-            locations_people[person.location].append((person.name, username))
+            locations_people[person[1]].append((person[0], username))
             location_found.add(username)
         if cache_miss:
             await self.sync_locations()
             for username in cache_miss:
                 person = await self.get_name_location_no_sync(username)
-                if person and person.location:
-                    locations_people[person.location].append((person.name, username))
+                if person and person[1]:
+                    locations_people[person[1]].append((person[0], username))
                     location_found.add(username)
         return locations_people, location_found

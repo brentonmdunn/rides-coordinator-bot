@@ -64,7 +64,7 @@ class NonDiscordRides(Base):
     __tablename__ = "non_discord_rides"
 
     name: Mapped[str] = mapped_column(primary_key=True)
-    date: Mapped[date] = mapped_column(primary_key=True)
+    date: Mapped[date] = mapped_column(primary_key=True)  # ty: ignore[invalid-type-form]
     location: Mapped[str | None]
 
 

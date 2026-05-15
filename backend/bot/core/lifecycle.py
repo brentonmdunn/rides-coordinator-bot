@@ -24,10 +24,19 @@ from bot.core.database import (
 )
 from bot.core.models import FeatureFlags
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.utils.constants import REDIS_CONNECTION_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
 APP_ENV: str = os.getenv("APP_ENV", "local")
+
+_failed_extensions: set[str] = set()
+
+
+def get_failed_extensions() -> set[str]:
+    """Return the set of extension names that failed to load."""
+    return _failed_extensions
+
 
 _SendErrorFn = Callable[..., Awaitable[None]]
 
@@ -45,10 +54,18 @@ def build_bot() -> Bot:
 async def startup() -> None:
     """Initialize cache backend, database, seeds, feature flag cache, and local-env flags."""
     if APP_ENV != "local":
+        import asyncio
+
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         from bot.utils.cache_backends import RedisBackend, set_backend
 
-        set_backend(RedisBackend(redis_url))
+        backend = RedisBackend(redis_url)
+        try:
+            await asyncio.wait_for(backend._redis.ping(), timeout=REDIS_CONNECTION_TIMEOUT)  # ty: ignore[invalid-argument-type]
+            logger.info("Redis connection established")
+            set_backend(backend)
+        except Exception:
+            logger.warning("Redis unavailable at startup, falling back to in-memory cache")
 
     await init_db()
     async with AsyncSessionLocal() as session:
@@ -113,6 +130,7 @@ async def load_extensions(bot: Bot) -> None:
             logger.info(f"✅ Loaded extension: {extension}")
         except Exception:
             logger.exception(f"❌ Failed to load extension {extension}")
+            _failed_extensions.add(extension)
 
     if APP_ENV == "local":
         cogs_testing_path = Path.cwd() / "bot" / "cogs_testing"
@@ -128,6 +146,7 @@ async def load_extensions(bot: Bot) -> None:
                 logger.info(f"✅ Loaded extension: {extension}")
             except Exception:
                 logger.exception(f"❌ Failed to load extension {extension}")
+                _failed_extensions.add(extension)
 
 
 def attach_event_handlers(bot: Bot, send_error_fn: _SendErrorFn) -> None:
@@ -183,7 +202,11 @@ def attach_event_handlers(bot: Bot, send_error_fn: _SendErrorFn) -> None:
             logger.exception("Failed to send Discord error response for app command")
 
         cmd_name = interaction.command.name if interaction.command else "Unknown"
-        channel_mention = interaction.channel.mention if interaction.channel else "Unknown"
+        channel_mention = (
+            interaction.channel.mention
+            if isinstance(interaction.channel, discord.TextChannel)
+            else "Unknown"
+        )
         error_msg = (
             "**App Command Error**\n"
             f"Command: `{cmd_name}`\n"

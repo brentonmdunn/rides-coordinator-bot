@@ -12,6 +12,7 @@ import {
 } from '../components/ui/select'
 import { BackLink, PageHeader, PageLayout } from '../components/shared'
 import { ModeToggle } from '../components/mode-toggle'
+import { QUERY_STALE_1_MIN } from '../lib/constants'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -216,6 +217,7 @@ function LoadingSkeleton() {
 
 function ReactionLog() {
     const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+    const [streamError, setStreamError] = useState(false)
 
     const { data, isLoading, isError, error } = useQuery<ReactionLogResponse>({
         queryKey: ['reaction-log', filters],
@@ -232,7 +234,7 @@ function ReactionLog() {
             const res = await apiFetch('/api/reaction-log')
             return res.json() as Promise<ReactionLogResponse>
         },
-        staleTime: 60_000,
+        staleTime: QUERY_STALE_1_MIN,
     })
 
     const availableEmojis = Array.from(
@@ -246,6 +248,10 @@ function ReactionLog() {
         es.onmessage = () => {
             void queryClient.invalidateQueries({ queryKey: ['reaction-log'] })
             void queryClient.invalidateQueries({ queryKey: ['reaction-log-all-emojis'] })
+        }
+        es.onerror = () => {
+            setStreamError(true)
+            es.close()
         }
         return () => es.close()
     }, [queryClient])
@@ -268,6 +274,11 @@ function ReactionLog() {
                 />
             }
         >
+            {streamError && (
+                <div className="bg-warning/10 border border-warning/30 text-warning-text rounded-lg px-4 py-3 text-sm">
+                    Live feed disconnected. Refresh to reconnect.
+                </div>
+            )}
             {/* Filter bar */}
             <div className="bg-card border border-border rounded-lg p-4 space-y-4">
                 {/* Ride type buttons */}

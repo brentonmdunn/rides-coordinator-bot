@@ -7,6 +7,7 @@ from sqlalchemy import delete, distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.models import RideCoverage as RideCoverageModel
+from bot.utils.constants import COVERAGE_STATUS_DEFAULT_HOURS
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class RideCoverageRepository:
 
     @staticmethod
     async def get_coverage_status(
-        session: AsyncSession, discord_username: str, hours: int = 24
+        session: AsyncSession, discord_username: str, hours: int = COVERAGE_STATUS_DEFAULT_HOURS
     ) -> bool:
         """
         Checks if a ride coverage entry exists for the user within the last X hours.
@@ -72,7 +73,7 @@ class RideCoverageRepository:
     async def get_bulk_coverage_status(
         session: AsyncSession,
         discord_usernames: list[str],
-        hours: int = 24,
+        hours: int = COVERAGE_STATUS_DEFAULT_HOURS,
         since: datetime.datetime | None = None,
     ) -> set[str]:
         """

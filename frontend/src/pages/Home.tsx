@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react'
+import ErrorBoundary from '../components/ErrorBoundary'
 import { Link } from 'react-router-dom'
 import { BookOpen, History } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -88,11 +89,23 @@ function Home() {
                     <RouteBuilder />
                     <MapLinks />
                     {isAdmin && (
-                        <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading admin tools…</div>}>
-                            <FeatureFlagsManager />
-                            <UserManagement />
-                            <SystemActions />
-                        </Suspense>
+                        <>
+                            <ErrorBoundary fallback={<div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive-text">Feature flags unavailable</div>}>
+                                <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading…</div>}>
+                                    <FeatureFlagsManager />
+                                </Suspense>
+                            </ErrorBoundary>
+                            <ErrorBoundary fallback={<div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive-text">User management unavailable</div>}>
+                                <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading…</div>}>
+                                    <UserManagement />
+                                </Suspense>
+                            </ErrorBoundary>
+                            <ErrorBoundary fallback={<div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive-text">System actions unavailable</div>}>
+                                <Suspense fallback={<div className="text-center py-8 text-muted-foreground">Loading…</div>}>
+                                    <SystemActions />
+                                </Suspense>
+                            </ErrorBoundary>
+                        </>
                     )}
                 </div>
             </PageLayout>

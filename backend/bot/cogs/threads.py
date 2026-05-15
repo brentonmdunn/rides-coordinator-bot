@@ -79,7 +79,7 @@ class Threads(commands.Cog):
         Args:
             interaction: The Discord interaction.
         """
-        if not self._is_thread(interaction):
+        if not isinstance(interaction.channel, discord.Thread):
             await interaction.response.send_message(
                 "This command can only be used inside a thread.", ephemeral=True
             )
@@ -110,7 +110,7 @@ class Threads(commands.Cog):
         """
         await interaction.response.defer(ephemeral=False, thinking=True)
 
-        if not self._is_thread(interaction):
+        if not isinstance(interaction.channel, discord.Thread):
             await interaction.followup.send(
                 "This command can only be used inside a thread.", ephemeral=True
             )
@@ -164,7 +164,7 @@ class Threads(commands.Cog):
         """
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        if not self._is_thread(interaction):
+        if not isinstance(interaction.channel, discord.Thread):
             await interaction.followup.send(
                 "This command can only be used inside a thread.", ephemeral=True
             )

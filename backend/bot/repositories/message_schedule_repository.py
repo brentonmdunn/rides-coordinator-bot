@@ -47,7 +47,7 @@ class MessageScheduleRepository:
         """
         stmt = select(MessageSchedulePause).order_by(MessageSchedulePause.job_name)
         result = await session.execute(stmt)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     @staticmethod
     async def set_pause(

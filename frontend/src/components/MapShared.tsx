@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { MAP_FIT_BOUNDS_PADDING, MAP_FIT_BOUNDS_DURATION, HINT_MESSAGE_MS } from '../lib/constants'
 
 // Component to recenter map when selected location changes
 export function RecenterMap({ center, zoom = 16, bounds }: { center?: [number, number], zoom?: number, bounds?: L.LatLngBoundsExpression }) {
@@ -8,9 +9,9 @@ export function RecenterMap({ center, zoom = 16, bounds }: { center?: [number, n
 
     useEffect(() => {
         if (bounds) {
-            map.fitBounds(bounds, { padding: [50, 50], duration: 0.8 })
+            map.fitBounds(bounds, { padding: [MAP_FIT_BOUNDS_PADDING, MAP_FIT_BOUNDS_PADDING], duration: MAP_FIT_BOUNDS_DURATION })
         } else if (center) {
-            map.flyTo(center, zoom, { duration: 0.8 })
+            map.flyTo(center, zoom, { duration: MAP_FIT_BOUNDS_DURATION })
         }
     }, [center, zoom, bounds, map])
     return null
@@ -27,7 +28,7 @@ export function MapInteractionGuard() {
     const showHintTemporarily = useCallback(
         (msg: string) => {
             setHintMessage(msg)
-            const id = setTimeout(() => setHintMessage(null), 1500)
+            const id = setTimeout(() => setHintMessage(null), HINT_MESSAGE_MS)
             return () => clearTimeout(id)
         },
         [setHintMessage]

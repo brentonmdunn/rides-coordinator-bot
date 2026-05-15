@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,12 +15,16 @@ from slowapi.middleware import SlowAPIMiddleware
 from api.rate_limit import limiter
 from api.routes.group_rides import router as group_rides_router
 
+# Cast to Any to satisfy the wider exception handler signature required by FastAPI.
+# slowapi's handler only accepts RateLimitExceeded, but FastAPI's type expects Exception.
+_rate_limit_handler: Any = _rate_limit_exceeded_handler
+
 
 def _build_app() -> FastAPI:
     """Assemble a FastAPI app with rate limiting wired the same as production."""
     app = FastAPI()
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
     app.add_middleware(SlowAPIMiddleware)
     app.include_router(group_rides_router)
     return app

@@ -1,16 +1,14 @@
 """Pure domain functions for ride grouping, capacity checks, and output formatting."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from bot.core.enums import PickupLocations
 from bot.core.schemas import LocationQuery, Passenger
-from bot.utils.constants import get_map_url
+from bot.utils.constants import RIDE_GROUPING_PICKUP_ADJUSTMENT, get_map_url
 from bot.utils.locations import lookup_time
 
 logger = logging.getLogger(__name__)
-
-PICKUP_ADJUSTMENT = 1
 
 LocationsPeopleType = dict[str, list[tuple[str, str]]]
 PassengersByLocation = dict[PickupLocations, list[Passenger]]
@@ -35,7 +33,9 @@ def parse_numbers(s: str) -> list[int]:
     return [int(char) for char in cleaned_string]
 
 
-def find_passenger(locations_people: PassengersByLocation, person: str, location: str) -> Passenger:
+def find_passenger(
+    locations_people: PassengersByLocation, person: str, location: str
+) -> Passenger | None:
     """
     Finds a passenger object by name and location.
 
@@ -45,12 +45,13 @@ def find_passenger(locations_people: PassengersByLocation, person: str, location
         location (str): The location key to search in.
 
     Returns:
-        Passenger: The Passenger object if found, otherwise None.
+        Passenger | None: The Passenger object if found, otherwise None.
     """
-    if location in locations_people:
-        for p in locations_people[location]:
-            if p.identity.name == person:
-                return p
+    for key, passengers in locations_people.items():
+        if key.value == location or str(key) == location:
+            for p in passengers:
+                if p.identity.name == person:
+                    return p
     logger.warning(f"None was returned for {locations_people=} {person=}")
     return None
 
@@ -86,21 +87,21 @@ def is_enough_capacity(
 
 
 def calculate_pickup_time(
-    curr_leave_time: datetime.time, grouped_by_location, location: str, offset: int
-) -> datetime.time:
+    curr_leave_time: time, grouped_by_location, location: PickupLocations, offset: int
+) -> time:
     """
     Calculates the pickup time based on the previous location and travel time.
 
     Args:
-        curr_leave_time (datetime.time): The leave time from the previous location.
+        curr_leave_time (time): The leave time from the previous location.
         grouped_by_location (list): List of passenger groups.
-        location (str): The current pickup location.
+        location (PickupLocations): The current pickup location.
         offset (int): The offset index for the previous location.
 
     Returns:
-        datetime.time: The calculated pickup time.
+        time: The calculated pickup time.
     """
-    time_between = PICKUP_ADJUSTMENT + lookup_time(
+    time_between = RIDE_GROUPING_PICKUP_ADJUSTMENT + lookup_time(
         LocationQuery(
             start_location=grouped_by_location[len(grouped_by_location) - offset][
                 0
@@ -147,7 +148,7 @@ def llm_input_pickups(locations_people: PassengersByLocation) -> str:
 def create_output(
     llm_result: dict[str, list[dict[str, str]]],
     locations_people: PassengersByLocation,
-    end_leave_time: datetime.time,
+    end_leave_time: time,
     off_campus: LocationsPeopleType,
 ) -> list[str]:
     """
@@ -156,7 +157,7 @@ def create_output(
     Args:
         llm_result (dict[str, list[dict[str, str]]]): The result from the LLM.
         locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
-        end_leave_time (datetime.time): The target arrival time.
+        end_leave_time (time): The target arrival time.
         off_campus (LocationsPeopleType): Dictionary of off-campus passengers.
 
     Returns:

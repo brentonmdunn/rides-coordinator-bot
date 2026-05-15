@@ -6,10 +6,12 @@ Main FastAPI application with Discord bot integration and Cloudflare authenticat
 
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any, cast
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +22,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.auth import cloudflare_access_middleware
 from api.auth_session import session_cookie_middleware
+from api.constants import CORS_LOCALHOST_5173, CORS_LOCALHOST_5174
 from api.middleware.access_logger import AccessLogMiddleware
 from api.rate_limit import limiter
 from api.routes.admin_users import router as admin_users_router
@@ -51,6 +54,7 @@ CLOUDFLARE_TEAM_DOMAIN = os.getenv("CLOUDFLARE_TEAM_DOMAIN")
 CLOUDFLARE_AUD = os.getenv("CLOUDFLARE_AUD")
 APP_ENV = os.getenv("APP_ENV", "local")
 AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "cloudflare")  # "cloudflare" | "self"
+METRICS_TOKEN = os.getenv("METRICS_TOKEN")
 
 
 @asynccontextmanager
@@ -70,9 +74,10 @@ async def lifespan(app: FastAPI):
             logger.info("Auth provider: self-hosted Discord OAuth + session cookies.")
         elif not CLOUDFLARE_TEAM_DOMAIN or not CLOUDFLARE_AUD:
             logger.error(
-                "CRITICAL: Cloudflare Access environment variables are not set. "
-                "Authentication will fail."
+                "CRITICAL: CLOUDFLARE_TEAM_DOMAIN and CLOUDFLARE_AUD must be set when "
+                "AUTH_PROVIDER=cloudflare."
             )
+            sys.exit(1)
         else:
             logger.info("Auth provider: Cloudflare Access.")
     else:
@@ -93,10 +98,21 @@ app = FastAPI(lifespan=lifespan)
 # request volume, and error rates.
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
+
+@app.middleware("http")
+async def guard_metrics(request: Request, call_next) -> Response:
+    """Require Bearer token on /metrics when METRICS_TOKEN is set."""
+    if request.url.path == "/metrics" and METRICS_TOKEN:
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {METRICS_TOKEN}":
+            return Response("Unauthorized", status_code=401)
+    return await call_next(request)
+
+
 # Wire up slowapi rate limiting. The limiter must be attached to app.state and
 # the SlowAPIMiddleware installed before any per-route limits take effect.
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, cast(Any, _rate_limit_exceeded_handler))
 app.add_middleware(SlowAPIMiddleware)
 
 # Add authentication middleware based on AUTH_PROVIDER.
@@ -121,7 +137,7 @@ logger.info("Access logging middleware enabled")
 if APP_ENV == "local":
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:5174"],  # Vite dev server
+        allow_origins=[CORS_LOCALHOST_5173, CORS_LOCALHOST_5174],  # Vite dev server
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

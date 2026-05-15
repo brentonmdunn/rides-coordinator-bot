@@ -12,13 +12,14 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from api.auth import require_ride_coordinator
+from api.constants import SSE_HEARTBEAT_INTERVAL
 from bot.core import reaction_broadcaster
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_HEARTBEAT_INTERVAL = 30
+_HEARTBEAT_INTERVAL = SSE_HEARTBEAT_INTERVAL
 
 
 @router.get(

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
+from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET
 from api.dependencies import require_bot, require_ready_bot
 from bot.core.enums import AskRidesMessage, CacheNamespace, DaysOfWeek, JobName
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
@@ -158,7 +159,9 @@ async def set_pause(job_name: str, request: PauseRequest):
     summary="Get Upcoming Dates",
     description="Get the mathematically projected upcoming event dates for a given job type.",
 )
-async def get_upcoming_dates(job_name: str, count: int = 6, offset: int = 0):
+async def get_upcoming_dates(
+    job_name: str, count: int = ASK_RIDES_DEFAULT_COUNT, offset: int = ASK_RIDES_DEFAULT_OFFSET
+):
     """
     Get upcoming event dates for a job type.
 
@@ -212,7 +215,7 @@ async def get_ask_rides_reactions(message_type: str):
     bot = require_bot()
 
     # Map message_type to AskRidesMessage enum
-    type_to_event = {
+    type_to_event: dict[str, AskRidesMessage] = {
         JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
         JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,
         JobName.SUNDAY_CLASS: AskRidesMessage.SUNDAY_CLASS,

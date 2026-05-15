@@ -1,6 +1,7 @@
 """Service for handling ride requests."""
 
 import logging
+from typing import Any, cast
 
 import discord
 
@@ -62,7 +63,7 @@ class RideRequestService:
             new_channel = await guild.create_text_channel(
                 name=channel_name,
                 category=category,
-                overwrites=overwrites,
+                overwrites=cast(Any, overwrites),
                 reason=f"{user.name} reacted for rides.",
             )
             logger.info(f"Created ride channel: {new_channel}")
@@ -97,7 +98,7 @@ class RideRequestService:
 
     def _build_channel_permissions(
         self, guild: discord.Guild, user: discord.Member
-    ) -> dict[discord.Role | discord.Member, discord.PermissionOverwrite]:
+    ) -> dict[discord.abc.Snowflake, discord.PermissionOverwrite]:
         """
         Build permission overwrites for a new ride channel.
 
@@ -110,7 +111,7 @@ class RideRequestService:
         """
         ride_coordinator_role = guild.get_role(RoleIds.RIDE_COORDINATOR)
 
-        overwrites = {
+        overwrites: dict[discord.abc.Snowflake, discord.PermissionOverwrite] = {
             guild.default_role: discord.PermissionOverwrite(
                 read_messages=False,
             ),

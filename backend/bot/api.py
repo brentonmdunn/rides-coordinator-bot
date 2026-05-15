@@ -6,8 +6,10 @@ Bot instance access is in bot.core.bot_instance; error reporting is in bot.core.
 """
 
 import asyncio
+import contextlib
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -20,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 TOKEN: str | None = os.getenv("TOKEN")
+if not TOKEN and os.getenv("DISABLE_DISCORD_BOT", "").lower() != "true":
+    logger.error("CRITICAL: TOKEN is not set")
+    sys.exit(1)
 
 
 @asynccontextmanager
@@ -47,10 +52,15 @@ async def bot_lifespan():
     attach_event_handlers(bot, send_error_to_discord)
     set_bot_instance(bot)
 
-    await startup()
+    try:
+        await startup()
+    except Exception:
+        logger.exception("Startup failed")
+        sys.exit(1)
 
     await load_extensions(bot)
 
+    assert TOKEN is not None  # guarded by sys.exit(1) above when DISABLE_DISCORD_BOT is false
     bot_task = asyncio.create_task(bot.start(TOKEN))
 
     try:
@@ -62,7 +72,12 @@ async def bot_lifespan():
 
     finally:
         logger.info("🛑 Shutting down Discord bot...")
-        await bot.close()
-        await bot_task
+        try:
+            await asyncio.wait_for(bot.close(), timeout=10.0)
+        except TimeoutError:
+            logger.warning("Bot close timed out after 10s — forcing task cancellation")
+        bot_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await bot_task
         set_bot_instance(None)
         logger.info("✅ Discord bot shutdown complete")

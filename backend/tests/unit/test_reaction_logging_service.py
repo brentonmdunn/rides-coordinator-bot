@@ -1,5 +1,6 @@
 """Unit tests for bot.services.reaction_logging_service."""
 
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
@@ -67,7 +68,11 @@ class TestFormatReactionLog:
         svc = ReactionLoggingService(bot=None)
         with pytest.raises(ValueError, match="Invalid action"):
             svc._format_reaction_log(
-                _make_user(), _make_payload(), _make_message(), _make_channel(), "invalid"
+                _make_user(),
+                _make_payload(),
+                _make_message(),
+                _make_channel(),
+                cast(ReactionAction, "invalid"),  # intentionally invalid enum value
             )
 
     def test_empty_content_shows_placeholder(self):
@@ -135,7 +140,10 @@ class TestFormatReactionLogLateRides:
         svc = ReactionLoggingService(bot=None)
         with pytest.raises(ValueError, match="Invalid action"):
             svc._format_reaction_log_late_rides(
-                _make_user(), _make_payload(), _make_message(), "bad"
+                _make_user(),
+                _make_payload(),
+                _make_message(),
+                cast(ReactionAction, "bad"),  # intentionally invalid
             )
 
 

@@ -7,6 +7,7 @@ Demonstrates API functionality and Discord bot integration.
 import logging
 import os
 
+import discord
 from fastapi import APIRouter, HTTPException, Request
 
 from bot.core.bot_instance import get_bot
@@ -58,6 +59,12 @@ async def send_discord_message(request: Request):
         raise HTTPException(
             status_code=404,
             detail=f"Channel {DISCORD_CHANNEL_ID} not found or bot doesn't have access",
+        )
+
+    if not isinstance(channel, discord.TextChannel):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Channel {DISCORD_CHANNEL_ID} is not a text channel",
         )
 
     try:
