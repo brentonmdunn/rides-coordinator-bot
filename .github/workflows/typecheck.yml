@@ -7,6 +7,7 @@ on:
       - staging
     paths-ignore:
       - 'portfolio/**'
+      - '.github/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

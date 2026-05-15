@@ -6,6 +6,7 @@ on:
       - main
     paths-ignore:
       - 'portfolio/**'
+      - '.github/**'
 
 jobs:
   build-prod:
