@@ -165,6 +165,39 @@
   }
 }
 
+/* Cohere: teal-to-blue gradient primary buttons */
+.dark [data-slot="button"][data-variant="default"] {
+  background: linear-gradient(135deg, #00d4aa 0%, #0570de 100%);
+  color: #0a1628;
+  box-shadow: 0 2px 8px rgba(0, 212, 170, 0.3);
+}
+.dark [data-slot="button"][data-variant="default"]:hover {
+  background: linear-gradient(135deg, #00bfa0 0%, #0460c8 100%);
+  box-shadow: 0 4px 12px rgba(0, 212, 170, 0.4);
+}
+[data-slot="button"][data-variant="default"] {
+  background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 100%);
+  box-shadow: 0 1px 4px rgba(10, 22, 40, 0.2);
+}
+[data-slot="button"][data-variant="default"]:hover {
+  background: linear-gradient(135deg, #111f35 0%, #1e4570 100%);
+}
+
+/* Cohere: teal glow on focus */
+[data-slot="input"]:focus-visible,
+[data-slot="select-trigger"]:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
+  border-color: #00d4aa;
+}
+
+/* Cohere: mesh utility */
+.cohere-mesh {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(0, 212, 170, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 0%, rgba(5, 112, 222, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(107, 70, 193, 0.06) 0%, transparent 50%);
+}
+
 /* Cohere gradient utilities */
 .gradient-accent {
   background: linear-gradient(135deg, #00d4aa 0%, #0a7aff 50%, #6b46c1 100%);
