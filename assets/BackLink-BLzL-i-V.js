@@ -1,0 +1,1 @@
+import{J as r,A as o}from"./ui-ChlKx9kx.js";import{L as s}from"./vendor-tw3RDDpK.js";function i({to:t,label:e="Back to Dashboard"}){return r.jsxs(s,{to:t,className:"inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors",children:[r.jsx(o,{className:"w-3.5 h-3.5"}),e]})}export{i as B};
