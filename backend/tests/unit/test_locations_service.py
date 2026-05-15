@@ -1,10 +1,12 @@
+from collections import defaultdict
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from bot.core.enums import JobName, RideOption
 from bot.services.locations_service import LocationsService
+from bot.utils.custom_exceptions import NoMatchingMessageFoundError
 
 
 @pytest.mark.asyncio
@@ -141,3 +143,217 @@ async def test_list_locations_adds_non_discord_pickups():
         locations_people[pickup.location].append((pickup.name, None))
 
     assert any("Off Campus" in loc for loc in locations_people)
+
+
+@pytest.mark.asyncio
+async def test_get_location_returns_cached_results():
+    """When DB returns results immediately, sync is never triggered."""
+    svc = LocationsService(bot=None)
+
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
+            "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
+            new_callable=AsyncMock,
+            return_value=[("Alice", "Revelle")],
+        ),
+    ):
+        svc.sync_locations = AsyncMock()
+        result = await svc.get_location("Alice")
+
+    assert result == [("Alice", "Revelle")]
+    svc.sync_locations.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_location_triggers_sync_on_cache_miss():
+    """When DB returns nothing, sync is called and result is re-queried."""
+    svc = LocationsService(bot=None)
+
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+
+    call_count = 0
+
+    async def fake_lookup(*_args, **_kwargs):
+        nonlocal call_count
+        call_count += 1
+        return [] if call_count == 1 else [("Bob", "Warren")]
+
+    svc.sync_locations = AsyncMock()
+
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
+            "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
+            side_effect=fake_lookup,
+        ),
+    ):
+        result = await svc.get_location("Bob")
+
+    assert result == [("Bob", "Warren")]
+    svc.sync_locations.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_location_returns_none_after_sync_miss():
+    """If still not found after sync, None is returned."""
+    svc = LocationsService(bot=None)
+
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+
+    svc.sync_locations = AsyncMock()
+
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
+            "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+    ):
+        result = await svc.get_location("Nobody")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_location_discord_only_uses_discord_check():
+    svc = LocationsService(bot=None)
+
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
+            "bot.services.locations_service.LocationsRepository.get_location_check_discord",
+            new_callable=AsyncMock,
+            return_value=[("Alice", "Revelle")],
+        ) as mock_discord_check,
+    ):
+        svc.sync_locations = AsyncMock()
+        result = await svc.get_location("alice", discord_only=True)
+
+    assert result == [("Alice", "Revelle")]
+    mock_discord_check.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_name_location_no_sync_delegates_to_repo():
+    svc = LocationsService(bot=None)
+    fake_person = MagicMock(name="Alice", location="Revelle")
+
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
+            "bot.services.locations_service.LocationsRepository.get_name_location",
+            new_callable=AsyncMock,
+            return_value=fake_person,
+        ),
+    ):
+        result = await svc.get_name_location_no_sync("alice")
+
+    assert result is fake_person
+
+
+@pytest.mark.asyncio
+async def test_list_locations_wrapper_sends_embed():
+    svc = LocationsService(bot=None)
+    interaction = AsyncMock()
+
+    locations_people = defaultdict(list)
+    locations_people["Revelle"].append(("Alice", "alice"))
+    svc.list_locations = AsyncMock(return_value=(locations_people, {"alice"}, {"alice"}))
+
+    import discord
+
+    fake_embed = MagicMock(spec=discord.Embed)
+    svc._housing.build_embed = MagicMock(return_value=fake_embed)
+
+    await svc.list_locations_wrapper(interaction, day=JobName.FRIDAY)
+
+    interaction.response.send_message.assert_awaited_once_with(embed=fake_embed)
+
+
+@pytest.mark.asyncio
+async def test_list_locations_wrapper_handles_no_matching_message():
+    svc = LocationsService(bot=None)
+    interaction = AsyncMock()
+    svc.list_locations = AsyncMock(side_effect=NoMatchingMessageFoundError())
+
+    await svc.list_locations_wrapper(interaction)
+
+    args = interaction.response.send_message.call_args[0]
+    assert "No matching message" in args[0]
+
+
+@pytest.mark.asyncio
+async def test_list_locations_wrapper_handles_unexpected_error():
+    svc = LocationsService(bot=None)
+    interaction = AsyncMock()
+    svc.list_locations = AsyncMock(side_effect=RuntimeError("boom"))
+
+    with patch("bot.services.locations_service.send_error_to_discord", new_callable=AsyncMock):
+        await svc.list_locations_wrapper(interaction)
+
+    call_kwargs = interaction.response.send_message.call_args[1]
+    assert call_kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_list_locations_no_day_uses_message_id():
+    """list_locations with only message_id (no day) fetches channel and message."""
+    svc = LocationsService(bot=None)
+
+    fake_message = MagicMock()
+    fake_message.content = "some ride message"
+    fake_message.embeds = []
+
+    fake_channel = AsyncMock()
+    fake_channel.fetch_message = AsyncMock(return_value=fake_message)
+    svc.bot = MagicMock()
+    svc.bot.get_channel.return_value = fake_channel
+
+    svc.get_usernames_who_reacted = AsyncMock(return_value={"alice"})
+    svc._find_correct_message = AsyncMock(return_value=None)  # not called in message_id path
+
+    fake_person = MagicMock()
+    fake_person.location = "Revelle"
+    fake_person.name = "Alice"
+    svc.get_name_location_no_sync = AsyncMock(return_value=fake_person)
+    svc.sync_locations = AsyncMock()
+
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
+            "bot.services.locations_service.LocationsRepository.get_non_discord_pickups",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+    ):
+        _, reacted, _ = await svc.list_locations(message_id=999)
+
+    assert "alice" in reacted
