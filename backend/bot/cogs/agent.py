@@ -7,18 +7,20 @@ from dataclasses import dataclass, field
 
 import discord
 from discord.ext import commands
-from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.ridebot_agent import run_agent
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import ChannelIds, FeatureFlagNames, RoleIds
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.utils.cache_backends import get_backend
 
 logger = logging.getLogger(__name__)
 
 _MENTION_RE = re.compile(r"<@!?\d+>")
 _THREAD_NAME_MAX = 100
-_DEBOUNCE_SECONDS = 3
+_DEBOUNCE_SECONDS = 2
+_HISTORY_NAMESPACE = "agent_history"
+_HISTORY_TTL = 60 * 60 * 24  # 24 hours
 
 
 @dataclass
@@ -61,19 +63,12 @@ class Agent(commands.Cog):
                 or False
             )
 
-    async def _build_history(
-        self, thread: discord.Thread, exclude_id: int
-    ) -> list[AIMessage | HumanMessage]:
-        history = []
-        async for msg in thread.history(limit=15, oldest_first=True):
-            if msg.id == exclude_id:
-                continue
-            content = msg.content
-            if msg.author.bot:
-                history.append(AIMessage(content=content))
-            else:
-                history.append(HumanMessage(content=self._strip_mention(content)))
-        return history
+    async def _load_history(self, thread_id: int) -> list:
+        _, history = await get_backend().get(_HISTORY_NAMESPACE, str(thread_id))
+        return history or []
+
+    async def _save_history(self, thread_id: int, history: list) -> None:
+        await get_backend().set(_HISTORY_NAMESPACE, str(thread_id), history, ttl=_HISTORY_TTL)
 
     # --- Debounced thread response ------------------------------------------
 
@@ -89,9 +84,15 @@ class Agent(commands.Cog):
         buf.task = asyncio.create_task(self._debounced_reply(thread, author, message_id))
 
     async def _debounced_reply(
-        self, thread: discord.Thread, author: discord.Member, message_id: int
+        self,
+        thread: discord.Thread,
+        author: discord.Member,
+        message_id: int,
+        *,
+        immediate: bool = False,
     ) -> None:
-        await asyncio.sleep(_DEBOUNCE_SECONDS)
+        if not immediate:
+            await asyncio.sleep(_DEBOUNCE_SECONDS)
 
         buf = self._buffers.get(thread.id)
         if not buf or not buf.messages:
@@ -102,18 +103,19 @@ class Agent(commands.Cog):
         buf.messages.clear()
         logger.debug(f"Agent: debounce fired for thread {thread.id}, prompt={combined!r}")
 
-        history = await self._build_history(thread, exclude_id=message_id)
+        history = await self._load_history(thread.id)
         logger.debug(f"Agent: history has {len(history)} messages")
 
         async with thread.typing():
             try:
-                reply, _ = await asyncio.to_thread(run_agent, combined, history)
+                reply, updated_history = await asyncio.to_thread(run_agent, combined, history)
             except Exception:
                 logger.exception("Agent: error during run_agent in thread reply")
                 await thread.send("Sorry, something went wrong. Please try again.")
                 return
 
-        await thread.send(reply)
+        await self._save_history(thread.id, updated_history)
+        await thread.send(reply, suppress_embeds=True)
 
     # --- Event listener ----------------------------------------------------
 
@@ -170,13 +172,21 @@ class Agent(commands.Cog):
             return
 
         assert isinstance(message.channel, discord.Thread)
+        is_first = message.channel.id not in self._buffers
         buf = self._buffers.setdefault(message.channel.id, _ThreadBuffer())
         buf.messages.append(prompt)
         logger.debug(
             f"Agent: buffered message for thread {message.channel.id}, "
-            f"buffer size={len(buf.messages)}"
+            f"buffer size={len(buf.messages)}, first={is_first}"
         )
-        self._schedule_reply(message.channel, message.author, message.id)
+        if is_first:
+            if buf.task and not buf.task.done():
+                buf.task.cancel()
+            buf.task = asyncio.create_task(
+                self._debounced_reply(message.channel, message.author, message.id, immediate=True)
+            )
+        else:
+            self._schedule_reply(message.channel, message.author, message.id)
 
     async def _handle_new_thread(self, message: discord.Message, prompt: str) -> None:
         thread_name = self._thread_name(message.author.display_name, prompt)
@@ -185,13 +195,14 @@ class Agent(commands.Cog):
 
         async with thread.typing():
             try:
-                reply, _ = await asyncio.to_thread(run_agent, prompt, [])
+                reply, history = await asyncio.to_thread(run_agent, prompt, [])
             except Exception:
                 logger.exception("Agent: error during run_agent in new thread")
                 await thread.send("Sorry, something went wrong. Please try again.")
                 return
 
-        await thread.send(reply)
+        await self._save_history(thread.id, history)
+        await thread.send(reply, suppress_embeds=True)
 
 
 async def setup(bot: commands.Bot):
