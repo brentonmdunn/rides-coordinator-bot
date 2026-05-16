@@ -14,7 +14,12 @@ import httpx
 from fastapi import HTTPException, Request, Response
 from jose import jwt
 
-from api.constants import CF_KEYS_CACHE_TTL_SECONDS, CF_KEYS_HTTP_TIMEOUT
+from api.constants import (
+    CF_KEYS_CACHE_TTL_SECONDS,
+    CF_KEYS_HTTP_TIMEOUT,
+    INTERNAL_API_SECRET,
+    INTERNAL_SECRET_HEADER,
+)
 from bot.core.enums import AccountRoles
 from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
 from bot.services.user_accounts_service import UserAccountsService
@@ -138,6 +143,17 @@ async def cloudflare_access_middleware(request: Request, call_next):
     Returns:
         Response from next handler or 401 Unauthorized
     """
+    # Internal bot-to-API calls authenticated via shared secret.
+    if INTERNAL_API_SECRET and request.headers.get(INTERNAL_SECRET_HEADER) == INTERNAL_API_SECRET:
+        email_token = user_email_var.set("bot@internal")
+        txn_token = txn_id_var.set(generate_txn_id())
+        request.state.user = {"email": "bot@internal"}
+        try:
+            return await call_next(request)
+        finally:
+            txn_id_var.reset(txn_token)
+            user_email_var.reset(email_token)
+
     user_info = await verify_cloudflare_token(request)
     if user_info:
         request.state.user = user_info  # Attach user info to request
