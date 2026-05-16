@@ -28,6 +28,7 @@ and set the appropriate key in .env:
 import json
 import os
 from pathlib import Path
+
 import litellm
 from dotenv import load_dotenv
 
@@ -39,19 +40,28 @@ API_KEY = os.environ["TRITON_API_KEY"]
 
 # --- Tools -----------------------------------------------------------------
 
+
 def add(a: float, b: float) -> float:
+    """Add two numbers."""
     return a + b
 
+
 def subtract(a: float, b: float) -> float:
+    """Subtract b from a."""
     return a - b
 
+
 def multiply(a: float, b: float) -> float:
+    """Multiply two numbers."""
     return a * b
 
+
 def divide(a: float, b: float) -> float:
+    """Divide a by b."""
     if b == 0:
         raise ValueError("Cannot divide by zero")
     return a / b
+
 
 TOOL_MAP = {
     "add": add,
@@ -125,10 +135,12 @@ TOOLS = [
 
 # --- Agent loop ------------------------------------------------------------
 
+
 def _completion_with_backoff(**kwargs):
     """Wrap litellm.completion, honouring the retryDelay from 429 responses."""
     import re
     import time
+
     for attempt in range(5):
         try:
             return litellm.completion(**kwargs)
@@ -137,11 +149,11 @@ def _completion_with_backoff(**kwargs):
                 raise
             match = re.search(r"retryDelay.*?(\d+)s", str(e))
             delay = int(match.group(1)) + 2 if match else 60
-            print(f"  [rate limit] retrying in {delay}s...")
+            print(f"  [rate limit] retrying in {delay}s...")  # noqa: T201
             time.sleep(delay)
 
 
-def run_agent(user_message: str) -> str:
+def run_agent(user_message: str) -> str:  # noqa: D103
     messages = [{"role": "user", "content": user_message}]
 
     while True:
@@ -172,11 +184,13 @@ def run_agent(user_message: str) -> str:
                 except Exception as e:
                     result = f"Error: {e}"
 
-            messages.append({
-                "role": "tool",
-                "tool_call_id": call.id,
-                "content": str(result),
-            })
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call.id,
+                    "content": str(result),
+                }
+            )
 
 
 # --- Entry point -----------------------------------------------------------
@@ -187,6 +201,6 @@ if __name__ == "__main__":
     ]
 
     for prompt in prompts:
-        print(f"Q: {prompt}")
+        print(f"Q: {prompt}")  # noqa: T201
         answer = run_agent(prompt)
-        print(f"A: {answer}\n")
+        print(f"A: {answer}\n")  # noqa: T201

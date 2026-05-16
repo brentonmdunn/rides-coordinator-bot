@@ -27,11 +27,11 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
-load_dotenv(Path(__file__).parent.parent / ".env")
+if __name__ == "__main__":
+    load_dotenv(Path(__file__).parent.parent / ".env")
+    sys.path.insert(0, str(Path(__file__).parent.parent))
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from bot.services.route_service import RouteService  # noqa: E402
+from bot.services.route_service import RouteService
 
 # --- LLM -------------------------------------------------------------------
 
@@ -59,9 +59,11 @@ housing area, showing each person's name and pickup location."""
 
 # --- Tools -----------------------------------------------------------------
 
+
 @tool
 def make_route(locations: str, leave_time: str) -> str:
-    """Build a pickup route with staggered departure times for each stop.
+    """
+    Build a pickup route with staggered departure times for each stop.
 
     Args:
         locations: Space-separated pickup location tokens in pickup order (e.g. 'revelle muir eighth').
@@ -75,7 +77,8 @@ def make_route(locations: str, leave_time: str) -> str:
 
 @tool
 def list_pickups_sunday() -> str:
-    """Fetch who needs a ride on Sunday, grouped by housing area.
+    """
+    Fetch who needs a ride on Sunday, grouped by housing area.
 
     Returns:
         JSON string with housing groups and the people in each group.
@@ -99,14 +102,13 @@ llm_with_tools = llm.bind_tools(TOOLS)
 
 # --- Agent loop ------------------------------------------------------------
 
+
 def run_agent(user_message: str, history: list) -> tuple[str, list]:
     """Run one conversational turn. Returns (reply, updated_history)."""
     history.append(HumanMessage(content=user_message))
 
     while True:
-        response = llm_with_tools.invoke(
-            [SystemMessage(content=SYSTEM_PROMPT)] + history
-        )
+        response = llm_with_tools.invoke([SystemMessage(content=SYSTEM_PROMPT), *history])
         history.append(response)
 
         if not response.tool_calls:
@@ -134,11 +136,11 @@ def run_agent(user_message: str, history: list) -> tuple[str, list]:
 # --- Entry point -----------------------------------------------------------
 
 if __name__ == "__main__":
-    print("Ridebot agent ready. Type 'quit' to exit.\n")
+    print("Ridebot agent ready. Type 'quit' to exit.\n")  # noqa: T201
     history = []
     while True:
         user_input = input("You: ").strip()
         if not user_input or user_input.lower() in {"quit", "exit"}:
             break
         answer, history = run_agent(user_input, history)
-        print(f"Bot: {answer}\n")
+        print(f"Bot: {answer}\n")  # noqa: T201
