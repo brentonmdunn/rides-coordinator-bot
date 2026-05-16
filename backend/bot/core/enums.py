@@ -70,6 +70,7 @@ class FeatureFlagNames(StrEnum):
     LATE_RIDES_REACT = "late_rides_react"
     SEND_ERRORS_TO_DISCORD = "send_errors_to_discord"
     USE_CACHE = "use_cache"
+    AGENT = "agent"
 
 
 class JobName(StrEnum):
