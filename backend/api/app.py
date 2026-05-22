@@ -31,6 +31,7 @@ from api.routes.auth_bypass import router as auth_bypass_router
 from api.routes.auth_discord import router as auth_discord_router
 from api.routes.cache_stats import router as cache_stats_router
 from api.routes.check_pickups import router as check_pickups_router
+from api.routes.drivers import router as drivers_router
 from api.routes.example import router as example_router
 from api.routes.feature_flags import router as feature_flags_router
 from api.routes.group_rides import router as group_rides_router
@@ -40,6 +41,7 @@ from api.routes.locations import router as locations_router
 from api.routes.me import router as me_router
 from api.routes.reaction_log import router as reaction_log_router
 from api.routes.reaction_log_stream import router as reaction_log_stream_router
+from api.routes.ride_coordinators import router as ride_coordinators_router
 from api.routes.route_builder import router as route_builder_router
 from api.routes.user_preferences import router as user_preferences_router
 from api.routes.usernames import router as usernames_router
@@ -158,6 +160,8 @@ app.include_router(list_pickups_router)
 app.include_router(check_pickups_router)
 app.include_router(route_builder_router)
 app.include_router(admin_users_router)
+app.include_router(drivers_router)
+app.include_router(ride_coordinators_router)
 app.include_router(user_preferences_router)
 app.include_router(usernames_router)
 app.include_router(reaction_log_router)
