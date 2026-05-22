@@ -290,7 +290,7 @@ function EditableOutput({
             ref={containerRef}
             className="group relative bg-muted/50 rounded-lg border border-border p-1 transition-all hover:shadow-md hover:border-border/70"
         >
-            <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+            <div className="absolute top-2 right-2 z-20 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                 {isModified && (
                     <Button
                         type="button"
