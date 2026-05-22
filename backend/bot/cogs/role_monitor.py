@@ -15,7 +15,7 @@ _MONITORED_ROLES: dict[int, str] = {
 }
 
 
-class DriverRoleMonitor(commands.Cog):
+class RoleMonitor(commands.Cog):
     """Monitors Driver and Ride Coordinator role additions and removals not originating from the dashboard."""
 
     def __init__(self, bot: commands.Bot):
@@ -45,5 +45,5 @@ class DriverRoleMonitor(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    """Sets up the DriverRoleMonitor cog."""
-    await bot.add_cog(DriverRoleMonitor(bot))
+    """Sets up the RoleMonitor cog."""
+    await bot.add_cog(RoleMonitor(bot))
