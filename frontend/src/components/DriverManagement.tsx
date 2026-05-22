@@ -142,6 +142,9 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                             <Input
                                 type="text"
                                 placeholder="Discord username (e.g. johndoe)"
+                                autoComplete="off"
+                                data-bwignore="true"
+                                data-1p-ignore
                                 value={searchInput}
                                 onChange={(e) => {
                                     setSearchInput(e.target.value)
