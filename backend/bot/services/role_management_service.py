@@ -1,4 +1,4 @@
-"""Service for managing Discord Driver role assignments."""
+"""Service for managing Discord role assignments."""
 
 import logging
 
@@ -10,19 +10,19 @@ from bot.utils.parsing import parse_discord_username
 logger = logging.getLogger(__name__)
 
 
-class DriverManagementService:
-    """Service for listing, adding, and removing the Driver Discord role."""
+class RoleManagementService:
+    """Service for listing, adding, and removing managed Discord roles."""
 
     @staticmethod
-    def _driver_role(guild: discord.Guild) -> discord.Role | None:
-        return guild.get_role(int(RoleIds.DRIVER))
+    def _get_role(guild: discord.Guild, role_id: RoleIds) -> discord.Role | None:
+        return guild.get_role(int(role_id))
 
     @staticmethod
-    def get_drivers(guild: discord.Guild) -> list[dict]:
-        """Return all guild members who currently have the Driver role."""
-        role = DriverManagementService._driver_role(guild)
+    def get_members(guild: discord.Guild, role_id: RoleIds) -> list[dict]:
+        """Return all guild members who currently have the given role."""
+        role = RoleManagementService._get_role(guild, role_id)
         if role is None:
-            logger.warning("Driver role not found in guild")
+            logger.warning("Role %s not found in guild", role_id.name)
             return []
         return [
             {
@@ -34,12 +34,9 @@ class DriverManagementService:
         ]
 
     @staticmethod
-    async def add_driver(username: str, guild: discord.Guild) -> dict:
+    async def add_member(username: str, guild: discord.Guild, role_id: RoleIds) -> dict:
         """
-        Add the Driver role to a guild member by username.
-
-        Returns:
-            dict with member info on success.
+        Add a role to a guild member by username.
 
         Raises:
             ValueError: If the member is not found or already has the role.
@@ -50,12 +47,12 @@ class DriverManagementService:
         if member is None:
             raise ValueError(f"Member '{username}' not found in server")
 
-        role = DriverManagementService._driver_role(guild)
+        role = RoleManagementService._get_role(guild, role_id)
         if role is None:
-            raise ValueError("Driver role not found in server")
+            raise ValueError(f"{role_id.name} role not found in server")
 
         if role in member.roles:
-            raise ValueError(f"@{username} already has the Driver role")
+            raise ValueError(f"@{username} already has the {role.name} role")
 
         try:
             await member.add_roles(role)
@@ -64,7 +61,7 @@ class DriverManagementService:
         except discord.HTTPException as e:
             raise ValueError(f"Discord error adding role: {e}")  # noqa: B904
 
-        logger.info(f"Driver role added to {member.name} ({member.id})")
+        logger.info("%s role added to %s (%s)", role.name, member.name, member.id)
         return {
             "discord_user_id": str(member.id),
             "discord_username": str(member.name),
@@ -72,12 +69,9 @@ class DriverManagementService:
         }
 
     @staticmethod
-    async def remove_driver(discord_user_id: str, guild: discord.Guild) -> dict:
+    async def remove_member(discord_user_id: str, guild: discord.Guild, role_id: RoleIds) -> dict:
         """
-        Remove the Driver role from a guild member by Discord user ID.
-
-        Returns:
-            dict with member info on success.
+        Remove a role from a guild member by Discord user ID.
 
         Raises:
             ValueError: If the member is not found or doesn't have the role.
@@ -87,12 +81,12 @@ class DriverManagementService:
         if member is None:
             raise ValueError(f"Member with ID {discord_user_id} not found in server")
 
-        role = DriverManagementService._driver_role(guild)
+        role = RoleManagementService._get_role(guild, role_id)
         if role is None:
-            raise ValueError("Driver role not found in server")
+            raise ValueError(f"{role_id.name} role not found in server")
 
         if role not in member.roles:
-            raise ValueError(f"@{member.name} does not have the Driver role")
+            raise ValueError(f"@{member.name} does not have the {role.name} role")
 
         try:
             await member.remove_roles(role)
@@ -101,7 +95,7 @@ class DriverManagementService:
         except discord.HTTPException as e:
             raise ValueError(f"Discord error removing role: {e}")  # noqa: B904
 
-        logger.info(f"Driver role removed from {member.name} ({member.id})")
+        logger.info("%s role removed from %s (%s)", role.name, member.name, member.id)
         return {
             "discord_user_id": str(member.id),
             "discord_username": str(member.name),
@@ -109,18 +103,20 @@ class DriverManagementService:
         }
 
     @staticmethod
-    def search_non_drivers(query: str, guild: discord.Guild, limit: int = 10) -> list[dict]:
+    def search_non_members(
+        query: str, guild: discord.Guild, role_id: RoleIds, limit: int = 10
+    ) -> list[dict]:
         """
         Search guild members whose username or display name matches query.
-        Only returns members who do NOT already have the Driver role.
+        Only returns members who do NOT already have the given role.
         """
-        role = DriverManagementService._driver_role(guild)
-        driver_ids = {m.id for m in role.members} if role else set()
+        role = RoleManagementService._get_role(guild, role_id)
+        member_ids = {m.id for m in role.members} if role else set()
 
         query_lower = query.lower()
         results: list[dict] = []
         for member in guild.members:
-            if member.id in driver_ids or member.bot:
+            if member.id in member_ids or member.bot:
                 continue
             if query_lower in member.name.lower() or query_lower in member.display_name.lower():
                 results.append(
