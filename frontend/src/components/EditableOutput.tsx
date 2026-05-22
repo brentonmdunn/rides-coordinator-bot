@@ -293,6 +293,7 @@ function EditableOutput({
             <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                 {isModified && (
                     <Button
+                        type="button"
                         onClick={onRevert}
                         variant="outline"
                         size="sm"
@@ -302,6 +303,7 @@ function EditableOutput({
                     </Button>
                 )}
                 <Button
+                    type="button"
                     onClick={() => { onCopy(); setCopied(true); setTimeout(() => setCopied(false), COPY_FEEDBACK_MS) }}
                     size="sm"
                     variant={copied ? 'default' : 'outline'}
