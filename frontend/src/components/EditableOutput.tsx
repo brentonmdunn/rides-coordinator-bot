@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useCallback } from 'react'
 import { Button } from './ui/button'
 import type { UsernameEntry } from '../hooks/useUsernames'
 import {
@@ -140,6 +140,26 @@ function EditableOutput({
     const [activeIndex, setActiveIndex] = useState(0)
     const [dropdownOpen, setDropdownOpen] = useState(true)
     const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
+    const [height, setHeight] = useState<number | null>(null)
+    const dragStartY = useRef<number>(0)
+    const dragStartH = useRef<number>(0)
+
+    const startResize = useCallback((e: React.MouseEvent) => {
+        e.preventDefault()
+        const wrapEl = textareaRef.current?.parentElement
+        dragStartY.current = e.clientY
+        dragStartH.current = wrapEl?.offsetHeight ?? height ?? 80
+        function onMove(ev: MouseEvent) {
+            const delta = ev.clientY - dragStartY.current
+            setHeight(Math.max(80, dragStartH.current + delta))
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove)
+            document.removeEventListener('mouseup', onUp)
+        }
+        document.addEventListener('mousemove', onMove)
+        document.addEventListener('mouseup', onUp)
+    }, [height])
 
     const validUsernameSet = useMemo(
         () => new Set((usernames ?? []).map((u) => u.username.toLowerCase())),
@@ -296,12 +316,15 @@ function EditableOutput({
             </div>
 
             {/* Overlay wrapper: highlight div behind, textarea on top */}
-            <div className="relative">
+            <div
+                className="relative"
+                style={height !== null ? { height } : undefined}
+            >
                 {/* Highlight layer — mirrors textarea content with styled @mentions */}
                 <div
                     ref={highlightRef}
                     aria-hidden
-                    className={`absolute inset-0 ${minHeight} p-4 text-sm font-mono text-foreground whitespace-pre-wrap break-words overflow-hidden pointer-events-none rounded-md`}
+                    className={`absolute inset-0 ${height === null ? minHeight : ''} p-4 text-sm font-mono text-foreground whitespace-pre-wrap break-words overflow-hidden pointer-events-none rounded-md`}
                 >
                     {highlightedContent}
                     {/* Extra line so height matches when content ends with \n */}
@@ -319,8 +342,20 @@ function EditableOutput({
                     onBlur={() => setDropdownOpen(false)}
                     placeholder={placeholder}
                     spellCheck={false}
-                    className={`relative z-10 w-full ${minHeight} p-4 text-sm font-mono bg-transparent border-0 resize-y focus:ring-0 focus:outline-none rounded-md text-transparent caret-slate-800 dark:caret-slate-200`}
+                    className={`relative z-10 w-full ${height === null ? minHeight : 'h-full'} p-4 text-sm font-mono bg-transparent border-0 resize-none focus:ring-0 focus:outline-none rounded-md text-transparent caret-slate-800 dark:caret-slate-200`}
                 />
+            </div>
+
+            {/* Custom resize handle */}
+            <div
+                onMouseDown={startResize}
+                className="flex items-center justify-center h-3 w-full cursor-ns-resize select-none rounded-b-md hover:bg-muted/70 transition-colors"
+                title="Drag to resize"
+            >
+                <svg width="24" height="4" viewBox="0 0 24 4" className="text-muted-foreground/50">
+                    <line x1="4" y1="1.5" x2="20" y2="1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="4" y1="3.5" x2="20" y2="3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
             </div>
 
             {showDropdown && dropdownPos && (
