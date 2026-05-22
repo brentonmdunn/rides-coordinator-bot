@@ -1,7 +1,7 @@
 import { Suspense, lazy, useMemo } from 'react'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { Link } from 'react-router-dom'
-import { BookOpen, History, Car, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation } from 'lucide-react'
+import { BookOpen, Car, History, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation, UserCheck } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import type { AccountRole } from '../types'
@@ -11,7 +11,7 @@ import ReactionDetails from '../components/ReactionDetails'
 import GroupRides from '../components/GroupRides'
 import RouteBuilder from '../components/RouteBuilder/RouteBuilder'
 import MapLinks from '../components/MapLinks'
-import DriverManagement from '../components/DriverManagement'
+import RoleManagement from '../components/RoleManagement'
 import AskRidesDashboard from '../components/AskRidesDashboard/AskRidesDashboard'
 import RideCoverageCheck from '../components/RideCoverageCheck'
 import RideCoverageWarning from '../components/RideCoverageWarning'
@@ -37,7 +37,7 @@ const NAV_ITEMS = [
     { id: 'group-rides', label: 'Group Rides', icon: <Users className="h-4 w-4" /> },
     { id: 'route-builder', label: 'Route Builder', icon: <Map className="h-4 w-4" /> },
     { id: 'map-links', label: 'Map Links', icon: <Navigation className="h-4 w-4" /> },
-    { id: 'drivers', label: 'Drivers', icon: <Car className="h-4 w-4" /> },
+    { id: 'roles', label: 'Roles', icon: <UserCheck className="h-4 w-4" /> },
 ]
 
 const SECTION_IDS = NAV_ITEMS.map((item) => item.id)
@@ -180,8 +180,8 @@ function Home() {
                             <MapLinks />
                         </div>
 
-                        <div id="drivers">
-                            <DriverManagement canManage={canManage} />
+                        <div id="roles">
+                            <RoleManagement canManage={canManage} />
                         </div>
 
                         {isAdmin && (

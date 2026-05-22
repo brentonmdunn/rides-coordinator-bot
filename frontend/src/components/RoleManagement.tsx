@@ -1,30 +1,47 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import ErrorMessage from './ErrorMessage'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { TableSkeleton } from './LoadingSkeleton'
-import { Car } from 'lucide-react'
+import { SegmentedControl } from './ui/segmented-control'
+import { UserCheck } from 'lucide-react'
 import { SectionCard } from './shared'
 
-interface Driver {
+interface Member {
     discord_user_id: string
     discord_username: string
     display_name: string
 }
 
-interface SearchMember {
-    discord_user_id: string
-    discord_username: string
-    display_name: string
+interface RoleConfig {
+    label: string
+    apiPath: string
+    queryKey: string
 }
 
-interface DriverManagementProps {
-    canManage: boolean
+type TabValue = 'drivers' | 'ride-coordinators'
+
+const TABS: { value: TabValue; label: string }[] = [
+    { value: 'drivers', label: 'Drivers' },
+    { value: 'ride-coordinators', label: 'Ride Coordinators' },
+]
+
+const ROLE_CONFIGS: Record<TabValue, RoleConfig> = {
+    drivers: {
+        label: 'Driver',
+        apiPath: '/api/drivers',
+        queryKey: 'drivers',
+    },
+    'ride-coordinators': {
+        label: 'Ride Coordinator',
+        apiPath: '/api/ride-coordinators',
+        queryKey: 'ride-coordinators',
+    },
 }
 
-function DriverManagement({ canManage }: DriverManagementProps) {
+function RolePanel({ config, canManage }: { config: RoleConfig; canManage: boolean }) {
     const queryClient = useQueryClient()
     const [searchInput, setSearchInput] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -48,19 +65,19 @@ function DriverManagement({ canManage }: DriverManagementProps) {
         return () => document.removeEventListener('mousedown', handler)
     }, [])
 
-    const { data, isLoading, error } = useQuery<{ drivers: Driver[] }>({
-        queryKey: ['drivers'],
+    const { data, isLoading, error } = useQuery<{ members: Member[] }>({
+        queryKey: [config.queryKey],
         queryFn: async () => {
-            const res = await apiFetch('/api/drivers')
+            const res = await apiFetch(config.apiPath)
             return res.json()
         },
     })
 
-    const { data: searchData } = useQuery<{ members: SearchMember[] }>({
-        queryKey: ['driverSearch', debouncedSearch],
+    const { data: searchData } = useQuery<{ members: Member[] }>({
+        queryKey: [`${config.queryKey}Search`, debouncedSearch],
         queryFn: async () => {
             const res = await apiFetch(
-                `/api/drivers/search?q=${encodeURIComponent(debouncedSearch)}`
+                `${config.apiPath}/search?q=${encodeURIComponent(debouncedSearch)}`
             )
             return res.json()
         },
@@ -69,7 +86,7 @@ function DriverManagement({ canManage }: DriverManagementProps) {
 
     const addMutation = useMutation({
         mutationFn: async (username: string) => {
-            const res = await apiFetch('/api/drivers', {
+            const res = await apiFetch(config.apiPath, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ discord_username: username }),
@@ -77,7 +94,7 @@ function DriverManagement({ canManage }: DriverManagementProps) {
             return res.json()
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['drivers'] })
+            queryClient.invalidateQueries({ queryKey: [config.queryKey] })
             setSearchInput('')
             setDebouncedSearch('')
             setShowDropdown(false)
@@ -86,25 +103,26 @@ function DriverManagement({ canManage }: DriverManagementProps) {
 
     const removeMutation = useMutation({
         mutationFn: async (discordUserId: string) => {
-            const res = await apiFetch(`/api/drivers/${encodeURIComponent(discordUserId)}`, {
-                method: 'DELETE',
-            })
+            const res = await apiFetch(
+                `${config.apiPath}/${encodeURIComponent(discordUserId)}`,
+                { method: 'DELETE' }
+            )
             return res.json()
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['drivers'] })
+            queryClient.invalidateQueries({ queryKey: [config.queryKey] })
             setConfirmRemoveId(null)
         },
     })
 
-    const handleSelectMember = (member: SearchMember) => {
+    const handleSelectMember = (member: Member) => {
         setSearchInput(member.discord_username)
         setDebouncedSearch(member.discord_username)
         setShowDropdown(false)
         setHighlightedIndex(-1)
     }
 
-    const drivers = data?.drivers ?? []
+    const members = data?.members ?? []
     const searchResults = searchData?.members ?? []
 
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -123,10 +141,12 @@ function DriverManagement({ canManage }: DriverManagementProps) {
             setHighlightedIndex(-1)
         }
     }
+
     const errorMsg = error instanceof Error ? error.message : ''
+    const labelLower = config.label.toLowerCase()
 
     return (
-        <SectionCard icon={<Car className="h-4 w-4" />} title="Drivers">
+        <>
             {isLoading && <TableSkeleton rows={3} cols={2} />}
 
             <div className="mb-6">
@@ -149,7 +169,7 @@ function DriverManagement({ canManage }: DriverManagementProps) {
             {canManage && (
                 <div className="mb-6 p-4 rounded-lg border border-border bg-muted/30">
                     <p className="text-sm font-medium text-foreground mb-3">
-                        Add driver by Discord username
+                        Add {labelLower} by Discord username
                     </p>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1" ref={dropdownRef}>
@@ -201,13 +221,13 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                             }}
                             disabled={!searchInput.trim() || addMutation.isPending}
                         >
-                            {addMutation.isPending ? 'Adding…' : 'Add Driver'}
+                            {addMutation.isPending ? 'Adding…' : `Add ${config.label}`}
                         </Button>
                     </div>
                 </div>
             )}
 
-            {!isLoading && !errorMsg && drivers.length > 0 && (
+            {!isLoading && !errorMsg && members.length > 0 && (
                 <div className="rounded-lg border border-border overflow-x-auto w-full max-w-[calc(100vw-3rem)]">
                     <table className="w-full table-fixed text-left text-sm">
                         <thead className="bg-muted/50 text-foreground font-semibold border-b border-border">
@@ -224,37 +244,42 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            {drivers.map((driver) => (
-                                <>
-                                    <tr
-                                        key={driver.discord_user_id}
-                                        className="border-t border-border hover:bg-muted/30 transition-colors"
-                                    >
+                            {members.map((member) => (
+                                <Fragment key={member.discord_user_id}>
+                                    <tr className="border-t border-border hover:bg-muted/30 transition-colors">
                                         <td className="px-3 sm:px-6 py-3 sm:py-4">
                                             <span className="text-foreground font-medium">
-                                                @{driver.discord_username}
+                                                @{member.discord_username}
                                             </span>
                                         </td>
                                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-muted-foreground">
-                                            {driver.display_name}
+                                            {member.display_name}
                                         </td>
                                         {canManage && (
                                             <td className="px-3 sm:px-6 w-36">
-                                                {confirmRemoveId === driver.discord_user_id ? (
+                                                {confirmRemoveId === member.discord_user_id ? (
                                                     <div className="hidden sm:flex items-center justify-end gap-1">
                                                         <Button
                                                             variant="destructive"
                                                             size="sm"
-                                                            onClick={() => removeMutation.mutate(driver.discord_user_id)}
+                                                            onClick={() =>
+                                                                removeMutation.mutate(
+                                                                    member.discord_user_id
+                                                                )
+                                                            }
                                                             disabled={removeMutation.isPending}
                                                             className="h-7 text-xs px-2"
                                                         >
-                                                            {removeMutation.isPending ? '…' : 'Remove'}
+                                                            {removeMutation.isPending
+                                                                ? '…'
+                                                                : 'Remove'}
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={() => setConfirmRemoveId(null)}
+                                                            onClick={() =>
+                                                                setConfirmRemoveId(null)
+                                                            }
                                                             className="h-7 text-xs px-2"
                                                         >
                                                             Cancel
@@ -265,24 +290,30 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon-sm"
-                                                            onClick={() => setConfirmRemoveId(driver.discord_user_id)}
+                                                            onClick={() =>
+                                                                setConfirmRemoveId(
+                                                                    member.discord_user_id
+                                                                )
+                                                            }
                                                             disabled={removeMutation.isPending}
                                                             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                            title="Remove driver role"
+                                                            title={`Remove ${labelLower} role`}
                                                         >
                                                             ✕
                                                         </Button>
                                                     </div>
                                                 )}
-                                                {confirmRemoveId === driver.discord_user_id && (
+                                                {confirmRemoveId === member.discord_user_id && (
                                                     <div className="flex sm:hidden justify-end">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon-sm"
-                                                            onClick={() => setConfirmRemoveId(null)}
+                                                            onClick={() =>
+                                                                setConfirmRemoveId(null)
+                                                            }
                                                             disabled={removeMutation.isPending}
                                                             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                            title="Remove driver role"
+                                                            title={`Remove ${labelLower} role`}
                                                         >
                                                             ✕
                                                         </Button>
@@ -291,49 +322,70 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                                             </td>
                                         )}
                                     </tr>
-                                    {canManage && confirmRemoveId === driver.discord_user_id && (
-                                        <tr className="sm:hidden bg-destructive/5 border-t border-destructive/20">
-                                            <td colSpan={3} className="px-3 py-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm text-muted-foreground">
-                                                        Remove @{driver.discord_username}?
-                                                    </span>
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={() => removeMutation.mutate(driver.discord_user_id)}
-                                                        disabled={removeMutation.isPending}
-                                                        className="h-7 text-xs px-2"
-                                                    >
-                                                        {removeMutation.isPending ? '…' : 'Remove'}
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => setConfirmRemoveId(null)}
-                                                        className="h-7 text-xs px-2"
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </>
+                                    {canManage &&
+                                        confirmRemoveId === member.discord_user_id && (
+                                            <tr className="sm:hidden bg-destructive/5 border-t border-destructive/20">
+                                                <td colSpan={3} className="px-3 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm text-muted-foreground">
+                                                            Remove @{member.discord_username}?
+                                                        </span>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                removeMutation.mutate(
+                                                                    member.discord_user_id
+                                                                )
+                                                            }
+                                                            disabled={removeMutation.isPending}
+                                                            className="h-7 text-xs px-2"
+                                                        >
+                                                            {removeMutation.isPending
+                                                                ? '…'
+                                                                : 'Remove'}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                setConfirmRemoveId(null)
+                                                            }
+                                                            className="h-7 text-xs px-2"
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>
                 </div>
             )}
 
-            {!isLoading && !errorMsg && drivers.length === 0 && (
+            {!isLoading && !errorMsg && members.length === 0 && (
                 <p className="text-muted-foreground italic p-4 text-center bg-muted/30 rounded-lg">
-                    No drivers found.
+                    No {labelLower}s found.
                 </p>
             )}
+        </>
+    )
+}
 
+function RoleManagement({ canManage }: { canManage: boolean }) {
+    const [activeTab, setActiveTab] = useState<TabValue>('drivers')
+
+    return (
+        <SectionCard icon={<UserCheck className="h-4 w-4" />} title="Role Management">
+            <div className="mb-6">
+                <SegmentedControl options={TABS} value={activeTab} onChange={setActiveTab} />
+            </div>
+            <RolePanel key={activeTab} config={ROLE_CONFIGS[activeTab]} canManage={canManage} />
         </SectionCard>
     )
 }
 
-export default DriverManagement
+export default RoleManagement
