@@ -29,6 +29,7 @@ function DriverManagement({ canManage }: DriverManagementProps) {
     const [searchInput, setSearchInput] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [showDropdown, setShowDropdown] = useState(false)
+    const [highlightedIndex, setHighlightedIndex] = useState(-1)
     const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -100,10 +101,28 @@ function DriverManagement({ canManage }: DriverManagementProps) {
         setSearchInput(member.discord_username)
         setDebouncedSearch(member.discord_username)
         setShowDropdown(false)
+        setHighlightedIndex(-1)
     }
 
     const drivers = data?.drivers ?? []
     const searchResults = searchData?.members ?? []
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!showDropdown || searchResults.length === 0) return
+        if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            setHighlightedIndex((i) => (i + 1) % searchResults.length)
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setHighlightedIndex((i) => (i <= 0 ? searchResults.length - 1 : i - 1))
+        } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+            e.preventDefault()
+            handleSelectMember(searchResults[highlightedIndex])
+        } else if (e.key === 'Escape') {
+            setShowDropdown(false)
+            setHighlightedIndex(-1)
+        }
+    }
     const errorMsg = error instanceof Error ? error.message : ''
 
     return (
@@ -144,19 +163,22 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                                 onChange={(e) => {
                                     setSearchInput(e.target.value)
                                     setShowDropdown(true)
+                                    setHighlightedIndex(-1)
                                 }}
                                 onFocus={() => {
                                     if (searchInput.length >= 2) setShowDropdown(true)
                                 }}
+                                onKeyDown={handleSearchKeyDown}
                             />
                             {showDropdown && searchResults.length > 0 && (
                                 <div className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
-                                    {searchResults.map((member) => (
+                                    {searchResults.map((member, index) => (
                                         <button
                                             key={member.discord_user_id}
                                             type="button"
-                                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${highlightedIndex === index ? 'bg-muted/70' : 'hover:bg-muted/50'}`}
                                             onMouseDown={(e) => e.preventDefault()}
+                                            onMouseEnter={() => setHighlightedIndex(index)}
                                             onClick={() => handleSelectMember(member)}
                                         >
                                             <span className="font-medium text-foreground">
