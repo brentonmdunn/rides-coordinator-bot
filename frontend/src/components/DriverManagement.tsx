@@ -223,24 +223,81 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                                 )}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody>
                             {drivers.map((driver) => (
-                                <tr
-                                    key={driver.discord_user_id}
-                                    className="hover:bg-muted/30 transition-colors"
-                                >
-                                    <td className="px-3 sm:px-6 py-3 sm:py-4">
-                                        <span className="text-foreground font-medium">
-                                            @{driver.discord_username}
-                                        </span>
-                                    </td>
-                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-muted-foreground">
-                                        {driver.display_name}
-                                    </td>
-                                    {canManage && (
-                                        <td className="px-3 sm:px-6 w-36">
-                                            {confirmRemoveId === driver.discord_user_id ? (
-                                                <div className="flex items-center justify-end gap-1">
+                                <>
+                                    <tr
+                                        key={driver.discord_user_id}
+                                        className="border-t border-border hover:bg-muted/30 transition-colors"
+                                    >
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                                            <span className="text-foreground font-medium">
+                                                @{driver.discord_username}
+                                            </span>
+                                        </td>
+                                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-muted-foreground">
+                                            {driver.display_name}
+                                        </td>
+                                        {canManage && (
+                                            <td className="px-3 sm:px-6 w-36">
+                                                {confirmRemoveId === driver.discord_user_id ? (
+                                                    <div className="hidden sm:flex items-center justify-end gap-1">
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => removeMutation.mutate(driver.discord_user_id)}
+                                                            disabled={removeMutation.isPending}
+                                                            className="h-7 text-xs px-2"
+                                                        >
+                                                            {removeMutation.isPending ? '…' : 'Remove'}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setConfirmRemoveId(null)}
+                                                            className="h-7 text-xs px-2"
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-end">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon-sm"
+                                                            onClick={() => setConfirmRemoveId(driver.discord_user_id)}
+                                                            disabled={removeMutation.isPending}
+                                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                            title="Remove driver role"
+                                                        >
+                                                            ✕
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                                {confirmRemoveId === driver.discord_user_id && (
+                                                    <div className="flex sm:hidden justify-end">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon-sm"
+                                                            onClick={() => setConfirmRemoveId(null)}
+                                                            disabled={removeMutation.isPending}
+                                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                            title="Remove driver role"
+                                                        >
+                                                            ✕
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        )}
+                                    </tr>
+                                    {canManage && confirmRemoveId === driver.discord_user_id && (
+                                        <tr className="sm:hidden bg-destructive/5 border-t border-destructive/20">
+                                            <td colSpan={3} className="px-3 py-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-muted-foreground">
+                                                        Remove @{driver.discord_username}?
+                                                    </span>
                                                     <Button
                                                         variant="destructive"
                                                         size="sm"
@@ -259,23 +316,10 @@ function DriverManagement({ canManage }: DriverManagementProps) {
                                                         Cancel
                                                     </Button>
                                                 </div>
-                                            ) : (
-                                                <div className="flex justify-end">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        onClick={() => setConfirmRemoveId(driver.discord_user_id)}
-                                                        disabled={removeMutation.isPending}
-                                                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                        title="Remove driver role"
-                                                    >
-                                                        ✕
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </td>
+                                            </td>
+                                        </tr>
                                     )}
-                                </tr>
+                                </>
                             ))}
                         </tbody>
                     </table>
