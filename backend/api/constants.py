@@ -24,6 +24,10 @@ CF_KEYS_HTTP_TIMEOUT = 10.0
 DEFAULT_RATE_LIMIT = "120/minute"
 GROUP_RIDES_RATE_LIMIT = "10/minute"
 
+# Internal bot-to-API auth
+INTERNAL_SECRET_HEADER = "X-Internal-Secret"
+INTERNAL_API_SECRET = os.getenv("INTERNAL_API_SECRET", "")
+
 # Session / cookies
 SESSION_COOKIE_NAME = "rides_session"
 CSRF_COOKIE_NAME = "csrf_token"

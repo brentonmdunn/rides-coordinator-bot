@@ -13,7 +13,12 @@ import os
 
 from fastapi import Request, Response
 
-from api.constants import CSRF_HEADER_NAME, SESSION_COOKIE_NAME
+from api.constants import (
+    CSRF_HEADER_NAME,
+    INTERNAL_API_SECRET,
+    INTERNAL_SECRET_HEADER,
+    SESSION_COOKIE_NAME,
+)
 from bot.core.database import AsyncSessionLocal
 from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
 from bot.services.auth_service import AuthService
@@ -48,6 +53,17 @@ async def session_cookie_middleware(request: Request, call_next) -> Response:
     if APP_ENV == "local" and not LOCAL_USE_DISCORD_OAUTH:
         request.state.user = {"email": "dev@example.com"}
         email_token = user_email_var.set("dev@example.com")
+        txn_token = txn_id_var.set(generate_txn_id())
+        try:
+            return await call_next(request)
+        finally:
+            txn_id_var.reset(txn_token)
+            user_email_var.reset(email_token)
+
+    # Internal bot-to-API calls authenticated via shared secret.
+    if INTERNAL_API_SECRET and request.headers.get(INTERNAL_SECRET_HEADER) == INTERNAL_API_SECRET:
+        request.state.user = {"email": "bot@internal"}
+        email_token = user_email_var.set("bot@internal")
         txn_token = txn_id_var.set(generate_txn_id())
         try:
             return await call_next(request)

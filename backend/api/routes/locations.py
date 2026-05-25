@@ -116,3 +116,22 @@ async def get_pickups_by_message(
     except Exception as e:
         logger.exception(f"Error fetching pickups: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch pickups: {e!s}") from e
+
+
+@router.get("/api/locations/pickup-location")
+async def get_pickup_location(name: str = Query(..., description="Name or Discord username")):
+    """
+    Get the pickup location for a person by name or Discord username.
+
+    Args:
+        name: The name or Discord username to search for.
+
+    Returns:
+        JSON with a list of matches, each containing name and location.
+    """
+    bot = get_bot()
+    service = LocationsService(bot)
+    possible_people = await service.get_location(name)
+    if not possible_people:
+        return {"matches": []}
+    return {"matches": [{"name": person[0], "location": person[1]} for person in possible_people]}
