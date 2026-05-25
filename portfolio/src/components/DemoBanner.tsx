@@ -39,10 +39,15 @@ function DemoBanner() {
                 </a>
             </div>
             {toastVisible && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border shadow-xl rounded-xl px-6 py-4 text-foreground flex items-center gap-3 whitespace-nowrap">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border-2 border-info/40 shadow-2xl rounded-xl px-6 py-4 text-foreground flex items-center gap-4 whitespace-nowrap animate-in slide-in-from-bottom-4 fade-in duration-200">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-info/15 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-info-text" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                        </svg>
+                    </div>
                     <div>
-                        <p className="text-sm font-semibold">Demo Mode</p>
-                        <p className="text-xs text-muted-foreground">In a live environment, this action would be executed.</p>
+                        <p className="text-sm font-bold text-info-text">Demo Mode</p>
+                        <p className="text-sm text-muted-foreground">In a live environment, this action would be executed.</p>
                     </div>
                 </div>
             )}
