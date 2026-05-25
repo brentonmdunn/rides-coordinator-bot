@@ -21,6 +21,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import httpx
@@ -36,12 +37,16 @@ if __name__ == "__main__":
     load_dotenv(Path(__file__).parent.parent / ".env")
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from bot.core.enums import PickupLocations
-from bot.core.schemas import LocationQuery
-from bot.services.route_service import RouteService
-from bot.utils.constants import RIDE_GROUPING_PICKUP_ADJUSTMENT, get_map_links, get_map_url
-from bot.utils.locations import lookup_time
-from bot.utils.parsing import parse_time
+from bot.core.enums import PickupLocations  # noqa: E402
+from bot.core.schemas import LocationQuery  # noqa: E402
+from bot.services.route_service import RouteService  # noqa: E402
+from bot.utils.constants import (  # noqa: E402
+    RIDE_GROUPING_PICKUP_ADJUSTMENT,
+    get_map_links,
+    get_map_url,
+)
+from bot.utils.locations import lookup_time  # noqa: E402
+from bot.utils.parsing import parse_time  # noqa: E402
 
 # --- LLM -------------------------------------------------------------------
 
@@ -63,6 +68,8 @@ When a user asks who needs a ride on Sunday, call the list_pickups_sunday tool.
 When a user asks who needs a ride on Friday, call the list_pickups_friday tool.
 When a user asks where someone gets picked up, call the pickup_location tool.
 When a user asks for map links or Google Maps URLs, call the map_links tool.
+When a user asks to add someone as a driver or ride coordinator, call the add_role tool with role='driver' or role='ride coordinator'.
+When a user asks to remove someone from the driver or ride coordinator role, call the remove_role tool with role='driver' or role='ride coordinator'.
 
 Valid location tokens (case-insensitive, fuzzy matching supported):
   SEVENTH, ERC, MARSHALL, SIXTH, MUIR, WARREN_EQL, WARREN_JST,
@@ -330,6 +337,134 @@ def make_route_with_riders(locations: str, leave_time: str) -> str:
     )
 
 
+_ROLE_ENDPOINTS: dict[str, str] = {
+    "driver": f"{BACKEND_URL}/api/drivers",
+    "ride coordinator": f"{BACKEND_URL}/api/ride-coordinators",
+}
+
+
+def _fuzzy_resolve_member(query: str, members: list[dict]) -> tuple[dict | None, str | None]:
+    """
+    Fuzzy-match query against a list of members (each with discord_username + display_name).
+    Returns (matched_member, error_message). Exactly one of them will be None.
+    """
+
+    def _score(member: dict) -> float:
+        username = member["discord_username"].lower()
+        display = member["display_name"].lower()
+        return max(
+            SequenceMatcher(None, query, username).ratio(),
+            SequenceMatcher(None, query, display).ratio(),
+        )
+
+    exact = [
+        m
+        for m in members
+        if m["discord_username"].lower() == query or m["display_name"].lower() == query
+    ]
+    if len(exact) == 1:
+        return exact[0], None
+    if len(exact) > 1:
+        names = ", ".join(f"@{m['discord_username']} ({m['display_name']})" for m in exact)
+        return None, f"Multiple exact matches: {names}. Please specify which one."
+
+    scored = sorted(((m, _score(m)) for m in members), key=lambda x: x[1], reverse=True)
+    candidates = [(m, s) for m, s in scored if s >= 0.6]
+    if not candidates:
+        return None, None
+    if len(candidates) == 1:
+        return candidates[0][0], None
+    names = ", ".join(f"@{m['discord_username']} ({m['display_name']})" for m, _ in candidates)
+    return None, f"Multiple possible matches: {names}. Which one did you mean?"
+
+
+@tool
+def add_role(role: str, discord_username: str) -> str:
+    """
+    Add the Driver or Ride Coordinator role to a Discord member.
+
+    Args:
+        role: The role to assign — either 'driver' or 'ride coordinator'.
+        discord_username: The Discord username of the member to add the role to.
+
+    Returns:
+        JSON string with the updated member info, or an error message.
+    """
+    logger.info(f"Tool: add_role role={role!r} discord_username={discord_username!r}")
+    endpoint = _ROLE_ENDPOINTS.get(role.lower())
+    if endpoint is None:
+        return f"Unknown role {role!r}. Must be 'driver' or 'ride coordinator'."
+
+    query = discord_username.strip().lower().lstrip("@")
+
+    # Search non-role members to resolve the username via fuzzy match
+    search_response = httpx.get(
+        f"{endpoint}/search",
+        params={"q": query},
+        headers=_INTERNAL_HEADERS,
+        timeout=10.0,
+    )
+    search_response.raise_for_status()
+    candidates: list[dict] = (search_response.json() or {}).get("members", [])
+
+    resolved, err = _fuzzy_resolve_member(query, candidates)
+    if err:
+        return err
+    if resolved is None:
+        return f"No member matching '{discord_username}' found (they may already have the {role} role)."
+
+    response = httpx.post(
+        endpoint,
+        json={"discord_username": resolved["discord_username"]},
+        headers=_INTERNAL_HEADERS,
+        timeout=10.0,
+    )
+    if response.status_code == 400:
+        return f"Error: {response.json().get('detail', response.text)}"
+    response.raise_for_status()
+    member = response.json()
+    return f"Successfully added the {role} role to @{member['discord_username']} ({member['display_name']})."
+
+
+@tool
+def remove_role(role: str, discord_username: str) -> str:
+    """
+    Remove the Driver or Ride Coordinator role from a Discord member.
+
+    Args:
+        role: The role to remove — either 'driver' or 'ride coordinator'.
+        discord_username: The Discord username of the member to remove the role from.
+
+    Returns:
+        A confirmation message, or an error message if the member was not found.
+    """
+    logger.info(f"Tool: remove_role role={role!r} discord_username={discord_username!r}")
+    endpoint = _ROLE_ENDPOINTS.get(role.lower())
+    if endpoint is None:
+        return f"Unknown role {role!r}. Must be 'driver' or 'ride coordinator'."
+
+    list_response = httpx.get(endpoint, headers=_INTERNAL_HEADERS, timeout=10.0)
+    list_response.raise_for_status()
+    members: list[dict] = (list_response.json() or {}).get("members", [])
+
+    query = discord_username.strip().lower().lstrip("@")
+    target, err = _fuzzy_resolve_member(query, members)
+    if err:
+        return err
+    if target is None:
+        return f"No member matching '{discord_username}' found in the {role} role."
+
+    del_response = httpx.delete(
+        f"{endpoint}/{target['discord_user_id']}",
+        headers=_INTERNAL_HEADERS,
+        timeout=10.0,
+    )
+    if del_response.status_code == 400:
+        return f"Error: {del_response.json().get('detail', del_response.text)}"
+    del_response.raise_for_status()
+    return f"Successfully removed the {role} role from @{target['discord_username']} ({target['display_name']})."
+
+
 TOOLS = [
     make_route,
     make_route_with_riders,
@@ -337,6 +472,8 @@ TOOLS = [
     list_pickups_friday,
     pickup_location,
     map_links,
+    add_role,
+    remove_role,
 ]
 TOOL_MAP = {t.name: t for t in TOOLS}
 
