@@ -21,6 +21,13 @@ _THREAD_NAME_MAX = 100
 _DEBOUNCE_SECONDS = 2
 _HISTORY_NAMESPACE = "agent_history"
 _HISTORY_TTL = 60 * 60 * 24  # 24 hours
+_ALLOWED_CHANNEL_IDS: frozenset[int] = frozenset(
+    {
+        int(ChannelIds.BOT_STUFF__BOTS),
+        int(ChannelIds.SERVING__DRIVER_BOT_SPAM),
+        int(ChannelIds.SERVING__DRIVER_CHAT_WOOOOO),
+    }
+)
 
 
 @dataclass
@@ -130,14 +137,21 @@ class Agent(commands.Cog):
             f"author={message.author} content={message.content!r}"
         )
 
-        in_bots_channel = isinstance(
-            message.channel, discord.TextChannel
-        ) and message.channel.id == int(ChannelIds.BOT_STUFF__BOTS)
-        in_bots_thread = isinstance(
-            message.channel, discord.Thread
-        ) and message.channel.parent_id == int(ChannelIds.BOT_STUFF__BOTS)
+        if isinstance(message.channel, discord.TextChannel):
+            parent_id = message.channel.id
+        elif isinstance(message.channel, discord.Thread):
+            parent_id = message.channel.parent_id
+        else:
+            parent_id = None
 
-        if not in_bots_channel and not in_bots_thread:
+        in_allowed_channel = (
+            isinstance(message.channel, discord.TextChannel) and parent_id in _ALLOWED_CHANNEL_IDS
+        )
+        in_allowed_thread = (
+            isinstance(message.channel, discord.Thread) and parent_id in _ALLOWED_CHANNEL_IDS
+        )
+
+        if not in_allowed_channel and not in_allowed_thread:
             logger.debug("Agent: message not in bots channel/thread, ignoring")
             return
 
@@ -154,7 +168,7 @@ class Agent(commands.Cog):
             return
 
         # Main channel: require @mention to open a new thread
-        if in_bots_channel:
+        if in_allowed_channel:
             if self.bot.user not in message.mentions:
                 logger.debug("Agent: main channel message without @mention, ignoring")
                 return
@@ -171,7 +185,7 @@ class Agent(commands.Cog):
             logger.debug("Agent: empty message in thread, ignoring")
             return
 
-        assert isinstance(message.channel, discord.Thread)
+        assert isinstance(message.channel, discord.Thread)  # guaranteed by in_allowed_thread
         is_first = message.channel.id not in self._buffers
         buf = self._buffers.setdefault(message.channel.id, _ThreadBuffer())
         buf.messages.append(prompt)
