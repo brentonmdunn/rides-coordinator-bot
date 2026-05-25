@@ -47,6 +47,7 @@ from bot.utils.constants import (  # noqa: E402
 )
 from bot.utils.locations import lookup_time  # noqa: E402
 from bot.utils.parsing import parse_time  # noqa: E402
+from bot.utils.time_helpers import is_in_ride_day_window  # noqa: E402
 
 # --- LLM -------------------------------------------------------------------
 
@@ -64,6 +65,7 @@ SYSTEM_PROMPT = """You are a ride coordinator assistant for a UCSD college fello
 You help plan pickup routes for drivers and list who needs rides.
 
 When a user asks you to make a route, prefer make_route_with_riders over make_route.
+Omit the day argument unless the user explicitly specifies a day — the tool auto-detects friday or sunday from the current time window.
 When a user asks who needs a ride on Sunday, call the list_pickups_sunday tool.
 When a user asks who needs a ride on Friday, call the list_pickups_friday tool.
 When a user asks where someone gets picked up, call the pickup_location tool.
@@ -275,9 +277,9 @@ def _build_route_stops(locations_str: str, leave_time_str: str) -> list[dict]:
 
 
 @tool
-def make_route_with_riders(locations: str, leave_time: str) -> str:
+def make_route_with_riders(locations: str, leave_time: str, day: str = "auto") -> str:
     """
-    Build a pickup route and check how many Sunday riders need each stop.
+    Build a pickup route and check how many riders need each stop on the given day.
 
     Returns JSON with:
       - route: plain formatted route string
@@ -288,13 +290,22 @@ def make_route_with_riders(locations: str, leave_time: str) -> str:
     Args:
         locations: Space-separated pickup location tokens in pickup order.
         leave_time: Departure time from the final stop (e.g. '5:30pm').
+        day: Which day's pickups to use — 'sunday', 'friday', or 'auto' (default).
+             'auto' picks friday if currently in the Friday ride window, else sunday.
     """
-    logger.info(f"Tool: make_route_with_riders locations={locations!r} leave_time={leave_time!r}")
+    if day.lower() == "auto":
+        day = "friday" if is_in_ride_day_window("Friday") else "sunday"
+
+    logger.info(
+        f"Tool: make_route_with_riders locations={locations!r} leave_time={leave_time!r} day={day!r}"
+    )
     route = RouteService.make_route(locations, leave_time)
+
+    fetch_tool = list_pickups_friday if day.lower() == "friday" else list_pickups_sunday
 
     try:
         stops = _build_route_stops(locations, leave_time)
-        pickups_raw = json.loads(list_pickups_sunday.invoke({}))
+        pickups_raw = json.loads(fetch_tool.invoke({}))
         if not pickups_raw.get("success") or not pickups_raw.get("data"):
             raise ValueError("Pickups API returned no data")
     except Exception:
