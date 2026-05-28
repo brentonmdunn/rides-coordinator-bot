@@ -179,7 +179,11 @@ class Agent(commands.Cog):
             await self._handle_new_thread(message, prompt)
             return
 
-        # Thread: buffer every message and debounce
+        # Thread: only respond to @mentions, not every reply
+        if self.bot.user not in message.mentions:
+            logger.debug("Agent: thread message without @mention, ignoring")
+            return
+
         prompt = self._strip_mention(message.content)
         if not prompt:
             logger.debug("Agent: empty message in thread, ignoring")
