@@ -167,10 +167,16 @@ class Agent(commands.Cog):
             logger.debug("Agent: feature flag disabled, ignoring")
             return
 
-        # Main channel: require @mention to open a new thread
+        # Main channel: require explicit @mention in message content to open a new thread.
+        # Checking message.mentions is insufficient — Discord includes the replied-to user
+        # in mentions when you reply to a message, even without typing an @mention.
         if in_allowed_channel:
-            if self.bot.user not in message.mentions:
-                logger.debug("Agent: main channel message without @mention, ignoring")
+            bot_id = self.bot.user.id
+            explicit_mention = (
+                f"<@{bot_id}>" in message.content or f"<@!{bot_id}>" in message.content
+            )
+            if not explicit_mention:
+                logger.debug("Agent: main channel message without explicit @mention, ignoring")
                 return
             prompt = self._strip_mention(message.content)
             if not prompt:
@@ -179,11 +185,7 @@ class Agent(commands.Cog):
             await self._handle_new_thread(message, prompt)
             return
 
-        # Thread: only respond to @mentions, not every reply
-        if self.bot.user not in message.mentions:
-            logger.debug("Agent: thread message without @mention, ignoring")
-            return
-
+        # Thread: buffer every message and debounce
         prompt = self._strip_mention(message.content)
         if not prompt:
             logger.debug("Agent: empty message in thread, ignoring")
