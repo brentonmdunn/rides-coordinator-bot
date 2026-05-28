@@ -67,6 +67,7 @@ function PickupGroup({ groupName, groupData, onCopy }: PickupGroupProps) {
                                         ) : (
                                             <span>{person.name}</span>
                                         )}
+                                        {person.drive_back && <span className="ml-1">⬅️</span>}
                                         {idx < people.length - 1 ? ', ' : ''}
                                     </span>
                                 ))}

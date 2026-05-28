@@ -11,6 +11,7 @@ export interface HousingGroup {
         [location: string]: Array<{
             name: string
             discord_username: string | null
+            drive_back: boolean
         }>
     }
 }
