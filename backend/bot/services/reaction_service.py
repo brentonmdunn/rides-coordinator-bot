@@ -173,6 +173,27 @@ class ReactionService:
             "username_to_name": username_to_name,
         }
 
+    async def get_drive_back_usernames(self, channel_id: int, message_id: int) -> set[str]:
+        """
+        Returns the set of usernames who reacted with the drive-back (⬅️) emoji.
+
+        Args:
+            channel_id: The channel ID.
+            message_id: The message ID.
+
+        Returns:
+            A set of usernames who reacted with ⬅️.
+        """
+        channel = self.bot.get_channel(channel_id)
+        message = await channel.fetch_message(message_id)
+        usernames: set[str] = set()
+        for reaction in message.reactions:
+            if str(reaction.emoji) == Emoji.DRIVE_BACK:
+                async for user in reaction.users():
+                    if not user.bot:
+                        usernames.add(user.name)
+        return usernames
+
     @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID)
     async def find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
         """

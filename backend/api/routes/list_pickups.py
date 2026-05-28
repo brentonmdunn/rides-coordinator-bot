@@ -127,6 +127,16 @@ async def list_pickups(request: ListPickupsRequest):
             locations, usernames_reacted, location_found
         )
 
+        # Fetch users who reacted with ⬅️ (drive back)
+        drive_back_usernames: set[str] = set()
+        if bot is not None and message_id_int is not None:
+            try:
+                drive_back_usernames = await locations_service.get_drive_back_usernames(
+                    channel_id_int, message_id_int
+                )
+            except Exception:
+                logger.exception("Failed to fetch drive-back reactions; proceeding without them")
+
         # Format response data for frontend
         housing_groups = {}
 
@@ -140,6 +150,7 @@ async def list_pickups(request: ListPickupsRequest):
                         {
                             "name": person[0],
                             "discord_username": str(person[1]) if person[1] else None,
+                            "drive_back": person[1] in drive_back_usernames if person[1] else False,
                         }
                         for person in people
                     ]

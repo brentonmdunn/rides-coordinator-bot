@@ -274,6 +274,10 @@ class LocationsService:
         """Delegates to ReactionService.get_usernames_who_reacted."""
         return await self._reactions.get_usernames_who_reacted(channel_id, message_id, option)
 
+    async def get_drive_back_usernames(self, channel_id: int, message_id: int) -> set[str]:
+        """Delegates to ReactionService.get_drive_back_usernames."""
+        return await self._reactions.get_drive_back_usernames(channel_id, message_id)
+
     @property
     def get_ask_rides_reactions(self):
         """Exposes the cached ReactionService.get_ask_rides_reactions."""
