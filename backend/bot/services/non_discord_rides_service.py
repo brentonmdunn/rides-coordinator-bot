@@ -25,7 +25,12 @@ class NonDiscordRidesService:
     """Service for handling non-Discord ride logic."""
 
     async def add_pickup(
-        self, name: str, day: str, location: str, session: AsyncSession | None = None
+        self,
+        name: str,
+        day: str,
+        location: str,
+        emoji: str | None = None,
+        session: AsyncSession | None = None,
     ) -> NonDiscordRides:
         """
         Adds a pickup for a non-Discord user.
@@ -34,6 +39,7 @@ class NonDiscordRidesService:
             name: Name of the person.
             day: Day of the pickup (e.g., "Friday", "Sunday").
             location: Pickup location.
+            emoji: Optional ride-reaction emoji tag (e.g. lunch/no-lunch).
             session: Optional database session. If None, one is created internally.
 
         Returns:
@@ -44,16 +50,21 @@ class NonDiscordRidesService:
         """
         ride_date = get_next_date_obj(DaysOfWeek(day))
         if session is not None:
-            return await self._add_pickup(session, name, ride_date, location)
+            return await self._add_pickup(session, name, ride_date, location, emoji)
 
         async with AsyncSessionLocal() as session:
-            return await self._add_pickup(session, name, ride_date, location)
+            return await self._add_pickup(session, name, ride_date, location, emoji)
 
     async def _add_pickup(
-        self, session: AsyncSession, name: str, ride_date: date, location: str
+        self,
+        session: AsyncSession,
+        name: str,
+        ride_date: date,
+        location: str,
+        emoji: str | None = None,
     ) -> NonDiscordRides:
         try:
-            ride = NonDiscordRides(name=name, date=ride_date, location=location)
+            ride = NonDiscordRides(name=name, date=ride_date, location=location, emoji=emoji)
             return await NonDiscordRidesRepository.create_ride(session, ride)
         except IntegrityError:
             raise DuplicateRideError(f"Pickup for {name} on {ride_date} already exists.")  # noqa: B904

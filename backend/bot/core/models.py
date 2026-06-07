@@ -66,6 +66,7 @@ class NonDiscordRides(Base):
     name: Mapped[str] = mapped_column(primary_key=True)
     date: Mapped[date] = mapped_column(primary_key=True)  # ty: ignore[invalid-type-form]
     location: Mapped[str | None]
+    emoji: Mapped[str | None]
 
 
 class RideCoverage(Base):
