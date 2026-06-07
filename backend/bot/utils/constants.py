@@ -1,10 +1,20 @@
 """Contains constants"""
 
-from bot.core.enums import DaysOfWeek, PickupLocations
+from bot.core.enums import DaysOfWeek, Emoji, PickupLocations
 
 GUILD_ID = 916817752918982716
 
 LSCC_DAYS = [DaysOfWeek.FRIDAY, DaysOfWeek.SUNDAY]
+
+# Ride-reaction emojis that can be tagged on a non-Discord pickup, mapped to a
+# human-readable label. Keys double as the allowlist of valid emoji tags.
+RIDE_REACTION_LABELS: dict[str, str] = {
+    Emoji.LUNCH: "Lunch",
+    Emoji.NO_LUNCH: "No lunch",
+    Emoji.SOMETHING_ELSE: "Something else",
+    Emoji.FRIDAY_FELLOWSHIP: "Friday Fellowship",
+    Emoji.SUNDAY_CLASS: "Sunday class",
+}
 
 # Coordinates (lat, lng) for each pickup location.
 # Source of truth — Google Maps links are generated from these.

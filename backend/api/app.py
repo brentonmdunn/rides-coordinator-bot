@@ -39,6 +39,7 @@ from api.routes.health import router as health_router
 from api.routes.list_pickups import router as list_pickups_router
 from api.routes.locations import router as locations_router
 from api.routes.me import router as me_router
+from api.routes.non_discord_rides import router as non_discord_rides_router
 from api.routes.reaction_log import router as reaction_log_router
 from api.routes.reaction_log_stream import router as reaction_log_stream_router
 from api.routes.ride_coordinators import router as ride_coordinators_router
@@ -153,6 +154,7 @@ if APP_ENV == "local":
 app.include_router(locations_router)
 app.include_router(feature_flags_router)
 app.include_router(me_router)
+app.include_router(non_discord_rides_router)
 app.include_router(ask_rides_router)
 app.include_router(cache_stats_router)
 app.include_router(group_rides_router)

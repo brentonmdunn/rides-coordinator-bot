@@ -13,6 +13,7 @@ from bot.core.enums import AskRidesMessage, CacheNamespace, DaysOfWeek, JobName
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
+from bot.services.non_discord_rides_service import NonDiscordRidesService
 from bot.utils.cache import invalidate_namespace
 from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
@@ -229,7 +230,23 @@ async def get_ask_rides_reactions(message_type: str):
             detail=f"message_type must be one of: {', '.join(valid_types)}",
         )
 
+    # Non-Discord riders are tracked per ride day; map the message type to a day.
+    type_to_day: dict[str, str] = {
+        JobName.FRIDAY: DaysOfWeek.FRIDAY,
+        JobName.SUNDAY: DaysOfWeek.SUNDAY,
+        JobName.SUNDAY_CLASS: DaysOfWeek.SUNDAY,
+    }
+
     try:
+        # Collect non-Discord riders for the day, grouped by their emoji tag.
+        non_discord: dict[str, list[str]] = {}
+        day = type_to_day.get(message_type.lower())
+        if day is not None:
+            rides = await NonDiscordRidesService().list_pickups(day)
+            for ride in rides:
+                if ride.emoji:
+                    non_discord.setdefault(ride.emoji, []).append(ride.name)
+
         locations_svc = LocationsService(bot)
         result = await locations_svc.get_ask_rides_reactions(event)
 
@@ -238,12 +255,14 @@ async def get_ask_rides_reactions(message_type: str):
                 "message_type": message_type,
                 "reactions": {},
                 "username_to_name": {},
+                "non_discord": non_discord,
                 "message_found": False,
             }
 
         return {
             "message_type": message_type,
             **result,
+            "non_discord": non_discord,
             "message_found": True,
         }
 
