@@ -1,11 +1,12 @@
 import { Suspense, lazy, useMemo } from 'react'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { Link } from 'react-router-dom'
-import { BookOpen, Car, History, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation, UserCheck } from 'lucide-react'
+import { BookOpen, Car, History, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation, UserCheck, UserPlus } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import type { AccountRole } from '../types'
 import PickupLocations from '../components/PickupLocations'
+import NonDiscordRides from '../components/NonDiscordRides'
 import DriverReactions from '../components/DriverReactions'
 import ReactionDetails from '../components/ReactionDetails'
 import GroupRides from '../components/GroupRides'
@@ -40,18 +41,32 @@ const NAV_ITEMS = [
     { id: 'roles', label: 'Roles', icon: <UserCheck className="h-4 w-4" /> },
 ]
 
-const SECTION_IDS = NAV_ITEMS.map((item) => item.id)
-
-function SectionNav({ isAdmin }: { isAdmin: boolean }) {
-    const activeId = useActiveSection(SECTION_IDS)
-
+function SectionNav({ isAdmin, canManage }: { isAdmin: boolean; canManage: boolean }) {
     const items = useMemo(() => {
-        if (!isAdmin) return NAV_ITEMS
-        return [
-            ...NAV_ITEMS,
-            { id: 'admin', label: 'Admin', icon: <Shield className="h-4 w-4" /> },
-        ]
-    }, [isAdmin])
+        let result = NAV_ITEMS
+        if (canManage) {
+            const pickupsIdx = result.findIndex((item) => item.id === 'pickup-locations')
+            const nonDiscordItem = {
+                id: 'non-discord-rides',
+                label: 'Non-Discord',
+                icon: <UserPlus className="h-4 w-4" />,
+            }
+            result = [
+                ...result.slice(0, pickupsIdx + 1),
+                nonDiscordItem,
+                ...result.slice(pickupsIdx + 1),
+            ]
+        }
+        if (isAdmin) {
+            result = [
+                ...result,
+                { id: 'admin', label: 'Admin', icon: <Shield className="h-4 w-4" /> },
+            ]
+        }
+        return result
+    }, [isAdmin, canManage])
+
+    const activeId = useActiveSection(items.map((item) => item.id))
 
     return (
         <aside className="hidden xl:block w-44 shrink-0">
@@ -143,7 +158,7 @@ function Home() {
                 }
             >
                 <div className="flex gap-8">
-                    <SectionNav isAdmin={isAdmin} />
+                    <SectionNav isAdmin={isAdmin} canManage={canManage} />
 
                     <div className="flex-1 min-w-0 grid grid-cols-1 gap-8">
                         <RideCoverageWarning />
@@ -167,6 +182,12 @@ function Home() {
                         <div id="pickup-locations">
                             <PickupLocations />
                         </div>
+
+                        {canManage && (
+                            <div id="non-discord-rides">
+                                <NonDiscordRides />
+                            </div>
+                        )}
 
                         <div id="group-rides">
                             <GroupRides />
