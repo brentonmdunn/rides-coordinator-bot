@@ -28,6 +28,9 @@ interface NonDiscordRide {
 /** Sentinel for the "no reaction tag" dropdown option (Select can't use ""). */
 const NO_REACTION = '__none__'
 
+/** Sentinel for the "Custom" location option. */
+const CUSTOM_LOCATION = '__custom__'
+
 /** Selectable ride-reaction tags per day. Emojis must match the backend Emoji enum. */
 const REACTION_OPTIONS: Record<Day, { emoji: string; label: string }[]> = {
     Sunday: [
@@ -46,11 +49,23 @@ const REACTION_OPTIONS: Record<Day, { emoji: string; label: string }[]> = {
 function NonDiscordRides() {
     const [day, setDay] = useState<Day>('Friday')
     const [name, setName] = useState('')
-    const [location, setLocation] = useState('')
+    const [locationSelect, setLocationSelect] = useState('')
+    const [customLocation, setCustomLocation] = useState('')
     const [reaction, setReaction] = useState(NO_REACTION)
+
+    const location = locationSelect === CUSTOM_LOCATION ? customLocation : locationSelect
     const [showInfo, setShowInfo] = useState(false)
     const [pendingDelete, setPendingDelete] = useState<NonDiscordRide | null>(null)
     const queryClient = useQueryClient()
+
+    const { data: campusLocations = [] } = useQuery<string[]>({
+        queryKey: ['campusLocations'],
+        queryFn: async () => {
+            const response = await apiFetch('/api/non-discord-rides/campus-locations')
+            return response.json()
+        },
+        staleTime: Infinity,
+    })
 
     const {
         data: rides,
@@ -83,7 +98,8 @@ function NonDiscordRides() {
         },
         onSuccess: () => {
             setName('')
-            setLocation('')
+            setLocationSelect('')
+            setCustomLocation('')
             setReaction(NO_REACTION)
             queryClient.invalidateQueries({ queryKey: ['nonDiscordRides', day] })
         },
@@ -195,11 +211,25 @@ function NonDiscordRides() {
                         />
                     </LabeledField>
                     <LabeledField label="Pickup Location">
-                        <Input
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            placeholder="e.g. Seventh"
-                        />
+                        <Select value={locationSelect} onValueChange={setLocationSelect}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select location…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {campusLocations.map((loc) => (
+                                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                                ))}
+                                <SelectItem value={CUSTOM_LOCATION}>Custom…</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {locationSelect === CUSTOM_LOCATION && (
+                            <Input
+                                className="mt-2"
+                                value={customLocation}
+                                onChange={(e) => setCustomLocation(e.target.value)}
+                                placeholder="Enter location"
+                            />
+                        )}
                     </LabeledField>
                     <LabeledField label="Reaction">
                         <Select value={reaction} onValueChange={setReaction}>

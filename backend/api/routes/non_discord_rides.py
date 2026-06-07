@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
+from bot.core.enums import CampusLivingLocations
 from bot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
 from bot.utils.constants import LSCC_DAYS, RIDE_REACTION_LABELS
 
@@ -40,6 +41,12 @@ def _validate_emoji(emoji: str | None) -> str | None:
     if emoji is not None and emoji not in _VALID_EMOJIS:
         raise HTTPException(status_code=400, detail=f"Invalid reaction emoji '{emoji}'.")
     return emoji
+
+
+@router.get("/campus-locations")
+async def get_campus_locations() -> list[str]:
+    """Return all valid campus living location names."""
+    return [loc.value for loc in CampusLivingLocations]
 
 
 class NonDiscordRideResponse(BaseModel):
