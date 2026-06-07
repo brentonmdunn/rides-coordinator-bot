@@ -99,12 +99,14 @@ async def list_pickups(request: ListPickupsRequest):
                             "It may not exist yet."
                         ),
                     )
+                # Pass day so non-Discord pickups are merged into the results.
                 (
                     locations,
                     usernames_reacted,
                     location_found,
                 ) = await locations_service.list_locations(
-                    message_id=message_id_int, channel_id=channel_id_int
+                    day=request.ride_type,
+                    channel_id=channel_id_int,
                 )
             else:
                 # Bot unavailable: serve from cache by passing day directly, which avoids

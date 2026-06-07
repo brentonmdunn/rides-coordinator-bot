@@ -110,6 +110,8 @@ export interface AskRidesReactionsData {
     message_type: string
     reactions: Record<string, string[]>
     username_to_name: Record<string, string>
+    /** Names of non-Discord riders tagged with each emoji, for the day */
+    non_discord?: Record<string, string[]>
     message_found: boolean
 }
 
