@@ -82,7 +82,9 @@ class ReactionLoggingService:
         Returns:
             True if logged successfully, False otherwise.
         """
-        log_channel = self.bot.get_channel(resolve_channel_id(ChannelIds.SERVING__DRIVER_BOT_SPAM))
+        log_channel = self.bot.get_channel(
+            resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
+        )
         if not log_channel or not isinstance(log_channel, discord.TextChannel):
             return False
 

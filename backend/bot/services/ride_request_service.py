@@ -81,13 +81,13 @@ class RideRequestService:
         # Announce the new rider channel in the driver bot spam channel
         try:
             spam_channel = self.bot.get_channel(
-                resolve_channel_id(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+                resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
             )
             if spam_channel:
                 await spam_channel.send(f"new hooman! {new_channel.mention}")
             else:
                 logger.warning(
-                    f"Driver bot spam channel {ChannelIds.SERVING__DRIVER_BOT_SPAM} not found."
+                    f"Driver bot spam channel {ChannelIds.SERVING__RIDE_COORDINATORS} not found."
                 )
         except Exception:
             logger.exception(

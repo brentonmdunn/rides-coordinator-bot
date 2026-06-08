@@ -275,7 +275,7 @@ async def run_ask_rides_sun(
         return
     if not await _should_send_ask_rides_sun():
         logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
-        wildcard_channel = bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+        wildcard_channel = bot.get_channel(ChannelIds.SERVING__RIDE_COORDINATORS)
         if not isinstance(wildcard_channel, discord.TextChannel):
             logger.info("Error channel not found")
             return
