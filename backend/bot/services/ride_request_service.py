@@ -77,6 +77,21 @@ class RideRequestService:
             )
             return False
 
+        # Announce the new rider channel in the driver bot spam channel
+        try:
+            spam_channel = self.bot.get_channel(int(ChannelIds.SERVING__DRIVER_BOT_SPAM))
+            if spam_channel:
+                await spam_channel.send(f"new hooman! {new_channel.mention}")
+            else:
+                logger.warning(
+                    f"Driver bot spam channel {ChannelIds.SERVING__DRIVER_BOT_SPAM} not found."
+                )
+        except Exception:
+            logger.exception(
+                f"Failed to announce new rider channel {new_channel.name} in driver bot spam"
+            )
+            # Channel was created, so don't fail the whole flow
+
         # Send welcome message
         try:
             await new_channel.send(
