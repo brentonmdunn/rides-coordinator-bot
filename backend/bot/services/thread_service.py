@@ -146,6 +146,50 @@ class ThreadService:
         )
         return added, failed
 
+    async def create_event_thread_from_message(
+        self, message: discord.Message, thread_name: str
+    ) -> tuple[discord.Thread, list[discord.Member], list[str]]:
+        """
+        Turn an arbitrary message into a tracked event thread and bulk-add reactors.
+
+        If the message already has a thread, that existing thread is registered and its
+        reactors are added (idempotent). Otherwise a new thread is created on the message.
+
+        Args:
+            message: The message to convert into an event thread.
+            thread_name: Name to use when creating a new thread (ignored if one exists).
+
+        Returns:
+            A tuple of (thread, added_members, failed_usernames).
+
+        Raises:
+            StarterMessageError: If the starter message can't be read.
+            discord.Forbidden: If bot permissions are missing.
+        """
+        thread = message.thread
+        if thread is None:
+            thread = await message.create_thread(name=thread_name)
+            logger.info(
+                f"create_event_thread_from_message: created thread {thread.id} "
+                f"from message {message.id}"
+            )
+
+        async with AsyncSessionLocal() as session:
+            already_tracked = await EventThreadRepository.get_by_id(session, str(thread.id))
+
+        added, failed = await self.bulk_add_reactors_to_thread(thread)
+
+        if not already_tracked:
+            async with AsyncSessionLocal() as session:
+                await EventThreadRepository.create(session, str(thread.id))
+                await session.commit()
+
+        logger.info(
+            f"create_event_thread_from_message: thread={thread.id} added={len(added)} "
+            f"failed={len(failed)} already_tracked={bool(already_tracked)}"
+        )
+        return thread, added, failed
+
     async def bulk_add_reactors_to_thread(
         self, thread: discord.Thread
     ) -> tuple[list[discord.Member], list[str]]:
