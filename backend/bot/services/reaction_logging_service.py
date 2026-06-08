@@ -6,6 +6,7 @@ import discord
 
 from bot.core.enums import ChannelIds, JobName, ReactionAction
 from bot.core.error_reporter import send_error_to_discord
+from bot.utils.channel_helpers import resolve_channel_id
 from bot.utils.format_message import message_link
 from bot.utils.parsing import get_message_and_embed_content
 
@@ -81,7 +82,7 @@ class ReactionLoggingService:
         Returns:
             True if logged successfully, False otherwise.
         """
-        log_channel = self.bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+        log_channel = self.bot.get_channel(resolve_channel_id(ChannelIds.SERVING__DRIVER_BOT_SPAM))
         if not log_channel or not isinstance(log_channel, discord.TextChannel):
             return False
 

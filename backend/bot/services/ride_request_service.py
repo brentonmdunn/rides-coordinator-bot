@@ -7,6 +7,7 @@ import discord
 
 from bot.core.enums import CategoryIds, ChannelIds, RoleIds
 from bot.core.error_reporter import send_error_to_discord
+from bot.utils.channel_helpers import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,9 @@ class RideRequestService:
 
         # Announce the new rider channel in the driver bot spam channel
         try:
-            spam_channel = self.bot.get_channel(int(ChannelIds.SERVING__DRIVER_BOT_SPAM))
+            spam_channel = self.bot.get_channel(
+                resolve_channel_id(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+            )
             if spam_channel:
                 await spam_channel.send(f"new hooman! {new_channel.mention}")
             else:
