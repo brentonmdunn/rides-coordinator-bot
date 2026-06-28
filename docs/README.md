@@ -23,8 +23,7 @@ The project consists of three main components:
 | [database-schema.md](database-schema.md) | All database tables and their columns |
 | [feature-flags.md](feature-flags.md) | Feature flag reference and management |
 | [auth.md](auth.md) | Authentication — Discord OAuth flow, roles, sessions, invites |
-| [deployment.md](deployment.md) | Docker build, image promotion, environment configuration |
-| [CI_CD.md](CI_CD.md) | CI/CD image promotion strategy |
+| [CI_CD.md](CI_CD.md) | CI/CD build and deployment strategy |
 
 ---
 

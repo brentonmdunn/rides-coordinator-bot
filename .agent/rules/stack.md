@@ -19,4 +19,4 @@ Tech stack:
 Tools:
 - Use uv to run python or any python associated libraries. For example, uv run pytest
 - Ruff for linting and formatting
-- If modifying any python code, ensure that you run `uv run invoke format` and `uv run invoke format`
+- If modifying any python code, ensure that you run `uv run invoke format`, `uv run invoke lint`, and `uv run ty check`

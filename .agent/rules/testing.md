@@ -21,6 +21,7 @@ All run from `backend/` with `uv run invoke <task>`:
 - `uv run invoke all` — Run lint + fix + format
 - `uv run invoke test` — Run pytest
 - `uv run invoke clean` — Remove dev commands
+- `uv run ty check` — Run ty type checker
 
 ## Frontend (TypeScript)
 
@@ -28,5 +29,5 @@ All run from `backend/` with `uv run invoke <task>`:
 
 ## Before Committing
 
-- Always run `uv run invoke format` and `uv run invoke lint` after modifying Python code.
-- Always run `npm run lint` after modifying frontend code.
+- Always run `uv run invoke format`, `uv run invoke lint`, and `uv run ty check` after modifying Python code.
+- Always run `npm run lint` and `npx tsc --noEmit` after modifying frontend code.

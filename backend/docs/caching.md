@@ -132,42 +132,42 @@ await warm_ask_drivers_message_cache(bot, event)
 
 ## Cached Functions Reference
 
-### `_find_correct_message()` — `locations_service.py`
+### `_find_correct_message()` — `reaction_service.py`
 
 - **Namespace:** `ASK_RIDES_MESSAGE_ID`
 - **TTL:** 10 days (864000s)
 - **What it does:** Scans `channel.history()` to find the most recent ask-rides message matching an `AskRidesMessage` enum value
 - **Why cached:** Channel history scans are expensive Discord API calls; message IDs don't change until new messages are sent
 
-### `_find_driver_message()` — `locations_service.py`
+### `_find_driver_message()` — `reaction_service.py`
 
 - **Namespace:** `ASK_DRIVERS_MESSAGE_ID`
 - **TTL:** 10 days (864000s)
 - **What it does:** Scans `channel.history()` to find the most recent driver message matching an `AskRidesMessage` enum value
 - **Why cached:** Same as above; driver message IDs are stable between sends
 
-### `list_locations()` — `locations_service.py`
+### `list_locations()` — `reaction_service.py`
 
 - **Namespace:** `ASK_RIDES_REACTIONS`
 - **TTL:** 45 minutes (2700s)
 - **What it does:** Aggregates reaction data (who reacted with what emoji) for ask-rides messages
 - **Why cached:** Multiple dashboard requests within 45ms shouldn't re-fetch reactions
 
-### `get_ask_rides_reactions()` — `locations_service.py`
+### `get_ask_rides_reactions()` — `reaction_service.py`
 
 - **Namespace:** `ASK_RIDES_REACTIONS`
 - **TTL:** 45 minutes (2700s)
 - **What it does:** Returns reaction breakdown (emoji → usernames) for a specific ask-rides message type
 - **Why cached:** Called by the `/api/ask-rides/reactions/{type}` endpoint; avoids redundant `fetch_message` + `reaction.users()` calls
 
-### `_get_usernames_who_reacted()` — `locations_service.py`
+### `_get_usernames_who_reacted()` — `reaction_service.py`
 
 - **Namespace:** `ASK_RIDES_REACTIONS`
 - **TTL:** 45 minutes (2700s)
 - **What it does:** Returns the set of usernames who reacted to a specific message
 - **Why cached:** Called by `list_locations()` and shares the same invalidation lifecycle
 
-### `get_driver_reactions()` — `locations_service.py`
+### `get_driver_reactions()` — `reaction_service.py`
 
 - **Namespace:** `ASK_DRIVERS_REACTIONS`
 - **TTL:** 45 minutes (2700s)
