@@ -380,6 +380,13 @@ All run from `backend/` with `uv run invoke <task>`:
 - Always run `npx tsc --noEmit` after modifying frontend code.
 - You do not need to ask before running these commands and fixing code based on the output.
 
+## Git Commit Guidelines
+When creating commits:
+- Follow conventional commit format (e.g., feat:, fix:, refactor:).
+- Keep the first line under 50 characters.
+- Do not include AI attribution in commit messages.
+- Always use the imperative mood ("Add feature", not "Added feature").
+
 ## Development
 Never commits to main branch. For each major change, create a new branch with conventional commit prefix then a snake case short summary. For example, feat/xyz-dashboard.
 
