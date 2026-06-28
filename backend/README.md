@@ -4,11 +4,11 @@
 
 The backend is built with **Python 3.13**, using **discord.py** for bot functionality and **FastAPI** for the API layer.
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ### Prerequisites
 - Python 3.13+
-- [uv](https://docs.astral.sh/uv/) (Recommended for package management)
+- [uv](https://docs.astral.sh/uv/)
 - Docker (optional, for deployment)
 
 ### Installation
@@ -29,21 +29,15 @@ The backend is built with **Python 3.13**, using **discord.py** for bot function
    # Edit .env with your Discord tokens and other secrets
    ```
 
-## 🛠️ Development
+## Development
 
 ### Running the Application
-To run the bot and API together:
 
 ```bash
 uv run python main.py
 ```
-*Or if using virtualenv directly:*
-```bash
-python main.py
-```
 
-### Code Quality (Linting & Formatting)
-We use `invoke` to manage development tasks.
+### Code Quality
 
 | Command | Description |
 |---------|-------------|
@@ -52,20 +46,16 @@ We use `invoke` to manage development tasks.
 | `uv run invoke fix` | Auto-fix linting errors |
 | `uv run invoke test` | Run tests (pytest) |
 | `uv run invoke all` | Run lint, fix, and format |
+| `uv run ty check` | Type check (ty) |
 
-## 🧪 Testing
-
-Run the test suite using pytest:
+## Testing
 
 ```bash
 uv run pytest
 ```
 
-## 🐳 Docker Deployment
-
-The backend can be deployed via the root Docker configuration.
+## Docker Deployment
 
 ```bash
-# From root directory
-docker build -t ride-bot .
+docker pull brentonmdunn/ride-bot
 ```
