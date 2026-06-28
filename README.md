@@ -6,12 +6,43 @@
 
 A comprehensive Discord bot and web dashboard for coordinating ride pickups, managing events, and tracking driver availability.
 
+## Demo
+
+[ridebot-demo.springroll.app](https://ridebot-demo.springroll.app)
+
 ## 🏗️ Architecture
 
 This project is a monorepo consisting of:
 
 - **Backend (`backend/`)**: A Python application using `discord.py` for the bot and `FastAPI` for the web API and admin interface. See the [Backend Architecture Guide](backend/docs/architecture.md) for more structural details.
 - **Frontend (`frontend/`)**: A React SPA built with Vite and TailwindCSS for the user dashboard.
+
+```mermaid
+graph TD
+    User["Discord User"]
+    Browser["Admin (Browser)"]
+
+    subgraph Backend["Backend (Python)"]
+        Bot["discord.py Bot\n(Cogs)"]
+        API["FastAPI"]
+        Services["Services"]
+        Repos["Repositories"]
+        Jobs["APScheduler Jobs"]
+        DB[("SQLite")]
+    end
+
+    Frontend["React SPA\n(Vite + Tailwind)"]
+
+    User -- "slash commands\nbuttons / reactions" --> Bot
+    Browser --> Frontend
+    Frontend -- "REST API" --> API
+
+    Bot --> Services
+    API --> Services
+    Services --> Repos
+    Repos --> DB
+    Jobs --> Services
+```
 
 **High-Level Flow:**
 - The Discord bot acts as the primary interface for users to interact with features (slash commands, buttons, reactions).
