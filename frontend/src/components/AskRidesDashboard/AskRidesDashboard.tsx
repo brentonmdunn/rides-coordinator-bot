@@ -7,7 +7,7 @@ import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 import { ListSkeleton } from '../LoadingSkeleton'
 
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Settings } from 'lucide-react'
 import { Button } from '../ui/button'
 import ConfirmDialog from '../ConfirmDialog'
 import { SectionCard } from '../shared'
@@ -18,6 +18,7 @@ interface AskRidesDashboardProps {
 
 function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const [showInfo, setShowInfo] = useState(false)
+    const [showSettings, setShowSettings] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const queryClient = useQueryClient()
 
@@ -33,7 +34,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
         }
     })
 
-    const { data: seasonData, isLoading: seasonLoading } = useQuery<{ season: FellowshipSeason }>({
+    const { data: seasonData } = useQuery<{ season: FellowshipSeason }>({
         queryKey: ['fellowshipSeason'],
         queryFn: async () => {
             const response = await apiFetch('/api/ask-rides/fellowship-season')
@@ -44,7 +45,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const season = seasonData?.season ?? 'none'
 
     const seasonMutation = useMutation({
-        mutationFn: async (newSeason: 'school_year' | 'summer') => {
+        mutationFn: async (newSeason: 'friday' | 'wednesday') => {
             const response = await apiFetch('/api/ask-rides/fellowship-season', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -55,6 +56,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['fellowshipSeason'] })
             queryClient.invalidateQueries({ queryKey: ['askRidesStatus'] })
+            setShowSettings(false)
         },
     })
 
@@ -101,9 +103,21 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                             )}
                         </Button>
                     )}
+                    {canManage && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setShowSettings(!showSettings); setShowInfo(false) }}
+                            className={`h-8 w-8 transition-colors ${showSettings ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground'}`}
+                            title="Dashboard settings"
+                        >
+                            <Settings className="h-5 w-5" />
+                            <span className="sr-only">Dashboard settings</span>
+                        </Button>
+                    )}
                     <InfoToggleButton
                         isOpen={showInfo}
-                        onClick={() => setShowInfo(!showInfo)}
+                        onClick={() => { setShowInfo(!showInfo); setShowSettings(false) }}
                         title="About Dashboard Status"
                     />
                 </>
@@ -180,45 +194,45 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                     <ErrorMessage message={askRidesError} />
                 </div>
 
-                {/* Fellowship season toggle */}
-                {(canManage || !seasonLoading) && (
-                    <div className="flex items-center gap-3 mb-5">
-                        <span className="text-sm text-muted-foreground font-medium">Fellowship:</span>
+                {/* Settings panel */}
+                {showSettings && canManage && (
+                    <div className="mb-5 p-4 bg-muted/50 border border-border rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                        <p className="text-sm font-medium text-foreground mb-3">Fellowship night</p>
                         <div className="inline-flex rounded-md border border-border overflow-hidden">
                             <button
-                                onClick={() => seasonMutation.mutate('school_year')}
-                                disabled={seasonMutation.isPending || !canManage}
-                                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                                    season === 'school_year'
-                                        ? 'bg-info/15 text-info-text border-r border-border'
-                                        : 'bg-background text-muted-foreground hover:bg-muted border-r border-border'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            >
-                                🎓 School Year
-                            </button>
-                            <button
-                                onClick={() => seasonMutation.mutate('summer')}
-                                disabled={seasonMutation.isPending || !canManage}
-                                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                                    season === 'summer'
+                                onClick={() => seasonMutation.mutate('friday')}
+                                disabled={seasonMutation.isPending}
+                                className={`px-3 py-1.5 text-sm font-medium transition-colors border-r border-border ${
+                                    season === 'friday'
                                         ? 'bg-info/15 text-info-text'
                                         : 'bg-background text-muted-foreground hover:bg-muted'
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
-                                ☀️ Summer
+                                🎓 Friday Fellowship
+                            </button>
+                            <button
+                                onClick={() => seasonMutation.mutate('wednesday')}
+                                disabled={seasonMutation.isPending}
+                                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                                    season === 'wednesday'
+                                        ? 'bg-info/15 text-info-text'
+                                        : 'bg-background text-muted-foreground hover:bg-muted'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                                ☀️ Wed. Fellowship
                             </button>
                         </div>
                         {seasonMutation.isError && (
-                            <span className="text-xs text-destructive-text">Failed to switch season</span>
+                            <p className="mt-2 text-xs text-destructive-text">Failed to switch — try again</p>
                         )}
                     </div>
                 )}
 
                 {!askRidesLoading && !askRidesError && askRidesStatus && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Fellowship card — Friday during school year, Wednesday in summer */}
-                        {season === 'summer'
-                            ? <StatusCard title="Wednesday Fellowship" jobName="wednesday" job={askRidesStatus.wednesday} canManage={canManage} />
+                        {/* Fellowship card — Friday or Wednesday based on global setting */}
+                        {season === 'wednesday'
+                            ? <StatusCard title="Wed. Fellowship" jobName="wednesday" job={askRidesStatus.wednesday} canManage={canManage} />
                             : <StatusCard title="Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
                         }
 
