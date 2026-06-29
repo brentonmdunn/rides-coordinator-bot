@@ -20,7 +20,7 @@ from bot.core.enums import (
     JobName,
 )
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.repositories.global_settings_repository import GlobalSettingsRepository
 from bot.services.feature_flags_service import FeatureFlagsService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
@@ -220,51 +220,38 @@ async def get_upcoming_dates(
     return {"dates": dates, "has_more": True}
 
 
-FellowshipSeason = Literal["school_year", "summer", "none"]
+FELLOWSHIP_SEASON_KEY = "fellowship_season"
 
 
 @router.get(
     "/fellowship-season",
     summary="Get Fellowship Season",
-    description="Returns the active fellowship season based on which ride job flag is enabled.",
+    description="Returns the active fellowship season from global settings.",
 )
 async def get_fellowship_season() -> dict:
-    """Return 'school_year' (fri enabled), 'summer' (wed enabled), or 'none'."""
+    """Return 'friday' or 'wednesday' from global settings (default 'friday')."""
     async with AsyncSessionLocal() as session:
-        fri_enabled = await FeatureFlagsRepository.get_feature_flag_status(
-            session, FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
-        )
-        wed_enabled = await FeatureFlagsRepository.get_feature_flag_status(
-            session, FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
-        )
-
-    if fri_enabled and not wed_enabled:
-        season: FellowshipSeason = "school_year"
-    elif wed_enabled and not fri_enabled:
-        season = "summer"
-    else:
-        season = "none"
-
-    return {"season": season}
+        season = await GlobalSettingsRepository.get(session, FELLOWSHIP_SEASON_KEY)
+    return {"season": season or "friday"}
 
 
 class SetSeasonRequest(BaseModel):
     """Request body for setting the fellowship season."""
 
-    season: Literal["school_year", "summer"]
+    season: Literal["friday", "wednesday"]
 
 
 @router.post(
     "/fellowship-season",
     dependencies=[Depends(require_admin)],
     summary="Set Fellowship Season",
-    description="Atomically switches between school year (Friday) and summer (Wednesday) fellowship.",
+    description="Switches between Friday and Wednesday fellowship, persisting the choice globally.",
 )
 async def set_fellowship_season(request: SetSeasonRequest) -> dict:
-    """Enable one fellowship job flag and disable the other."""
+    """Persist season to global settings and sync feature flags."""
     svc = FeatureFlagsService()
 
-    if request.season == "school_year":
+    if request.season == "friday":
         enable_flag = FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
         disable_flag = FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
     else:
@@ -273,6 +260,7 @@ async def set_fellowship_season(request: SetSeasonRequest) -> dict:
 
     try:
         async with AsyncSessionLocal() as session:
+            await GlobalSettingsRepository.set(session, FELLOWSHIP_SEASON_KEY, request.season)
             await svc.modify_feature_flag(enable_flag.value, True, session)
             await svc.modify_feature_flag(disable_flag.value, False, session)
         await FeatureFlagsService.reinitialize_cache()
