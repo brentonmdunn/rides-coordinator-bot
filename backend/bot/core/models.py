@@ -153,6 +153,16 @@ class UserPreferences(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
 
+class GlobalSetting(Base):
+    """Key-value store for app-wide settings shared across all users."""
+
+    __tablename__ = "global_settings"
+
+    key: Mapped[str] = mapped_column(primary_key=True)
+    value: Mapped[str]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
 class RideReactionEvent(Base):
     """Model representing a single reaction or unreaction on an ask-rides announcement message."""
 
