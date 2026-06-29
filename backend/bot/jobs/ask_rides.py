@@ -43,6 +43,7 @@ from bot.utils.time_helpers import (
     get_current_cycle_start,
     get_next_date_obj,
     get_next_date_str,
+    get_next_monday_11am,
     get_next_wednesday_noon,
     get_send_wednesday,
     is_ride_cycle_active,
@@ -533,12 +534,13 @@ def get_next_run_time() -> str:
 
 
 async def find_message_in_history(
-    messages: list[discord.Message], job_type: JobName, current_week_start
+    messages: list[discord.Message], job_type: JobName, current_week_start: datetime
 ) -> dict | None:
     """
     Find the most recent message for a job type in the provided messages list.
     """
     keywords = {
+        JobName.WEDNESDAY: "wednesday college fellowship",
         JobName.FRIDAY: "friday",
         JobName.SUNDAY: "sunday service",
         JobName.SUNDAY_CLASS: "theology class",
@@ -576,11 +578,14 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         bot: Discord bot instance
 
     Returns:
-        Dictionary with status for friday, sunday, and sunday_class jobs
+        Dictionary with status for wednesday, friday, sunday, and sunday_class jobs
     """
     sent_window = is_ride_cycle_active()
 
     async with AsyncSessionLocal() as session:
+        wednesday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+        )
         friday_enabled = await FeatureFlagsRepository.get_feature_flag_status(
             session, FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
         )
@@ -615,10 +620,18 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
         if isinstance(channel, discord.TextChannel):
             current_week_start = get_current_cycle_start()
+            # Wednesday fellowship is sent Monday; use start of current Monday for its window
+            now = datetime.now(tz=LA_TZ)
+            monday_week_start = (now - timedelta(days=now.weekday())).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
 
-            # Fetch recent messages (last 20)
+            # Fetch recent messages once
             messages = [msg async for msg in channel.history(limit=ASK_RIDES_MESSAGE_HISTORY_LIMIT)]
 
+            wednesday_last_msg = await find_message_in_history(
+                messages, JobName.WEDNESDAY, monday_week_start
+            )
             friday_last_msg = await find_message_in_history(
                 messages, JobName.FRIDAY, current_week_start
             )
@@ -629,6 +642,7 @@ async def get_ask_rides_status(bot: Bot) -> dict:
                 messages, JobName.SUNDAY_CLASS, current_week_start
             )
         else:
+            wednesday_last_msg = None
             friday_last_msg = None
             sunday_last_msg = None
             sunday_class_last_msg = None
@@ -637,15 +651,28 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         await send_error_to_discord(
             "**Unexpected Error** fetching message history in `get_ask_rides_status`"
         )
+        wednesday_last_msg = None
         friday_last_msg = None
         sunday_last_msg = None
         sunday_class_last_msg = None
+
+    # Wednesday fellowship "sent this week" uses the Mon-Sun window, not the Wed-Sun ride cycle
+    wednesday_sent = wednesday_last_msg is not None
 
     # Default pause info for jobs that may not have a row yet
     default_pause = {"is_paused": False, "resume_after_date": None, "resume_send_date": None}
 
     # Build status response
     status = {
+        JobName.WEDNESDAY: {
+            "enabled": wednesday_enabled,
+            "will_send": wednesday_enabled,
+            "sent_this_week": wednesday_sent,
+            "reason": None if wednesday_enabled else "feature_flag_disabled",
+            "next_run": get_next_monday_11am().isoformat(),
+            "last_message": wednesday_last_msg,
+            "pause": pause_map.get(JobName.WEDNESDAY, default_pause),
+        },
         JobName.FRIDAY: {
             "enabled": friday_enabled,
             "will_send": friday_enabled,
