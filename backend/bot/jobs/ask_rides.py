@@ -399,8 +399,9 @@ async def run_ask_rides_header(
     )
 
     if sun_condition or sun_class_condition or fri_condition or wed_condition:
+        header_text = "for this week!" if fri_condition else "for Sunday Service!"
         await channel.send(
-            _format_message("for this week!"),
+            _format_message(header_text),
             allowed_mentions=discord.AllowedMentions(roles=True),
         )
 
