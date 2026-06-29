@@ -63,6 +63,7 @@ class FeatureFlagNames(StrEnum):
     ASK_SUNDAY_RIDES_JOB = "ask_sunday_rides_job"
     ASK_SUNDAY_CLASS_RIDES_JOB = "ask_sunday_class_rides_job"
     ASK_WEDNESDAY_RIDES_JOB = "ask_wednesday_rides_job"
+    ASK_WEDNESDAY_DRIVERS_JOB = "ask_wednesday_drivers_job"
     RIDES_LOCATIONS_SYNC_JOB = "rides_locations_sync_job"
     NEW_RIDES_MSG = "new_rides_msg"
     LOG_REACTIONS = "log_reactions"

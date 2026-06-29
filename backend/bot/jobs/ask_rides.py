@@ -25,7 +25,7 @@ from bot.core.enums import (
 )
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
-from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun
+from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun, run_ask_drivers_wed
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
@@ -259,6 +259,8 @@ async def run_ask_rides_wed(bot: Bot) -> None:
         return
     for emoji in BOT_REACTIONS[JobName.FRIDAY]:
         await sent_message.add_reaction(emoji)
+
+    await run_ask_drivers_wed(bot)
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)

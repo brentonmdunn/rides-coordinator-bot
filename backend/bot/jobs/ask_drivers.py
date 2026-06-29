@@ -87,3 +87,23 @@ async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     emojis = driver_service.get_emojis(DaysOfWeek.SUNDAY)
     message = driver_service.format_message("Sunday service")
     await _ask_drivers_template(bot, message, emojis, channel_id)
+
+
+@log_job
+@feature_flag_enabled(FeatureFlagNames.ASK_WEDNESDAY_DRIVERS_JOB)
+async def run_ask_drivers_wed(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO):
+    """
+    Send the Wednesday driver ask message to the driver chat channel.
+
+    Skips sending if the Wednesday job is currently paused.
+    """
+    async with AsyncSessionLocal() as session:
+        paused = await MessageScheduleRepository.is_job_paused(session, JobName.WEDNESDAY)
+    if paused:
+        logger.info("Blocking run_ask_drivers_wed - job is paused")
+        return
+
+    driver_service = DriverService()
+    emojis = driver_service.get_emojis(DaysOfWeek.FRIDAY)
+    message = driver_service.format_message("Wednesday felly")
+    await _ask_drivers_template(bot, message, emojis, channel_id)
