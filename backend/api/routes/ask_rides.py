@@ -200,6 +200,15 @@ async def get_upcoming_dates(
 
     next_date = get_next_date_obj(target_day) + timedelta(weeks=offset)
 
+    if job_name == JobName.WEDNESDAY and offset == 0:
+        # For Wednesday fellowship the send day is the Monday 2 days before.
+        # If that Monday has already passed, skip forward a week so we never
+        # show a date whose send window is in the past.
+        today = date.today()
+        send_monday = next_date - timedelta(days=2)
+        if send_monday < today:
+            next_date += timedelta(weeks=1)
+
     for _ in range(count):
         if job_name == JobName.WEDNESDAY:
             # Send day is the Monday 2 days before the Wednesday event
