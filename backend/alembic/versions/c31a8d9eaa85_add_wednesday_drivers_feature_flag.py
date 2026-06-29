@@ -1,7 +1,7 @@
 """Add ask_wednesday_drivers_job feature flag.
 
-Revision ID: c3d4e5f6a7b8
-Revises: b2c3d4e5f6a7
+Revision ID: c31a8d9eaa85
+Revises: 9d5ff18c05ad
 Create Date: 2026-06-28
 
 """
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "c3d4e5f6a7b8"
-down_revision: str | None = "b2c3d4e5f6a7"
+revision: str = "c31a8d9eaa85"
+down_revision: str | None = "9d5ff18c05ad"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
