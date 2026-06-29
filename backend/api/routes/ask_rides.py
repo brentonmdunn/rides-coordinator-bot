@@ -2,15 +2,26 @@
 
 import logging
 from datetime import date, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.auth import require_ride_coordinator
+from api.auth import require_admin, require_ride_coordinator
 from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET
 from api.dependencies import require_bot, require_ready_bot
-from bot.core.enums import AskRidesMessage, CacheNamespace, DaysOfWeek, JobName
+from bot.core.database import AsyncSessionLocal
+from bot.core.enums import (
+    AskRidesMessage,
+    CacheNamespace,
+    DaysOfWeek,
+    DaysOfWeekNumber,
+    FeatureFlagNames,
+    JobName,
+)
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
+from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.services.feature_flags_service import FeatureFlagsService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
 from bot.services.non_discord_rides_service import NonDiscordRidesService
@@ -178,23 +189,99 @@ async def get_upcoming_dates(
             detail=f"job_name must be one of: {', '.join(valid_jobs)}",
         )
 
-    target_day = DaysOfWeek.FRIDAY if job_name == JobName.FRIDAY else DaysOfWeek.SUNDAY
+    if job_name == JobName.WEDNESDAY:
+        target_day = DaysOfWeek.WEDNESDAY
+    elif job_name == JobName.FRIDAY:
+        target_day = DaysOfWeek.FRIDAY
+    else:
+        target_day = DaysOfWeek.SUNDAY
+
     dates = []
 
     next_date = get_next_date_obj(target_day) + timedelta(weeks=offset)
 
     for _ in range(count):
-        send_wednesday = get_send_wednesday(next_date)
+        if job_name == JobName.WEDNESDAY:
+            # Send day is the Monday 2 days before the Wednesday event
+            send_date = next_date - timedelta(
+                days=(next_date.weekday() - DaysOfWeekNumber.MONDAY) % 7
+            )
+        else:
+            send_date = get_send_wednesday(next_date)
         dates.append(
             {
                 "event_date": next_date.isoformat(),
-                "send_date": send_wednesday.isoformat(),
+                "send_date": send_date.isoformat(),
                 "label": next_date.strftime("%a %b %-d"),
             }
         )
         next_date += timedelta(weeks=1)
 
     return {"dates": dates, "has_more": True}
+
+
+FellowshipSeason = Literal["school_year", "summer", "none"]
+
+
+@router.get(
+    "/fellowship-season",
+    summary="Get Fellowship Season",
+    description="Returns the active fellowship season based on which ride job flag is enabled.",
+)
+async def get_fellowship_season() -> dict:
+    """Return 'school_year' (fri enabled), 'summer' (wed enabled), or 'none'."""
+    async with AsyncSessionLocal() as session:
+        fri_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+        )
+        wed_enabled = await FeatureFlagsRepository.get_feature_flag_status(
+            session, FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+        )
+
+    if fri_enabled and not wed_enabled:
+        season: FellowshipSeason = "school_year"
+    elif wed_enabled and not fri_enabled:
+        season = "summer"
+    else:
+        season = "none"
+
+    return {"season": season}
+
+
+class SetSeasonRequest(BaseModel):
+    """Request body for setting the fellowship season."""
+
+    season: Literal["school_year", "summer"]
+
+
+@router.post(
+    "/fellowship-season",
+    dependencies=[Depends(require_admin)],
+    summary="Set Fellowship Season",
+    description="Atomically switches between school year (Friday) and summer (Wednesday) fellowship.",
+)
+async def set_fellowship_season(request: SetSeasonRequest) -> dict:
+    """Enable one fellowship job flag and disable the other."""
+    svc = FeatureFlagsService()
+
+    if request.season == "school_year":
+        enable_flag = FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+        disable_flag = FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+    else:
+        enable_flag = FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
+        disable_flag = FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await svc.modify_feature_flag(enable_flag.value, True, session)
+            await svc.modify_feature_flag(disable_flag.value, False, session)
+        await FeatureFlagsService.reinitialize_cache()
+        await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
+    except Exception as e:
+        logger.exception("Error setting fellowship season")
+        raise HTTPException(status_code=500, detail=f"Failed to set season: {e!s}") from e
+
+    return {"season": request.season}
 
 
 @router.get(
