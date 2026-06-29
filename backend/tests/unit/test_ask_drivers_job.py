@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import DaysOfWeek, Emoji, FeatureFlagNames, JobName
+from bot.core.enums import Emoji, FeatureFlagNames, JobName
 
 
 class TestRunAskDriversWedEnum:
