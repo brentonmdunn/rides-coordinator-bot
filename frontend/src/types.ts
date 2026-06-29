@@ -63,10 +63,13 @@ export interface UpcomingDate {
 }
 
 export interface AskRidesStatus {
+    wednesday: AskRidesJobStatus
     friday: AskRidesJobStatus
     sunday: AskRidesJobStatus
     sunday_class: AskRidesJobStatus
 }
+
+export type FellowshipSeason = 'school_year' | 'summer' | 'none'
 
 export interface GroupRidesResponse {
     success: boolean

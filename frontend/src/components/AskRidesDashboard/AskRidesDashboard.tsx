@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import ErrorMessage from "../ErrorMessage"
-import type { AskRidesStatus } from '../../types'
+import type { AskRidesStatus, FellowshipSeason } from '../../types'
 import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 import { ListSkeleton } from '../LoadingSkeleton'
@@ -28,10 +28,34 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     } = useQuery<AskRidesStatus>({
         queryKey: ['askRidesStatus'],
         queryFn: async () => {
-            // ... unchanged
             const response = await apiFetch('/api/ask-rides/status')
             return response.json()
         }
+    })
+
+    const { data: seasonData, isLoading: seasonLoading } = useQuery<{ season: FellowshipSeason }>({
+        queryKey: ['fellowshipSeason'],
+        queryFn: async () => {
+            const response = await apiFetch('/api/ask-rides/fellowship-season')
+            return response.json()
+        },
+    })
+
+    const season = seasonData?.season ?? 'none'
+
+    const seasonMutation = useMutation({
+        mutationFn: async (newSeason: 'school_year' | 'summer') => {
+            const response = await apiFetch('/api/ask-rides/fellowship-season', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ season: newSeason }),
+            })
+            return response.json()
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fellowshipSeason'] })
+            queryClient.invalidateQueries({ queryKey: ['askRidesStatus'] })
+        },
     })
 
     const sendNowMutation = useMutation({
@@ -156,10 +180,47 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                     <ErrorMessage message={askRidesError} />
                 </div>
 
+                {/* Fellowship season toggle */}
+                {(canManage || !seasonLoading) && (
+                    <div className="flex items-center gap-3 mb-5">
+                        <span className="text-sm text-muted-foreground font-medium">Fellowship:</span>
+                        <div className="inline-flex rounded-md border border-border overflow-hidden">
+                            <button
+                                onClick={() => seasonMutation.mutate('school_year')}
+                                disabled={seasonMutation.isPending || !canManage}
+                                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                                    season === 'school_year'
+                                        ? 'bg-info/15 text-info-text border-r border-border'
+                                        : 'bg-background text-muted-foreground hover:bg-muted border-r border-border'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                                🎓 School Year
+                            </button>
+                            <button
+                                onClick={() => seasonMutation.mutate('summer')}
+                                disabled={seasonMutation.isPending || !canManage}
+                                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                                    season === 'summer'
+                                        ? 'bg-info/15 text-info-text'
+                                        : 'bg-background text-muted-foreground hover:bg-muted'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                                ☀️ Summer
+                            </button>
+                        </div>
+                        {seasonMutation.isError && (
+                            <span className="text-xs text-destructive-text">Failed to switch season</span>
+                        )}
+                    </div>
+                )}
+
                 {!askRidesLoading && !askRidesError && askRidesStatus && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Friday Fellowship */}
-                        <StatusCard title="Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
+                        {/* Fellowship card — Friday during school year, Wednesday in summer */}
+                        {season === 'summer'
+                            ? <StatusCard title="Wednesday Fellowship" jobName="wednesday" job={askRidesStatus.wednesday} canManage={canManage} />
+                            : <StatusCard title="Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
+                        }
 
                         {/* Sunday Service */}
                         <StatusCard title="Sunday Service" jobName="sunday" job={askRidesStatus.sunday} canManage={canManage} />
