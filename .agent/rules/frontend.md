@@ -11,7 +11,7 @@ The frontend is a React 19 SPA in `frontend/`, built with Vite and Tailwind CSS 
 - **Components** (`src/components/`): Reusable UI components. Uses shadcn/ui (`components.json` present).
 - **Pages** (`src/pages/`): Top-level page components.
 - **Types** (`src/types.ts`): Shared TypeScript type definitions.
-- **Utilities** (`src/lib/utils.ts`): Shared helper functions (e.g., `getAutomaticDay`, `useCopyToClipboard`).
+- **Utilities** (`src/lib/utils.ts`): Shared helper functions (e.g., `getAutomaticDay`, `copyToClipboard`).
 
 ## Key Libraries
 

@@ -5,7 +5,7 @@ Thank you for your interest in contributing to the Rides Coordinator Bot! This d
 ## General Workflow
 
 1. **Fork & Clone:** Fork the repository and clone it locally.
-2. **Branching:** Create a descriptive branch name from `main` (e.g., `feature/add-new-ride-type` or `fix/button-alignment`).
+2. **Branching:** Create a descriptive branch name from `main` using a conventional commit prefix (e.g., `feat/add-new-ride-type` or `fix/button-alignment`).
 3. **Draft PR:** Open a Pull Request as early as possible with the "Draft" status to let others know what you are working on.
 4. **Code Quality:** Ensure your code passes all linting and testing requirements before requesting a review.
 5. **Review & Merge:** Once reviewed and approved, code is merged back into `main`. The CI/CD pipeline will automatically build and promote the Docker image.

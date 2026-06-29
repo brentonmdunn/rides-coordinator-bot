@@ -72,10 +72,11 @@ To adjust a window, edit the relevant `TimeWindow` in those dicts. `TimeWindow` 
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | integer | Primary key |
-| `discord_username` | text | Covered user's Discord username |
-| `message_id` | text | Discord message ID of the grouping message |
+| `discord_username` | text | Covered user's Discord username (PK) |
+| `message_id` | text | Discord message ID of the grouping message (PK) |
 | `datetime_detected` | datetime | When the entry was inserted |
+
+Composite primary key on `(discord_username, message_id)`.
 
 ---
 
