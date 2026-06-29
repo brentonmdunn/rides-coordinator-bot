@@ -63,10 +63,13 @@ export interface UpcomingDate {
 }
 
 export interface AskRidesStatus {
+    wednesday: AskRidesJobStatus
     friday: AskRidesJobStatus
     sunday: AskRidesJobStatus
     sunday_class: AskRidesJobStatus
 }
+
+export type FellowshipSeason = 'friday' | 'wednesday'
 
 export interface GroupRidesResponse {
     success: boolean

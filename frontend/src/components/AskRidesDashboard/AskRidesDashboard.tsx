@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import ErrorMessage from "../ErrorMessage"
-import type { AskRidesStatus } from '../../types'
+import type { AskRidesStatus, FellowshipSeason } from '../../types'
 import StatusCard from './StatusCard'
 import { InfoToggleButton, InfoPanel } from '../InfoHelp'
 import { ListSkeleton } from '../LoadingSkeleton'
@@ -28,11 +28,20 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     } = useQuery<AskRidesStatus>({
         queryKey: ['askRidesStatus'],
         queryFn: async () => {
-            // ... unchanged
             const response = await apiFetch('/api/ask-rides/status')
             return response.json()
         }
     })
+
+    const { data: seasonData } = useQuery<{ season: FellowshipSeason }>({
+        queryKey: ['fellowshipSeason'],
+        queryFn: async () => {
+            const response = await apiFetch('/api/ask-rides/fellowship-season')
+            return response.json()
+        },
+    })
+
+    const season = seasonData?.season ?? 'friday'
 
     const sendNowMutation = useMutation({
         mutationFn: async () => {
@@ -158,8 +167,11 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 
                 {!askRidesLoading && !askRidesError && askRidesStatus && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Friday Fellowship */}
-                        <StatusCard title="Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
+                        {/* Fellowship card — Friday or Wednesday based on global setting */}
+                        {season === 'wednesday'
+                            ? <StatusCard title="Wed. Fellowship" jobName="wednesday" job={askRidesStatus.wednesday} canManage={canManage} />
+                            : <StatusCard title="Friday Fellowship" jobName="friday" job={askRidesStatus.friday} canManage={canManage} />
+                        }
 
                         {/* Sunday Service */}
                         <StatusCard title="Sunday Service" jobName="sunday" job={askRidesStatus.sunday} canManage={canManage} />

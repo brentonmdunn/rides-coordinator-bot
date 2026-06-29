@@ -11,6 +11,7 @@ from bot.utils.constants import (
     ACTIVE_HOURS_START,
     DAYS_IN_WEEK,
     RIDE_CYCLE_START_HOUR,
+    WED_FELLOWSHIP_SEND_HOUR,
 )
 
 LA_TZ = pytz.timezone("America/Los_Angeles")
@@ -396,6 +397,21 @@ def is_during_late_reaction_window(message_content: str) -> bool:
         or ("sunday" in content and is_in_late_reaction_window(DaysOfWeek.SUNDAY))
         or ("wednesday" in content and is_in_late_reaction_window(DaysOfWeek.WEDNESDAY))
     )
+
+
+def get_next_monday_11am() -> datetime:
+    """
+    Return the next Monday at 11:00 AM LA time (the wednesday-fellowship send time).
+
+    If today is Monday before 11 AM, returns today at 11 AM.
+    If today is Monday at or after 11 AM, returns next Monday at 11 AM.
+    """
+    now = datetime.now(tz=LA_TZ)
+    days_until_monday = (DaysOfWeekNumber.MONDAY - now.weekday()) % DAYS_IN_WEEK
+    if days_until_monday == 0 and now.hour >= WED_FELLOWSHIP_SEND_HOUR:
+        days_until_monday = DAYS_IN_WEEK
+    next_run = now + timedelta(days=days_until_monday)
+    return next_run.replace(hour=WED_FELLOWSHIP_SEND_HOUR, minute=0, second=0, microsecond=0)
 
 
 def get_next_wednesday_noon() -> datetime:

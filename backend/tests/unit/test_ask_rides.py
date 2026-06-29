@@ -59,7 +59,7 @@ class TestMakeWednesdayMsg:
         assert result is not None
         assert "Wednesday" in result
         assert "4/22" in result
-        assert "Bible study" in result
+        assert "college fellowship" in result
 
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=True)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="6/20")

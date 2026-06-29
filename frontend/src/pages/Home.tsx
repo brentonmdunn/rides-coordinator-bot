@@ -1,7 +1,7 @@
-import { Suspense, lazy, useMemo } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { Link } from 'react-router-dom'
-import { BookOpen, Car, History, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation, UserCheck, UserPlus } from 'lucide-react'
+import { BookOpen, Car, History, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation, UserCheck, UserPlus, Settings } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import type { AccountRole } from '../types'
@@ -18,6 +18,7 @@ import RideCoverageCheck from '../components/RideCoverageCheck'
 import RideCoverageWarning from '../components/RideCoverageWarning'
 import RoleSwitcher from '../components/RoleSwitcher'
 import { ModeToggle } from '../components/mode-toggle'
+import SiteSettingsDialog from '../components/SiteSettingsDialog'
 import { PageHeader, PageLayout } from '../components/shared'
 import { Button } from '../components/ui/button'
 import { CollapsibleSection } from '../components/ui/collapsible'
@@ -114,6 +115,8 @@ function Home() {
     const isAdmin = role === 'admin'
     const canManage = role === 'admin' || role === 'ride_coordinator'
 
+    const [showSiteSettings, setShowSiteSettings] = useState(false)
+
     return (
         <>
             {isLocal && <RoleSwitcher currentRole={role} />}
@@ -140,6 +143,15 @@ function Home() {
                                         </Link>
                                     </Button>
                                     <ModeToggle />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setShowSiteSettings(true)}
+                                        title="Site settings"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                        <span className="sr-only">Site settings</span>
+                                    </Button>
                                 </div>
                                 {!isLocal && (
                                     <Button
@@ -231,6 +243,11 @@ function Home() {
                     </div>
                 </div>
             </PageLayout>
+            <SiteSettingsDialog
+                open={showSiteSettings}
+                onOpenChange={setShowSiteSettings}
+                canManage={canManage}
+            />
         </>
     )
 }
