@@ -1,0 +1,16 @@
+{
+  "name": "Ridebot",
+  "short_name": "Ridebot",
+  "description": "Rides Coordinator dashboard for managing ride groups, driver assignments, and pickup locations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
