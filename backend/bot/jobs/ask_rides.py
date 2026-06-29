@@ -235,6 +235,12 @@ async def _ask_rides_template(
 @feature_flag_enabled(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
 async def run_ask_rides_wed(bot: Bot) -> None:
     """Runner for Wednesday rides message."""
+    async with AsyncSessionLocal() as session:
+        paused = await MessageScheduleRepository.is_job_paused(session, JobName.WEDNESDAY)
+    if paused:
+        logger.info("Blocking run_ask_rides_wed - job is paused")
+        return
+
     channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
     raw_channel = bot.get_channel(channel_id)
     if not isinstance(raw_channel, discord.TextChannel):
