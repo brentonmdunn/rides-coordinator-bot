@@ -56,7 +56,6 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['fellowshipSeason'] })
             queryClient.invalidateQueries({ queryKey: ['askRidesStatus'] })
-            setShowSettings(false)
         },
     })
 
