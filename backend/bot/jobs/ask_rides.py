@@ -110,8 +110,8 @@ def _make_wednesday_msg() -> str | None:
     if _is_wildcard_date(formatted_date):
         return None
     return (
-        f"React to this message if you need a ride for Wednesday night Bible study {formatted_date} "
-        "(leave between 7 and 7:10pm)!"
+        f"React to this message if you need a ride for Wednesday college fellowship {formatted_date} "
+        "(leave between 6:30 and 6:40pm)!"
     )
 
 
@@ -235,7 +235,23 @@ async def _ask_rides_template(
 @feature_flag_enabled(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
 async def run_ask_rides_wed(bot: Bot) -> None:
     """Runner for Wednesday rides message."""
-    await _ask_rides_template(bot, _make_wednesday_msg)
+    channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    raw_channel = bot.get_channel(channel_id)
+    if not isinstance(raw_channel, discord.TextChannel):
+        logger.warning(f"Channel not found with ID: {channel_id}")
+        return
+    channel: discord.TextChannel = raw_channel
+
+    await channel.send(
+        _format_message("for Wednesday college fellowship!"),
+        allowed_mentions=discord.AllowedMentions(roles=True),
+    )
+
+    sent_message = await _ask_rides_template(bot, _make_wednesday_msg)
+    if not sent_message:
+        return
+    for emoji in BOT_REACTIONS[JobName.FRIDAY]:
+        await sent_message.add_reaction(emoji)
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_FRIDAY_RIDES_JOB)
