@@ -76,6 +76,7 @@ class FeatureFlagNames(StrEnum):
 class JobName(StrEnum):
     """Job identifiers for ask-rides scheduled jobs. Single source of truth."""
 
+    WEDNESDAY = "wednesday"
     FRIDAY = "friday"
     SUNDAY = "sunday"
     SUNDAY_CLASS = "sunday_class"
