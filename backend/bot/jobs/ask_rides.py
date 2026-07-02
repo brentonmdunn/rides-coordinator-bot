@@ -112,7 +112,7 @@ def _make_wednesday_msg() -> str | None:
         return None
     return (
         f"React to this message if you need a ride for Wednesday college fellowship {formatted_date} "
-        "(leave between 6:30 and 6:40pm)!"
+        "(leave between 7 and 7:10pm)!"
     )
 
 
