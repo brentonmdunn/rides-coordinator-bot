@@ -156,6 +156,10 @@ def _format_message(message: str) -> str:
 
 
 RIDE_TYPES_CONFIG: dict[JobName, dict[str, str | discord.Color]] = {
+    JobName.WEDNESDAY: {
+        "title": "Rides to Wednesday Fellowship",
+        "color": discord.Color.from_rgb(100, 200, 150),  # Teal/Green
+    },
     JobName.FRIDAY: {
         "title": "Rides to Friday Fellowship",
         "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
