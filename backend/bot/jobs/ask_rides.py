@@ -112,7 +112,7 @@ def _make_wednesday_msg() -> str | None:
         return None
     return (
         f"React to this message if you need a ride for Wednesday college fellowship {formatted_date} "
-        "(leave between 6:30 and 6:40pm)!"
+        "(leave between 7 and 7:10pm)!"
     )
 
 
@@ -156,6 +156,10 @@ def _format_message(message: str) -> str:
 
 
 RIDE_TYPES_CONFIG: dict[JobName, dict[str, str | discord.Color]] = {
+    JobName.WEDNESDAY: {
+        "title": "Rides to Wednesday Fellowship",
+        "color": discord.Color.from_rgb(100, 200, 150),  # Teal/Green
+    },
     JobName.FRIDAY: {
         "title": "Rides to Friday Fellowship",
         "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
@@ -177,6 +181,7 @@ DEFAULT_RIDE_COLOR = discord.Color.default()
 # This is the single source of truth for bot reactions (used by both
 # job runners and API helpers to exclude bot reactions from user counts)
 BOT_REACTIONS = {
+    JobName.WEDNESDAY: [Emoji.FRIDAY_FELLOWSHIP],
     JobName.FRIDAY: [Emoji.FRIDAY_FELLOWSHIP],
     JobName.SUNDAY: [Emoji.LUNCH, Emoji.NO_LUNCH, Emoji.SOMETHING_ELSE],
     JobName.SUNDAY_CLASS: [Emoji.SUNDAY_CLASS],
@@ -257,7 +262,7 @@ async def run_ask_rides_wed(bot: Bot) -> None:
     sent_message = await _ask_rides_template(bot, _make_wednesday_msg)
     if not sent_message:
         return
-    for emoji in BOT_REACTIONS[JobName.FRIDAY]:
+    for emoji in BOT_REACTIONS[JobName.WEDNESDAY]:
         await sent_message.add_reaction(emoji)
 
     await run_ask_drivers_wed(bot)
