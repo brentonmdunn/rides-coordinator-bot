@@ -11,6 +11,8 @@ import { CalendarDays } from 'lucide-react'
 import { Button } from '../ui/button'
 import ConfirmDialog from '../ConfirmDialog'
 import { SectionCard } from '../shared'
+import { CollapsibleSection } from '../ui/collapsible'
+import MessageTemplatesEditor from './MessageTemplatesEditor'
 
 interface AskRidesDashboardProps {
     canManage: boolean
@@ -178,6 +180,16 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 
                         {/* Sunday Class */}
                         <StatusCard title="Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
+                    </div>
+                )}
+
+                {canManage && (
+                    <div className="mt-6">
+                        <CollapsibleSection title="Message Templates">
+                            <div className="p-4 sm:p-5">
+                                <MessageTemplatesEditor />
+                            </div>
+                        </CollapsibleSection>
                     </div>
                 )}
             <ConfirmDialog

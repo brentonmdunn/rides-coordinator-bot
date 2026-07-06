@@ -126,3 +126,54 @@ export type AccountRole = 'admin' | 'ride_coordinator' | 'viewer'
 export interface UserPreferences {
     show_map_labels: boolean
 }
+
+/**
+ * Identifiers for the four editable ask-rides Discord messages. Matches the
+ * backend `AskRidesMessageType` StrEnum values.
+ */
+export type AskRidesMessageType =
+    | 'wednesday_fellowship'
+    | 'friday_fellowship'
+    | 'sunday_service'
+    | 'sunday_class'
+
+/**
+ * A title/body/color template — either the currently-effective (possibly
+ * customized) version, or the pristine hardcoded default.
+ */
+export interface AskRidesMessageContent {
+    title: string
+    body: string
+    color: string
+}
+
+/**
+ * The effective template for one message type, as returned by
+ * `GET /api/ask-rides/messages` and by the PUT/DELETE mutation responses.
+ */
+export interface AskRidesMessageTemplate extends AskRidesMessageContent {
+    is_customized: boolean
+    default: AskRidesMessageContent
+}
+
+/**
+ * Response envelope for `GET /api/ask-rides/messages`.
+ */
+export interface AskRidesMessagesResponse {
+    templates: Record<AskRidesMessageType, AskRidesMessageTemplate>
+    allowed_colors: string[]
+    allowed_placeholders: Record<AskRidesMessageType, string[]>
+}
+
+/**
+ * Response for `GET /api/ask-rides/coordinator` and the body/response shape
+ * for `PUT /api/ask-rides/coordinator`.
+ */
+export interface AskRidesCoordinator {
+    user_id: string | null
+    configured: boolean
+    username?: string
+    /** Only present on GET when the bot could resolve the user. */
+    display_name?: string
+    warning?: string
+}
