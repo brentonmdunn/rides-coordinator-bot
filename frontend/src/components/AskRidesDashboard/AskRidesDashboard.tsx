@@ -16,9 +16,12 @@ interface AskRidesDashboardProps {
     canManage: boolean
 }
 
+type SendNowScope = 'fellowship' | 'sunday' | 'both'
+
 function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const [showInfo, setShowInfo] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
+    const [sendScope, setSendScope] = useState<SendNowScope>('both')
     const queryClient = useQueryClient()
 
     const {
@@ -44,9 +47,11 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const season = seasonData?.season ?? 'friday'
 
     const sendNowMutation = useMutation({
-        mutationFn: async () => {
+        mutationFn: async (scope: SendNowScope) => {
             const response = await apiFetch('/api/ask-rides/send-now', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scope }),
             })
             return response.json()
         },
@@ -57,8 +62,10 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 
     const handleSendNow = () => {
         setShowConfirm(false)
-        sendNowMutation.mutate()
+        sendNowMutation.mutate(sendScope)
     }
+
+    const fellowshipLabel = season === 'wednesday' ? 'Wed. Fellowship' : 'Fri. Fellowship'
 
     const askRidesError = error instanceof Error ? error.message : ''
 
@@ -70,7 +77,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                 <>
                     {canManage && (
                         <Button
-                            onClick={() => setShowConfirm(true)}
+                            onClick={() => { setSendScope('both'); setShowConfirm(true) }}
                             disabled={sendNowMutation.isPending}
                             variant="warning"
                             size="sm"
@@ -96,7 +103,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
         >
                 {canManage && (
                     <Button
-                        onClick={() => setShowConfirm(true)}
+                        onClick={() => { setSendScope('both'); setShowConfirm(true) }}
                         disabled={sendNowMutation.isPending}
                         variant="warning"
                         size="sm"
@@ -143,7 +150,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                         </li>
                     </ul>
                     <p className="mt-3 text-sm text-muted-foreground">
-                        Use the <span className="font-medium">⏸️ Pause</span> / <span className="font-medium">▶️ Resume</span> buttons on each card to temporarily skip a job. Use the <span className="font-medium">📨 Send now</span> button to manually trigger all ask rides messages if the scheduled send was missed (e.g. due to a service crash).
+                        Use the <span className="font-medium">⏸️ Pause</span> / <span className="font-medium">▶️ Resume</span> buttons on each card to temporarily skip a job. Use the <span className="font-medium">📨 Send now</span> button to manually trigger ask rides messages if the scheduled send was missed (e.g. due to a service crash) — you can choose to send just the fellowship message, just Sunday, or both.
                     </p>
                 </InfoPanel>
 
@@ -183,11 +190,36 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
             <ConfirmDialog
                 isOpen={showConfirm}
                 title="Send rides messages now?"
-                description="This will immediately send the ask rides messages to the announcements channel. This action cannot be undone."
+                description="This will immediately send the selected ask rides messages to the announcements channel. This action cannot be undone."
                 confirmText="Yes, send now"
                 onConfirm={handleSendNow}
                 onCancel={() => setShowConfirm(false)}
-            />
+            >
+                <div className="flex flex-col gap-1.5 py-2">
+                    {(
+                        [
+                            { value: 'fellowship', label: fellowshipLabel },
+                            { value: 'sunday', label: 'Sunday (service + class)' },
+                            { value: 'both', label: 'Both' },
+                        ] as const
+                    ).map((option) => (
+                        <label
+                            key={option.value}
+                            className="flex items-center gap-2 rounded-md border border-border px-3 py-2 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                        >
+                            <input
+                                type="radio"
+                                name="send-now-scope"
+                                value={option.value}
+                                checked={sendScope === option.value}
+                                onChange={() => setSendScope(option.value)}
+                                className="accent-primary"
+                            />
+                            <span className="text-sm">{option.label}</span>
+                        </label>
+                    ))}
+                </div>
+            </ConfirmDialog>
         </SectionCard>
     )
 }
