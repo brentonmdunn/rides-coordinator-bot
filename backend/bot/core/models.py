@@ -13,7 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.core.base import Base
-from bot.core.enums import AccountRoles, JobName
+from bot.core.enums import AccountRoles, AskRidesMessageType, JobName
 
 
 class DiscordUsers(Base):
@@ -160,6 +160,24 @@ class GlobalSetting(Base):
 
     key: Mapped[str] = mapped_column(primary_key=True)
     value: Mapped[str]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class AskRidesMessageTemplate(Base):
+    """Model representing a customized ask-rides message template (title/body/color)."""
+
+    __tablename__ = "ask_rides_message_templates"
+
+    # values_callable stores StrEnum .value (lowercase string) instead of the default .name
+    # (uppercase), matching what was written when role was a plain String column.
+    message_type: Mapped[AskRidesMessageType] = mapped_column(
+        SQLEnum(AskRidesMessageType, values_callable=lambda obj: [e.value for e in obj]),
+        primary_key=True,
+    )
+    title: Mapped[str]
+    body: Mapped[str]
+    color: Mapped[str]
+    updated_by: Mapped[str]
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
 
