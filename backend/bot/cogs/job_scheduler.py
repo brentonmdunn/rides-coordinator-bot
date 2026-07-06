@@ -54,7 +54,7 @@ class JobScheduler(commands.Cog):
 
         self.scheduler.add_job(
             run_ask_rides_wed,
-            CronTrigger(day_of_week="mon", hour=11, minute=30),
+            CronTrigger(day_of_week="mon", hour=11, minute=0),
             id="run_ask_rides_wed",
             args=[bot],
         )
