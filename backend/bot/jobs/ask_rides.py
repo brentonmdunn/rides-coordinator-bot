@@ -5,8 +5,7 @@ Scheduled jobs for asking for rides.
 """
 
 import logging
-import os
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
 import discord
@@ -14,10 +13,12 @@ from discord.ext.commands import Bot
 
 from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
+    AskRidesMessageType,
     CacheNamespace,
     ChannelIds,
     DaysOfWeek,
     DaysOfWeekNumber,
+    EmbedColorChoice,
     Emoji,
     FeatureFlagNames,
     JobName,
@@ -29,6 +30,8 @@ from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun, run_a
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
+from bot.services.ask_rides_messages_service import AskRidesMessagesService
+from bot.services.ride_coordinator_service import RideCoordinatorService
 from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.constants import (
@@ -36,8 +39,9 @@ from bot.utils.constants import (
     ASK_RIDES_HOURLY_CACHE_TTL,
     ASK_RIDES_MESSAGE_HISTORY_LIMIT,
     ASK_RIDES_OFF_HOURS_CACHE_TTL,
+    EMBED_COLOR_MAP,
 )
-from bot.utils.format_message import ping_role_with_message, ping_user
+from bot.utils.format_message import ping_role_with_message
 from bot.utils.time_helpers import (
     LA_TZ,
     get_current_cycle_start,
@@ -105,77 +109,66 @@ def _get_dynamic_ttl() -> int:
     return ASK_RIDES_OFF_HOURS_CACHE_TTL  # 7 hours during off-hours
 
 
-def _make_wednesday_msg() -> str | None:
+RenderedTemplate = tuple[str, str, discord.Color]
+
+
+async def _render_effective_template(
+    message_type: AskRidesMessageType, date_str: str, *, ping_text: str = ""
+) -> RenderedTemplate:
+    """Fetch the effective (customized or default) template and render it for sending."""
+    template = await AskRidesMessagesService.get_effective_template(message_type)
+    title, body = AskRidesMessagesService.render(
+        template, message_type, date_str=date_str, ping_text=ping_text
+    )
+    try:
+        color = EMBED_COLOR_MAP[EmbedColorChoice(template.color)]
+    except ValueError:
+        logger.warning("Unknown embed color %r for %s; using default", template.color, message_type)
+        color = discord.Color.default()
+    return title, body, color
+
+
+async def _make_wednesday_msg() -> RenderedTemplate | None:
     """Create message for Wednesday rides."""
     formatted_date: str = get_next_date_str(DaysOfWeekNumber.WEDNESDAY)
     if _is_wildcard_date(formatted_date):
         return None
-    return (
-        f"React to this message if you need a ride for Wednesday college fellowship {formatted_date} "
-        "(leave between 7 and 7:10pm)!"
+    return await _render_effective_template(
+        AskRidesMessageType.WEDNESDAY_FELLOWSHIP, formatted_date
     )
 
 
-def _make_friday_msg() -> str | None:
+async def _make_friday_msg() -> RenderedTemplate | None:
     """Create message for Friday rides."""
     formatted_date: str = get_next_date_str(DaysOfWeekNumber.FRIDAY)
     if _is_wildcard_date(formatted_date):
         return None
-    return (
-        f"React to this message if you need a ride for Friday night fellowship {formatted_date} "
-        "(leave between 7 and 7:10pm)!"
-    )
+    return await _render_effective_template(AskRidesMessageType.FRIDAY_FELLOWSHIP, formatted_date)
 
 
-def _make_sunday_msg() -> str | None:
+async def _make_sunday_msg() -> RenderedTemplate | None:
     """Create message for Sunday service rides."""
     formatted_date: str = get_next_date_str(DaysOfWeekNumber.SUNDAY)
     if _is_wildcard_date(formatted_date):
         return None
-    return (
-        f"React to this message if you need a ride for Sunday service {formatted_date} (leave between 10 and 10:10am)!\n\n"
-        "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
-        "🏠 = ride to church and back to campus/apt (arrive back ~1:00pm)\n"
-        f"✳️ = something else (please DM {ping_user(int(os.getenv('MAIN_RIDES_COORD_USER_ID', '0')))})"
+    ping_text, _configured = await RideCoordinatorService.resolve_ping_text()
+    return await _render_effective_template(
+        AskRidesMessageType.SUNDAY_SERVICE,
+        formatted_date,
+        ping_text=ping_text,
     )
 
 
-def _make_sunday_msg_class() -> str | None:
+async def _make_sunday_msg_class() -> RenderedTemplate | None:
     """Create message for Sunday class rides."""
     formatted_date: str = get_next_date_str(DaysOfWeekNumber.SUNDAY)
-    return (
-        f"React to this message if you need a ride to Bible Theology Class on Sunday "
-        f"{formatted_date} (leave between 8:30 and 8:40am). "
-        "Make sure to also react to the message below for 🍔, 🏠, or ✳️."
-    )
+    return await _render_effective_template(AskRidesMessageType.SUNDAY_CLASS, formatted_date)
 
 
 def _format_message(message: str) -> str:
     """Adds @Rides to message."""
     return ping_role_with_message(RoleIds.RIDES, message)
 
-
-RIDE_TYPES_CONFIG: dict[JobName, dict[str, str | discord.Color]] = {
-    JobName.WEDNESDAY: {
-        "title": "Rides to Wednesday Fellowship",
-        "color": discord.Color.from_rgb(100, 200, 150),  # Teal/Green
-    },
-    JobName.FRIDAY: {
-        "title": "Rides to Friday Fellowship",
-        "color": discord.Color.from_rgb(227, 132, 212),  # Pink/Magenta
-    },
-    JobName.SUNDAY_CLASS: {
-        "title": "Rides to Bible Theology Class",
-        "color": discord.Color.blurple(),
-    },
-    JobName.SUNDAY: {
-        "title": "Rides to Sunday Service",
-        "color": discord.Color.blue(),
-    },
-}
-
-DEFAULT_RIDE_TITLE = "Rides Announcement"
-DEFAULT_RIDE_COLOR = discord.Color.default()
 
 # Emojis that the bot automatically adds to each message type
 # This is the single source of truth for bot reactions (used by both
@@ -190,7 +183,7 @@ BOT_REACTIONS = {
 
 async def _ask_rides_template(
     bot: Bot,
-    make_message: Callable[[], str | None],  # More specific type hint
+    make_message: Callable[[], Awaitable[RenderedTemplate | None]],
     channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
 ) -> discord.Message | None:
     """
@@ -202,29 +195,15 @@ async def _ask_rides_template(
         return None
     channel: discord.TextChannel = raw_channel
 
-    message: str | None = make_message()
-    if not message:
+    rendered = await make_message()
+    if not rendered:
         logger.error("make_message() returned None, skipping message send.")
         return None
-
-    title: str = DEFAULT_RIDE_TITLE
-    color: discord.Color = DEFAULT_RIDE_COLOR
-
-    message_lower = message.lower()
-
-    for keyword, config in RIDE_TYPES_CONFIG.items():
-        if keyword in message_lower:
-            cfg_title = config["title"]
-            cfg_color = config["color"]
-            if isinstance(cfg_title, str):
-                title = cfg_title
-            if isinstance(cfg_color, discord.Color):
-                color = cfg_color
-            break
+    title, body, color = rendered
 
     embed = discord.Embed(
         title=title,
-        description=message,
+        description=body,
         color=color,
     )
 

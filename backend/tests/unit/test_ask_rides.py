@@ -1,14 +1,19 @@
 """Unit tests for bot.jobs.ask_rides (wildcard dates, message builders)."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+import pytest
+
+from bot.core.enums import AskRidesMessageType, EmbedColorChoice
 from bot.jobs.ask_rides import (
     WILDCARD_DATES,
     _is_wildcard_date,
     _make_friday_msg,
     _make_sunday_msg,
+    _make_sunday_msg_class,
     _make_wednesday_msg,
 )
+from bot.services.ask_rides_messages_service import EffectiveTemplate
 
 
 class TestIsWildcardDate:
@@ -49,62 +54,211 @@ class TestWildcardDates:
         assert len(WILDCARD_DATES) > 0
 
 
+def _default_template() -> EffectiveTemplate:
+    return EffectiveTemplate(
+        title="Rides to Wednesday Fellowship",
+        body="React to this message if you need a ride for Wednesday college fellowship {date} (leave between 7 and 7:10pm)!",
+        color=EmbedColorChoice.TEAL.value,
+        is_customized=False,
+    )
+
+
+def _custom_template() -> EffectiveTemplate:
+    return EffectiveTemplate(
+        title="Custom Wednesday Title",
+        body="Custom body with {date}!",
+        color=EmbedColorChoice.RED.value,
+        is_customized=True,
+    )
+
+
 class TestMakeWednesdayMsg:
     """Tests for _make_wednesday_msg."""
 
+    @pytest.mark.asyncio
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/22")
-    def test_returns_message(self, mock_date, mock_wildcard):
-        result = _make_wednesday_msg()
+    @patch(
+        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        new_callable=AsyncMock,
+    )
+    async def test_returns_default_message(self, mock_get_template, mock_date, mock_wildcard):
+        mock_get_template.return_value = _default_template()
+        result = await _make_wednesday_msg()
         assert result is not None
-        assert "Wednesday" in result
-        assert "4/22" in result
-        assert "college fellowship" in result
+        title, body, _color = result
+        assert title == "Rides to Wednesday Fellowship"
+        assert "4/22" in body
+        assert "college fellowship" in body
+        mock_get_template.assert_awaited_once_with(AskRidesMessageType.WEDNESDAY_FELLOWSHIP)
 
+    @pytest.mark.asyncio
+    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
+    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/22")
+    @patch(
+        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        new_callable=AsyncMock,
+    )
+    async def test_uses_customized_template_when_present(
+        self, mock_get_template, mock_date, mock_wildcard
+    ):
+        mock_get_template.return_value = _custom_template()
+        result = await _make_wednesday_msg()
+        assert result is not None
+        title, body, _color = result
+        assert title == "Custom Wednesday Title"
+        assert body == "Custom body with 4/22!"
+
+    @pytest.mark.asyncio
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=True)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="6/20")
-    def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
-        assert _make_wednesday_msg() is None
+    async def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
+        assert await _make_wednesday_msg() is None
 
 
 class TestMakeFridayMsg:
     """Tests for _make_friday_msg."""
 
+    @pytest.mark.asyncio
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/24")
-    def test_returns_message(self, mock_date, mock_wildcard):
-        result = _make_friday_msg()
-        assert result is not None
-        assert "Friday" in result
-        assert "4/24" in result
-        assert "fellowship" in result
+    @patch(
+        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        new_callable=AsyncMock,
+    )
+    async def test_returns_message(self, mock_get_template, mock_date, mock_wildcard):
+        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 
+        template = DEFAULT_TEMPLATES[AskRidesMessageType.FRIDAY_FELLOWSHIP]
+        mock_get_template.return_value = EffectiveTemplate(
+            title=template.title,
+            body=template.body,
+            color=template.color.value,
+            is_customized=False,
+        )
+        result = await _make_friday_msg()
+        assert result is not None
+        title, body, _color = result
+        assert "Friday" in title
+        assert "4/24" in body
+        assert "fellowship" in body
+
+    @pytest.mark.asyncio
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=True)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="6/27")
-    def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
-        assert _make_friday_msg() is None
+    async def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
+        assert await _make_friday_msg() is None
 
 
 class TestMakeSundayMsg:
     """Tests for _make_sunday_msg."""
 
+    @pytest.mark.asyncio
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/26")
-    def test_returns_message(self, mock_date, mock_wildcard):
-        result = _make_sunday_msg()
-        assert result is not None
-        assert "Sunday" in result
-        assert "4/26" in result
+    @patch(
+        "bot.jobs.ask_rides.RideCoordinatorService.resolve_ping_text",
+        new_callable=AsyncMock,
+        return_value=("@coordinator", True),
+    )
+    @patch(
+        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        new_callable=AsyncMock,
+    )
+    async def test_returns_message(self, mock_get_template, mock_ping, mock_date, mock_wildcard):
+        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 
+        template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_SERVICE]
+        mock_get_template.return_value = EffectiveTemplate(
+            title=template.title,
+            body=template.body,
+            color=template.color.value,
+            is_customized=False,
+        )
+        result = await _make_sunday_msg()
+        assert result is not None
+        title, body, _color = result
+        assert "Sunday" in title
+        assert "4/26" in body
+
+    @pytest.mark.asyncio
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=True)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="6/29")
-    def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
-        assert _make_sunday_msg() is None
+    async def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
+        assert await _make_sunday_msg() is None
 
+    @pytest.mark.asyncio
     @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
     @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/26")
-    def test_message_contains_emojis(self, mock_date, mock_wildcard):
-        result = _make_sunday_msg()
+    @patch(
+        "bot.jobs.ask_rides.RideCoordinatorService.resolve_ping_text",
+        new_callable=AsyncMock,
+        return_value=("@coordinator", True),
+    )
+    @patch(
+        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        new_callable=AsyncMock,
+    )
+    async def test_message_contains_emojis(
+        self, mock_get_template, mock_ping, mock_date, mock_wildcard
+    ):
+        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+
+        template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_SERVICE]
+        mock_get_template.return_value = EffectiveTemplate(
+            title=template.title,
+            body=template.body,
+            color=template.color.value,
+            is_customized=False,
+        )
+        result = await _make_sunday_msg()
         assert result is not None
-        assert "🍔" in result
-        assert "🏠" in result
+        _title, body, _color = result
+        assert "🍔" in body
+        assert "🏠" in body
+        assert "@coordinator" in body
+
+
+class TestMakeSundayMsgClass:
+    """Tests for _make_sunday_msg_class."""
+
+    @pytest.mark.asyncio
+    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/27")
+    @patch(
+        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        new_callable=AsyncMock,
+    )
+    async def test_uses_customized_template_when_present(self, mock_get_template, mock_date):
+        mock_get_template.return_value = EffectiveTemplate(
+            title="Custom Class Title",
+            body="Custom class body {date}",
+            color=EmbedColorChoice.PURPLE.value,
+            is_customized=True,
+        )
+        result = await _make_sunday_msg_class()
+        assert result is not None
+        title, body, _color = result
+        assert title == "Custom Class Title"
+        assert body == "Custom class body 4/27"
+
+    @pytest.mark.asyncio
+    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/27")
+    @patch(
+        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        new_callable=AsyncMock,
+    )
+    async def test_uses_default_when_not_customized(self, mock_get_template, mock_date):
+        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+
+        template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_CLASS]
+        mock_get_template.return_value = EffectiveTemplate(
+            title=template.title,
+            body=template.body,
+            color=template.color.value,
+            is_customized=False,
+        )
+        result = await _make_sunday_msg_class()
+        assert result is not None
+        title, body, _color = result
+        assert title == "Rides to Bible Theology Class"
+        assert "4/27" in body
