@@ -19,13 +19,14 @@ from bot.core.enums import (
     FeatureFlagNames,
     JobName,
 )
-from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
+from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
 from bot.repositories.global_settings_repository import GlobalSettingsRepository
 from bot.services.feature_flags_service import FeatureFlagsService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
 from bot.services.non_discord_rides_service import NonDiscordRidesService
 from bot.utils.cache import invalidate_namespace
+from bot.utils.constants import FELLOWSHIP_SEASON_KEY
 from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
 logger = logging.getLogger(__name__)
@@ -42,24 +43,40 @@ class PauseRequest(BaseModel):
     )
 
 
+class SendNowRequest(BaseModel):
+    """Request body for manually triggering ask rides messages."""
+
+    scope: Literal["fellowship", "sunday", "both"] = Field(
+        default="both",
+        description=(
+            "Which messages to send: 'fellowship' (Wed or Fri, whichever season is active), "
+            "'sunday' (Sunday service + class), or 'both'."
+        ),
+    )
+
+
 @router.post(
     "/send-now",
     dependencies=[Depends(require_ride_coordinator)],
     summary="Manually Trigger Ask Rides",
-    description="Manually trigger all ask rides messages immediately.",
+    description="Manually trigger ask rides messages immediately for the requested scope.",
 )
-async def send_now():
+async def send_now(request: SendNowRequest | None = None):
     """
-    Manually trigger all ask rides messages immediately.
+    Manually trigger ask rides messages immediately.
 
-    This calls the same run_ask_rides_all function used by the scheduler,
-    useful when the scheduled send was missed (e.g. due to a service crash).
+    This calls the same job runners used by the scheduler, useful when the
+    scheduled send was missed (e.g. due to a service crash).
     """
     bot = require_ready_bot()
+    scope = request.scope if request else "both"
 
     try:
-        await run_ask_rides_all(bot)
-        return {"success": True, "message": "Ask rides messages sent successfully"}
+        await run_ask_rides_manual(bot, scope)
+        return {
+            "success": True,
+            "message": f"Ask rides messages sent successfully ({scope})",
+        }
     except Exception as e:
         logger.exception("Error sending ask rides messages manually")
         raise HTTPException(status_code=500, detail=f"Failed to send messages: {e!s}") from e
@@ -227,9 +244,6 @@ async def get_upcoming_dates(
         next_date += timedelta(weeks=1)
 
     return {"dates": dates, "has_more": True}
-
-
-FELLOWSHIP_SEASON_KEY = "fellowship_season"
 
 
 @router.get(
