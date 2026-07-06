@@ -8,6 +8,7 @@ import logging
 import os
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Literal
 
 import discord
 from discord.ext.commands import Bot
@@ -28,6 +29,7 @@ from bot.core.logger import log_job
 from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun, run_ask_drivers_wed
 from bot.repositories.calendar_repository import CalendarRepository
 from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from bot.repositories.global_settings_repository import GlobalSettingsRepository
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
 from bot.utils.checks import feature_flag_enabled
@@ -36,6 +38,7 @@ from bot.utils.constants import (
     ASK_RIDES_HOURLY_CACHE_TTL,
     ASK_RIDES_MESSAGE_HISTORY_LIMIT,
     ASK_RIDES_OFF_HOURS_CACHE_TTL,
+    FELLOWSHIP_SEASON_KEY,
 )
 from bot.utils.format_message import ping_role_with_message, ping_user
 from bot.utils.time_helpers import (
@@ -480,6 +483,62 @@ async def run_ask_rides_all(
     await run_ask_drivers_sun(bot, drivers_channel_id)
 
     # Invalidate and warm driver caches since new messages were sent
+    await warm_ask_drivers_message_cache(bot)
+
+
+async def _get_active_fellowship_job() -> JobName:
+    """Return which fellowship job (Wednesday or Friday) is active per the global season setting."""
+    async with AsyncSessionLocal() as session:
+        season = await GlobalSettingsRepository.get(session, FELLOWSHIP_SEASON_KEY)
+    return JobName.WEDNESDAY if season == "wednesday" else JobName.FRIDAY
+
+
+async def _run_ask_rides_fellowship_group(
+    bot: Bot,
+    rides_channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+) -> None:
+    """Send the fellowship rides message for whichever season (Wed or Fri) is active."""
+    if await _get_active_fellowship_job() == JobName.WEDNESDAY:
+        await run_ask_rides_wed(bot)
+    else:
+        await run_ask_rides_fri(bot, rides_channel_id)
+        await run_ask_drivers_fri(bot, drivers_channel_id)
+
+
+async def _run_ask_rides_sunday_group(
+    bot: Bot,
+    rides_channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+) -> None:
+    """Send both Sunday service and Sunday class rides messages."""
+    await run_ask_rides_sun_class(bot, rides_channel_id)
+    await run_ask_rides_sun(bot, rides_channel_id)
+    await run_ask_drivers_sun(bot, drivers_channel_id)
+
+
+@log_job
+async def run_ask_rides_manual(
+    bot: Bot,
+    scope: Literal["fellowship", "sunday", "both"] = "both",
+    rides_channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+) -> None:
+    """
+    Manually send ask rides messages for the requested scope.
+
+    Used by the dashboard's "Send now" action, which lets a coordinator choose to
+    resend just the fellowship message (Wed or Fri, whichever season is active),
+    just the Sunday messages (service + class), or both.
+    """
+    await run_ask_rides_header(bot, rides_channel_id)
+
+    if scope in ("fellowship", "both"):
+        await _run_ask_rides_fellowship_group(bot, rides_channel_id, drivers_channel_id)
+    if scope in ("sunday", "both"):
+        await _run_ask_rides_sunday_group(bot, rides_channel_id, drivers_channel_id)
+
+    await warm_ask_rides_message_cache(bot, rides_channel_id)
     await warm_ask_drivers_message_cache(bot)
 
 
