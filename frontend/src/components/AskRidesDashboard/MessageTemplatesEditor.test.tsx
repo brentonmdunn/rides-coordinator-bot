@@ -227,6 +227,57 @@ describe("MessageTemplatesEditor", () => {
     expect(await within(card).findByText("Customized")).toBeInTheDocument()
   })
 
+  it("shows an unsaved-changes badge while editing and clears it after saving", async () => {
+    const user = userEvent.setup()
+    renderEditor()
+
+    const heading = await screen.findByRole("heading", { name: "Wed. Fellowship" })
+    const card = heading.closest("div")!.parentElement as HTMLElement
+
+    // Pristine card: no badge, Save disabled.
+    expect(within(card).queryByText("Unsaved changes")).not.toBeInTheDocument()
+    expect(within(card).getByRole("button", { name: "Save" })).toBeDisabled()
+
+    await user.type(within(card).getByLabelText("Title"), " edited")
+
+    expect(within(card).getByText("Unsaved changes")).toBeInTheDocument()
+    expect(within(card).getByRole("button", { name: "Save" })).toBeEnabled()
+
+    await user.click(within(card).getByRole("button", { name: "Save" }))
+
+    await waitFor(() => expect(within(card).queryByText("Unsaved changes")).not.toBeInTheDocument())
+  })
+
+  it("undoes local edits back to the last-saved value, not the default", async () => {
+    serverTemplates.wednesday_fellowship = defaultTemplate({
+      title: "Customized Wednesday Title",
+      is_customized: true,
+    })
+    const user = userEvent.setup()
+    renderEditor()
+
+    const heading = await screen.findByRole("heading", { name: "Wed. Fellowship" })
+    const card = heading.closest("div")!.parentElement as HTMLElement
+    await within(card).findByDisplayValue("Customized Wednesday Title")
+
+    // No undo button while pristine.
+    expect(within(card).queryByRole("button", { name: "Undo changes" })).not.toBeInTheDocument()
+
+    const titleInput = within(card).getByLabelText("Title")
+    await user.clear(titleInput)
+    await user.type(titleInput, "Scratch edit")
+
+    await user.click(within(card).getByRole("button", { name: "Undo changes" }))
+
+    // Back to the saved customization — not the built-in default title.
+    expect(within(card).getByDisplayValue("Customized Wednesday Title")).toBeInTheDocument()
+    expect(within(card).queryByText("Unsaved changes")).not.toBeInTheDocument()
+    expect(apiFetch).not.toHaveBeenCalledWith(
+      "/api/ask-rides/messages/wednesday_fellowship",
+      expect.objectContaining({ method: "PUT" }),
+    )
+  })
+
   it("adds and removes reaction emojis and includes them in the PUT body", async () => {
     const user = userEvent.setup()
     renderEditor()

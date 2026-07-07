@@ -83,6 +83,22 @@ function swatchColor(colorKey: string): string {
     return COLOR_SWATCH_MAP[colorKey] ?? FALLBACK_SWATCH_COLOR
 }
 
+// ── Unsaved-changes indicator ────────────────────────────────────────────
+
+function UnsavedChangesBadge() {
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-warning/10 text-warning-text border border-warning/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />
+            Unsaved changes
+        </span>
+    )
+}
+
+/** Border/ring classes that make a whole card visibly "dirty". */
+function dirtyCardClasses(dirty: boolean): string {
+    return dirty ? 'border-warning/50 ring-1 ring-warning/30' : 'border-border'
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function formatNextEventDate(isoDate: string): string {
@@ -267,21 +283,38 @@ function MessageTemplateCard({ config, template, allowedColors, maxReactions }: 
         setDirty(true)
     }
 
+    // Discards local edits back to the latest server value (not the default).
+    // Also resolves a remote conflict by adopting the newer server version.
+    const handleUndo = () => {
+        setTitle(template.title)
+        setBody(template.body)
+        setColor(template.color)
+        setReactions(template.reactions)
+        setEmojiInput('')
+        baseline.current = template
+        setDirty(false)
+        setRemoteConflict(false)
+    }
+
     const canSave =
+        dirty &&
         title.trim().length > 0 &&
         body.trim().length > 0 &&
         reactions.length > 0 &&
         !saveMutation.isPending
 
     return (
-        <div className="bg-card rounded-lg border border-border p-5 shadow-sm">
+        <div className={`bg-card rounded-lg border p-5 shadow-sm transition-colors ${dirtyCardClasses(dirty)}`}>
             <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="text-lg font-semibold text-foreground">{config.label}</h3>
-                {template.is_customized && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-info/15 text-info-text border border-info/30">
-                        Customized
-                    </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                    {dirty && <UnsavedChangesBadge />}
+                    {template.is_customized && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-info/15 text-info-text border border-info/30">
+                            Customized
+                        </span>
+                    )}
+                </div>
             </div>
 
             {remoteConflict && (
@@ -432,14 +465,21 @@ function MessageTemplateCard({ config, template, allowedColors, maxReactions }: 
                 >
                     ↩ Reset to default
                 </Button>
-                <Button
-                    type="button"
-                    onClick={() => saveMutation.mutate()}
-                    disabled={!canSave}
-                    size="sm"
-                >
-                    {saveMutation.isPending ? 'Saving...' : 'Save'}
-                </Button>
+                <div className="flex items-center gap-2">
+                    {dirty && (
+                        <Button type="button" onClick={handleUndo} variant="outline" size="sm">
+                            Undo changes
+                        </Button>
+                    )}
+                    <Button
+                        type="button"
+                        onClick={() => saveMutation.mutate()}
+                        disabled={!canSave}
+                        size="sm"
+                    >
+                        {saveMutation.isPending ? 'Saving...' : 'Save'}
+                    </Button>
+                </div>
             </div>
 
             {saveMutation.isError && (
@@ -536,16 +576,25 @@ function ScheduleSlotRow({ config, entry, allowedDays, timeWindow, isInactive }:
         setDirty(true)
     }
 
-    const canSave = !Number.isNaN(hour) && !Number.isNaN(minute) && !saveMutation.isPending
+    // Discards local edits back to the latest server value (not the default).
+    const handleUndo = () => {
+        setDayOfWeek(entry.day_of_week)
+        setTime(toTimeInputValue(entry.hour, entry.minute))
+        baseline.current = entry
+        setDirty(false)
+    }
+
+    const canSave = dirty && !Number.isNaN(hour) && !Number.isNaN(minute) && !saveMutation.isPending
 
     return (
-        <div className="rounded-md bg-muted/50 border border-border p-4">
+        <div className={`rounded-md bg-muted/50 border p-4 transition-colors ${dirtyCardClasses(dirty)}`}>
             <div className="flex items-center justify-between gap-2 mb-3">
                 <div>
                     <h4 className="font-semibold text-foreground">{config.label}</h4>
                     <p className="text-xs text-muted-foreground">{config.description}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
+                    {dirty && <UnsavedChangesBadge />}
                     {isInactive && (
                         <span
                             title="This job is disabled by the current fellowship season setting."
@@ -612,6 +661,11 @@ function ScheduleSlotRow({ config, entry, allowedDays, timeWindow, isInactive }:
                 >
                     ↩ Reset to default
                 </Button>
+                {dirty && (
+                    <Button type="button" onClick={handleUndo} variant="outline" size="sm">
+                        Undo changes
+                    </Button>
+                )}
                 <Button type="button" onClick={() => saveMutation.mutate()} disabled={!canSave} size="sm">
                     {saveMutation.isPending ? 'Saving...' : 'Save'}
                 </Button>
@@ -755,8 +809,11 @@ function CoordinatorSettingCard() {
     if (isLoading) return null
 
     return (
-        <div className="bg-card rounded-lg border border-border p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-1">Main rides coordinator</h3>
+        <div className={`bg-card rounded-lg border p-5 shadow-sm transition-colors ${dirtyCardClasses(dirty)}`}>
+            <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-foreground">Main rides coordinator</h3>
+                {dirty && <UnsavedChangesBadge />}
+            </div>
             <p className="text-sm text-muted-foreground mb-3">
                 The Discord user mentioned by <code className="text-xs bg-muted px-1 py-0.5 rounded">{'{ping}'}</code> in the Sunday service message.
             </p>
@@ -788,10 +845,23 @@ function CoordinatorSettingCard() {
                         {data.display_name ?? `@${data.username}`}
                     </span>
                 )}
+                {dirty && (
+                    <Button
+                        type="button"
+                        onClick={() => {
+                            setUserId(data?.user_id ?? '')
+                            setDirty(false)
+                        }}
+                        variant="outline"
+                        size="sm"
+                    >
+                        Undo changes
+                    </Button>
+                )}
                 <Button
                     type="button"
                     onClick={() => saveMutation.mutate()}
-                    disabled={userId.trim().length === 0 || saveMutation.isPending}
+                    disabled={!dirty || userId.trim().length === 0 || saveMutation.isPending}
                     size="sm"
                 >
                     {saveMutation.isPending ? 'Saving...' : 'Save'}
