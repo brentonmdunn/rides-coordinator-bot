@@ -44,7 +44,7 @@ function PageHeader({
                 )}
             </div>
             {actions != null && (
-                <div className="flex items-center gap-2 justify-center md:justify-end">
+                <div className="flex flex-wrap items-center gap-2 justify-center md:justify-end">
                     {actions}
                 </div>
             )}

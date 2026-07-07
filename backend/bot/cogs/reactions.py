@@ -13,6 +13,7 @@ from bot.core.enums import (
     ReactionAction,
 )
 from bot.core.logger import generate_txn_id, txn_id_var
+from bot.services.late_reaction_windows_service import LateReactionWindowsService
 from bot.services.reaction_logging_service import ReactionLoggingService
 from bot.services.ride_reaction_log_service import RideReactionLogService
 from bot.services.ride_request_service import RideRequestService
@@ -363,11 +364,10 @@ class Reactions(commands.Cog):
             Only logs reactions in the rides announcements channel during target windows.
         """
         message_content = get_message_and_embed_content(message)
-        if (
-            payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
-            and is_during_late_reaction_window(message_content)
-        ):
-            await self.logging_service.log_late_ride_reaction(user, payload, message, action)
+        if payload.channel_id == ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS:
+            windows = await LateReactionWindowsService.get_windows()
+            if is_during_late_reaction_window(message_content, windows):
+                await self.logging_service.log_late_ride_reaction(user, payload, message, action)
 
     @feature_flag_enabled(FeatureFlagNames.LOG_REACTIONS, enable_logs=False)
     async def _log_reactions(

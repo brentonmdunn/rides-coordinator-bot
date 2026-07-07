@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytz
 
 from bot.core.enums import DaysOfWeek, DaysOfWeekNumber
+from bot.services.late_reaction_windows_service import DEFAULT_LATE_REACTION_WINDOWS
 from bot.utils.time_helpers import (
     LA_TZ,
     get_current_cycle_start,
@@ -16,6 +17,7 @@ from bot.utils.time_helpers import (
     get_send_wednesday,
     is_active_hours,
     is_during_late_reaction_window,
+    is_in_late_reaction_window,
     is_in_ride_day_window,
 )
 
@@ -383,32 +385,77 @@ class TestIsDuringLateReactionWindow:
     @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_friday_message_in_window(self, mock_window):
         mock_window.return_value = True
-        assert is_during_late_reaction_window("React for Friday fellowship 4/24") is True
+        assert (
+            is_during_late_reaction_window(
+                "React for Friday fellowship 4/24", DEFAULT_LATE_REACTION_WINDOWS
+            )
+            is True
+        )
 
     @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_sunday_message_in_window(self, mock_window):
         mock_window.return_value = True
-        assert is_during_late_reaction_window("React for Sunday service 4/26") is True
+        assert (
+            is_during_late_reaction_window(
+                "React for Sunday service 4/26", DEFAULT_LATE_REACTION_WINDOWS
+            )
+            is True
+        )
 
     @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_wednesday_message_in_window(self, mock_window):
         mock_window.return_value = True
-        assert is_during_late_reaction_window("React for Wednesday Bible study") is True
+        assert (
+            is_during_late_reaction_window(
+                "React for Wednesday Bible study", DEFAULT_LATE_REACTION_WINDOWS
+            )
+            is True
+        )
 
     @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_no_day_in_message(self, mock_window):
         mock_window.return_value = True
-        assert is_during_late_reaction_window("React for rides!") is False
+        assert (
+            is_during_late_reaction_window("React for rides!", DEFAULT_LATE_REACTION_WINDOWS)
+            is False
+        )
 
     @patch("bot.utils.time_helpers.is_in_late_reaction_window")
     def test_day_in_message_but_not_in_window(self, mock_window):
         mock_window.return_value = False
-        assert is_during_late_reaction_window("React for Friday fellowship") is False
+        assert (
+            is_during_late_reaction_window(
+                "React for Friday fellowship", DEFAULT_LATE_REACTION_WINDOWS
+            )
+            is False
+        )
 
     def test_case_insensitive(self):
         # Just checks it doesn't crash on case variations
-        result = is_during_late_reaction_window("FRIDAY rides")
+        result = is_during_late_reaction_window("FRIDAY rides", DEFAULT_LATE_REACTION_WINDOWS)
         assert isinstance(result, bool)
+
+
+class TestIsInLateReactionWindow:
+    """Tests for is_in_late_reaction_window with explicit windows and minute precision."""
+
+    def test_minute_precision_boundary_inside(self):
+        # Wednesday window: Tue 19:00 -> Wed 19:00. Just before the end boundary.
+        with patch("bot.utils.time_helpers.datetime") as mock_dt:
+            mock_dt.now.return_value = _la(2026, 4, 22, 18, 59)  # Wednesday 18:59
+            assert (
+                is_in_late_reaction_window(DaysOfWeek.WEDNESDAY, DEFAULT_LATE_REACTION_WINDOWS)
+                is True
+            )
+
+    def test_minute_precision_boundary_outside(self):
+        # One minute past the end boundary should be outside the window.
+        with patch("bot.utils.time_helpers.datetime") as mock_dt:
+            mock_dt.now.return_value = _la(2026, 4, 22, 19, 1)  # Wednesday 19:01
+            assert (
+                is_in_late_reaction_window(DaysOfWeek.WEDNESDAY, DEFAULT_LATE_REACTION_WINDOWS)
+                is False
+            )
 
 
 # ---------------------------------------------------------------------------
