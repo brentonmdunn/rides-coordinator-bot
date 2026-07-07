@@ -21,7 +21,12 @@ import { ArrowLeft } from 'lucide-react'
 import { getAutomaticDay, copyToClipboard } from '../../lib/utils'
 import { apiFetch } from '../../lib/api'
 import { useTheme } from '../use-theme'
-import type { PickupLocationsResponse, MakeRouteResponse, UserPreferences } from '../../types'
+import type {
+    MapLocationsResponse,
+    PickupLocationsResponse,
+    MakeRouteResponse,
+    UserPreferences,
+} from '../../types'
 
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -303,10 +308,17 @@ function RouteBuilder() {
 
     // --- Fetch pickup locations ---
     const { data: locationsData, isLoading: locationsLoading } = useQuery<PickupLocationsResponse>({
-        queryKey: ['pickup-locations'],
+        queryKey: ['map-locations'],
         queryFn: async () => {
-            const res = await apiFetch('/api/pickup-locations')
-            return res.json()
+            const res = await apiFetch('/api/map-locations')
+            const data: MapLocationsResponse = await res.json()
+            return {
+                locations: data.locations.map((l) => ({ key: l.name, value: l.name })),
+                map_links: Object.fromEntries(data.locations.map((l) => [l.name, l.map_url])),
+                coordinates: Object.fromEntries(
+                    data.locations.map((l) => [l.name, { lat: l.latitude, lng: l.longitude }])
+                ),
+            }
         },
     })
 
