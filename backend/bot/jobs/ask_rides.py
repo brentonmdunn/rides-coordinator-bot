@@ -22,6 +22,7 @@ from bot.core.enums import (
     EmbedColorChoice,
     Emoji,
     FeatureFlagNames,
+    FellowshipSeason,
     JobName,
     RoleIds,
 )
@@ -37,6 +38,7 @@ from bot.services.ask_rides_schedule_service import (
     get_next_schedule_occurrence,
     has_send_time_passed,
 )
+from bot.services.fellowship_season_service import FellowshipSeasonService
 from bot.services.ride_coordinator_service import RideCoordinatorService
 from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
 from bot.utils.channels import resolve_channel_id
@@ -226,6 +228,10 @@ async def _ask_rides_template(
 async def run_ask_rides_wed(bot: Bot) -> None:
     """Runner for Wednesday rides message."""
     send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.WEDNESDAY)
+    season = await FellowshipSeasonService.get_season()
+    if season != FellowshipSeason.WEDNESDAY:
+        logger.info("Blocking run_ask_rides_wed - fellowship season is %s", season)
+        return
     async with AsyncSessionLocal() as session:
         paused = await MessageScheduleRepository.is_job_paused(
             session, JobName.WEDNESDAY, send_day_of_week
@@ -261,6 +267,10 @@ async def run_ask_rides_fri(
 ) -> None:
     """Runner for Friday rides message."""
     send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.FRIDAY)
+    season = await FellowshipSeasonService.get_season()
+    if season != FellowshipSeason.FRIDAY:
+        logger.info("Blocking run_ask_rides_fri - fellowship season is %s", season)
+        return
     async with AsyncSessionLocal() as session:
         paused = await MessageScheduleRepository.is_job_paused(
             session, JobName.FRIDAY, send_day_of_week
@@ -380,19 +390,22 @@ async def run_ask_rides_header(
             session, FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
         )
 
+    season = await FellowshipSeasonService.get_season()
     sun_should_send = await _should_send_ask_rides_sun()
     sun_condition = sun_flag and not sun_paused and sun_should_send
     sun_class_should_send = await _should_send_ask_rides_sun_class()
     sun_class_condition = sun_class_flag and not sun_class_paused and sun_class_should_send
-    fri_condition = fri_flag and not fri_paused
-    wed_condition = wed_flag
+    fri_condition = fri_flag and not fri_paused and season == FellowshipSeason.FRIDAY
+    wed_condition = wed_flag and season == FellowshipSeason.WEDNESDAY
 
     logger.info(
         "run_ask_rides_header condition check | "
+        "season=%s | "
         "sun=[flag=%s, paused=%s, should_send=%s, result=%s] | "
         "sun_class=[flag=%s, paused=%s, should_send=%s, result=%s] | "
         "fri=[flag=%s, paused=%s, result=%s] | "
         "wed=[flag=%s, result=%s]",
+        season,
         sun_flag,
         sun_paused,
         sun_should_send,

@@ -4,7 +4,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import Emoji, FeatureFlagNames, JobName
+from bot.core.enums import Emoji, FeatureFlagNames, FellowshipSeason, JobName
+
+
+def _patch_season(module: str, season: FellowshipSeason):
+    """Patch the fellowship season lookup in the given job module."""
+    return patch(
+        f"{module}.FellowshipSeasonService.get_season",
+        new=AsyncMock(return_value=season),
+    )
 
 
 class TestRunAskDriversWedEnum:
@@ -37,6 +45,7 @@ class TestRunAskDriversWedPaused:
             ),
             patch("bot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
             patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
+            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -72,6 +81,7 @@ class TestRunAskDriversWedSends:
                 FeatureFlagsRepository._cache,
                 {FeatureFlagNames.ASK_WEDNESDAY_DRIVERS_JOB: True},
             ),
+            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -114,6 +124,7 @@ class TestRunAskDriversWedSends:
                 FeatureFlagsRepository._cache,
                 {FeatureFlagNames.ASK_WEDNESDAY_DRIVERS_JOB: True},
             ),
+            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -153,6 +164,7 @@ class TestRunAskRidesWedCallsDriverJob:
                 "bot.jobs.ask_rides._ask_rides_template", new=AsyncMock(return_value=fake_message)
             ),
             patch("bot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
+            _patch_season("bot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -183,6 +195,7 @@ class TestRunAskRidesWedCallsDriverJob:
             ),
             patch("bot.jobs.ask_rides.AsyncSessionLocal") as mock_session_ctx,
             patch("bot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
+            _patch_season("bot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
