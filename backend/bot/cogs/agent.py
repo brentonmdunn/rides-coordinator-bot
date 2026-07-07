@@ -24,7 +24,7 @@ _HISTORY_TTL = 60 * 60 * 24  # 24 hours
 _ALLOWED_CHANNEL_IDS: frozenset[int] = frozenset(
     {
         int(ChannelIds.BOT_STUFF__BOTS),
-        int(ChannelIds.SERVING__DRIVER_BOT_SPAM),
+        int(ChannelIds.SERVING__RIDE_COORDINATORS),
         int(ChannelIds.SERVING__DRIVER_CHAT_WOOOOO),
     }
 )
