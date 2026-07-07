@@ -14,6 +14,7 @@ from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.driver_service import DriverService
+from bot.utils.channels import resolve_channel_id
 from bot.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 async def _ask_drivers_template(
     bot: Bot, message: str, emojis: list[str], channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 ) -> discord.Message | None:
+    channel_id = resolve_channel_id(channel_id)
     raw_channel = bot.get_channel(channel_id)
     if not isinstance(raw_channel, discord.TextChannel):
         logger.warning(f"Channel not found with ID: {channel_id}")

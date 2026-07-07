@@ -10,6 +10,7 @@ import discord
 from cogs_disabled.retreat import Col
 
 from bot.core.enums import ChannelIds
+from bot.utils.channels import resolve_channel_id
 from bot.utils.constants import GUILD_ID
 from bot.utils.parsing import parse_discord_username
 
@@ -33,7 +34,7 @@ async def logic(reader, bot):
                 guild.members,
             )
 
-            channel = bot.get_channel(ChannelIds.SERVING__RETREAT_BOT_SPAM)
+            channel = bot.get_channel(resolve_channel_id(ChannelIds.SERVING__RETREAT_BOT_SPAM))
 
             if member is None:
                 # logger.info(f"⚠️ Could not find member with username: {username}")
@@ -68,7 +69,7 @@ async def fetch_csv(bot):
             else:
                 logger.info(f"❌ Failed to fetch CSV: HTTP {resp.status}")
     except Exception as e:
-        channel = bot.get_channel(ChannelIds.SERVING__RETREAT_BOT_SPAM)
+        channel = bot.get_channel(resolve_channel_id(ChannelIds.SERVING__RETREAT_BOT_SPAM))
         if channel:
             await channel.send(f"⚠️ Error fetching CSV: {e}")
     return None
