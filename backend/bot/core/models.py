@@ -13,7 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.core.base import Base
-from bot.core.enums import AccountRoles, AskRidesMessageType, JobName
+from bot.core.enums import AccountRoles, AskRidesMessageType, AskRidesScheduleSlot, JobName
 
 
 class DiscordUsers(Base):
@@ -177,6 +177,22 @@ class AskRidesMessageTemplate(Base):
     title: Mapped[str]
     body: Mapped[str]
     color: Mapped[str]
+    updated_by: Mapped[str]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class AskRidesSchedule(Base):
+    """Model representing a customized send day/time for an ask-rides schedule slot."""
+
+    __tablename__ = "ask_rides_schedules"
+
+    slot: Mapped[AskRidesScheduleSlot] = mapped_column(
+        SQLEnum(AskRidesScheduleSlot, values_callable=lambda obj: [e.value for e in obj]),
+        primary_key=True,
+    )
+    day_of_week: Mapped[int]  # 0=Monday .. 6=Sunday, matches DaysOfWeekNumber
+    hour: Mapped[int]
+    minute: Mapped[int]
     updated_by: Mapped[str]
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 

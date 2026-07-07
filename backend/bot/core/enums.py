@@ -241,6 +241,13 @@ class AskRidesMessageType(StrEnum):
     SUNDAY_CLASS = "sunday_class"
 
 
+class AskRidesScheduleSlot(StrEnum):
+    """The two independently-schedulable ask-rides send slots."""
+
+    WEDNESDAY_REMINDER = "wednesday_reminder"  # run_ask_rides_wed
+    FRI_SUN_GROUP = "fri_sun_group"  # run_ask_rides_all
+
+
 class EmbedColorChoice(StrEnum):
     """Preset embed color palette for ask-rides message templates."""
 
