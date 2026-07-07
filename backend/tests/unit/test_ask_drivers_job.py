@@ -31,6 +31,10 @@ class TestRunAskDriversWedPaused:
                 "bot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=True),
             ),
+            patch(
+                "bot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
+                new=AsyncMock(return_value=0),
+            ),
             patch("bot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
             patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
         ):
@@ -57,6 +61,10 @@ class TestRunAskDriversWedSends:
             patch(
                 "bot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=False),
+            ),
+            patch(
+                "bot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
+                new=AsyncMock(return_value=0),
             ),
             patch("bot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
             patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
@@ -96,6 +104,10 @@ class TestRunAskDriversWedSends:
                 "bot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=False),
             ),
+            patch(
+                "bot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
+                new=AsyncMock(return_value=0),
+            ),
             patch("bot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
             patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
             patch.dict(
@@ -132,6 +144,10 @@ class TestRunAskRidesWedCallsDriverJob:
                 "bot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=False),
             ),
+            patch(
+                "bot.jobs.ask_rides.AskRidesScheduleService.get_send_day_for_job",
+                new=AsyncMock(return_value=0),
+            ),
             patch("bot.jobs.ask_rides.AsyncSessionLocal") as mock_session_ctx,
             patch(
                 "bot.jobs.ask_rides._ask_rides_template", new=AsyncMock(return_value=fake_message)
@@ -160,6 +176,10 @@ class TestRunAskRidesWedCallsDriverJob:
             patch(
                 "bot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "bot.jobs.ask_rides.AskRidesScheduleService.get_send_day_for_job",
+                new=AsyncMock(return_value=0),
             ),
             patch("bot.jobs.ask_rides.AsyncSessionLocal") as mock_session_ctx,
             patch("bot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,

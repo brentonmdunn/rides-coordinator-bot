@@ -13,6 +13,7 @@ from bot.core.enums import (
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
+from bot.services.ask_rides_schedule_service import AskRidesScheduleService
 from bot.services.driver_service import DriverService
 from bot.utils.checks import feature_flag_enabled
 
@@ -51,8 +52,11 @@ async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 
     Skips sending if the Friday job is currently paused.
     """
+    send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.FRIDAY)
     async with AsyncSessionLocal() as session:
-        paused = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+        paused = await MessageScheduleRepository.is_job_paused(
+            session, JobName.FRIDAY, send_day_of_week
+        )
     if paused:
         logger.info("Blocking run_ask_drivers_fri - job is paused")
         return
@@ -71,8 +75,11 @@ async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 
     Skips sending if the Sunday job is paused or the ask-rides window is not active.
     """
+    send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.SUNDAY)
     async with AsyncSessionLocal() as session:
-        paused = await MessageScheduleRepository.is_job_paused(session, JobName.SUNDAY)
+        paused = await MessageScheduleRepository.is_job_paused(
+            session, JobName.SUNDAY, send_day_of_week
+        )
     if paused:
         logger.info("Blocking run_ask_drivers_sun - job is paused")
         return
@@ -97,8 +104,11 @@ async def run_ask_drivers_wed(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 
     Skips sending if the Wednesday job is currently paused.
     """
+    send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.WEDNESDAY)
     async with AsyncSessionLocal() as session:
-        paused = await MessageScheduleRepository.is_job_paused(session, JobName.WEDNESDAY)
+        paused = await MessageScheduleRepository.is_job_paused(
+            session, JobName.WEDNESDAY, send_day_of_week
+        )
     if paused:
         logger.info("Blocking run_ask_drivers_wed - job is paused")
         return

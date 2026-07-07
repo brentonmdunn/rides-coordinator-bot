@@ -1,12 +1,12 @@
 """Unit tests for MessageScheduleRepository (data access layer)."""
 
 import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import JobName
+from bot.core.enums import DaysOfWeekNumber, JobName
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 
 
@@ -190,7 +190,9 @@ async def test_is_job_paused_no_row_returns_false():
     """Should return False when there is no pause row."""
     session = _make_session(scalars_first=None)
 
-    result = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+    result = await MessageScheduleRepository.is_job_paused(
+        session, JobName.FRIDAY, DaysOfWeekNumber.WEDNESDAY
+    )
 
     assert result is False
 
@@ -201,7 +203,9 @@ async def test_is_job_paused_not_paused_returns_false():
     pause = _make_pause(is_paused=False)
     session = _make_session(scalars_first=pause)
 
-    result = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+    result = await MessageScheduleRepository.is_job_paused(
+        session, JobName.FRIDAY, DaysOfWeekNumber.WEDNESDAY
+    )
 
     assert result is False
 
@@ -212,28 +216,32 @@ async def test_is_job_paused_indefinite_returns_true():
     pause = _make_pause(is_paused=True, resume_after_date=None)
     session = _make_session(scalars_first=pause)
 
-    result = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+    result = await MessageScheduleRepository.is_job_paused(
+        session, JobName.FRIDAY, DaysOfWeekNumber.WEDNESDAY
+    )
 
     assert result is True
 
 
 @pytest.mark.asyncio
 async def test_is_job_paused_date_in_future_returns_true():
-    """Should return True when is_paused=True and send Wednesday is in the future."""
-    # Use a date far in the future so today < send_wednesday
+    """Should return True when is_paused=True and the send day is in the future."""
+    # Use a date far in the future so today < send day
     future_date = datetime.date(2099, 12, 31)
     pause = _make_pause(is_paused=True, resume_after_date=future_date)
     session = _make_session(scalars_first=pause)
 
-    result = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+    result = await MessageScheduleRepository.is_job_paused(
+        session, JobName.FRIDAY, DaysOfWeekNumber.WEDNESDAY
+    )
 
     assert result is True
 
 
 @pytest.mark.asyncio
 async def test_is_job_paused_date_reached_auto_clears():
-    """Should auto-clear the pause and return False when send Wednesday has passed."""
-    # A date in the past so get_send_wednesday returns a past date
+    """Should auto-clear the pause and return False when the send day has passed."""
+    # A date in the past so get_send_day_before returns a past date
     past_date = datetime.date(2020, 1, 5)  # A Sunday — send Wednesday would be 2020-01-01
     pause = _make_pause(is_paused=True, resume_after_date=past_date)
 
@@ -247,8 +255,45 @@ async def test_is_job_paused_date_reached_auto_clears():
     session = AsyncMock(spec=AsyncSession)
     session.execute = AsyncMock(side_effect=[select_result, update_result])
 
-    result = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+    result = await MessageScheduleRepository.is_job_paused(
+        session, JobName.FRIDAY, DaysOfWeekNumber.WEDNESDAY
+    )
 
     assert result is False
     assert session.execute.await_count == 2
     session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_is_job_paused_customized_send_day_not_hardcoded_wednesday():
+    """
+    Regression test: pause auto-resume expires against the *configured* send
+    day, not a hardcoded Wednesday (the get_send_wednesday replacement).
+
+    A pause with resume_after_date = Sunday 2026-04-26 and a customized
+    Monday (2026-04-20) send day should already be resumable by Tuesday
+    2026-04-21 — a hardcoded-Wednesday check would still report it paused
+    until 2026-04-22.
+    """
+    event_date = datetime.date(2026, 4, 26)  # Sunday
+    pause = _make_pause(is_paused=True, resume_after_date=event_date)
+
+    select_result = MagicMock()
+    select_result.scalars.return_value.first.return_value = pause
+    update_result = MagicMock()
+
+    session = AsyncMock(spec=AsyncSession)
+    session.execute = AsyncMock(side_effect=[select_result, update_result])
+
+    with patch("bot.repositories.message_schedule_repository.date") as mock_date:
+        mock_date.today.return_value = datetime.date(2026, 4, 21)  # Tuesday
+        mock_date.side_effect = lambda *a, **kw: datetime.date(*a, **kw)
+
+        result = await MessageScheduleRepository.is_job_paused(
+            session, JobName.FRIDAY, DaysOfWeekNumber.MONDAY
+        )
+
+    # Configured Monday send day (2026-04-20) has already passed by Tuesday
+    # 2026-04-21, so the pause should auto-clear — even though the hardcoded
+    # Wednesday (2026-04-22) has not been reached yet.
+    assert result is False
