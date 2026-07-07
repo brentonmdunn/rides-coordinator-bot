@@ -3,12 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 
-from rapidfuzz import fuzz, process
-
-from bot.core.enums import PickupLocations
-from bot.core.schemas import LocationQuery
-from bot.utils.constants import RIDE_GROUPING_PICKUP_ADJUSTMENT, get_map_url
-from bot.utils.locations import lookup_time
+from bot.services.pickup_locations_service import RoutingContext
 from bot.utils.parsing import parse_time
 
 logger = logging.getLogger(__name__)
@@ -18,77 +13,72 @@ class RouteService:
     """Handles route building and fuzzy location matching."""
 
     @staticmethod
-    def get_pickup_location_fuzzy(input_loc: str) -> PickupLocations | None:
+    def get_pickup_location_fuzzy(routing: RoutingContext, input_loc: str) -> str | None:
         """
-        Get the fuzzy matched pickup location from an input string.
+        Get the fuzzy matched pickup location name from an input string.
 
         Args:
+            routing (RoutingContext): Snapshot of the routing graph and settings.
             input_loc (str): The input location string.
 
         Returns:
-            PickupLocations | None: The matched pickup location or None if no match.
+            str | None: The matched pickup location name or None if no match.
         """
-        choices = {e.value: e for e in PickupLocations}
-
-        result = process.extractOne(
-            input_loc,
-            choices.keys(),
-            scorer=fuzz.token_sort_ratio,
-            score_cutoff=65,
-        )
-
-        if result:
-            return choices[result[0]]
-
-        result = process.extractOne(
-            input_loc,
-            choices.keys(),
-            scorer=fuzz.partial_ratio,
-            score_cutoff=60,
-        )
-
-        if result:
-            logger.debug(f"{result=}")
-            logger.debug(f"Fallback match: '{input_loc}' -> '{result[0]}' (Score: {result[1]})")
-            return choices[result[0]]
-
-        return None
+        return routing.fuzzy_match(input_loc)
 
     @staticmethod
-    def make_route(locations: str, leave_time: str) -> str:
+    def resolve_location(routing: RoutingContext, token: str) -> str:
         """
-        Makes route based on specified locations.
+        Resolve an input string to a pickup location name (exact, then fuzzy).
 
         Args:
-            locations: The locations to make a route for.
+            routing (RoutingContext): Snapshot of the routing graph and settings.
+            token (str): The input location string.
+
+        Returns:
+            The matched pickup location name.
+
+        Raises:
+            ValueError: If no location matches.
+        """
+        lowered = token.strip().lower()
+        for name in routing.active_names:
+            if name.lower() == lowered:
+                return name
+        match = routing.fuzzy_match(token)
+        if match is None:
+            raise ValueError(f"Invalid location: {token}")
+        return match
+
+    @staticmethod
+    def make_route_from_names(
+        routing: RoutingContext, locations: list[str], leave_time: str
+    ) -> str:
+        """
+        Makes a route from a list of location input strings.
+
+        Args:
+            routing (RoutingContext): Snapshot of the routing graph and settings.
+            locations: Location input strings in pickup order.
             leave_time: The leave time for the route.
 
         Returns:
             The route as a string.
+
+        Raises:
+            ValueError: If a location cannot be resolved.
         """
         curr_leave_time = parse_time(leave_time)
-        locations_list = locations.split()
-        locations_list_actual = []
-        for location in locations_list:
-            try:
-                actual_location = PickupLocations[location.upper()]
-                locations_list_actual.append(actual_location)
-            except KeyError:
-                if (
-                    actual_location := RouteService.get_pickup_location_fuzzy(location)
-                ) is not None:
-                    locations_list_actual.append(actual_location)
-                else:
-                    raise ValueError(f"Invalid location: {location}") from None
+        resolved = [RouteService.resolve_location(routing, token) for token in locations]
 
         drive_formatted: list[str] = []
-        logger.debug(f"{locations_list_actual=}")
+        logger.debug(f"{resolved=}")
 
-        reversed_locations = list(reversed(locations_list_actual))
+        reversed_locations = list(reversed(resolved))
         for idx, location in enumerate(reversed_locations):
             if idx != 0:
-                time_between = RIDE_GROUPING_PICKUP_ADJUSTMENT + lookup_time(
-                    LocationQuery(start_location=location, end_location=reversed_locations[idx - 1])
+                time_between = routing.pickup_adjustment + routing.lookup_time(
+                    location, reversed_locations[idx - 1]
                 )
                 logger.debug(f"{time_between=}")
                 dummy_datetime = datetime.combine(datetime.today(), curr_leave_time)
@@ -97,11 +87,9 @@ class RouteService:
 
             logger.debug(f"{curr_leave_time=}")
             logger.debug(f"{location=}")
-            base_string = (
-                f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} {location.value}"
-            )
+            base_string = f"{curr_leave_time.strftime('%I:%M%p').lstrip('0').lower()} {location}"
 
-            map_url = get_map_url(location)
+            map_url = routing.map_url(location)
             if map_url:
                 formatted_string = f"{base_string} ([Google Maps](<{map_url}>))"
             else:
@@ -112,3 +100,18 @@ class RouteService:
         logger.debug(f"{drive_formatted=}")
 
         return ", ".join(reversed(drive_formatted))
+
+    @staticmethod
+    def make_route(routing: RoutingContext, locations: str, leave_time: str) -> str:
+        """
+        Makes a route from a space-separated string of location tokens.
+
+        Args:
+            routing (RoutingContext): Snapshot of the routing graph and settings.
+            locations: The locations to make a route for (space-separated tokens).
+            leave_time: The leave time for the route.
+
+        Returns:
+            The route as a string.
+        """
+        return RouteService.make_route_from_names(routing, locations.split(), leave_time)

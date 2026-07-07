@@ -37,15 +37,8 @@ if __name__ == "__main__":
     load_dotenv(Path(__file__).parent.parent / ".env")
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from bot.core.enums import PickupLocations  # noqa: E402
-from bot.core.schemas import LocationQuery  # noqa: E402
+from bot.services.pickup_locations_service import PickupLocationsService  # noqa: E402
 from bot.services.route_service import RouteService  # noqa: E402
-from bot.utils.constants import (  # noqa: E402
-    RIDE_GROUPING_PICKUP_ADJUSTMENT,
-    get_map_links,
-    get_map_url,
-)
-from bot.utils.locations import lookup_time  # noqa: E402
 from bot.utils.parsing import parse_time  # noqa: E402
 from bot.utils.time_helpers import is_in_ride_day_window  # noqa: E402
 
@@ -114,7 +107,8 @@ def make_route(locations: str, leave_time: str) -> str:
         Formatted string with pickup times and Google Maps links.
     """
     logger.info(f"Tool: make_route locations={locations!r} leave_time={leave_time!r}")
-    return RouteService.make_route(locations, leave_time)
+    routing = PickupLocationsService.get_routing_context_sync()
+    return RouteService.make_route(routing, locations, leave_time)
 
 
 @tool
@@ -190,38 +184,37 @@ def map_links(location: str | None = None) -> str:
         Formatted string with location names and their Google Maps URLs.
     """
     logger.info(f"Tool: map_links location={location!r}")
-    links = get_map_links()
+    routing = PickupLocationsService.get_routing_context_sync()
+    links = routing.map_links()
     if location:
         term = location.lower()
-        links = {loc: url for loc, url in links.items() if term in loc.value.lower()}
+        links = {name: url for name, url in links.items() if term in name.lower()}
     if not links:
         return "No matching locations found."
-    return "\n".join(f"{loc.value}: {url}" for loc, url in links.items())
+    return "\n".join(f"{name}: {url}" for name, url in links.items())
 
 
-# Keywords that appear in raw DB location strings for each PickupLocations enum.
-# DB stores free-form strings (e.g. "seventh", "warren") not PickupLocations.value.
-_LOCATION_KEYWORDS: dict[PickupLocations, list[str]] = {
-    PickupLocations.SEVENTH: ["seventh"],
-    PickupLocations.ERC: ["erc"],
-    PickupLocations.MARSHALL: ["marshall"],
-    PickupLocations.SIXTH: ["sixth"],
-    PickupLocations.MUIR: ["muir"],
-    PickupLocations.WARREN_EQL: ["warren"],
-    PickupLocations.WARREN_JST: ["warren"],
-    PickupLocations.RITA: ["rita"],
-    PickupLocations.INNOVATION: ["innovation"],
-    PickupLocations.EIGHTH: ["eighth"],
-    PickupLocations.PANGEA: ["pangea"],
-    PickupLocations.VILLAS_OF_RENAISSANCE: ["villas"],
-    PickupLocations.GEISEL_LOOP: ["geisel"],
-    PickupLocations.PCYN_LOOP: ["pcyn", "pepper canyon"],
+# Keywords that appear in raw DB location strings for each pickup location name.
+# DB stores free-form strings (e.g. "seventh", "warren") not full pickup names.
+_LOCATION_KEYWORDS: dict[str, list[str]] = {
+    "Seventh mail room": ["seventh"],
+    "ERC across from bamboo": ["erc"],
+    "Marshall uppers": ["marshall"],
+    "Sixth loop": ["sixth"],
+    "Muir tennis courts": ["muir"],
+    "Warren Equality Ln": ["warren"],
+    "Warren Justice Ln": ["warren"],
+    "Rita": ["rita"],
+    "Innovation": ["innovation"],
+    "Eighth basketball courts": ["eighth"],
+    "Geisel Loop": ["geisel"],
+    "Pepper Canyon Loop": ["pcyn", "pepper canyon"],
 }
 
 
-def _people_for_stop(location: PickupLocations, loc_to_people: dict[str, list[dict]]) -> list[dict]:
+def _people_for_stop(location: str, loc_to_people: dict[str, list[dict]]) -> list[dict]:
     """Return all people whose raw DB location string matches this stop's keywords."""
-    keywords = _LOCATION_KEYWORDS.get(location, [])
+    keywords = _LOCATION_KEYWORDS.get(location, [location.split()[0].lower()])
     matched: list[dict] = []
     for raw_loc, people in loc_to_people.items():
         if any(kw in raw_loc.lower() for kw in keywords):
@@ -237,7 +230,7 @@ def _format_route_with_riders(stops_with_people: list[dict]) -> str:
             f"@{p['discord_username']}" if p["discord_username"] else p["name"]
             for p in stop["people"]
         )
-        time_loc = f"{stop['time']} {stop['location'].value}"
+        time_loc = f"{stop['time']} {stop['location']}"
         if stop["maps_url"]:
             time_loc += f" ([Google Maps](<{stop['maps_url']}>))"
         parts.append(f"{mentions} {time_loc}" if mentions else time_loc)
@@ -247,21 +240,19 @@ def _format_route_with_riders(stops_with_people: list[dict]) -> str:
 def _build_route_stops(locations_str: str, leave_time_str: str) -> list[dict]:
     """Return structured route stops: [{time, location, maps_url}] in pickup order."""
     curr_leave_time = parse_time(leave_time_str)
-    locations_list: list[PickupLocations] = []
+    routing = PickupLocationsService.get_routing_context_sync()
+    locations_list: list[str] = []
     for token in locations_str.split():
-        try:
-            locations_list.append(PickupLocations[token.upper()])
-        except KeyError:
-            match = RouteService.get_pickup_location_fuzzy(token)
-            if match:
-                locations_list.append(match)
+        match = routing.fuzzy_match(token)
+        if match:
+            locations_list.append(match)
 
     stops: list[dict] = []
     reversed_locs = list(reversed(locations_list))
     for idx, location in enumerate(reversed_locs):
         if idx != 0:
-            time_between = RIDE_GROUPING_PICKUP_ADJUSTMENT + lookup_time(
-                LocationQuery(start_location=location, end_location=reversed_locs[idx - 1])
+            time_between = routing.pickup_adjustment + routing.lookup_time(
+                location, reversed_locs[idx - 1]
             )
             dummy_dt = datetime.combine(datetime.today(), curr_leave_time)
             curr_leave_time = (dummy_dt - timedelta(minutes=time_between)).time()
@@ -269,7 +260,7 @@ def _build_route_stops(locations_str: str, leave_time_str: str) -> list[dict]:
             {
                 "time": curr_leave_time.strftime("%I:%M%p").lstrip("0").lower(),
                 "location": location,
-                "maps_url": get_map_url(location),
+                "maps_url": routing.map_url(location),
             }
         )
 
@@ -299,7 +290,8 @@ def make_route_with_riders(locations: str, leave_time: str, day: str = "auto") -
     logger.info(
         f"Tool: make_route_with_riders locations={locations!r} leave_time={leave_time!r} day={day!r}"
     )
-    route = RouteService.make_route(locations, leave_time)
+    routing = PickupLocationsService.get_routing_context_sync()
+    route = RouteService.make_route(routing, locations, leave_time)
 
     fetch_tool = list_pickups_friday if day.lower() == "friday" else list_pickups_sunday
 
@@ -327,7 +319,7 @@ def make_route_with_riders(locations: str, leave_time: str, day: str = "auto") -
 
     # Always build riders_by_stop so the LLM can present or filter it
     riders_by_stop = {
-        stop["location"].value: [
+        stop["location"]: [
             {"name": p["name"], "discord_username": p["discord_username"]} for p in stop["people"]
         ]
         for stop in stops_with_people

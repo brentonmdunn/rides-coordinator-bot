@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from bot.core.enums import CampusLivingLocations, PickupLocations
-from bot.core.schemas import Identity, LocationQuery, Passenger
+from bot.core.enums import CampusLivingLocations
+from bot.core.schemas import Identity, Passenger
 from bot.services.ride_grouping import (
     PassengersByLocation,
     calculate_pickup_time,
@@ -17,6 +17,9 @@ from bot.services.ride_grouping import (
     llm_input_pickups,
     parse_numbers,
 )
+from tests.unit.routing_fixtures import make_seed_context
+
+SEED_CTX = make_seed_context()
 
 
 @pytest.fixture
@@ -26,17 +29,17 @@ def sample_passengers() -> dict[str, Passenger]:
         "alice": Passenger(
             identity=Identity(name="Alice", username="alice"),
             living_location=CampusLivingLocations.SIXTH,
-            pickup_location=PickupLocations.SIXTH,
+            pickup_location="Sixth loop",
         ),
         "bob": Passenger(
             identity=Identity(name="Bob", username="bob"),
             living_location=CampusLivingLocations.ERC,
-            pickup_location=PickupLocations.ERC,
+            pickup_location="ERC across from bamboo",
         ),
         "charlie": Passenger(
             identity=Identity(name="Charlie", username="charlie"),
             living_location=CampusLivingLocations.SIXTH,
-            pickup_location=PickupLocations.SIXTH,
+            pickup_location="Sixth loop",
         ),
     }
 
@@ -45,9 +48,9 @@ def sample_passengers() -> dict[str, Passenger]:
 def sample_locations_people(sample_passengers: dict[str, Passenger]) -> PassengersByLocation:
     """Provides a sample PassengersByLocation dictionary, which maps locations to passengers."""
     return {
-        PickupLocations.SIXTH: [sample_passengers["alice"], sample_passengers["charlie"]],
-        PickupLocations.ERC: [sample_passengers["bob"]],
-        PickupLocations.MARSHALL: [],  # A location with no one waiting
+        "Sixth loop": [sample_passengers["alice"], sample_passengers["charlie"]],
+        "ERC across from bamboo": [sample_passengers["bob"]],
+        "Marshall uppers": [],  # A location with no one waiting
     }
 
 
@@ -133,33 +136,33 @@ class TestFindPassenger:
         self, sample_locations_people: PassengersByLocation, sample_passengers: dict[str, Passenger]
     ):
         """Should return the correct Passenger object when the person is at the specified location."""
-        found_passenger = find_passenger(sample_locations_people, "Alice", PickupLocations.SIXTH)
+        found_passenger = find_passenger(sample_locations_people, "Alice", "Sixth loop")
         assert found_passenger is not None
         assert found_passenger == sample_passengers["alice"]
 
     def test_find_passenger_at_wrong_location(self, sample_locations_people: PassengersByLocation):
         """Should return None if the person exists but is not at the specified location."""
-        assert find_passenger(sample_locations_people, "Bob", PickupLocations.SIXTH) is None
+        assert find_passenger(sample_locations_people, "Bob", "Sixth loop") is None
 
     def test_find_passenger_nonexistent_person(self, sample_locations_people: PassengersByLocation):
         """Should return None if the person's name does not exist."""
-        assert find_passenger(sample_locations_people, "Zoe", PickupLocations.SIXTH) is None
+        assert find_passenger(sample_locations_people, "Zoe", "Sixth loop") is None
 
     def test_find_passenger_nonexistent_location(
         self, sample_locations_people: PassengersByLocation
     ):
         """Should return None if the location key does not exist in the dictionary."""
-        assert find_passenger(sample_locations_people, "Alice", PickupLocations.WARREN_EQL) is None
+        assert find_passenger(sample_locations_people, "Alice", "Warren Equality Ln") is None
 
     def test_find_passenger_in_empty_location_list(
         self, sample_locations_people: PassengersByLocation
     ):
         """Should return None when searching in a location that has an empty list of passengers."""
-        assert find_passenger(sample_locations_people, "Alice", PickupLocations.MARSHALL) is None
+        assert find_passenger(sample_locations_people, "Alice", "Marshall uppers") is None
 
     def test_find_passenger_with_empty_data(self):
         """Should return None when the main dictionary of locations is empty."""
-        assert find_passenger({}, "Alice", PickupLocations.SIXTH) is None
+        assert find_passenger({}, "Alice", "Sixth loop") is None
 
 
 class TestCountTuples:
@@ -173,9 +176,9 @@ class TestCountTuples:
     def test_count_with_some_empty_lists(self, sample_passengers: dict[str, Passenger]):
         """Should correctly count, ignoring empty lists."""
         data: PassengersByLocation = {
-            PickupLocations.SIXTH: [sample_passengers["alice"]],
-            PickupLocations.ERC: [],
-            PickupLocations.RITA: [],
+            "Sixth loop": [sample_passengers["alice"]],
+            "ERC across from bamboo": [],
+            "Rita": [],
         }
         assert count_tuples(data) == 1
 
@@ -219,47 +222,37 @@ class TestCalculatePickupTime:
     p_muir = Passenger(
         identity=Identity(name="M", username="m"),
         living_location=CampusLivingLocations.MUIR,
-        pickup_location=PickupLocations.MUIR,
+        pickup_location="Muir tennis courts",
     )
     p_warren = Passenger(
         identity=Identity(name="W", username="w"),
         living_location=CampusLivingLocations.WARREN,
-        pickup_location=PickupLocations.WARREN_EQL,
+        pickup_location="Warren Equality Ln",
     )
 
     # This sample represents a route built in reverse pickup order.
     # The last pickup is at Warren, the one before that is at Muir.
     sample_route_so_far = [[p_warren]]  # noqa
 
-    @patch("bot.services.ride_grouping.lookup_time")
-    @patch(
-        "bot.services.ride_grouping.RIDE_GROUPING_PICKUP_ADJUSTMENT", 2
-    )  # Mock the constant to be 2 minutes
-    def test_simple_calculation(self, mock_lookup_time):
+    def test_simple_calculation(self):
         """Should correctly calculate a new pickup time by subtracting travel and adjustment time."""
-        # Arrange: Mock the travel time between Innovation (the stop we are calculating)
-        # and Warren (the previous stop in the pickup sequence) to be 10 minutes.
-        mock_lookup_time.return_value = 10
+        # Warren -> Innovation is 1 minute in the seed graph; use adjustment of 2.
+        ctx = make_seed_context(pickup_adjustment=2)
 
-        # Act: Calculate the pickup time for Innovation, given the Warren pickup is at 16:30.
+        # Calculate the pickup time for Innovation, given the Warren pickup is at 16:30.
         # The function logic accesses the route from the end using the offset.
         # len(sample_route_so_far) = 1. offset = 1. Index = 1 - 1 = 0.
         # So it correctly queries the travel time from Warren to Innovation.
         new_time = calculate_pickup_time(
             curr_leave_time=time(16, 30),
             grouped_by_location=self.sample_route_so_far,
-            location=PickupLocations.INNOVATION,
+            location="Innovation",
             offset=1,
+            routing=ctx,
         )
 
-        # Assert: The new time should be 16:30 minus 12 minutes (10 for travel + 2 for adjustment).
-        assert new_time == time(16, 18)  # 16:30 - (10 + 2) = 16:18
-        # Verify that lookup_time was called with the correct locations
-        mock_lookup_time.assert_called_once_with(
-            LocationQuery(
-                start_location=PickupLocations.WARREN_EQL, end_location=PickupLocations.INNOVATION
-            )
-        )
+        # 16:30 minus (1 travel + 2 adjustment) = 16:27
+        assert new_time == time(16, 27)
 
 
 class TestLlmInputPickups:
@@ -275,8 +268,8 @@ class TestLlmInputPickups:
     def test_location_with_empty_passenger_list(self, sample_passengers: dict[str, Passenger]):
         """Should correctly format a string even with a location that has no passengers."""
         data: PassengersByLocation = {
-            PickupLocations.SIXTH: [sample_passengers["alice"]],
-            PickupLocations.ERC: [],
+            "Sixth loop": [sample_passengers["alice"]],
+            "ERC across from bamboo": [],
         }
         expected = "Sixth loop: Alice\nERC across from bamboo: \n"
         assert llm_input_pickups(data) == expected
@@ -296,7 +289,7 @@ def alice():
     return Passenger(
         identity=Identity(name="Alice", username="alice"),
         living_location=CampusLivingLocations.SIXTH,
-        pickup_location=PickupLocations.SIXTH,
+        pickup_location="Sixth loop",
     )
 
 
@@ -305,7 +298,7 @@ def bob():
     return Passenger(
         identity=Identity(name="Bob", username="bob"),
         living_location=CampusLivingLocations.ERC,
-        pickup_location=PickupLocations.ERC,
+        pickup_location="ERC across from bamboo",
     )
 
 
@@ -314,7 +307,7 @@ def charlie():
     return Passenger(
         identity=Identity(name="Charlie", username=None),
         living_location=CampusLivingLocations.MUIR,
-        pickup_location=PickupLocations.MUIR,
+        pickup_location="Muir tennis courts",
     )
 
 
@@ -322,17 +315,16 @@ class TestCreateOutput:
     """Tests for the `create_output` function (lines 165-246)."""
 
     @patch("bot.services.ride_grouping.calculate_pickup_time")
-    @patch("bot.services.ride_grouping.get_map_url", return_value=None)
-    def test_single_driver_single_location(self, mock_map_url, mock_pickup_time, alice):
+    def test_single_driver_single_location(self, mock_pickup_time, alice):
         """Single driver, single pickup location: no intermediate time calculation."""
         locations_people: PassengersByLocation = {
-            PickupLocations.SIXTH: [alice],
+            "Sixth loop": [alice],
         }
         llm_result = {
-            "Driver0": [{"name": "Alice", "location": PickupLocations.SIXTH}],
+            "Driver0": [{"name": "Alice", "location": "Sixth loop"}],
         }
         end_leave_time = time(17, 0)
-        result = create_output(llm_result, locations_people, end_leave_time, {})
+        result = create_output(llm_result, locations_people, end_leave_time, {}, SEED_CTX)
 
         # First element is the summary, second is plain text, third is code block
         assert len(result) == 3
@@ -346,22 +338,21 @@ class TestCreateOutput:
         assert "```" in result[2]
 
     @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
-    @patch("bot.services.ride_grouping.get_map_url", return_value=None)
-    def test_single_driver_two_locations(self, mock_map_url, mock_pickup_time, alice, bob):
+    def test_single_driver_two_locations(self, mock_pickup_time, alice, bob):
         """Single driver picks up passengers at two different locations."""
         locations_people: PassengersByLocation = {
-            PickupLocations.SIXTH: [alice],
-            PickupLocations.ERC: [bob],
+            "Sixth loop": [alice],
+            "ERC across from bamboo": [bob],
         }
         # LLM assigns both to Driver0 but at different locations
         llm_result = {
             "Driver0": [
-                {"name": "Alice", "location": PickupLocations.SIXTH},
-                {"name": "Bob", "location": PickupLocations.ERC},
+                {"name": "Alice", "location": "Sixth loop"},
+                {"name": "Bob", "location": "ERC across from bamboo"},
             ],
         }
         end_leave_time = time(17, 0)
-        result = create_output(llm_result, locations_people, end_leave_time, {})
+        result = create_output(llm_result, locations_people, end_leave_time, {}, SEED_CTX)
 
         # summary + 2 items per driver
         assert len(result) == 3
@@ -372,90 +363,84 @@ class TestCreateOutput:
         assert "@bob" in result[1]
 
     @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
-    @patch("bot.services.ride_grouping.get_map_url", return_value=None)
-    def test_two_drivers(self, mock_map_url, mock_pickup_time, alice, bob):
+    def test_two_drivers(self, mock_pickup_time, alice, bob):
         """Two drivers each picking up one passenger."""
         locations_people: PassengersByLocation = {
-            PickupLocations.SIXTH: [alice],
-            PickupLocations.ERC: [bob],
+            "Sixth loop": [alice],
+            "ERC across from bamboo": [bob],
         }
         llm_result = {
-            "Driver0": [{"name": "Alice", "location": PickupLocations.SIXTH}],
-            "Driver1": [{"name": "Bob", "location": PickupLocations.ERC}],
+            "Driver0": [{"name": "Alice", "location": "Sixth loop"}],
+            "Driver1": [{"name": "Bob", "location": "ERC across from bamboo"}],
         }
         end_leave_time = time(17, 0)
-        result = create_output(llm_result, locations_people, end_leave_time, {})
+        result = create_output(llm_result, locations_people, end_leave_time, {}, SEED_CTX)
 
         # summary + 2 items per driver = 5 total
         assert len(result) == 5
         assert "==== summary ====" in result[0]
 
     @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
-    @patch("bot.services.ride_grouping.get_map_url", return_value="https://maps.google.com/?q=foo")
-    def test_map_url_included_when_present(self, mock_map_url, mock_pickup_time, alice):
-        """When get_map_url returns a URL, it should appear as a Google Maps link."""
-        locations_people: PassengersByLocation = {PickupLocations.SIXTH: [alice]}
-        llm_result = {"Driver0": [{"name": "Alice", "location": PickupLocations.SIXTH}]}
-        result = create_output(llm_result, locations_people, time(17, 0), {})
+    def test_map_url_included_when_present(self, mock_pickup_time, alice):
+        """Seeded locations have coordinates, so a Google Maps link should appear."""
+        locations_people: PassengersByLocation = {"Sixth loop": [alice]}
+        llm_result = {"Driver0": [{"name": "Alice", "location": "Sixth loop"}]}
+        result = create_output(llm_result, locations_people, time(17, 0), {}, SEED_CTX)
 
         assert "Google Maps" in result[1]
 
     @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
-    @patch("bot.services.ride_grouping.get_map_url", return_value=None)
-    def test_unknown_passenger_skipped(self, mock_map_url, mock_pickup_time, alice):
+    def test_unknown_passenger_skipped(self, mock_pickup_time, alice):
         """Passengers not in locations_people are skipped without raising an error."""
-        locations_people: PassengersByLocation = {PickupLocations.SIXTH: [alice]}
+        locations_people: PassengersByLocation = {"Sixth loop": [alice]}
         llm_result = {
             "Driver0": [
-                {"name": "Alice", "location": PickupLocations.SIXTH},
-                {"name": "Ghost", "location": PickupLocations.ERC},  # not in lookup
+                {"name": "Alice", "location": "Sixth loop"},
+                {"name": "Ghost", "location": "ERC across from bamboo"},  # not in lookup
             ],
         }
-        result = create_output(llm_result, locations_people, time(17, 0), {})
+        result = create_output(llm_result, locations_people, time(17, 0), {}, SEED_CTX)
         # Should still produce output without crashing; Ghost should be absent
         assert "Ghost" not in result[1]
 
     @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
-    @patch("bot.services.ride_grouping.get_map_url", return_value=None)
-    def test_off_campus_passengers_in_summary(self, mock_map_url, mock_pickup_time, alice):
+    def test_off_campus_passengers_in_summary(self, mock_pickup_time, alice):
         """Off-campus passengers should appear in the summary block."""
-        locations_people: PassengersByLocation = {PickupLocations.SIXTH: [alice]}
-        llm_result = {"Driver0": [{"name": "Alice", "location": PickupLocations.SIXTH}]}
+        locations_people: PassengersByLocation = {"Sixth loop": [alice]}
+        llm_result = {"Driver0": [{"name": "Alice", "location": "Sixth loop"}]}
         off_campus = {"Some Place": [("Dave", "dave_username")]}
-        result = create_output(llm_result, locations_people, time(17, 0), off_campus)
+        result = create_output(llm_result, locations_people, time(17, 0), off_campus, SEED_CTX)
 
         assert "TODO: off campus" in result[0]
         assert "Dave" in result[0]
         assert "dave_username" in result[0]
 
     @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
-    @patch("bot.services.ride_grouping.get_map_url", return_value=None)
-    def test_username_none_falls_back_to_name(self, mock_map_url, mock_pickup_time, charlie):
+    def test_username_none_falls_back_to_name(self, mock_pickup_time, charlie):
         """When a passenger has no username, the name should appear in the drive string."""
-        locations_people: PassengersByLocation = {PickupLocations.MUIR: [charlie]}
-        llm_result = {"Driver0": [{"name": "Charlie", "location": PickupLocations.MUIR}]}
-        result = create_output(llm_result, locations_people, time(17, 0), {})
+        locations_people: PassengersByLocation = {"Muir tennis courts": [charlie]}
+        llm_result = {"Driver0": [{"name": "Charlie", "location": "Muir tennis courts"}]}
+        result = create_output(llm_result, locations_people, time(17, 0), {}, SEED_CTX)
 
         assert "Charlie" in result[1]
 
     @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
-    @patch("bot.services.ride_grouping.get_map_url", return_value=None)
-    def test_same_location_passengers_grouped(self, mock_map_url, mock_pickup_time, alice, charlie):
+    def test_same_location_passengers_grouped(self, mock_pickup_time, alice, charlie):
         """Two passengers at the same location should be grouped into one stop."""
         # Give charlie the same pickup location as alice
         charlie_sixth = Passenger(
             identity=Identity(name="Charlie", username="charlie"),
             living_location=CampusLivingLocations.SIXTH,
-            pickup_location=PickupLocations.SIXTH,
+            pickup_location="Sixth loop",
         )
-        locations_people: PassengersByLocation = {PickupLocations.SIXTH: [alice, charlie_sixth]}
+        locations_people: PassengersByLocation = {"Sixth loop": [alice, charlie_sixth]}
         llm_result = {
             "Driver0": [
-                {"name": "Alice", "location": PickupLocations.SIXTH},
-                {"name": "Charlie", "location": PickupLocations.SIXTH},
+                {"name": "Alice", "location": "Sixth loop"},
+                {"name": "Charlie", "location": "Sixth loop"},
             ],
         }
-        result = create_output(llm_result, locations_people, time(17, 0), {})
+        result = create_output(llm_result, locations_people, time(17, 0), {}, SEED_CTX)
         # No intermediate pickup time call since all at same location
         mock_pickup_time.assert_not_called()
         assert "@alice" in result[1]

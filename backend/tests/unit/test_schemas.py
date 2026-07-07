@@ -5,7 +5,7 @@ from typing import cast
 import pytest
 from pydantic import ValidationError
 
-from bot.core.enums import CampusLivingLocations, PickupLocations
+from bot.core.enums import CampusLivingLocations
 from bot.core.schemas import (
     Identity,
     LLMOutputError,
@@ -46,25 +46,18 @@ class TestLocationQuery:
 
     def test_valid_query(self):
         q = LocationQuery(
-            start_location=PickupLocations.MUIR,
-            end_location=PickupLocations.SIXTH,
+            start_location="Muir tennis courts",
+            end_location="Sixth loop",
         )
-        assert q.start_location == PickupLocations.MUIR
-        assert q.end_location == PickupLocations.SIXTH
+        assert q.start_location == "Muir tennis courts"
+        assert q.end_location == "Sixth loop"
 
     def test_same_start_end(self):
         q = LocationQuery(
-            start_location=PickupLocations.ERC,
-            end_location=PickupLocations.ERC,
+            start_location="ERC across from bamboo",
+            end_location="ERC across from bamboo",
         )
         assert q.start_location == q.end_location
-
-    def test_invalid_location_raises(self):
-        with pytest.raises(ValidationError):
-            LocationQuery(
-                start_location=cast(PickupLocations, "nonexistent"),  # intentionally invalid
-                end_location=PickupLocations.MUIR,
-            )
 
 
 class TestRidesUser:
@@ -93,11 +86,11 @@ class TestPassenger:
         p = Passenger(
             identity=Identity(name="Charlie", username="charlie"),
             living_location=CampusLivingLocations.SIXTH,
-            pickup_location=PickupLocations.SIXTH,
+            pickup_location="Sixth loop",
         )
         assert p.identity.username == "@charlie"
         assert p.living_location == CampusLivingLocations.SIXTH
-        assert p.pickup_location == PickupLocations.SIXTH
+        assert p.pickup_location == "Sixth loop"
 
     def test_missing_fields_raise(self):
         with pytest.raises(ValidationError):
@@ -110,14 +103,12 @@ class TestLLMPassenger:
     """Tests for the LLMPassenger schema."""
 
     def test_valid(self):
-        p = LLMPassenger(name="Alice", location=PickupLocations.MUIR)
+        p = LLMPassenger(name="Alice", location="Muir tennis courts")
         assert p.name == "Alice"
 
-    def test_invalid_location(self):
+    def test_missing_location_raises(self):
         with pytest.raises(ValidationError):
-            LLMPassenger(
-                name="Alice", location=cast(PickupLocations, "InvalidPlace")
-            )  # intentionally invalid
+            LLMPassenger(**cast(dict, {"name": "Alice"}))  # intentionally missing location
 
 
 class TestLLMOutputNominal:
@@ -126,8 +117,8 @@ class TestLLMOutputNominal:
     def test_valid_structure(self):
         data = {
             "Driver0": [
-                {"name": "Alice", "location": PickupLocations.MUIR},
-                {"name": "Bob", "location": PickupLocations.ERC},
+                {"name": "Alice", "location": "Muir tennis courts"},
+                {"name": "Bob", "location": "ERC across from bamboo"},
             ],
             "Driver1": [],
         }

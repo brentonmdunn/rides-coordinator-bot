@@ -9,14 +9,15 @@ import pytest
 from bot.core.enums import (
     CampusLivingLocations,
     JobName,
-    PickupLocations,
 )
 from bot.core.schemas import Identity, Passenger
 from bot.services.group_rides_service import (
     EVENT_END_LEAVE_TIMES,
     GroupRidesService,
-    living_to_pickup,
 )
+from tests.unit.routing_fixtures import SEED_LIVING_TO_PICKUP, make_seed_context
+
+SEED_CTX = make_seed_context()
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -35,7 +36,7 @@ def _make_service() -> GroupRidesService:
 
 
 def _make_passenger(
-    name: str, username: str, living: CampusLivingLocations, pickup: PickupLocations
+    name: str, username: str, living: CampusLivingLocations, pickup: str
 ) -> Passenger:
     return Passenger(
         identity=Identity(name=name, username=username),
@@ -70,14 +71,19 @@ def test_get_living_location_invalid_raises():
 
 
 def test_get_pickup_location_maps_living_to_pickup():
-    for living, expected_pickup in living_to_pickup.items():
-        result = GroupRidesService._get_pickup_location(living)
+    for living, expected_pickup in SEED_LIVING_TO_PICKUP.items():
+        result = GroupRidesService._get_pickup_location(SEED_CTX, CampusLivingLocations(living))
         assert result == expected_pickup
 
 
 def test_get_pickup_location_revelle_maps_to_eighth():
-    result = GroupRidesService._get_pickup_location(CampusLivingLocations.REVELLE)
-    assert result == PickupLocations.EIGHTH
+    result = GroupRidesService._get_pickup_location(SEED_CTX, CampusLivingLocations.REVELLE)
+    assert result == "Eighth basketball courts"
+
+
+def test_get_pickup_location_unmapped_raises():
+    with pytest.raises(ValueError, match="No pickup location mapped"):
+        GroupRidesService._get_pickup_location(SEED_CTX, CampusLivingLocations.PANGEA)
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +125,7 @@ def test_split_on_off_campus_known_location():
         "Seventh": [("Alice", "alice")],
         "ERC": [("Bob", "bob")],
     }
-    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people)
+    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people, SEED_CTX)
 
     assert off_campus == {}
     # Both campus locations should appear in passengers_by_location
@@ -140,7 +146,7 @@ def test_split_on_off_campus_off_campus_location():
     locations_people = {
         "Some off-campus address": [("Charlie", "charlie")],
     }
-    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people)
+    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people, SEED_CTX)
 
     assert passengers_by_location == {}
     assert "Some off-campus address" in off_campus
@@ -152,7 +158,7 @@ def test_split_on_off_campus_mixed():
         "Muir": [("Alice", "alice")],
         "123 Ocean St": [("Bob", "bob")],
     }
-    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people)
+    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people, SEED_CTX)
 
     assert "123 Ocean St" in off_campus
     assert any(
@@ -166,7 +172,7 @@ def test_split_on_off_campus_erc_handled():
     """ERC living location should be mapped via _get_living_location (lowercased 'erc')."""
     svc = _make_service()
     locations_people = {"ERC": [("Alice", "alice")]}
-    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people)
+    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people, SEED_CTX)
     assert off_campus == {}
     assert len(passengers_by_location) > 0
 
@@ -179,9 +185,9 @@ def test_split_on_off_campus_erc_handled():
 def test_validate_capacity_sufficient():
     svc = _make_service()
     passengers_by_location = {
-        PickupLocations.SEVENTH: [
-            _make_passenger("A", "a", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
-            _make_passenger("B", "b", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
+        "Seventh mail room": [
+            _make_passenger("A", "a", CampusLivingLocations.ERC, "Seventh mail room"),
+            _make_passenger("B", "b", CampusLivingLocations.ERC, "Seventh mail room"),
         ]
     }
     result = svc._validate_capacity("44", passengers_by_location)
@@ -191,8 +197,8 @@ def test_validate_capacity_sufficient():
 def test_validate_capacity_exact_fit():
     svc = _make_service()
     passengers_by_location = {
-        PickupLocations.SEVENTH: [
-            _make_passenger("A", "a", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
+        "Seventh mail room": [
+            _make_passenger("A", "a", CampusLivingLocations.ERC, "Seventh mail room"),
         ]
     }
     result = svc._validate_capacity("1", passengers_by_location)
@@ -202,12 +208,12 @@ def test_validate_capacity_exact_fit():
 def test_validate_capacity_insufficient_raises():
     svc = _make_service()
     passengers_by_location = {
-        PickupLocations.SEVENTH: [
-            _make_passenger("A", "a", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
-            _make_passenger("B", "b", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
-            _make_passenger("C", "c", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
-            _make_passenger("D", "d", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
-            _make_passenger("E", "e", CampusLivingLocations.ERC, PickupLocations.SEVENTH),
+        "Seventh mail room": [
+            _make_passenger("A", "a", CampusLivingLocations.ERC, "Seventh mail room"),
+            _make_passenger("B", "b", CampusLivingLocations.ERC, "Seventh mail room"),
+            _make_passenger("C", "c", CampusLivingLocations.ERC, "Seventh mail room"),
+            _make_passenger("D", "d", CampusLivingLocations.ERC, "Seventh mail room"),
+            _make_passenger("E", "e", CampusLivingLocations.ERC, "Seventh mail room"),
         ]
     }
     with pytest.raises(ValueError, match="Insufficient driver capacity"):
@@ -259,25 +265,39 @@ async def test_filter_class_attendees_removes_class_goers():
 # ---------------------------------------------------------------------------
 
 
-def test_get_pickup_location_fuzzy_delegates():
+@pytest.mark.asyncio
+async def test_get_pickup_location_fuzzy_delegates():
     svc = _make_service()
-    with patch(
-        "bot.services.group_rides_service.RouteService.get_pickup_location_fuzzy",
-        return_value=PickupLocations.SEVENTH,
-    ) as mock_fuzzy:
-        result = svc.get_pickup_location_fuzzy("seventh mail")
-        mock_fuzzy.assert_called_once_with("seventh mail")
-        assert result == PickupLocations.SEVENTH
+    with (
+        patch(
+            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            new=AsyncMock(return_value=SEED_CTX),
+        ),
+        patch(
+            "bot.services.group_rides_service.RouteService.get_pickup_location_fuzzy",
+            return_value="Seventh mail room",
+        ) as mock_fuzzy,
+    ):
+        result = await svc.get_pickup_location_fuzzy("seventh mail")
+        mock_fuzzy.assert_called_once_with(SEED_CTX, "seventh mail")
+        assert result == "Seventh mail room"
 
 
-def test_make_route_delegates():
+@pytest.mark.asyncio
+async def test_make_route_delegates():
     svc = _make_service()
-    with patch(
-        "bot.services.group_rides_service.RouteService.make_route",
-        return_value="some route string",
-    ) as mock_route:
-        result = svc.make_route("SEVENTH ERC", "7:00pm")
-        mock_route.assert_called_once_with("SEVENTH ERC", "7:00pm")
+    with (
+        patch(
+            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            new=AsyncMock(return_value=SEED_CTX),
+        ),
+        patch(
+            "bot.services.group_rides_service.RouteService.make_route",
+            return_value="some route string",
+        ) as mock_route,
+    ):
+        result = await svc.make_route("seventh erc", "7:00pm")
+        mock_route.assert_called_once_with(SEED_CTX, "seventh erc", "7:00pm")
         assert result == "some route string"
 
 
@@ -384,6 +404,10 @@ async def test_process_ride_grouping_raises_on_llm_error_key():
 
     with (
         patch(
+            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            new=AsyncMock(return_value=SEED_CTX),
+        ),
+        patch(
             "bot.services.group_rides_service.asyncio.to_thread",
             new=AsyncMock(return_value={"error": "bad input"}),
         ),
@@ -404,6 +428,10 @@ async def test_process_ride_grouping_raises_on_llm_exception():
     svc.repo.fetch_message = AsyncMock(return_value=fake_msg)
 
     with (
+        patch(
+            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            new=AsyncMock(return_value=SEED_CTX),
+        ),
         patch(
             "bot.services.group_rides_service.asyncio.to_thread",
             new=AsyncMock(side_effect=RuntimeError("LLM down")),

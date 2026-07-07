@@ -161,7 +161,7 @@ class GroupRides(commands.Cog):
             leave_time: The leave time for the route.
         """
         try:
-            drive_formatted = self.service.make_route(locations, leave_time)
+            drive_formatted = await self.service.make_route(locations, leave_time)
             await interaction.response.send_message(drive_formatted)
             if isinstance(interaction.channel, discord.TextChannel):
                 await interaction.channel.send("```\n" + drive_formatted + "\n```")
