@@ -283,6 +283,19 @@ function MessageTemplateCard({ config, template, allowedColors, maxReactions }: 
         setDirty(true)
     }
 
+    // Discards local edits back to the latest server value (not the default).
+    // Also resolves a remote conflict by adopting the newer server version.
+    const handleUndo = () => {
+        setTitle(template.title)
+        setBody(template.body)
+        setColor(template.color)
+        setReactions(template.reactions)
+        setEmojiInput('')
+        baseline.current = template
+        setDirty(false)
+        setRemoteConflict(false)
+    }
+
     const canSave =
         dirty &&
         title.trim().length > 0 &&
@@ -452,14 +465,21 @@ function MessageTemplateCard({ config, template, allowedColors, maxReactions }: 
                 >
                     ↩ Reset to default
                 </Button>
-                <Button
-                    type="button"
-                    onClick={() => saveMutation.mutate()}
-                    disabled={!canSave}
-                    size="sm"
-                >
-                    {saveMutation.isPending ? 'Saving...' : 'Save'}
-                </Button>
+                <div className="flex items-center gap-2">
+                    {dirty && (
+                        <Button type="button" onClick={handleUndo} variant="outline" size="sm">
+                            Undo changes
+                        </Button>
+                    )}
+                    <Button
+                        type="button"
+                        onClick={() => saveMutation.mutate()}
+                        disabled={!canSave}
+                        size="sm"
+                    >
+                        {saveMutation.isPending ? 'Saving...' : 'Save'}
+                    </Button>
+                </div>
             </div>
 
             {saveMutation.isError && (
@@ -556,6 +576,14 @@ function ScheduleSlotRow({ config, entry, allowedDays, timeWindow, isInactive }:
         setDirty(true)
     }
 
+    // Discards local edits back to the latest server value (not the default).
+    const handleUndo = () => {
+        setDayOfWeek(entry.day_of_week)
+        setTime(toTimeInputValue(entry.hour, entry.minute))
+        baseline.current = entry
+        setDirty(false)
+    }
+
     const canSave = dirty && !Number.isNaN(hour) && !Number.isNaN(minute) && !saveMutation.isPending
 
     return (
@@ -633,6 +661,11 @@ function ScheduleSlotRow({ config, entry, allowedDays, timeWindow, isInactive }:
                 >
                     ↩ Reset to default
                 </Button>
+                {dirty && (
+                    <Button type="button" onClick={handleUndo} variant="outline" size="sm">
+                        Undo changes
+                    </Button>
+                )}
                 <Button type="button" onClick={() => saveMutation.mutate()} disabled={!canSave} size="sm">
                     {saveMutation.isPending ? 'Saving...' : 'Save'}
                 </Button>
@@ -811,6 +844,19 @@ function CoordinatorSettingCard() {
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-success/15 text-success-text border border-success/30 mb-0.5">
                         {data.display_name ?? `@${data.username}`}
                     </span>
+                )}
+                {dirty && (
+                    <Button
+                        type="button"
+                        onClick={() => {
+                            setUserId(data?.user_id ?? '')
+                            setDirty(false)
+                        }}
+                        variant="outline"
+                        size="sm"
+                    >
+                        Undo changes
+                    </Button>
                 )}
                 <Button
                     type="button"
