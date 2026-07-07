@@ -177,3 +177,42 @@ export interface AskRidesCoordinator {
     display_name?: string
     warning?: string
 }
+
+/**
+ * Identifiers for the two independently-schedulable ask-rides send slots.
+ * Matches the backend `AskRidesScheduleSlot` StrEnum values.
+ */
+export type AskRidesScheduleSlot = 'wednesday_reminder' | 'fri_sun_group'
+
+/**
+ * The effective day/time for one schedule slot, as returned by
+ * `GET /api/ask-rides/schedule` and by the PUT/DELETE mutation responses.
+ * `day_of_week` is 0=Monday .. 6=Sunday.
+ */
+export interface AskRidesScheduleEntry {
+    day_of_week: number
+    hour: number
+    minute: number
+    is_customized: boolean
+    /** Only present on the GET response — the days this slot may be set to. */
+    allowed_days?: number[]
+    warning?: string
+}
+
+/**
+ * The daytime window (inclusive) that any slot's send time must fall within.
+ */
+export interface AskRidesScheduleTimeWindow {
+    min_hour: number
+    min_minute: number
+    max_hour: number
+    max_minute: number
+}
+
+/**
+ * Response envelope for `GET /api/ask-rides/schedule`.
+ */
+export interface AskRidesScheduleResponse {
+    schedules: Record<AskRidesScheduleSlot, AskRidesScheduleEntry>
+    time_window: AskRidesScheduleTimeWindow
+}

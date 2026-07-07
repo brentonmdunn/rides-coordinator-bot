@@ -7,6 +7,9 @@ import type {
   AskRidesMessageTemplate,
   AskRidesMessageType,
   AskRidesMessagesResponse,
+  AskRidesScheduleEntry,
+  AskRidesScheduleResponse,
+  AskRidesScheduleSlot,
 } from "@/types"
 
 // ── Mock the network boundary, not auth ──────────────────────────────────
@@ -49,6 +52,15 @@ function defaultTemplate(overrides: Partial<AskRidesMessageTemplate> = {}): AskR
 
 let serverTemplates: Record<AskRidesMessageType, AskRidesMessageTemplate>
 let serverCoordinator: AskRidesCoordinator
+let serverSchedules: Record<AskRidesScheduleSlot, AskRidesScheduleEntry>
+let serverSeason: "friday" | "wednesday"
+
+function scheduleResponse(): AskRidesScheduleResponse {
+  return {
+    schedules: serverSchedules,
+    time_window: { min_hour: 6, min_minute: 0, max_hour: 22, max_minute: 0 },
+  }
+}
 
 function messagesResponse(): AskRidesMessagesResponse {
   return {
@@ -75,9 +87,43 @@ beforeEach(() => {
     sunday_class: defaultTemplate({ title: "Sunday Class Rides", color: "blurple" }),
   }
   serverCoordinator = { user_id: "123456789012345678", configured: true, username: "coordinator" }
+  serverSchedules = {
+    wednesday_reminder: { day_of_week: 0, hour: 11, minute: 0, is_customized: false, allowed_days: [0, 1] },
+    fri_sun_group: { day_of_week: 2, hour: 12, minute: 0, is_customized: false, allowed_days: [0, 1, 2, 3] },
+  }
+  serverSeason = "friday"
 
   apiFetch.mockImplementation(async (endpoint: string, options?: RequestInit) => {
     if (endpoint === "/api/ask-rides/messages") return jsonResponse(messagesResponse())
+
+    if (endpoint === "/api/ask-rides/schedule") return jsonResponse(scheduleResponse())
+
+    if (endpoint === "/api/ask-rides/fellowship-season") return jsonResponse({ season: serverSeason })
+
+    const scheduleMatch = endpoint.match(/^\/api\/ask-rides\/schedule\/(.+)$/)
+    if (scheduleMatch && options?.method === "PUT") {
+      const slot = scheduleMatch[1] as AskRidesScheduleSlot
+      const body = JSON.parse(options.body as string)
+      serverSchedules = {
+        ...serverSchedules,
+        [slot]: {
+          ...body,
+          is_customized: true,
+          allowed_days: serverSchedules[slot].allowed_days,
+        },
+      }
+      return jsonResponse(serverSchedules[slot])
+    }
+
+    if (scheduleMatch && options?.method === "DELETE") {
+      const slot = scheduleMatch[1] as AskRidesScheduleSlot
+      const defaults: Record<AskRidesScheduleSlot, AskRidesScheduleEntry> = {
+        wednesday_reminder: { day_of_week: 0, hour: 11, minute: 0, is_customized: false, allowed_days: [0, 1] },
+        fri_sun_group: { day_of_week: 2, hour: 12, minute: 0, is_customized: false, allowed_days: [0, 1, 2, 3] },
+      }
+      serverSchedules = { ...serverSchedules, [slot]: defaults[slot] }
+      return jsonResponse(serverSchedules[slot])
+    }
 
     if (endpoint === "/api/ask-rides/coordinator") {
       if (options?.method === "PUT") {
@@ -222,5 +268,90 @@ describe("MessageTemplatesEditor", () => {
         }),
       ),
     )
+  })
+
+  it("loads the send schedule and saves a changed day/time", async () => {
+    const user = userEvent.setup()
+    renderEditor()
+
+    const heading = await screen.findByRole("heading", { name: "Wed. Fellowship Reminder" })
+    const row = heading.closest("div")!.parentElement!.parentElement as HTMLElement
+
+    const daySelect = within(row).getByLabelText("Day") as HTMLSelectElement
+    expect(daySelect.value).toBe("0")
+    const timeInput = within(row).getByLabelText("Time") as HTMLInputElement
+    expect(timeInput.value).toBe("11:00")
+
+    await user.selectOptions(daySelect, "1")
+    await user.clear(timeInput)
+    await user.type(timeInput, "09:30")
+
+    await user.click(within(row).getByRole("button", { name: "Save" }))
+
+    await waitFor(() =>
+      expect(apiFetch).toHaveBeenCalledWith(
+        "/api/ask-rides/schedule/wednesday_reminder",
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({ day_of_week: 1, hour: 9, minute: 30 }),
+        }),
+      ),
+    )
+
+    expect(await within(row).findByText("Customized")).toBeInTheDocument()
+  })
+
+  it("resets a customized schedule back to default after confirming", async () => {
+    serverSchedules.wednesday_reminder = {
+      day_of_week: 1,
+      hour: 9,
+      minute: 30,
+      is_customized: true,
+      allowed_days: [0, 1],
+    }
+    const user = userEvent.setup()
+    renderEditor()
+
+    const heading = await screen.findByRole("heading", { name: "Wed. Fellowship Reminder" })
+    const row = heading.closest("div")!.parentElement!.parentElement as HTMLElement
+    expect(await within(row).findByText("Customized")).toBeInTheDocument()
+
+    await user.click(within(row).getByRole("button", { name: /Reset to default/ }))
+    await user.click(await screen.findByRole("button", { name: "Yes, reset" }))
+
+    await waitFor(() =>
+      expect(apiFetch).toHaveBeenCalledWith(
+        "/api/ask-rides/schedule/wednesday_reminder",
+        expect.objectContaining({ method: "DELETE" }),
+      ),
+    )
+
+    await waitFor(() => expect(within(row).queryByText("Customized")).not.toBeInTheDocument())
+    expect((within(row).getByLabelText("Day") as HTMLSelectElement).value).toBe("0")
+    expect((within(row).getByLabelText("Time") as HTMLInputElement).value).toBe("11:00")
+  })
+
+  it("marks the Wednesday reminder inactive when Friday season is active, not the Fri/Sun row", async () => {
+    serverSeason = "friday"
+    renderEditor()
+
+    const wedHeading = await screen.findByRole("heading", { name: "Wed. Fellowship Reminder" })
+    const wedRow = wedHeading.closest("div")!.parentElement!.parentElement as HTMLElement
+    expect(await within(wedRow).findByText("Inactive this season")).toBeInTheDocument()
+
+    const friSunHeading = screen.getByRole("heading", { name: "Friday/Sunday Group Send" })
+    const friSunRow = friSunHeading.closest("div")!.parentElement!.parentElement as HTMLElement
+    expect(within(friSunRow).queryByText("Inactive this season")).not.toBeInTheDocument()
+  })
+
+  it("does not mark the Wednesday reminder inactive when Wednesday season is active", async () => {
+    serverSeason = "wednesday"
+    renderEditor()
+
+    const wedHeading = await screen.findByRole("heading", { name: "Wed. Fellowship Reminder" })
+    const wedRow = wedHeading.closest("div")!.parentElement!.parentElement as HTMLElement
+
+    await waitFor(() => expect(within(wedRow).getByLabelText("Day")).toBeInTheDocument())
+    expect(within(wedRow).queryByText("Inactive this season")).not.toBeInTheDocument()
   })
 })
