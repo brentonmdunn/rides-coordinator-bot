@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint, func
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bot.core.base import Base
@@ -195,6 +195,57 @@ class AskRidesSchedule(Base):
     minute: Mapped[int]
     updated_by: Mapped[str]
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class PickupLocation(Base):
+    """Model representing a ride pickup location with GPS coordinates."""
+
+    __tablename__ = "pickup_locations"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(unique=True)
+    latitude: Mapped[float]
+    longitude: Mapped[float]
+    # Travel minutes between the trip origin/destination ("START"/"END" virtual
+    # nodes in the routing graph) and this location. NULL = not directly connected.
+    minutes_from_start: Mapped[int | None]
+    minutes_to_end: Mapped[int | None]
+    is_active: Mapped[bool] = mapped_column(default=True)
+    is_seeded: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class PickupLocationEdge(Base):
+    """
+    Model representing an undirected travel-time edge between two pickup locations.
+
+    Rows are stored with location_a_id < location_b_id (normalized in the service).
+    """
+
+    __tablename__ = "pickup_location_edges"
+    __table_args__ = (
+        UniqueConstraint("location_a_id", "location_b_id"),
+        CheckConstraint("minutes > 0"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    location_a_id: Mapped[int] = mapped_column(
+        ForeignKey("pickup_locations.id", ondelete="CASCADE")
+    )
+    location_b_id: Mapped[int] = mapped_column(
+        ForeignKey("pickup_locations.id", ondelete="CASCADE")
+    )
+    minutes: Mapped[int]
+
+
+class LivingLocationPickup(Base):
+    """Model mapping a campus living location (enum value) to its pickup location."""
+
+    __tablename__ = "living_location_pickups"
+
+    living_location: Mapped[str] = mapped_column(primary_key=True)
+    pickup_location_id: Mapped[int] = mapped_column(ForeignKey("pickup_locations.id"))
 
 
 class RideReactionEvent(Base):

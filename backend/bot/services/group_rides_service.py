@@ -12,13 +12,13 @@ from bot.core.enums import (
     CampusLivingLocations,
     ChannelIds,
     JobName,
-    PickupLocations,
 )
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.schemas import Identity, Passenger
 from bot.repositories.group_rides_repository import GroupRidesRepository
 from bot.services.llm_service import LLMService
 from bot.services.locations_service import LocationsService
+from bot.services.pickup_locations_service import PickupLocationsService, RoutingContext
 from bot.services.ride_grouping import (
     LocationsPeopleType,
     PassengersByLocation,
@@ -30,7 +30,6 @@ from bot.services.ride_grouping import (
     parse_numbers,
 )
 from bot.services.route_service import RouteService
-from bot.utils.locations import LOCATIONS_MATRIX
 from bot.utils.parsing import get_message_and_embed_content
 
 logger = logging.getLogger(__name__)
@@ -38,20 +37,6 @@ logger = logging.getLogger(__name__)
 EVENT_END_LEAVE_TIMES: dict[JobName, time] = {
     JobName.SUNDAY: time(hour=10, minute=10),
     JobName.FRIDAY: time(hour=19, minute=10),
-}
-
-living_to_pickup = {
-    CampusLivingLocations.SIXTH: PickupLocations.SIXTH,
-    CampusLivingLocations.SEVENTH: PickupLocations.SEVENTH,
-    CampusLivingLocations.MARSHALL: PickupLocations.MARSHALL,
-    CampusLivingLocations.ERC: PickupLocations.ERC,
-    CampusLivingLocations.MUIR: PickupLocations.MUIR,
-    CampusLivingLocations.EIGHTH: PickupLocations.EIGHTH,
-    CampusLivingLocations.REVELLE: PickupLocations.EIGHTH,
-    CampusLivingLocations.PCE: PickupLocations.INNOVATION,
-    CampusLivingLocations.PCW: PickupLocations.INNOVATION,
-    CampusLivingLocations.RITA: PickupLocations.RITA,
-    CampusLivingLocations.WARREN: PickupLocations.WARREN_EQL,
 }
 
 
@@ -82,17 +67,20 @@ class GroupRidesService:
         return CampusLivingLocations(location.title())
 
     @staticmethod
-    def _get_pickup_location(living_location: CampusLivingLocations) -> PickupLocations:
+    def _get_pickup_location(
+        routing: RoutingContext, living_location: CampusLivingLocations
+    ) -> str:
         """
-        Get pickup location from living location.
+        Get pickup location name from living location.
 
         Args:
+            routing (RoutingContext): Snapshot of the routing graph and settings.
             living_location (CampusLivingLocations): The living location enum.
 
         Returns:
-            PickupLocations: The corresponding PickupLocations enum member.
+            str: The corresponding pickup location name.
         """
-        return living_to_pickup[living_location]
+        return routing.pickup_for_living(living_location.value)
 
     async def _determine_event_type(self, combined_text: str) -> tuple[JobName, time]:
         """Return the JobName and end leave time inferred from message text."""
@@ -115,7 +103,7 @@ class GroupRidesService:
         return usernames_reacted - class_usernames_reacted
 
     def _split_on_off_campus(
-        self, locations_people: LocationsPeopleType
+        self, locations_people: LocationsPeopleType, routing: RoutingContext
     ) -> tuple[PassengersByLocation, LocationsPeopleType]:
         """Bucket passengers into on-campus (by pickup location) and off-campus groups."""
         valid_campus_locations = {loc.value.lower() for loc in CampusLivingLocations}
@@ -128,7 +116,7 @@ class GroupRidesService:
                 continue
 
             living_loc_enum = self._get_living_location(living_location)
-            pickup_key = self._get_pickup_location(living_loc_enum)
+            pickup_key = self._get_pickup_location(routing, living_loc_enum)
             passengers_by_location.setdefault(pickup_key, []).extend(
                 Passenger(
                     identity=Identity(name=person[0], username=person[1]),
@@ -202,7 +190,8 @@ class GroupRidesService:
                 "Please ensure usernames and locations are on the spreadsheet."
             )
 
-        passengers_by_location, off_campus = self._split_on_off_campus(locations_people)
+        routing = await PickupLocationsService.get_routing_context()
+        passengers_by_location, off_campus = self._split_on_off_campus(locations_people, routing)
         driver_capacity_list = self._validate_capacity(driver_capacity, passengers_by_location)
 
         drivers = llm_input_drivers(driver_capacity_list)
@@ -214,7 +203,7 @@ class GroupRidesService:
                 self.llm_service.generate_ride_groups,
                 pickups,
                 drivers,
-                LOCATIONS_MATRIX,
+                routing.graph,
                 legacy_prompt,
                 custom_prompt,
             )
@@ -230,7 +219,9 @@ class GroupRidesService:
         if "error" in {key.lower() for key in llm_result}:
             raise ValueError(f"LLM returned with error: {llm_result}")
 
-        output = create_output(llm_result, passengers_by_location, end_leave_time, off_campus)
+        output = create_output(
+            llm_result, passengers_by_location, end_leave_time, off_campus, routing
+        )
         logger.info(f"_process_ride_grouping: completed - generated {len(output)} output blocks")
         return output
 
@@ -294,13 +285,15 @@ class GroupRidesService:
             for message in output[1:]:
                 await channel.send(message)
 
-    def get_pickup_location_fuzzy(self, input_loc: str) -> PickupLocations | None:
+    async def get_pickup_location_fuzzy(self, input_loc: str) -> str | None:
         """Delegates to RouteService.get_pickup_location_fuzzy."""
-        return RouteService.get_pickup_location_fuzzy(input_loc)
+        routing = await PickupLocationsService.get_routing_context()
+        return RouteService.get_pickup_location_fuzzy(routing, input_loc)
 
-    def make_route(self, locations: str, leave_time: str) -> str:
+    async def make_route(self, locations: str, leave_time: str) -> str:
         """Delegates to RouteService.make_route."""
-        return RouteService.make_route(locations, leave_time)
+        routing = await PickupLocationsService.get_routing_context()
+        return RouteService.make_route(routing, locations, leave_time)
 
     async def group_rides_api(
         self,

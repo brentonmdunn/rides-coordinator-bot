@@ -131,27 +131,6 @@ class CampusLivingLocations(StrEnum):
     REVELLE = "Revelle"
 
 
-class PickupLocations(StrEnum):
-    """Ride pickup locations."""
-
-    SEVENTH = "Seventh mail room"
-    ERC = "ERC across from bamboo"
-    MARSHALL = "Marshall uppers"
-    SIXTH = "Sixth loop"
-    MUIR = "Muir tennis courts"
-    WARREN_EQL = "Warren Equality Ln"
-    WARREN_JST = "Warren Justice Ln"
-    RITA = "Rita"
-    INNOVATION = "Innovation"
-    EIGHTH = "Eighth basketball courts"
-    PANGEA = "Pangea"
-    VILLAS_OF_RENAISSANCE = "Villas of Renaissance"
-    # Not a bug, I want pickup location to be the same as eighth
-    REVELLE = "Eighth basketball courts"
-    GEISEL_LOOP = "Geisel Loop"
-    PCYN_LOOP = "Pepper Canyon Loop"
-
-
 class CacheNamespace(StrEnum):
     """Cache namespaces for grouped invalidation."""
 

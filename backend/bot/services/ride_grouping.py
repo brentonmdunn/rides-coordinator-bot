@@ -3,15 +3,13 @@
 import logging
 from datetime import datetime, time, timedelta
 
-from bot.core.enums import PickupLocations
-from bot.core.schemas import LocationQuery, Passenger
-from bot.utils.constants import RIDE_GROUPING_PICKUP_ADJUSTMENT, get_map_url
-from bot.utils.locations import lookup_time
+from bot.core.schemas import Passenger
+from bot.services.pickup_locations_service import RoutingContext
 
 logger = logging.getLogger(__name__)
 
 LocationsPeopleType = dict[str, list[tuple[str, str]]]
-PassengersByLocation = dict[PickupLocations, list[Passenger]]
+PassengersByLocation = dict[str, list[Passenger]]
 
 
 def parse_numbers(s: str) -> list[int]:
@@ -48,7 +46,7 @@ def find_passenger(
         Passenger | None: The Passenger object if found, otherwise None.
     """
     for key, passengers in locations_people.items():
-        if key.value == location or str(key) == location:
+        if key == location:
             for p in passengers:
                 if p.identity.name == person:
                     return p
@@ -87,7 +85,11 @@ def is_enough_capacity(
 
 
 def calculate_pickup_time(
-    curr_leave_time: time, grouped_by_location, location: PickupLocations, offset: int
+    curr_leave_time: time,
+    grouped_by_location,
+    location: str,
+    offset: int,
+    routing: RoutingContext,
 ) -> time:
     """
     Calculates the pickup time based on the previous location and travel time.
@@ -95,19 +97,16 @@ def calculate_pickup_time(
     Args:
         curr_leave_time (time): The leave time from the previous location.
         grouped_by_location (list): List of passenger groups.
-        location (PickupLocations): The current pickup location.
+        location (str): The current pickup location name.
         offset (int): The offset index for the previous location.
+        routing (RoutingContext): Snapshot of the routing graph and settings.
 
     Returns:
         time: The calculated pickup time.
     """
-    time_between = RIDE_GROUPING_PICKUP_ADJUSTMENT + lookup_time(
-        LocationQuery(
-            start_location=grouped_by_location[len(grouped_by_location) - offset][
-                0
-            ].pickup_location,
-            end_location=location,
-        )
+    time_between = routing.pickup_adjustment + routing.lookup_time(
+        grouped_by_location[len(grouped_by_location) - offset][0].pickup_location,
+        location,
     )
     dummy_datetime = datetime.combine(datetime.today(), curr_leave_time)
     new_datetime = dummy_datetime - timedelta(minutes=time_between)
@@ -150,6 +149,7 @@ def create_output(
     locations_people: PassengersByLocation,
     end_leave_time: time,
     off_campus: LocationsPeopleType,
+    routing: RoutingContext,
 ) -> list[str]:
     """
     Creates the final output messages based on the LLM result.
@@ -159,6 +159,7 @@ def create_output(
         locations_people (PassengersByLocation): Dictionary of passengers grouped by location.
         end_leave_time (time): The target arrival time.
         off_campus (LocationsPeopleType): Dictionary of off-campus passengers.
+        routing (RoutingContext): Snapshot of the routing graph and settings.
 
     Returns:
         list[str]: A list of formatted output strings.
@@ -209,7 +210,7 @@ def create_output(
 
             if idx != 0:
                 curr_leave_time = calculate_pickup_time(
-                    curr_leave_time, grouped_by_location, pickup_location, idx
+                    curr_leave_time, grouped_by_location, pickup_location, idx, routing
                 )
 
             base_string = (
@@ -218,7 +219,7 @@ def create_output(
                 f"{pickup_location}"
             )
 
-            map_url = get_map_url(pickup_location)
+            map_url = routing.map_url(pickup_location)
             if map_url:
                 formatted_string = f"{base_string} ([Google Maps]({map_url}))"
             else:

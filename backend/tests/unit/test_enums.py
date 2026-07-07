@@ -11,7 +11,6 @@ from bot.core.enums import (
     DaysOfWeekNumber,
     FeatureFlagNames,
     JobName,
-    PickupLocations,
     ReactionAction,
     RideOption,
     RoleIds,
@@ -92,21 +91,6 @@ class TestRoleIds:
     def test_all_positive(self):
         for r in RoleIds:
             assert r.value > 0
-
-
-class TestPickupLocations:
-    """Tests for PickupLocations enum."""
-
-    def test_is_str_enum(self):
-        assert issubclass(PickupLocations, StrEnum)
-
-    def test_revelle_same_as_eighth(self):
-        assert PickupLocations.REVELLE == PickupLocations.EIGHTH
-
-    def test_has_key_locations(self):
-        expected = {"MUIR", "SIXTH", "MARSHALL", "ERC", "SEVENTH", "WARREN_EQL", "RITA"}
-        actual = {loc.name for loc in PickupLocations}
-        assert expected.issubset(actual)
 
 
 class TestCampusLivingLocations:

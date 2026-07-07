@@ -12,6 +12,7 @@ import { ThemeProvider } from "./components/theme-provider"
 
 const Learn = lazy(() => import('./pages/Learn.tsx'))
 const ReactionLog = lazy(() => import('./pages/ReactionLog.tsx'))
+const Locations = lazy(() => import('./pages/Locations.tsx'))
 
 const queryClient = new QueryClient()
 
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/" element={<Home />} />
                   <Route path="/learn" element={<Learn />} />
                   <Route path="/reaction-log" element={<ReactionLog />} />
+                  <Route path="/locations" element={<Locations />} />
                 </Route>
               </Routes>
             </Suspense>

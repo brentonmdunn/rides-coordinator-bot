@@ -130,6 +130,14 @@ function Home() {
                         actions={
                             <div className="flex flex-col items-center md:items-end gap-2">
                                 <div className="flex items-center gap-2">
+                                    {canManage && (
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link to="/locations">
+                                                <MapPin className="w-4 h-4" />
+                                                Locations
+                                            </Link>
+                                        </Button>
+                                    )}
                                     <Button variant="outline" size="sm" asChild>
                                         <Link to="/reaction-log">
                                             <History className="w-4 h-4" />

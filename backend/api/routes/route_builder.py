@@ -2,8 +2,10 @@
 Route Builder API Endpoints
 
 Provides API access to route building functionality:
-- GET /api/pickup-locations: Returns available pickup locations
+- GET /api/map-locations: Active pickup locations with coordinates and map URLs
 - POST /api/make-route: Generates route based on locations and leave time
+
+(Coordinator-gated location management lives in api/routes/pickup_locations.py.)
 """
 
 import logging
@@ -11,20 +13,57 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.core.enums import PickupLocations
+from bot.services.pickup_locations_service import PickupLocationsService
 from bot.services.route_service import RouteService
-from bot.utils.constants import MAP_LOCATIONS, get_map_links
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
+class MapLocation(BaseModel):
+    """An active pickup location with coordinates and a Google Maps URL."""
+
+    name: str
+    latitude: float
+    longitude: float
+    map_url: str
+
+
+class MapLocationsResponse(BaseModel):
+    """Response model for the map locations listing."""
+
+    locations: list[MapLocation]
+
+
+@router.get(
+    "/api/map-locations",
+    response_model=MapLocationsResponse,
+    summary="List Map Locations",
+    description="Active pickup locations with coordinates and Google Maps URLs.",
+)
+async def get_map_locations():
+    """Return active pickup locations for map display (any authenticated user)."""
+    routing = await PickupLocationsService.get_routing_context()
+    return MapLocationsResponse(
+        locations=[
+            MapLocation(
+                name=loc.name,
+                latitude=loc.latitude,
+                longitude=loc.longitude,
+                map_url=url,
+            )
+            for loc in routing.locations
+            if loc.is_active and (url := routing.map_url(loc.name)) is not None
+        ]
+    )
+
+
 class MakeRouteRequest(BaseModel):
     """Request model for making a route."""
 
     locations: list[str] = Field(
-        description="List of pickup location IDs/names to include in the route"
+        description="List of pickup location names to include in the route"
     )
     leave_time: str = Field(description="Desired departure time from campus (e.g. '1:30 PM')")
 
@@ -37,69 +76,6 @@ class MakeRouteResponse(BaseModel):
         default=None, description="The formatted Google Maps route URL or text"
     )
     error: str | None = Field(default=None, description="Error message if the request failed")
-
-
-class PickupLocationItem(BaseModel):
-    """Model for a single pickup location."""
-
-    key: str = Field(description="The internal enum key for the location")
-    value: str = Field(description="The human-readable display name for the location")
-
-
-class PickupLocationsResponse(BaseModel):
-    """Response model for pickup locations."""
-
-    locations: list[PickupLocationItem] = Field(
-        description="List of all available pickup locations"
-    )
-    map_links: dict[str, str] = Field(
-        description="Mapping of location display names to Google Maps URLs"
-    )
-    coordinates: dict[str, dict[str, float]] = Field(
-        description="Mapping of location display names to lat/lng objects"
-    )
-
-
-@router.get(
-    "/api/pickup-locations",
-    response_model=PickupLocationsResponse,
-    summary="Get Pickup Locations",
-    description="Get all available pickup locations, their map links, and physical coordinates.",
-)
-async def get_pickup_locations():
-    """
-    Get all available pickup locations and their Google Maps links.
-
-    Returns:
-        JSON with list of locations and map links
-
-    Raises:
-        HTTPException: If there's an error fetching locations
-    """
-    try:
-        # Convert enum to list of location items
-        locations = [
-            PickupLocationItem(key=location.name, value=location.value)
-            for location in PickupLocations
-        ]
-
-        # Generate map links from coordinates
-        map_links = {loc.value: url for loc, url in get_map_links().items()}
-
-        # Build coordinates dict keyed by location value
-        coordinates = {
-            loc.value: {"lat": lat, "lng": lng} for loc, (lat, lng) in MAP_LOCATIONS.items()
-        }
-
-        return PickupLocationsResponse(
-            locations=locations, map_links=map_links, coordinates=coordinates
-        )
-
-    except Exception as e:
-        logger.exception("Error fetching pickup locations")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch pickup locations: {e!s}"
-        ) from e
 
 
 @router.post(
@@ -134,8 +110,8 @@ async def make_route(request: MakeRouteRequest):
         raise HTTPException(status_code=400, detail="Leave time must be provided")
 
     try:
-        locations_str = " ".join(request.locations)
-        route = RouteService.make_route(locations_str, request.leave_time)
+        routing = await PickupLocationsService.get_routing_context()
+        route = RouteService.make_route_from_names(routing, request.locations, request.leave_time)
 
         logger.info(f"✅ Successfully generated route: {route}")
         return MakeRouteResponse(success=True, route=route)

@@ -1,58 +1,52 @@
-"""Unit tests for bot.utils.constants."""
+"""Unit tests for RoutingContext map helpers (formerly bot.utils.constants)."""
 
-from bot.core.enums import PickupLocations
-from bot.utils.constants import MAP_LOCATIONS, get_map_links, get_map_url
+from tests.unit.routing_fixtures import make_seed_context
 
 
-class TestGetMapUrl:
-    """Tests for get_map_url."""
+class TestMapUrl:
+    """Tests for RoutingContext.map_url."""
 
     def test_known_location(self):
-        url = get_map_url(PickupLocations.SIXTH)
+        ctx = make_seed_context()
+        url = ctx.map_url("Sixth loop")
         assert url is not None
         assert "google.com/maps" in url
         assert "32.881096" in url
         assert "-117.24202" in url
 
     def test_returns_none_for_unknown_location(self):
-        url = get_map_url(PickupLocations.VILLAS_OF_RENAISSANCE)
-        assert url is None
+        ctx = make_seed_context()
+        assert ctx.map_url("Atlantis") is None
 
-    def test_all_mapped_locations_return_urls(self):
-        for loc in MAP_LOCATIONS:
-            url = get_map_url(loc)
-            assert url is not None, f"get_map_url returned None for {loc}"
+    def test_all_locations_return_urls(self):
+        ctx = make_seed_context()
+        for name in ctx.active_names:
+            url = ctx.map_url(name)
+            assert url is not None, f"map_url returned None for {name}"
             assert url.startswith("https://www.google.com/maps?q=")
 
 
-class TestGetMapLinks:
-    """Tests for get_map_links."""
+class TestMapLinks:
+    """Tests for RoutingContext.map_links."""
 
-    def test_returns_dict(self):
-        links = get_map_links()
+    def test_all_active_locations_present(self):
+        ctx = make_seed_context()
+        links = ctx.map_links()
         assert isinstance(links, dict)
-
-    def test_all_mapped_locations_present(self):
-        links = get_map_links()
-        for loc in MAP_LOCATIONS:
-            assert loc in links
+        for name in ctx.active_names:
+            assert name in links
 
     def test_values_are_urls(self):
-        links = get_map_links()
-        for _loc, url in links.items():
-            assert url is not None
+        ctx = make_seed_context()
+        for _name, url in ctx.map_links().items():
             assert "google.com/maps" in url
 
 
-class TestMapLocations:
-    """Tests for the MAP_LOCATIONS constant."""
+class TestCoordinates:
+    """Tests for seeded coordinates."""
 
     def test_coordinates_are_in_san_diego(self):
-        for loc, (lat, lng) in MAP_LOCATIONS.items():
-            assert 32.8 < lat < 33.0, f"{loc} lat {lat} out of San Diego range"
-            assert -117.3 < lng < -117.2, f"{loc} lng {lng} out of San Diego range"
-
-    def test_coordinates_are_tuples(self):
-        for _loc, coords in MAP_LOCATIONS.items():
-            assert isinstance(coords, tuple)
-            assert len(coords) == 2
+        ctx = make_seed_context()
+        for loc in ctx.locations:
+            assert 32.8 < loc.latitude < 33.0, f"{loc.name} lat out of San Diego range"
+            assert -117.3 < loc.longitude < -117.2, f"{loc.name} lng out of San Diego range"

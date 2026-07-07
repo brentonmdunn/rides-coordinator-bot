@@ -14,7 +14,7 @@ import {
 import { Copy, ExternalLink, Navigation } from 'lucide-react'
 import { Button } from './ui/button'
 import { SectionCard } from './shared'
-import type { PickupLocationsResponse } from '../types'
+import type { MapLocationsResponse } from '../types'
 
 import { RecenterMap, MapInteractionGuard } from './MapShared'
 import { UCSD_CENTER, setupLeafletIcons } from './MapConstants'
@@ -27,7 +27,7 @@ setupLeafletIcons()
 
 function MapLinks() {
     const [availableLocations, setAvailableLocations] =
-        useState<PickupLocationsResponse | null>(null)
+        useState<MapLocationsResponse | null>(null)
     const [locationsLoading, setLocationsLoading] = useState(true)
     const [selectedLocation, setSelectedLocation] = useState<string>('')
     const { theme } = useTheme()
@@ -35,8 +35,8 @@ function MapLinks() {
     useEffect(() => {
         const fetchLocations = async () => {
             try {
-                const response = await apiFetch('/api/pickup-locations')
-                const data: PickupLocationsResponse = await response.json()
+                const response = await apiFetch('/api/map-locations')
+                const data: MapLocationsResponse = await response.json()
                 setAvailableLocations(data)
             } catch (error) {
                 console.error('Failed to fetch pickup locations:', error)
@@ -48,20 +48,14 @@ function MapLinks() {
         fetchLocations()
     }, [])
 
-    // Get the display name for the selected location key
-    const selectedLocationName =
-        availableLocations?.locations.find(
-            (loc) => loc.key === selectedLocation
-        )?.value ?? ''
+    const selected = availableLocations?.locations.find(
+        (loc) => loc.name === selectedLocation
+    )
 
-    // Get the Google Maps URL for the selected location
-    const selectedMapUrl = selectedLocationName
-        ? (availableLocations?.map_links[selectedLocationName] ?? null)
-        : null
-
-    // Get coordinates for the selected location
-    const selectedCoords = selectedLocationName
-        ? (availableLocations?.coordinates[selectedLocationName] ?? null)
+    const selectedLocationName = selected?.name ?? ''
+    const selectedMapUrl = selected?.map_url ?? null
+    const selectedCoords = selected
+        ? { lat: selected.latitude, lng: selected.longitude }
         : null
 
     const mapCenter: [number, number] = selectedCoords
@@ -92,21 +86,14 @@ function MapLinks() {
                             />
                         </SelectTrigger>
                         <SelectContent>
-                            {availableLocations?.locations
-                                .filter(
-                                    (loc) =>
-                                        availableLocations.coordinates[
-                                        loc.value
-                                        ] != null
-                                )
-                                .map((location) => (
-                                    <SelectItem
-                                        key={location.key}
-                                        value={location.key}
-                                    >
-                                        {location.value}
-                                    </SelectItem>
-                                ))}
+                            {availableLocations?.locations.map((location) => (
+                                <SelectItem
+                                    key={location.name}
+                                    value={location.name}
+                                >
+                                    {location.name}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
