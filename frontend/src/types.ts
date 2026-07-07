@@ -92,11 +92,25 @@ export interface RideCoverage {
     is_in_visibility_window: boolean
 }
 
+// Raw shape of GET /api/map-locations (ungated read endpoint).
+export interface MapLocation {
+    name: string
+    latitude: number
+    longitude: number
+    map_url: string
+}
+
+export interface MapLocationsResponse {
+    locations: MapLocation[]
+}
+
 export interface PickupLocation {
     key: string
     value: string
 }
 
+// Client-side adapter shape derived from MapLocationsResponse (key === value === name);
+// kept so RouteBuilder internals and useRouteGeometry stay unchanged.
 export interface PickupLocationsResponse {
     locations: PickupLocation[]
     map_links: { [location: string]: string }
@@ -215,4 +229,47 @@ export interface AskRidesScheduleTimeWindow {
 export interface AskRidesScheduleResponse {
     schedules: Record<AskRidesScheduleSlot, AskRidesScheduleEntry>
     time_window: AskRidesScheduleTimeWindow
+}
+
+/**
+ * A pickup location row from the management API (`GET /api/pickup-locations`).
+ */
+export interface ManagedPickupLocation {
+    id: number
+    name: string
+    latitude: number
+    longitude: number
+    minutes_from_start: number | null
+    minutes_to_end: number | null
+    is_active: boolean
+    is_seeded: boolean
+}
+
+/**
+ * An undirected travel-time edge between two pickup locations.
+ */
+export interface PickupLocationEdge {
+    id: number
+    location_a_id: number
+    location_b_id: number
+    minutes: number
+}
+
+/**
+ * Mapping from a campus living location to the pickup location used for it.
+ */
+export interface LivingLocationMapping {
+    living_location: string
+    pickup_location_id: number
+}
+
+/**
+ * Response envelope for `GET /api/pickup-locations`.
+ */
+export interface ManagedPickupLocationsResponse {
+    locations: ManagedPickupLocation[]
+    edges: PickupLocationEdge[]
+    living_mappings: LivingLocationMapping[]
+    pickup_adjustment: number
+    unreachable: string[]
 }
