@@ -7,6 +7,7 @@ import discord
 
 from bot.core.enums import CategoryIds, ChannelIds, RoleIds
 from bot.core.error_reporter import send_error_to_discord
+from bot.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,23 @@ class RideRequestService:
                 f"**Unexpected Error** creating ride channel for `{user.name}`"
             )
             return False
+
+        # Announce the new rider channel in the driver bot spam channel
+        try:
+            spam_channel = self.bot.get_channel(
+                resolve_channel_id(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+            )
+            if spam_channel:
+                await spam_channel.send(f"new hooman! {new_channel.mention}")
+            else:
+                logger.warning(
+                    f"Driver bot spam channel {ChannelIds.SERVING__DRIVER_BOT_SPAM} not found."
+                )
+        except Exception:
+            logger.exception(
+                f"Failed to announce new rider channel {new_channel.name} in driver bot spam"
+            )
+            # Channel was created, so don't fail the whole flow
 
         # Send welcome message
         try:
