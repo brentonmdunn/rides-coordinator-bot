@@ -227,6 +227,27 @@ describe("MessageTemplatesEditor", () => {
     expect(await within(card).findByText("Customized")).toBeInTheDocument()
   })
 
+  it("shows an unsaved-changes badge while editing and clears it after saving", async () => {
+    const user = userEvent.setup()
+    renderEditor()
+
+    const heading = await screen.findByRole("heading", { name: "Wed. Fellowship" })
+    const card = heading.closest("div")!.parentElement as HTMLElement
+
+    // Pristine card: no badge, Save disabled.
+    expect(within(card).queryByText("Unsaved changes")).not.toBeInTheDocument()
+    expect(within(card).getByRole("button", { name: "Save" })).toBeDisabled()
+
+    await user.type(within(card).getByLabelText("Title"), " edited")
+
+    expect(within(card).getByText("Unsaved changes")).toBeInTheDocument()
+    expect(within(card).getByRole("button", { name: "Save" })).toBeEnabled()
+
+    await user.click(within(card).getByRole("button", { name: "Save" }))
+
+    await waitFor(() => expect(within(card).queryByText("Unsaved changes")).not.toBeInTheDocument())
+  })
+
   it("adds and removes reaction emojis and includes them in the PUT body", async () => {
     const user = userEvent.setup()
     renderEditor()
