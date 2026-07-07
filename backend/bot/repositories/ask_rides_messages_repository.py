@@ -36,6 +36,7 @@ class AskRidesMessagesRepository:
         title: str,
         body: str,
         color: str,
+        reactions: str | None,
         updated_by: str,
     ) -> AskRidesMessageTemplate:
         """Insert or update the template row for a message type."""
@@ -44,6 +45,7 @@ class AskRidesMessagesRepository:
             title=title,
             body=body,
             color=color,
+            reactions=reactions,
             updated_by=updated_by,
         )
         stmt = stmt.on_conflict_do_update(
@@ -52,6 +54,7 @@ class AskRidesMessagesRepository:
                 "title": title,
                 "body": body,
                 "color": color,
+                "reactions": reactions,
                 "updated_by": updated_by,
             },
         )

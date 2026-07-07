@@ -63,6 +63,7 @@ async def test_upsert_commits_and_returns_row():
             "Title",
             "Body {date}",
             "teal",
+            '["🪨"]',
             "user@example.com",
         )
 
@@ -88,6 +89,7 @@ async def test_upsert_raises_if_readback_missing():
             "Title",
             "Body",
             "teal",
+            None,
             "user@example.com",
         )
 

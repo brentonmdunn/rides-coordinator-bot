@@ -86,7 +86,7 @@ class TestMakeWednesdayMsg:
         mock_get_template.return_value = _default_template()
         result = await _make_wednesday_msg()
         assert result is not None
-        title, body, _color = result
+        title, body, _color, _reactions = result
         assert title == "Rides to Wednesday Fellowship"
         assert "4/22" in body
         assert "college fellowship" in body
@@ -105,7 +105,7 @@ class TestMakeWednesdayMsg:
         mock_get_template.return_value = _custom_template()
         result = await _make_wednesday_msg()
         assert result is not None
-        title, body, _color = result
+        title, body, _color, _reactions = result
         assert title == "Custom Wednesday Title"
         assert body == "Custom body with 4/22!"
 
@@ -138,7 +138,7 @@ class TestMakeFridayMsg:
         )
         result = await _make_friday_msg()
         assert result is not None
-        title, body, _color = result
+        title, body, _color, _reactions = result
         assert "Friday" in title
         assert "4/24" in body
         assert "fellowship" in body
@@ -177,7 +177,7 @@ class TestMakeSundayMsg:
         )
         result = await _make_sunday_msg()
         assert result is not None
-        title, body, _color = result
+        title, body, _color, _reactions = result
         assert "Sunday" in title
         assert "4/26" in body
 
@@ -213,7 +213,7 @@ class TestMakeSundayMsg:
         )
         result = await _make_sunday_msg()
         assert result is not None
-        _title, body, _color = result
+        _title, body, _color, _reactions = result
         assert "🍔" in body
         assert "🏠" in body
         assert "@coordinator" in body
@@ -237,7 +237,7 @@ class TestMakeSundayMsgClass:
         )
         result = await _make_sunday_msg_class()
         assert result is not None
-        title, body, _color = result
+        title, body, _color, _reactions = result
         assert title == "Custom Class Title"
         assert body == "Custom class body 4/27"
 
@@ -259,6 +259,6 @@ class TestMakeSundayMsgClass:
         )
         result = await _make_sunday_msg_class()
         assert result is not None
-        title, body, _color = result
+        title, body, _color, _reactions = result
         assert title == "Rides to Bible Theology Class"
         assert "4/27" in body

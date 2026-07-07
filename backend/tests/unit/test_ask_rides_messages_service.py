@@ -47,7 +47,9 @@ class TestGetEffectiveTemplate:
     @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_returns_db_row_when_present(self, mock_session_local, mock_get):
         _mock_session_local(mock_session_local)
-        fake_row = MagicMock(title="Custom title", body="Custom body", color="red")
+        fake_row = MagicMock(
+            title="Custom title", body="Custom body", color="red", reactions='["🚗"]'
+        )
         mock_get.return_value = fake_row
 
         result = await AskRidesMessagesService.get_effective_template(
@@ -55,7 +57,11 @@ class TestGetEffectiveTemplate:
         )
 
         assert result == EffectiveTemplate(
-            title="Custom title", body="Custom body", color="red", is_customized=True
+            title="Custom title",
+            body="Custom body",
+            color="red",
+            is_customized=True,
+            reactions=("🚗",),
         )
 
     @pytest.mark.asyncio
@@ -178,6 +184,67 @@ class TestValidate:
         AskRidesMessagesService._validate(
             AskRidesMessageType.WEDNESDAY_FELLOWSHIP, "title", "body", "teal"
         )
+
+
+class TestReactions:
+    @pytest.mark.asyncio
+    @patch(
+        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
+        new_callable=AsyncMock,
+    )
+    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    async def test_null_reactions_fall_back_to_defaults(self, mock_session_local, mock_get):
+        _mock_session_local(mock_session_local)
+        fake_row = MagicMock(title="Custom", body="Body", color="red", reactions=None)
+        mock_get.return_value = fake_row
+
+        result = await AskRidesMessagesService.get_effective_template(
+            AskRidesMessageType.SUNDAY_SERVICE
+        )
+
+        assert result.reactions == DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_SERVICE].reactions
+
+    @pytest.mark.asyncio
+    @patch(
+        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
+        new_callable=AsyncMock,
+    )
+    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    async def test_malformed_reactions_fall_back_to_defaults(self, mock_session_local, mock_get):
+        _mock_session_local(mock_session_local)
+        fake_row = MagicMock(title="Custom", body="Body", color="red", reactions="not json")
+        mock_get.return_value = fake_row
+
+        result = await AskRidesMessagesService.get_effective_template(
+            AskRidesMessageType.SUNDAY_CLASS
+        )
+
+        assert result.reactions == DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_CLASS].reactions
+
+    def test_rejects_empty_reactions_list(self):
+        with pytest.raises(ValueError, match="At least one"):
+            AskRidesMessagesService._validate_reactions([])
+
+    def test_rejects_too_many_reactions(self):
+        emojis = ["😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😆", "😉", "😊", "😋"]
+        with pytest.raises(ValueError, match="At most"):
+            AskRidesMessagesService._validate_reactions(emojis)
+
+    def test_rejects_duplicate_reactions(self):
+        with pytest.raises(ValueError, match="Duplicate"):
+            AskRidesMessagesService._validate_reactions(["🍔", "🍔"])
+
+    def test_rejects_plain_text(self):
+        with pytest.raises(ValueError, match="not a valid emoji"):
+            AskRidesMessagesService._validate_reactions(["abc"])
+
+    def test_rejects_empty_string(self):
+        with pytest.raises(ValueError, match="must not be empty"):
+            AskRidesMessagesService._validate_reactions([""])
+
+    def test_accepts_unicode_and_custom_emoji(self):
+        # Should not raise.
+        AskRidesMessagesService._validate_reactions(["🍔", "✳️", "<:custom:123456789>"])
 
 
 class TestUpdateTemplate:

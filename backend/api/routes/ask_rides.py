@@ -32,7 +32,7 @@ from bot.services.fellowship_season_service import FellowshipSeasonService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
 from bot.services.non_discord_rides_service import NonDiscordRidesService
-from bot.utils.ask_rides_defaults import ALLOWED_PLACEHOLDERS, DEFAULT_TEMPLATES
+from bot.utils.ask_rides_defaults import ALLOWED_PLACEHOLDERS, DEFAULT_TEMPLATES, MAX_REACTIONS
 from bot.utils.ask_rides_schedule_defaults import (
     ALLOWED_DAYS,
     SCHEDULE_MAX_HOUR,
@@ -380,11 +380,13 @@ def _serialize_template(message_type: AskRidesMessageType, template) -> dict:
         "title": template.title,
         "body": template.body,
         "color": template.color,
+        "reactions": list(template.reactions),
         "is_customized": template.is_customized,
         "default": {
             "title": default.title,
             "body": default.body,
             "color": default.color.value,
+            "reactions": list(default.reactions),
         },
     }
 
@@ -409,6 +411,7 @@ async def get_message_templates() -> dict:
             message_type.value: sorted(tokens)
             for message_type, tokens in ALLOWED_PLACEHOLDERS.items()
         },
+        "max_reactions": MAX_REACTIONS,
     }
 
 
@@ -418,6 +421,10 @@ class UpdateMessageTemplateRequest(BaseModel):
     title: str = Field(description="Embed title")
     body: str = Field(description="Embed body/description template")
     color: str = Field(description="Preset color key (see allowed_colors)")
+    reactions: list[str] | None = Field(
+        default=None,
+        description="Reaction emojis the bot adds to the message; omit to keep the defaults",
+    )
 
 
 @router.put(
@@ -444,7 +451,7 @@ async def update_message_template(
 
     try:
         updated = await AskRidesMessagesService.update_template(
-            msg_type, body.title, body.body, body.color, updated_by
+            msg_type, body.title, body.body, body.color, updated_by, reactions=body.reactions
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
