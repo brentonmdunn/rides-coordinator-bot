@@ -39,6 +39,7 @@ from bot.services.ask_rides_schedule_service import (
 )
 from bot.services.ride_coordinator_service import RideCoordinatorService
 from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
+from bot.utils.channels import resolve_channel_id
 from bot.utils.checks import feature_flag_enabled
 from bot.utils.constants import (
     ASK_RIDES_ACTIVE_CACHE_TTL,
@@ -192,6 +193,7 @@ async def _ask_rides_template(
     """
     Helper method for ask rides jobs.
     """
+    channel_id = resolve_channel_id(channel_id)
     raw_channel = bot.get_channel(channel_id)
     if not isinstance(raw_channel, discord.TextChannel):
         logger.warning(f"Channel not found with ID: {channel_id}")
@@ -232,7 +234,7 @@ async def run_ask_rides_wed(bot: Bot) -> None:
         logger.info("Blocking run_ask_rides_wed - job is paused")
         return
 
-    channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    channel_id = resolve_channel_id(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
     raw_channel = bot.get_channel(channel_id)
     if not isinstance(raw_channel, discord.TextChannel):
         logger.warning(f"Channel not found with ID: {channel_id}")
@@ -296,7 +298,7 @@ async def run_ask_rides_sun(
         return
     if not await _should_send_ask_rides_sun():
         logger.info("Blocking run_ask_rides_sun due to wildcard detected on mastercalendar")
-        wildcard_channel = bot.get_channel(ChannelIds.SERVING__DRIVER_BOT_SPAM)
+        wildcard_channel = bot.get_channel(resolve_channel_id(ChannelIds.SERVING__DRIVER_BOT_SPAM))
         if not isinstance(wildcard_channel, discord.TextChannel):
             logger.info("Error channel not found")
             return
@@ -347,7 +349,7 @@ async def run_ask_rides_header(
     bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
 ) -> None:
     """Run the job to send the ask rides header."""
-    channel = bot.get_channel(channel_id)
+    channel = bot.get_channel(resolve_channel_id(channel_id))
     if not isinstance(channel, discord.TextChannel):
         logger.info("Error channel not found")
         return

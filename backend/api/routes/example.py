@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from bot.core.bot_instance import get_bot
 from bot.core.enums import ChannelIds
+from bot.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ async def send_discord_message(request: Request):
     user_email = request.state.user.get("email", "unknown user")
     message = f"Hello world from {user_email}"
 
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
+    channel = bot.get_channel(resolve_channel_id(DISCORD_CHANNEL_ID))
     if channel is None:
         raise HTTPException(
             status_code=404,
