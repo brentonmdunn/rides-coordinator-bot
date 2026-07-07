@@ -6,3 +6,7 @@
 dist
 *.log*
 docs/review/
+.coverage
+frontend/test-results/
+
+.claude/*

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.enums import JobName
 from bot.core.models import MessageSchedulePause
-from bot.utils.time_helpers import get_send_wednesday
+from bot.utils.time_helpers import get_send_day_before
 
 logger = logging.getLogger(__name__)
 
@@ -110,22 +110,26 @@ class MessageScheduleRepository:
         await session.commit()
 
     @staticmethod
-    async def is_job_paused(session: AsyncSession, job_name: str) -> bool:
+    async def is_job_paused(session: AsyncSession, job_name: str, send_day_of_week: int) -> bool:
         """
         Check if a job is currently paused.
 
         A job is paused if:
         - is_paused=True and resume_after_date is None (indefinite)
-        - is_paused=True and the send-day (Wednesday) for the resume_after_date
+        - is_paused=True and the configured send day for the resume_after_date
           hasn't arrived yet
 
-        For date-based pauses, the job stays paused until the Wednesday before
-        the resume_after_date event. On that Wednesday, the job is considered
-        "resumed" and sends normally.
+        For date-based pauses, the job stays paused until the configured send
+        day before the resume_after_date event. On that day, the job is
+        considered "resumed" and sends normally.
 
         Args:
             session: The database session.
             job_name: A JobName value ("friday", "sunday", "sunday_class").
+            send_day_of_week: 0=Monday .. 6=Sunday — the configured send day
+                for the schedule slot governing *job_name*. Callers resolve
+                this via `AskRidesScheduleService.get_send_day_for_job` so the
+                repository never needs to fetch schedule config itself.
 
         Returns:
             True if the job should be blocked from sending.
@@ -141,11 +145,11 @@ class MessageScheduleRepository:
         if pause.resume_after_date is None:
             return True
 
-        # Date-based pause: paused until the Wednesday before the event date
+        # Date-based pause: paused until the configured send day before the event date
         today = date.today()
-        send_wednesday = get_send_wednesday(pause.resume_after_date)
+        send_day = get_send_day_before(pause.resume_after_date, send_day_of_week)
 
-        if today >= send_wednesday:
+        if today >= send_day:
             # Auto-clear the pause since we've reached the send day
             clear_stmt = (
                 update(MessageSchedulePause)
@@ -158,7 +162,7 @@ class MessageScheduleRepository:
             )
             await session.execute(clear_stmt)
             await session.commit()
-            logger.info(f"Auto-cleared pause for '{job_name}' - send day {send_wednesday} reached")
+            logger.info(f"Auto-cleared pause for '{job_name}' - send day {send_day} reached")
             return False
 
         return True

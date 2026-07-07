@@ -1,28 +1,45 @@
 """Ask Rides API Routes."""
 
+import asyncio
+import json
 import logging
 from datetime import date, timedelta
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from api.auth import require_admin, require_ride_coordinator
-from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET
+from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET, SSE_HEARTBEAT_INTERVAL
 from api.dependencies import require_bot, require_ready_bot
+from bot.core import messages_broadcaster
 from bot.core.enums import (
     AskRidesMessage,
+    AskRidesMessageType,
+    AskRidesScheduleSlot,
     CacheNamespace,
     DaysOfWeek,
     DaysOfWeekNumber,
+    EmbedColorChoice,
     FellowshipSeason,
     JobName,
 )
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
+from bot.services.ask_rides_messages_service import AskRidesMessagesService
+from bot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
 from bot.services.fellowship_season_service import FellowshipSeasonService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
 from bot.services.non_discord_rides_service import NonDiscordRidesService
+from bot.utils.ask_rides_defaults import ALLOWED_PLACEHOLDERS, DEFAULT_TEMPLATES
+from bot.utils.ask_rides_schedule_defaults import (
+    ALLOWED_DAYS,
+    SCHEDULE_MAX_HOUR,
+    SCHEDULE_MAX_MINUTE,
+    SCHEDULE_MIN_HOUR,
+    SCHEDULE_MIN_MINUTE,
+)
 from bot.utils.cache import invalidate_namespace
 from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
@@ -349,3 +366,249 @@ async def get_ask_rides_reactions(message_type: str):
     except Exception as e:
         logger.exception(f"Error fetching ask-rides reactions for {message_type}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ============================================================================
+# Editable ask-rides message templates
+# ============================================================================
+
+
+def _serialize_template(message_type: AskRidesMessageType, template) -> dict:
+    """Serialize an EffectiveTemplate plus its default, for one message type."""
+    default = DEFAULT_TEMPLATES[message_type]
+    return {
+        "title": template.title,
+        "body": template.body,
+        "color": template.color,
+        "is_customized": template.is_customized,
+        "default": {
+            "title": default.title,
+            "body": default.body,
+            "color": default.color.value,
+        },
+    }
+
+
+@router.get(
+    "/messages",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Get Ask Rides Message Templates",
+    description="Get the effective (customized or default) title/body/color for all four "
+    "ask-rides message types.",
+)
+async def get_message_templates() -> dict:
+    """Return all four effective templates plus allowed colors/placeholders."""
+    effective = await AskRidesMessagesService.get_effective_templates()
+    return {
+        "templates": {
+            message_type.value: _serialize_template(message_type, template)
+            for message_type, template in effective.items()
+        },
+        "allowed_colors": [c.value for c in EmbedColorChoice],
+        "allowed_placeholders": {
+            message_type.value: sorted(tokens)
+            for message_type, tokens in ALLOWED_PLACEHOLDERS.items()
+        },
+    }
+
+
+class UpdateMessageTemplateRequest(BaseModel):
+    """Request body for updating an ask-rides message template."""
+
+    title: str = Field(description="Embed title")
+    body: str = Field(description="Embed body/description template")
+    color: str = Field(description="Preset color key (see allowed_colors)")
+
+
+@router.put(
+    "/messages/{message_type}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Update Ask Rides Message Template",
+    description="Save a customized title/body/color for one ask-rides message type.",
+)
+async def update_message_template(
+    message_type: str, body: UpdateMessageTemplateRequest, request: Request
+) -> dict:
+    """Validate and persist a customized template, then broadcast an SSE update."""
+    try:
+        msg_type = AskRidesMessageType(message_type)
+    except ValueError as e:
+        valid_types = [t.value for t in AskRidesMessageType]
+        raise HTTPException(
+            status_code=400,
+            detail=f"message_type must be one of: {', '.join(valid_types)}",
+        ) from e
+
+    user = getattr(request.state, "user", None) or {}
+    updated_by = user.get("email", "")
+
+    try:
+        updated = await AskRidesMessagesService.update_template(
+            msg_type, body.title, body.body, body.color, updated_by
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    return _serialize_template(msg_type, updated)
+
+
+@router.delete(
+    "/messages/{message_type}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Reset Ask Rides Message Template",
+    description="Reset a customized ask-rides message template back to its default.",
+)
+async def reset_message_template(message_type: str) -> dict:
+    """Delete the saved customization for a message type, reverting to the default."""
+    try:
+        msg_type = AskRidesMessageType(message_type)
+    except ValueError as e:
+        valid_types = [t.value for t in AskRidesMessageType]
+        raise HTTPException(
+            status_code=400,
+            detail=f"message_type must be one of: {', '.join(valid_types)}",
+        ) from e
+
+    await AskRidesMessagesService.reset_template(msg_type)
+    default = await AskRidesMessagesService.get_effective_template(msg_type)
+    return _serialize_template(msg_type, default)
+
+
+@router.get(
+    "/messages/stream",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Stream Ask Rides Message Template Updates",
+    description="SSE stream of live ask-rides message template edits.",
+)
+async def message_templates_stream() -> StreamingResponse:
+    """SSE stream — emits a `templates_updated` event whenever a template is saved or reset."""
+
+    async def event_generator():
+        q = messages_broadcaster.subscribe()
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(q.get(), timeout=SSE_HEARTBEAT_INTERVAL)
+                    yield f"data: {json.dumps(event)}\n\n"
+                except TimeoutError:
+                    yield ": heartbeat\n\n"
+        except asyncio.CancelledError:
+            logger.debug("message_templates_stream: client disconnected")
+        finally:
+            messages_broadcaster.unsubscribe(q)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ============================================================================
+# Editable ask-rides send schedule
+# ============================================================================
+
+
+def _serialize_schedule(schedule: EffectiveSchedule, slot: AskRidesScheduleSlot) -> dict:
+    """Serialize an EffectiveSchedule plus its slot's allowed days."""
+    return {
+        "day_of_week": schedule.day_of_week,
+        "hour": schedule.hour,
+        "minute": schedule.minute,
+        "is_customized": schedule.is_customized,
+        "allowed_days": sorted(ALLOWED_DAYS[slot]),
+    }
+
+
+@router.get(
+    "/schedule",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Get Ask Rides Send Schedule",
+    description="Get the effective (customized or default) day/time for both ask-rides "
+    "schedule slots.",
+)
+async def get_schedule() -> dict:
+    """Return both slots' effective schedules plus allowed days and the time window."""
+    effective = await AskRidesScheduleService.get_effective_schedules()
+    return {
+        "schedules": {
+            slot.value: _serialize_schedule(schedule, slot) for slot, schedule in effective.items()
+        },
+        "time_window": {
+            "min_hour": SCHEDULE_MIN_HOUR,
+            "min_minute": SCHEDULE_MIN_MINUTE,
+            "max_hour": SCHEDULE_MAX_HOUR,
+            "max_minute": SCHEDULE_MAX_MINUTE,
+        },
+    }
+
+
+class UpdateScheduleRequest(BaseModel):
+    """Request body for updating an ask-rides schedule slot."""
+
+    day_of_week: int = Field(description="0=Monday .. 6=Sunday")
+    hour: int = Field(description="Hour of day, 0-23")
+    minute: int = Field(description="Minute of hour, 0-59")
+
+
+@router.put(
+    "/schedule/{slot}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Update Ask Rides Send Schedule",
+    description="Save a customized day/time for one ask-rides schedule slot.",
+)
+async def update_schedule(slot: str, body: UpdateScheduleRequest, request: Request) -> dict:
+    """Validate and persist a customized schedule, apply it live, and broadcast an SSE update."""
+    try:
+        schedule_slot = AskRidesScheduleSlot(slot)
+    except ValueError as e:
+        valid_slots = [s.value for s in AskRidesScheduleSlot]
+        raise HTTPException(
+            status_code=400,
+            detail=f"slot must be one of: {', '.join(valid_slots)}",
+        ) from e
+
+    user = getattr(request.state, "user", None) or {}
+    updated_by = user.get("email", "")
+
+    try:
+        updated, applied = await AskRidesScheduleService.update_schedule(
+            schedule_slot, body.day_of_week, body.hour, body.minute, updated_by
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    result = _serialize_schedule(updated, schedule_slot)
+    result["warning"] = (
+        None if applied else "Saved, but will not take effect until the bot reconnects."
+    )
+    return result
+
+
+@router.delete(
+    "/schedule/{slot}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Reset Ask Rides Send Schedule",
+    description="Reset a customized ask-rides schedule slot back to its default.",
+)
+async def reset_schedule(slot: str) -> dict:
+    """Delete the saved customization for a schedule slot, reverting to the default."""
+    try:
+        schedule_slot = AskRidesScheduleSlot(slot)
+    except ValueError as e:
+        valid_slots = [s.value for s in AskRidesScheduleSlot]
+        raise HTTPException(
+            status_code=400,
+            detail=f"slot must be one of: {', '.join(valid_slots)}",
+        ) from e
+
+    updated, applied = await AskRidesScheduleService.reset_schedule(schedule_slot)
+
+    result = _serialize_schedule(updated, schedule_slot)
+    result["warning"] = (
+        None if applied else "Saved, but will not take effect until the bot reconnects."
+    )
+    return result

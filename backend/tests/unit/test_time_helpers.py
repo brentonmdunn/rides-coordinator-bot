@@ -12,12 +12,11 @@ from bot.utils.time_helpers import (
     get_last_sunday,
     get_next_date_obj,
     get_next_date_str,
-    get_next_wednesday_noon,
+    get_send_day_before,
     get_send_wednesday,
     is_active_hours,
     is_during_late_reaction_window,
     is_in_ride_day_window,
-    is_ride_cycle_active,
 )
 
 
@@ -265,123 +264,51 @@ class TestIsActiveHours:
 
 
 # ---------------------------------------------------------------------------
-# is_ride_cycle_active
-# ---------------------------------------------------------------------------
-class TestIsRideCycleActive:
-    """Tests for is_ride_cycle_active."""
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_wednesday_before_noon(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 22, 11, 0)
-        assert is_ride_cycle_active() is False
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_wednesday_at_noon(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 22, 12, 0)
-        assert is_ride_cycle_active() is True
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_thursday(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 23, 10, 0)
-        assert is_ride_cycle_active() is True
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_sunday(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 26, 23, 0)
-        assert is_ride_cycle_active() is True
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_monday(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
-        assert is_ride_cycle_active() is False
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_tuesday(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 21, 10, 0)
-        assert is_ride_cycle_active() is False
-
-
-# ---------------------------------------------------------------------------
 # get_current_cycle_start
 # ---------------------------------------------------------------------------
 class TestGetCurrentCycleStart:
-    """Tests for get_current_cycle_start."""
+    """Tests for get_current_cycle_start (Monday-start calendar week)."""
 
     @patch("bot.utils.time_helpers.datetime")
     def test_on_thursday(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 23, 15, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         result = get_current_cycle_start()
-        assert result.weekday() == DaysOfWeekNumber.WEDNESDAY
-        assert result.hour == 12
-        assert result.date() == date(2026, 4, 22)
+        assert result.weekday() == DaysOfWeekNumber.MONDAY
+        assert result.hour == 0
+        assert result.date() == date(2026, 4, 20)
 
     @patch("bot.utils.time_helpers.datetime")
-    def test_on_wednesday_after_noon(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 22, 15, 0)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-        result = get_current_cycle_start()
-        assert result.date() == date(2026, 4, 22)
-        assert result.hour == 12
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_on_monday_goes_back_to_previous_wednesday(self, mock_dt):
+    def test_on_monday_returns_today(self, mock_dt):
+        # Monday April 20, 2026 at 10 AM — should return today at 00:00
         mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         result = get_current_cycle_start()
-        assert result.weekday() == DaysOfWeekNumber.WEDNESDAY
-        assert result.date() == date(2026, 4, 8)
+        assert result.weekday() == DaysOfWeekNumber.MONDAY
+        assert result.date() == date(2026, 4, 20)
+        assert result.hour == 0
+        assert result.minute == 0
+
+    @patch("bot.utils.time_helpers.datetime")
+    def test_on_monday_midnight(self, mock_dt):
+        mock_dt.now.return_value = _la(2026, 4, 20, 0, 0)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        result = get_current_cycle_start()
+        assert result.date() == date(2026, 4, 20)
 
     @patch("bot.utils.time_helpers.datetime")
     def test_on_sunday(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 26, 10, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         result = get_current_cycle_start()
-        assert result.date() == date(2026, 4, 22)
-
-
-# ---------------------------------------------------------------------------
-# get_next_wednesday_noon
-# ---------------------------------------------------------------------------
-class TestGetNextWednesdayNoon:
-    """Tests for get_next_wednesday_noon."""
+        assert result.date() == date(2026, 4, 20)
 
     @patch("bot.utils.time_helpers.datetime")
-    def test_on_monday(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-        result = get_next_wednesday_noon()
-        assert result.weekday() == DaysOfWeekNumber.WEDNESDAY
-        assert result.hour == 12
-        assert result.date() == date(2026, 4, 22)
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_on_wednesday_before_noon(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 22, 11, 0)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-        result = get_next_wednesday_noon()
-        assert result.date() == date(2026, 4, 22)
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_on_wednesday_at_noon(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 22, 12, 0)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-        result = get_next_wednesday_noon()
-        assert result.date() == date(2026, 4, 29)
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_on_wednesday_after_noon(self, mock_dt):
+    def test_on_wednesday(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 15, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-        result = get_next_wednesday_noon()
-        assert result.date() == date(2026, 4, 29)
-
-    @patch("bot.utils.time_helpers.datetime")
-    def test_on_friday(self, mock_dt):
-        mock_dt.now.return_value = _la(2026, 4, 24, 10, 0)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-        result = get_next_wednesday_noon()
-        assert result.date() == date(2026, 4, 29)
+        result = get_current_cycle_start()
+        assert result.date() == date(2026, 4, 20)
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +339,39 @@ class TestGetSendWednesday:
         # Monday April 20 -> previous Wednesday April 15
         result = get_send_wednesday(date(2026, 4, 20))
         assert result == date(2026, 4, 15)
+
+
+# ---------------------------------------------------------------------------
+# get_send_day_before
+# ---------------------------------------------------------------------------
+class TestGetSendDayBefore:
+    """Tests for get_send_day_before — the schedule-aware generalization of get_send_wednesday."""
+
+    def test_matches_get_send_wednesday_for_wednesday(self):
+        for event_date in (
+            date(2026, 4, 24),  # Friday
+            date(2026, 4, 26),  # Sunday
+            date(2026, 4, 22),  # Wednesday
+            date(2026, 4, 23),  # Thursday
+            date(2026, 4, 20),  # Monday
+        ):
+            assert get_send_day_before(
+                event_date, DaysOfWeekNumber.WEDNESDAY
+            ) == get_send_wednesday(event_date)
+
+    def test_custom_monday_send_day_for_friday_event(self):
+        # Friday April 24, 2026 with a Monday (April 20) send day
+        result = get_send_day_before(date(2026, 4, 24), DaysOfWeekNumber.MONDAY)
+        assert result == date(2026, 4, 20)
+
+    def test_custom_tuesday_send_day_for_sunday_event(self):
+        # Sunday April 26, 2026 with a Tuesday (April 21) send day
+        result = get_send_day_before(date(2026, 4, 26), DaysOfWeekNumber.TUESDAY)
+        assert result == date(2026, 4, 21)
+
+    def test_send_day_equals_event_day(self):
+        result = get_send_day_before(date(2026, 4, 22), DaysOfWeekNumber.WEDNESDAY)
+        assert result == date(2026, 4, 22)
 
 
 # ---------------------------------------------------------------------------

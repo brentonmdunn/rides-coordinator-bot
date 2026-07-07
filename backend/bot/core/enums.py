@@ -239,6 +239,37 @@ class Emoji(StrEnum):
     GLOBE = "🌍"
 
 
+class AskRidesMessageType(StrEnum):
+    """Message types for editable ask-rides templates. Single source of truth."""
+
+    WEDNESDAY_FELLOWSHIP = "wednesday_fellowship"
+    FRIDAY_FELLOWSHIP = "friday_fellowship"
+    SUNDAY_SERVICE = "sunday_service"
+    SUNDAY_CLASS = "sunday_class"
+
+
+class AskRidesScheduleSlot(StrEnum):
+    """The two independently-schedulable ask-rides send slots."""
+
+    WEDNESDAY_REMINDER = "wednesday_reminder"  # run_ask_rides_wed
+    FRI_SUN_GROUP = "fri_sun_group"  # run_ask_rides_all
+
+
+class EmbedColorChoice(StrEnum):
+    """Preset embed color palette for ask-rides message templates."""
+
+    TEAL = "teal"
+    GREEN = "green"
+    BLUE = "blue"
+    BLURPLE = "blurple"
+    PINK = "pink"
+    MAGENTA = "magenta"
+    ORANGE = "orange"
+    YELLOW = "yellow"
+    RED = "red"
+    PURPLE = "purple"
+
+
 DAY_TO_ASK_RIDES_MESSAGE: dict[JobName, AskRidesMessage] = {
     JobName.FRIDAY: AskRidesMessage.FRIDAY_FELLOWSHIP,
     JobName.SUNDAY: AskRidesMessage.SUNDAY_SERVICE,

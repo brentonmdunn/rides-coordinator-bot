@@ -10,8 +10,6 @@ from bot.utils.constants import (
     ACTIVE_HOURS_END,
     ACTIVE_HOURS_START,
     DAYS_IN_WEEK,
-    RIDE_CYCLE_START_HOUR,
-    WED_FELLOWSHIP_SEND_HOUR,
 )
 
 LA_TZ = pytz.timezone("America/Los_Angeles")
@@ -188,10 +186,6 @@ def get_coverage_message_lookup_start(ride_type: str) -> datetime | None:
     )
 
 
-RIDE_CYCLE_START_DAY = DaysOfWeekNumber.WEDNESDAY
-RIDE_CYCLE_END_DAY = DaysOfWeekNumber.SUNDAY
-
-
 def _resolve_day(day: str | DaysOfWeek) -> DaysOfWeek | None:
     """Resolve a day string or enum to a ``DaysOfWeek`` member."""
     if isinstance(day, DaysOfWeek):
@@ -329,39 +323,19 @@ def is_active_hours() -> bool:
     return hour >= ACTIVE_HOURS_START or hour < ACTIVE_HOURS_END
 
 
-def is_ride_cycle_active() -> bool:
-    """
-    Check if the current time is within the ask-rides "sent this week" window.
-
-    The window opens Wednesday at noon (when messages go out) and closes at
-    end of Sunday. Monday and Tuesday (and Wednesday before noon) are outside
-    the window because the new cycle has not started yet.
-
-    Returns:
-        True from Wednesday 12:00 PM through Sunday 11:59 PM, False otherwise.
-    """
-    now = datetime.now(tz=LA_TZ)
-    return (now.weekday() == RIDE_CYCLE_START_DAY and now.hour >= RIDE_CYCLE_START_HOUR) or (
-        RIDE_CYCLE_START_DAY < now.weekday() <= RIDE_CYCLE_END_DAY
-    )
-
-
 def get_current_cycle_start() -> datetime:
     """
-    Return the start of the current ask-rides cycle: the most recent Wednesday at noon.
+    Return the start of the current ask-rides cycle: the most recent Monday at 00:00.
 
-    On Monday or Tuesday the new cycle has not started, so this steps back to
-    the previous week's Wednesday.
+    The ride cycle is defined as the calendar week (Monday 00:00 -> Sunday
+    23:59). On Monday itself this returns today at 00:00.
 
     Returns:
-        datetime of the most recent Wednesday at 12:00:00.
+        datetime of the most recent Monday at 00:00:00.
     """
     now = datetime.now(tz=LA_TZ)
-    days_since_wednesday = (now.weekday() - RIDE_CYCLE_START_DAY) % DAYS_IN_WEEK
-    if now.weekday() < RIDE_CYCLE_START_DAY:  # Monday or Tuesday — back to previous cycle
-        days_since_wednesday += DAYS_IN_WEEK
-    week_start = now - timedelta(days=days_since_wednesday)
-    return week_start.replace(hour=RIDE_CYCLE_START_HOUR, minute=0, second=0, microsecond=0)
+    week_start = now - timedelta(days=now.weekday())
+    return week_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def get_send_wednesday(event_date: date) -> date:
@@ -374,9 +348,25 @@ def get_send_wednesday(event_date: date) -> date:
     Returns:
         The Wednesday immediately before the event date.
     """
-    days_to_subtract = (event_date.weekday() - RIDE_CYCLE_START_DAY) % DAYS_IN_WEEK
-    if days_to_subtract == 0 and event_date.weekday() != RIDE_CYCLE_START_DAY:
-        days_to_subtract = DAYS_IN_WEEK
+    return get_send_day_before(event_date, DaysOfWeekNumber.WEDNESDAY)
+
+
+def get_send_day_before(event_date: date, day_of_week: int) -> date:
+    """
+    Calculate the configured send day immediately before an event date.
+
+    Generalizes ``get_send_wednesday`` to an arbitrary send day, so pause
+    auto-resume logic can be schedule-aware instead of hardcoding Wednesday.
+
+    Args:
+        event_date: The event date the send announces.
+        day_of_week: 0=Monday .. 6=Sunday (matches DaysOfWeekNumber) — the
+            configured send day for the governing schedule slot.
+
+    Returns:
+        The most recent occurrence of *day_of_week* on or before *event_date*.
+    """
+    days_to_subtract = (event_date.weekday() - day_of_week) % DAYS_IN_WEEK
     return event_date - timedelta(days=days_to_subtract)
 
 
@@ -397,36 +387,3 @@ def is_during_late_reaction_window(message_content: str) -> bool:
         or ("sunday" in content and is_in_late_reaction_window(DaysOfWeek.SUNDAY))
         or ("wednesday" in content and is_in_late_reaction_window(DaysOfWeek.WEDNESDAY))
     )
-
-
-def get_next_monday_11am() -> datetime:
-    """
-    Return the next Monday at 11:00 AM LA time (the wednesday-fellowship send time).
-
-    If today is Monday before 11 AM, returns today at 11 AM.
-    If today is Monday at or after 11 AM, returns next Monday at 11 AM.
-    """
-    now = datetime.now(tz=LA_TZ)
-    days_until_monday = (DaysOfWeekNumber.MONDAY - now.weekday()) % DAYS_IN_WEEK
-    if days_until_monday == 0 and now.hour >= WED_FELLOWSHIP_SEND_HOUR:
-        days_until_monday = DAYS_IN_WEEK
-    next_run = now + timedelta(days=days_until_monday)
-    return next_run.replace(hour=WED_FELLOWSHIP_SEND_HOUR, minute=0, second=0, microsecond=0)
-
-
-def get_next_wednesday_noon() -> datetime:
-    """
-    Return the next Wednesday at 12:00:00 (the next ask-rides send time).
-
-    If today is Wednesday before noon, returns today at noon.
-    If today is Wednesday at or after noon, returns next Wednesday at noon.
-
-    Returns:
-        datetime of the next ask-rides send time.
-    """
-    now = datetime.now(tz=LA_TZ)
-    days_until_wednesday = (RIDE_CYCLE_START_DAY - now.weekday()) % DAYS_IN_WEEK
-    if days_until_wednesday == 0 and now.hour >= RIDE_CYCLE_START_HOUR:
-        days_until_wednesday = DAYS_IN_WEEK
-    next_run = now + timedelta(days=days_until_wednesday)
-    return next_run.replace(hour=RIDE_CYCLE_START_HOUR, minute=0, second=0, microsecond=0)

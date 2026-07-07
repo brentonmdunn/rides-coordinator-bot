@@ -14,6 +14,7 @@ from bot.core.enums import (
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
+from bot.services.ask_rides_schedule_service import AskRidesScheduleService
 from bot.services.driver_service import DriverService
 from bot.services.fellowship_season_service import FellowshipSeasonService
 from bot.utils.channels import resolve_channel_id
@@ -56,13 +57,16 @@ async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     Skips sending if the Friday job is currently paused or the fellowship
     season is not Friday.
     """
+    send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.FRIDAY)
     season = await FellowshipSeasonService.get_season()
     if season != FellowshipSeason.FRIDAY:
         logger.info("Blocking run_ask_drivers_fri - fellowship season is %s", season)
         return
 
     async with AsyncSessionLocal() as session:
-        paused = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
+        paused = await MessageScheduleRepository.is_job_paused(
+            session, JobName.FRIDAY, send_day_of_week
+        )
     if paused:
         logger.info("Blocking run_ask_drivers_fri - job is paused")
         return
@@ -81,8 +85,11 @@ async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 
     Skips sending if the Sunday job is paused or the ask-rides window is not active.
     """
+    send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.SUNDAY)
     async with AsyncSessionLocal() as session:
-        paused = await MessageScheduleRepository.is_job_paused(session, JobName.SUNDAY)
+        paused = await MessageScheduleRepository.is_job_paused(
+            session, JobName.SUNDAY, send_day_of_week
+        )
     if paused:
         logger.info("Blocking run_ask_drivers_sun - job is paused")
         return
@@ -108,13 +115,16 @@ async def run_ask_drivers_wed(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     Skips sending if the Wednesday job is currently paused or the fellowship
     season is not Wednesday.
     """
+    send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.WEDNESDAY)
     season = await FellowshipSeasonService.get_season()
     if season != FellowshipSeason.WEDNESDAY:
         logger.info("Blocking run_ask_drivers_wed - fellowship season is %s", season)
         return
 
     async with AsyncSessionLocal() as session:
-        paused = await MessageScheduleRepository.is_job_paused(session, JobName.WEDNESDAY)
+        paused = await MessageScheduleRepository.is_job_paused(
+            session, JobName.WEDNESDAY, send_day_of_week
+        )
     if paused:
         logger.info("Blocking run_ask_drivers_wed - job is paused")
         return

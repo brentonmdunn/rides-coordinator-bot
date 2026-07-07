@@ -1,8 +1,24 @@
 """Contains constants"""
 
-from bot.core.enums import DaysOfWeek, Emoji, PickupLocations
+import discord
+
+from bot.core.enums import DaysOfWeek, EmbedColorChoice, Emoji, PickupLocations
 
 GUILD_ID = 916817752918982716
+
+# Preset embed color palette for ask-rides message templates.
+EMBED_COLOR_MAP: dict[EmbedColorChoice, discord.Color] = {
+    EmbedColorChoice.TEAL: discord.Color.from_rgb(100, 200, 150),
+    EmbedColorChoice.GREEN: discord.Color.green(),
+    EmbedColorChoice.BLUE: discord.Color.blue(),
+    EmbedColorChoice.BLURPLE: discord.Color.blurple(),
+    EmbedColorChoice.PINK: discord.Color.from_rgb(227, 132, 212),
+    EmbedColorChoice.MAGENTA: discord.Color.magenta(),
+    EmbedColorChoice.ORANGE: discord.Color.orange(),
+    EmbedColorChoice.YELLOW: discord.Color.gold(),
+    EmbedColorChoice.RED: discord.Color.red(),
+    EmbedColorChoice.PURPLE: discord.Color.purple(),
+}
 
 LSCC_DAYS = [DaysOfWeek.FRIDAY, DaysOfWeek.SUNDAY]
 
@@ -114,8 +130,6 @@ REACTION_CACHE_OFF_HOURS_TTL = 7 * 60 * 60  # 7 hours
 DAYS_IN_WEEK = 7
 ACTIVE_HOURS_START = 7  # 7 AM
 ACTIVE_HOURS_END = 1  # 1 AM next day
-RIDE_CYCLE_START_HOUR = 12  # noon
-WED_FELLOWSHIP_SEND_HOUR = 11  # Monday 11 AM
 
 # Lifecycle
 REDIS_CONNECTION_TIMEOUT = 5.0

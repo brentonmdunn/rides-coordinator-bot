@@ -27,6 +27,7 @@ from api.middleware.access_logger import AccessLogMiddleware
 from api.rate_limit import limiter
 from api.routes.admin_users import router as admin_users_router
 from api.routes.ask_rides import router as ask_rides_router
+from api.routes.ask_rides_coordinator import router as ask_rides_coordinator_router
 from api.routes.auth_bypass import router as auth_bypass_router
 from api.routes.auth_discord import router as auth_discord_router
 from api.routes.cache_stats import router as cache_stats_router
@@ -156,6 +157,7 @@ app.include_router(feature_flags_router)
 app.include_router(me_router)
 app.include_router(non_discord_rides_router)
 app.include_router(ask_rides_router)
+app.include_router(ask_rides_coordinator_router)
 app.include_router(cache_stats_router)
 app.include_router(group_rides_router)
 app.include_router(list_pickups_router)
