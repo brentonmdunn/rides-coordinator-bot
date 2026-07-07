@@ -129,7 +129,7 @@ function Home() {
                         description="Manage rides, view pickups, and configure bot settings all in one place."
                         actions={
                             <div className="flex flex-col items-center md:items-end gap-2">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center justify-center md:justify-end gap-2">
                                     {canManage && (
                                         <Button variant="outline" size="sm" asChild>
                                             <Link to="/locations">
