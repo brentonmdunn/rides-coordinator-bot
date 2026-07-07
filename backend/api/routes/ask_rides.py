@@ -18,6 +18,7 @@ from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     AskRidesMessage,
     AskRidesMessageType,
+    AskRidesScheduleSlot,
     CacheNamespace,
     DaysOfWeek,
     DaysOfWeekNumber,
@@ -28,11 +29,19 @@ from bot.core.enums import (
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
 from bot.repositories.global_settings_repository import GlobalSettingsRepository
 from bot.services.ask_rides_messages_service import AskRidesMessagesService
+from bot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
 from bot.services.feature_flags_service import FeatureFlagsService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
 from bot.services.non_discord_rides_service import NonDiscordRidesService
 from bot.utils.ask_rides_defaults import ALLOWED_PLACEHOLDERS, DEFAULT_TEMPLATES
+from bot.utils.ask_rides_schedule_defaults import (
+    ALLOWED_DAYS,
+    SCHEDULE_MAX_HOUR,
+    SCHEDULE_MAX_MINUTE,
+    SCHEDULE_MIN_HOUR,
+    SCHEDULE_MIN_MINUTE,
+)
 from bot.utils.cache import invalidate_namespace
 from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
@@ -500,3 +509,110 @@ async def message_templates_stream() -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ============================================================================
+# Editable ask-rides send schedule
+# ============================================================================
+
+
+def _serialize_schedule(schedule: EffectiveSchedule, slot: AskRidesScheduleSlot) -> dict:
+    """Serialize an EffectiveSchedule plus its slot's allowed days."""
+    return {
+        "day_of_week": schedule.day_of_week,
+        "hour": schedule.hour,
+        "minute": schedule.minute,
+        "is_customized": schedule.is_customized,
+        "allowed_days": sorted(ALLOWED_DAYS[slot]),
+    }
+
+
+@router.get(
+    "/schedule",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Get Ask Rides Send Schedule",
+    description="Get the effective (customized or default) day/time for both ask-rides "
+    "schedule slots.",
+)
+async def get_schedule() -> dict:
+    """Return both slots' effective schedules plus allowed days and the time window."""
+    effective = await AskRidesScheduleService.get_effective_schedules()
+    return {
+        "schedules": {
+            slot.value: _serialize_schedule(schedule, slot) for slot, schedule in effective.items()
+        },
+        "time_window": {
+            "min_hour": SCHEDULE_MIN_HOUR,
+            "min_minute": SCHEDULE_MIN_MINUTE,
+            "max_hour": SCHEDULE_MAX_HOUR,
+            "max_minute": SCHEDULE_MAX_MINUTE,
+        },
+    }
+
+
+class UpdateScheduleRequest(BaseModel):
+    """Request body for updating an ask-rides schedule slot."""
+
+    day_of_week: int = Field(description="0=Monday .. 6=Sunday")
+    hour: int = Field(description="Hour of day, 0-23")
+    minute: int = Field(description="Minute of hour, 0-59")
+
+
+@router.put(
+    "/schedule/{slot}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Update Ask Rides Send Schedule",
+    description="Save a customized day/time for one ask-rides schedule slot.",
+)
+async def update_schedule(slot: str, body: UpdateScheduleRequest, request: Request) -> dict:
+    """Validate and persist a customized schedule, apply it live, and broadcast an SSE update."""
+    try:
+        schedule_slot = AskRidesScheduleSlot(slot)
+    except ValueError as e:
+        valid_slots = [s.value for s in AskRidesScheduleSlot]
+        raise HTTPException(
+            status_code=400,
+            detail=f"slot must be one of: {', '.join(valid_slots)}",
+        ) from e
+
+    user = getattr(request.state, "user", None) or {}
+    updated_by = user.get("email", "")
+
+    try:
+        updated, applied = await AskRidesScheduleService.update_schedule(
+            schedule_slot, body.day_of_week, body.hour, body.minute, updated_by
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    result = _serialize_schedule(updated, schedule_slot)
+    result["warning"] = (
+        None if applied else "Saved, but will not take effect until the bot reconnects."
+    )
+    return result
+
+
+@router.delete(
+    "/schedule/{slot}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Reset Ask Rides Send Schedule",
+    description="Reset a customized ask-rides schedule slot back to its default.",
+)
+async def reset_schedule(slot: str) -> dict:
+    """Delete the saved customization for a schedule slot, reverting to the default."""
+    try:
+        schedule_slot = AskRidesScheduleSlot(slot)
+    except ValueError as e:
+        valid_slots = [s.value for s in AskRidesScheduleSlot]
+        raise HTTPException(
+            status_code=400,
+            detail=f"slot must be one of: {', '.join(valid_slots)}",
+        ) from e
+
+    updated, applied = await AskRidesScheduleService.reset_schedule(schedule_slot)
+
+    result = _serialize_schedule(updated, schedule_slot)
+    result["warning"] = (
+        None if applied else "Saved, but will not take effect until the bot reconnects."
+    )
+    return result
