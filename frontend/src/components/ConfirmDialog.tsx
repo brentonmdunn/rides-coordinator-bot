@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Button } from './ui/button'
 import {
     Dialog,
@@ -19,6 +20,7 @@ interface ConfirmDialogProps {
     confirmVariant?: ButtonVariant;
     onConfirm: () => void;
     onCancel: () => void;
+    children?: ReactNode;
 }
 
 export function ConfirmDialog({
@@ -30,6 +32,7 @@ export function ConfirmDialog({
     confirmVariant = 'default',
     onConfirm,
     onCancel,
+    children,
 }: ConfirmDialogProps) {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel() }}>
@@ -38,6 +41,7 @@ export function ConfirmDialog({
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
+                {children}
                 <DialogFooter>
                     <Button variant="outline" onClick={onCancel}>
                         {cancelText}
