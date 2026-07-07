@@ -7,16 +7,17 @@ pristine/default state. See DESIGN.ask-rides-messages.md.
 
 from dataclasses import dataclass
 
-from bot.core.enums import AskRidesMessageType, EmbedColorChoice
+from bot.core.enums import AskRidesMessageType, EmbedColorChoice, Emoji
 
 
 @dataclass(frozen=True)
 class MessageTemplate:
-    """A title/body/color template. Body and title may contain `{date}`/`{ping}` tokens."""
+    """A title/body/color/reactions template. Body and title may contain `{date}`/`{ping}` tokens."""
 
     title: str
     body: str
     color: EmbedColorChoice
+    reactions: tuple[str, ...]
 
 
 DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
@@ -27,6 +28,7 @@ DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
             "{date} (leave between 7 and 7:10pm)!"
         ),
         color=EmbedColorChoice.TEAL,
+        reactions=(Emoji.FRIDAY_FELLOWSHIP,),
     ),
     AskRidesMessageType.FRIDAY_FELLOWSHIP: MessageTemplate(
         title="Rides to Friday Fellowship",
@@ -35,6 +37,7 @@ DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
             "{date} (leave between 7 and 7:10pm)!"
         ),
         color=EmbedColorChoice.PINK,
+        reactions=(Emoji.FRIDAY_FELLOWSHIP,),
     ),
     AskRidesMessageType.SUNDAY_SERVICE: MessageTemplate(
         title="Rides to Sunday Service",
@@ -46,6 +49,7 @@ DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
             "✳️ = something else (please DM {ping})"
         ),
         color=EmbedColorChoice.BLUE,
+        reactions=(Emoji.LUNCH, Emoji.NO_LUNCH, Emoji.SOMETHING_ELSE),
     ),
     AskRidesMessageType.SUNDAY_CLASS: MessageTemplate(
         title="Rides to Bible Theology Class",
@@ -55,8 +59,13 @@ DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
             "Make sure to also react to the message below for 🍔, 🏠, or ✳️."
         ),
         color=EmbedColorChoice.BLURPLE,
+        reactions=(Emoji.SUNDAY_CLASS,),
     ),
 }
+
+# Cap on how many reaction emojis a template may configure. Discord allows up
+# to 20 unique reactions per message; keep a margin for users' own reactions.
+MAX_REACTIONS = 10
 
 # Placeholders each message type's title/body may reference. Used to validate
 # saved templates so an unsupported token is rejected at save time.

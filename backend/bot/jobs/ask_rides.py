@@ -21,7 +21,6 @@ from bot.core.enums import (
     DaysOfWeek,
     DaysOfWeekNumber,
     EmbedColorChoice,
-    Emoji,
     FeatureFlagNames,
     FellowshipSeason,
     JobName,
@@ -116,7 +115,8 @@ def _get_dynamic_ttl() -> int:
     return ASK_RIDES_OFF_HOURS_CACHE_TTL  # 7 hours during off-hours
 
 
-RenderedTemplate = tuple[str, str, discord.Color]
+# (title, body, color, reactions) ready for sending
+RenderedTemplate = tuple[str, str, discord.Color, tuple[str, ...]]
 
 
 async def _render_effective_template(
@@ -132,7 +132,7 @@ async def _render_effective_template(
     except ValueError:
         logger.warning("Unknown embed color %r for %s; using default", template.color, message_type)
         color = discord.Color.default()
-    return title, body, color
+    return title, body, color, template.reactions
 
 
 async def _make_wednesday_msg() -> RenderedTemplate | None:
@@ -177,24 +177,14 @@ def _format_message(message: str) -> str:
     return ping_role_with_message(RoleIds.RIDES, message)
 
 
-# Emojis that the bot automatically adds to each message type
-# This is the single source of truth for bot reactions (used by both
-# job runners and API helpers to exclude bot reactions from user counts)
-BOT_REACTIONS = {
-    JobName.WEDNESDAY: [Emoji.FRIDAY_FELLOWSHIP],
-    JobName.FRIDAY: [Emoji.FRIDAY_FELLOWSHIP],
-    JobName.SUNDAY: [Emoji.LUNCH, Emoji.NO_LUNCH, Emoji.SOMETHING_ELSE],
-    JobName.SUNDAY_CLASS: [Emoji.SUNDAY_CLASS],
-}
-
-
 async def _ask_rides_template(
     bot: Bot,
     make_message: Callable[[], Awaitable[RenderedTemplate | None]],
     channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
 ) -> discord.Message | None:
     """
-    Helper method for ask rides jobs.
+    Helper method for ask rides jobs. Sends the rendered embed and adds the
+    template's configured reaction emojis to it.
     """
     channel_id = resolve_channel_id(channel_id)
     raw_channel = bot.get_channel(channel_id)
@@ -207,7 +197,7 @@ async def _ask_rides_template(
     if not rendered:
         logger.error("make_message() returned None, skipping message send.")
         return None
-    title, body, color = rendered
+    title, body, color, reactions = rendered
 
     embed = discord.Embed(
         title=title,
@@ -216,13 +206,22 @@ async def _ask_rides_template(
     )
 
     try:
-        return await channel.send(
+        sent_message = await channel.send(
             allowed_mentions=discord.AllowedMentions(roles=True),
             embed=embed,
         )
     except discord.HTTPException:
         logger.exception(f"Failed to send message to channel {channel_id}")
         return None
+
+    for emoji in reactions:
+        try:
+            await sent_message.add_reaction(emoji)
+        except discord.HTTPException:
+            # A bad customized emoji must not block the remaining reactions.
+            logger.exception(f"Failed to add reaction {emoji!r} to message {sent_message.id}")
+
+    return sent_message
 
 
 @feature_flag_enabled(FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB)
@@ -256,8 +255,6 @@ async def run_ask_rides_wed(bot: Bot) -> None:
     sent_message = await _ask_rides_template(bot, _make_wednesday_msg)
     if not sent_message:
         return
-    for emoji in BOT_REACTIONS[JobName.WEDNESDAY]:
-        await sent_message.add_reaction(emoji)
 
     await run_ask_drivers_wed(bot)
 
@@ -279,11 +276,7 @@ async def run_ask_rides_fri(
     if paused:
         logger.info("Blocking run_ask_rides_fri - job is paused")
         return
-    sent_message = await _ask_rides_template(bot, _make_friday_msg, channel_id)
-    if not sent_message:
-        return
-    for emoji in BOT_REACTIONS[JobName.FRIDAY]:
-        await sent_message.add_reaction(emoji)
+    await _ask_rides_template(bot, _make_friday_msg, channel_id)
 
 
 async def _should_send_ask_rides_sun() -> bool:
@@ -318,11 +311,7 @@ async def run_ask_rides_sun(
         )
         return
 
-    sent_message = await _ask_rides_template(bot, _make_sunday_msg, channel_id)
-    if not sent_message:
-        return
-    for emoji in BOT_REACTIONS[JobName.SUNDAY]:
-        await sent_message.add_reaction(emoji)
+    await _ask_rides_template(bot, _make_sunday_msg, channel_id)
 
 
 async def _should_send_ask_rides_sun_class() -> bool:
@@ -349,11 +338,7 @@ async def run_ask_rides_sun_class(
     if not await _should_send_ask_rides_sun_class():
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
-    sent_message = await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
-    if not sent_message:
-        return
-    for emoji in BOT_REACTIONS[JobName.SUNDAY_CLASS]:
-        await sent_message.add_reaction(emoji)
+    await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
 
 
 async def run_ask_rides_header(
@@ -632,7 +617,6 @@ async def find_message_in_history(
     }
 
     keyword = keywords.get(job_type, "")
-    bot_emojis = BOT_REACTIONS.get(job_type, [])
 
     for message in messages:
         # Check if message is from current week
@@ -645,7 +629,9 @@ async def find_message_in_history(
             reactions_dict = {}
             for reaction in message.reactions:
                 count = reaction.count
-                if str(reaction.emoji) in bot_emojis:
+                # `reaction.me` is True when the bot itself added this emoji,
+                # so this works regardless of which emojis are configured.
+                if reaction.me:
                     count -= 1
                 reactions_dict[str(reaction.emoji)] = count
 

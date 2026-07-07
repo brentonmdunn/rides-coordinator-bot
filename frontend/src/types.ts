@@ -159,6 +159,8 @@ export interface AskRidesMessageContent {
     title: string
     body: string
     color: string
+    /** Reaction emojis the bot adds to the sent message. */
+    reactions: string[]
 }
 
 /**
@@ -177,6 +179,7 @@ export interface AskRidesMessagesResponse {
     templates: Record<AskRidesMessageType, AskRidesMessageTemplate>
     allowed_colors: string[]
     allowed_placeholders: Record<AskRidesMessageType, string[]>
+    max_reactions: number
 }
 
 /**

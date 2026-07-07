@@ -40,11 +40,13 @@ function defaultTemplate(overrides: Partial<AskRidesMessageTemplate> = {}): AskR
     title: "Wednesday Fellowship Rides",
     body: "Need a ride to fellowship on {date}? React below!",
     color: "teal",
+    reactions: ["🪨"],
     is_customized: false,
     default: {
       title: "Wednesday Fellowship Rides",
       body: "Need a ride to fellowship on {date}? React below!",
       color: "teal",
+      reactions: ["🪨"],
     },
   }
   return { ...base, ...overrides }
@@ -72,6 +74,7 @@ function messagesResponse(): AskRidesMessagesResponse {
       sunday_service: ["date", "ping"],
       sunday_class: ["date"],
     },
+    max_reactions: 10,
   }
 }
 
@@ -215,12 +218,42 @@ describe("MessageTemplatesEditor", () => {
             title: "Updated Wednesday Title",
             body: "Need a ride to fellowship on {date}? React below!",
             color: "teal",
+            reactions: ["🪨"],
           }),
         }),
       ),
     )
 
     expect(await within(card).findByText("Customized")).toBeInTheDocument()
+  })
+
+  it("adds and removes reaction emojis and includes them in the PUT body", async () => {
+    const user = userEvent.setup()
+    renderEditor()
+
+    const heading = await screen.findByRole("heading", { name: "Wed. Fellowship" })
+    const card = heading.closest("div")!.parentElement as HTMLElement
+
+    await user.type(within(card).getByLabelText("Add reaction emoji"), "🚗")
+    await user.click(within(card).getByRole("button", { name: "Add" }))
+    await user.click(within(card).getByRole("button", { name: "Remove reaction 🪨" }))
+
+    await user.click(within(card).getByRole("button", { name: "Save" }))
+
+    await waitFor(() =>
+      expect(apiFetch).toHaveBeenCalledWith(
+        "/api/ask-rides/messages/wednesday_fellowship",
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({
+            title: "Wednesday Fellowship Rides",
+            body: "Need a ride to fellowship on {date}? React below!",
+            color: "teal",
+            reactions: ["🚗"],
+          }),
+        }),
+      ),
+    )
   })
 
   it("resets a customized card back to default after confirming", async () => {

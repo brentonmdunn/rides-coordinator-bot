@@ -111,8 +111,17 @@ function renderPreview(text: string, dateText: string): ReactNode[] {
     return nodes
 }
 
+function reactionsEqual(a: string[], b: string[]): boolean {
+    return a.length === b.length && a.every((emoji, i) => emoji === b[i])
+}
+
 function templatesEqual(a: AskRidesMessageTemplate, b: AskRidesMessageTemplate): boolean {
-    return a.title === b.title && a.body === b.body && a.color === b.color
+    return (
+        a.title === b.title &&
+        a.body === b.body &&
+        a.color === b.color &&
+        reactionsEqual(a.reactions, b.reactions)
+    )
 }
 
 /** Pads a number to two digits, e.g. for `<input type="time">` values. */
@@ -155,13 +164,16 @@ interface MessageTemplateCardProps {
     config: MessageTypeConfig
     template: AskRidesMessageTemplate
     allowedColors: string[]
+    maxReactions: number
 }
 
-function MessageTemplateCard({ config, template, allowedColors }: MessageTemplateCardProps) {
+function MessageTemplateCard({ config, template, allowedColors, maxReactions }: MessageTemplateCardProps) {
     const queryClient = useQueryClient()
     const [title, setTitle] = useState(template.title)
     const [body, setBody] = useState(template.body)
     const [color, setColor] = useState(template.color)
+    const [reactions, setReactions] = useState<string[]>(template.reactions)
+    const [emojiInput, setEmojiInput] = useState('')
     const [dirty, setDirty] = useState(false)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
     const [remoteConflict, setRemoteConflict] = useState(false)
@@ -175,6 +187,7 @@ function MessageTemplateCard({ config, template, allowedColors }: MessageTemplat
             setTitle(template.title)
             setBody(template.body)
             setColor(template.color)
+            setReactions(template.reactions)
             baseline.current = template
             setRemoteConflict(false)
         } else if (!templatesEqual(template, baseline.current)) {
@@ -200,7 +213,7 @@ function MessageTemplateCard({ config, template, allowedColors }: MessageTemplat
             const res = await apiFetch(`/api/ask-rides/messages/${config.type}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, body, color }),
+                body: JSON.stringify({ title, body, color, reactions }),
             })
             return res.json() as Promise<AskRidesMessageTemplate>
         },
@@ -239,7 +252,26 @@ function MessageTemplateCard({ config, template, allowedColors }: MessageTemplat
         setDirty(true)
     }
 
-    const canSave = title.trim().length > 0 && body.trim().length > 0 && !saveMutation.isPending
+    const trimmedEmoji = emojiInput.trim()
+    const canAddReaction =
+        trimmedEmoji.length > 0 && !reactions.includes(trimmedEmoji) && reactions.length < maxReactions
+
+    const handleAddReaction = () => {
+        if (!canAddReaction) return
+        setReactions((prev) => [...prev, trimmedEmoji])
+        setEmojiInput('')
+        setDirty(true)
+    }
+    const handleRemoveReaction = (emoji: string) => {
+        setReactions((prev) => prev.filter((e) => e !== emoji))
+        setDirty(true)
+    }
+
+    const canSave =
+        title.trim().length > 0 &&
+        body.trim().length > 0 &&
+        reactions.length > 0 &&
+        !saveMutation.isPending
 
     return (
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm">
@@ -306,6 +338,58 @@ function MessageTemplateCard({ config, template, allowedColors }: MessageTemplat
                     </div>
                 </div>
 
+                <div>
+                    <p className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                        Reactions
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {reactions.map((emoji) => (
+                            <span
+                                key={emoji}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-sm"
+                            >
+                                <span>{emoji}</span>
+                                <button
+                                    type="button"
+                                    aria-label={`Remove reaction ${emoji}`}
+                                    onClick={() => handleRemoveReaction(emoji)}
+                                    className="text-muted-foreground hover:text-foreground leading-none"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        ))}
+                        <Input
+                            aria-label="Add reaction emoji"
+                            value={emojiInput}
+                            onChange={(e) => setEmojiInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    handleAddReaction()
+                                }
+                            }}
+                            placeholder="😀"
+                            className="w-20 text-center"
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddReaction}
+                            disabled={!canAddReaction}
+                        >
+                            Add
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                        Emojis the bot reacts with on the sent message (max {maxReactions}).
+                    </p>
+                    {reactions.length === 0 && (
+                        <p className="text-xs text-warning-text mt-1">At least one reaction emoji is required.</p>
+                    )}
+                </div>
+
                 {/* Live preview styled like a Discord embed */}
                 <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
@@ -320,6 +404,18 @@ function MessageTemplateCard({ config, template, allowedColors }: MessageTemplat
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words mt-1">
                                 {renderPreview(body, nextDateText)}
                             </p>
+                            {reactions.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {reactions.map((emoji) => (
+                                        <span
+                                            key={emoji}
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted border border-border text-xs"
+                                        >
+                                            {emoji} <span className="text-muted-foreground">1</span>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -360,7 +456,7 @@ function MessageTemplateCard({ config, template, allowedColors }: MessageTemplat
             <ConfirmDialog
                 isOpen={showResetConfirm}
                 title={`Reset ${config.label} to default?`}
-                description="This discards any customized title, body, and color for this message and restores the original defaults."
+                description="This discards any customized title, body, color, and reaction emojis for this message and restores the original defaults."
                 confirmText="Yes, reset"
                 confirmVariant="destructive"
                 onConfirm={() => resetMutation.mutate()}
@@ -771,6 +867,7 @@ function MessageTemplatesEditor() {
                                 config={config}
                                 template={data.templates[config.type]}
                                 allowedColors={data.allowed_colors}
+                                maxReactions={data.max_reactions}
                             />
                         ))}
                     </div>
