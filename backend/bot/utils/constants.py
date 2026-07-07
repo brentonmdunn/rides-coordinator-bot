@@ -100,7 +100,6 @@ RIDE_GROUPING_PICKUP_ADJUSTMENT = 1
 COVERAGE_STATUS_DEFAULT_HOURS = 24
 
 # Ask rides job
-FELLOWSHIP_SEASON_KEY = "fellowship_season"
 ASK_RIDES_ACTIVE_CACHE_TTL = 60  # seconds (during Wednesday active period)
 ASK_RIDES_HOURLY_CACHE_TTL = 60 * 60  # seconds (during active hours)
 ASK_RIDES_OFF_HOURS_CACHE_TTL = 7 * 60 * 60  # seconds (off-hours)

@@ -8,12 +8,15 @@ from bot.core.enums import (
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
+    FellowshipSeason,
     JobName,
 )
 from bot.core.error_reporter import send_error_to_discord
 from bot.core.logger import log_job
 from bot.repositories.message_schedule_repository import MessageScheduleRepository
 from bot.services.driver_service import DriverService
+from bot.services.fellowship_season_service import FellowshipSeasonService
+from bot.utils.channels import resolve_channel_id
 from bot.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
@@ -22,6 +25,7 @@ logger = logging.getLogger(__name__)
 async def _ask_drivers_template(
     bot: Bot, message: str, emojis: list[str], channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
 ) -> discord.Message | None:
+    channel_id = resolve_channel_id(channel_id)
     raw_channel = bot.get_channel(channel_id)
     if not isinstance(raw_channel, discord.TextChannel):
         logger.warning(f"Channel not found with ID: {channel_id}")
@@ -49,8 +53,14 @@ async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     """
     Send the Friday driver ask message to the driver chat channel.
 
-    Skips sending if the Friday job is currently paused.
+    Skips sending if the Friday job is currently paused or the fellowship
+    season is not Friday.
     """
+    season = await FellowshipSeasonService.get_season()
+    if season != FellowshipSeason.FRIDAY:
+        logger.info("Blocking run_ask_drivers_fri - fellowship season is %s", season)
+        return
+
     async with AsyncSessionLocal() as session:
         paused = await MessageScheduleRepository.is_job_paused(session, JobName.FRIDAY)
     if paused:
@@ -95,8 +105,14 @@ async def run_ask_drivers_wed(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     """
     Send the Wednesday driver ask message to the driver chat channel.
 
-    Skips sending if the Wednesday job is currently paused.
+    Skips sending if the Wednesday job is currently paused or the fellowship
+    season is not Wednesday.
     """
+    season = await FellowshipSeasonService.get_season()
+    if season != FellowshipSeason.WEDNESDAY:
+        logger.info("Blocking run_ask_drivers_wed - fellowship season is %s", season)
+        return
+
     async with AsyncSessionLocal() as session:
         paused = await MessageScheduleRepository.is_job_paused(session, JobName.WEDNESDAY)
     if paused:

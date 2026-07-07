@@ -10,23 +10,20 @@ from pydantic import BaseModel, Field
 from api.auth import require_admin, require_ride_coordinator
 from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET
 from api.dependencies import require_bot, require_ready_bot
-from bot.core.database import AsyncSessionLocal
 from bot.core.enums import (
     AskRidesMessage,
     CacheNamespace,
     DaysOfWeek,
     DaysOfWeekNumber,
-    FeatureFlagNames,
+    FellowshipSeason,
     JobName,
 )
 from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
-from bot.repositories.global_settings_repository import GlobalSettingsRepository
-from bot.services.feature_flags_service import FeatureFlagsService
+from bot.services.fellowship_season_service import FellowshipSeasonService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
 from bot.services.non_discord_rides_service import NonDiscordRidesService
 from bot.utils.cache import invalidate_namespace
-from bot.utils.constants import FELLOWSHIP_SEASON_KEY
 from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
 logger = logging.getLogger(__name__)
@@ -253,9 +250,8 @@ async def get_upcoming_dates(
 )
 async def get_fellowship_season() -> dict:
     """Return 'friday' or 'wednesday' from global settings (default 'friday')."""
-    async with AsyncSessionLocal() as session:
-        season = await GlobalSettingsRepository.get(session, FELLOWSHIP_SEASON_KEY)
-    return {"season": season or "friday"}
+    season = await FellowshipSeasonService.get_season()
+    return {"season": season.value}
 
 
 class SetSeasonRequest(BaseModel):
@@ -272,22 +268,8 @@ class SetSeasonRequest(BaseModel):
 )
 async def set_fellowship_season(request: SetSeasonRequest) -> dict:
     """Persist season to global settings and sync feature flags."""
-    svc = FeatureFlagsService()
-
-    if request.season == "friday":
-        enable_flag = FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
-        disable_flag = FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
-    else:
-        enable_flag = FeatureFlagNames.ASK_WEDNESDAY_RIDES_JOB
-        disable_flag = FeatureFlagNames.ASK_FRIDAY_RIDES_JOB
-
     try:
-        async with AsyncSessionLocal() as session:
-            await GlobalSettingsRepository.set(session, FELLOWSHIP_SEASON_KEY, request.season)
-            await svc.modify_feature_flag(enable_flag.value, True, session)
-            await svc.modify_feature_flag(disable_flag.value, False, session)
-        await FeatureFlagsService.reinitialize_cache()
-        await invalidate_namespace(CacheNamespace.ASK_RIDES_STATUS)
+        await FellowshipSeasonService.set_season(FellowshipSeason(request.season))
     except Exception as e:
         logger.exception("Error setting fellowship season")
         raise HTTPException(status_code=500, detail=f"Failed to set season: {e!s}") from e

@@ -29,6 +29,7 @@ graph TD
         Repos["Repositories"]
         Jobs["APScheduler Jobs"]
         DB[("SQLite")]
+        Cache[("Redis Cache")]
     end
 
     Frontend["React SPA\n(Vite + Tailwind)"]
@@ -41,6 +42,7 @@ graph TD
     API --> Services
     Services --> Repos
     Repos --> DB
+    Services --> Cache
     Jobs --> Services
 ```
 
