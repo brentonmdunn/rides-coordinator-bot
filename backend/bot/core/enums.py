@@ -83,6 +83,13 @@ class JobName(StrEnum):
     SUNDAY_CLASS = "sunday_class"
 
 
+class FellowshipSeason(StrEnum):
+    """Which fellowship night is active. Single source of truth for the season setting."""
+
+    FRIDAY = "friday"
+    WEDNESDAY = "wednesday"
+
+
 class ClassYear(StrEnum):
     """Class years for users."""
 
