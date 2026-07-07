@@ -25,7 +25,7 @@ from bot.core.enums import (
     FellowshipSeason,
     JobName,
 )
-from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_all
+from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
 from bot.services.ask_rides_messages_service import AskRidesMessagesService
 from bot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
 from bot.services.fellowship_season_service import FellowshipSeasonService
@@ -57,24 +57,40 @@ class PauseRequest(BaseModel):
     )
 
 
+class SendNowRequest(BaseModel):
+    """Request body for manually triggering ask rides messages."""
+
+    scope: Literal["fellowship", "sunday", "both"] = Field(
+        default="both",
+        description=(
+            "Which messages to send: 'fellowship' (Wed or Fri, whichever season is active), "
+            "'sunday' (Sunday service + class), or 'both'."
+        ),
+    )
+
+
 @router.post(
     "/send-now",
     dependencies=[Depends(require_ride_coordinator)],
     summary="Manually Trigger Ask Rides",
-    description="Manually trigger all ask rides messages immediately.",
+    description="Manually trigger ask rides messages immediately for the requested scope.",
 )
-async def send_now():
+async def send_now(request: SendNowRequest | None = None):
     """
-    Manually trigger all ask rides messages immediately.
+    Manually trigger ask rides messages immediately.
 
-    This calls the same run_ask_rides_all function used by the scheduler,
-    useful when the scheduled send was missed (e.g. due to a service crash).
+    This calls the same job runners used by the scheduler, useful when the
+    scheduled send was missed (e.g. due to a service crash).
     """
     bot = require_ready_bot()
+    scope = request.scope if request else "both"
 
     try:
-        await run_ask_rides_all(bot)
-        return {"success": True, "message": "Ask rides messages sent successfully"}
+        await run_ask_rides_manual(bot, scope)
+        return {
+            "success": True,
+            "message": f"Ask rides messages sent successfully ({scope})",
+        }
     except Exception as e:
         logger.exception("Error sending ask rides messages manually")
         raise HTTPException(status_code=500, detail=f"Failed to send messages: {e!s}") from e
