@@ -276,3 +276,27 @@ export interface ManagedPickupLocationsResponse {
     pickup_adjustment: number
     unreachable: string[]
 }
+
+/**
+ * Full name of a day of the week, used by the late-reaction window settings.
+ */
+export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'
+
+/**
+ * A start/end day+time span defining when a rides reaction counts as "late".
+ */
+export interface LateReactionWindow {
+    start_day: DayOfWeek
+    start_time: string
+    end_day: DayOfWeek
+    end_time: string
+}
+
+/**
+ * Response/request body shape for `GET`/`PUT /api/ask-rides/late-reaction-windows`.
+ */
+export interface LateReactionWindows {
+    wednesday: LateReactionWindow
+    friday: LateReactionWindow
+    sunday: LateReactionWindow
+}

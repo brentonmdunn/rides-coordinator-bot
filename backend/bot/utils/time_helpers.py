@@ -67,27 +67,6 @@ RIDE_DAY_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
     ),
 }
 
-LATE_REACTION_WINDOWS: dict[DaysOfWeek, TimeWindow] = {
-    DaysOfWeek.WEDNESDAY: TimeWindow(
-        start_day=DaysOfWeek.TUESDAY,
-        start_hour=19,
-        end_day=DaysOfWeek.WEDNESDAY,
-        end_hour=19,
-    ),
-    DaysOfWeek.FRIDAY: TimeWindow(
-        start_day=DaysOfWeek.THURSDAY,
-        start_hour=19,
-        end_day=DaysOfWeek.FRIDAY,
-        end_hour=19,
-    ),
-    DaysOfWeek.SUNDAY: TimeWindow(
-        start_day=DaysOfWeek.SATURDAY,
-        start_hour=10,
-        end_day=DaysOfWeek.SUNDAY,
-        end_hour=10,
-    ),
-}
-
 # ---------------------------------------------------------------------------
 # Ride-coverage widget and message-lookup windows
 # ---------------------------------------------------------------------------
@@ -239,20 +218,22 @@ def is_in_ride_day_window(day: str | DaysOfWeek) -> bool:
     return _is_in_window(day, RIDE_DAY_WINDOWS)
 
 
-def is_in_late_reaction_window(day: str | DaysOfWeek) -> bool:
+def is_in_late_reaction_window(
+    day: str | DaysOfWeek, windows: dict[DaysOfWeek, TimeWindow]
+) -> bool:
     """
     Checks if the current time in LA is within the late-reaction window for the given day.
-
-    Windows are defined in ``LATE_REACTION_WINDOWS``.
 
     Args:
         day: The day to check (Wednesday, Friday, or Sunday).
              Accepts a string or a ``DaysOfWeek`` enum member.
+        windows: The configured late-reaction windows, keyed by day
+            (e.g. from ``LateReactionWindowsService.get_windows()``).
 
     Returns:
         bool: True if the current time is within the window, False otherwise.
     """
-    return _is_in_window(day, LATE_REACTION_WINDOWS)
+    return _is_in_window(day, windows)
 
 
 def get_next_date_str(day: DaysOfWeekNumber) -> str:
@@ -370,20 +351,24 @@ def get_send_day_before(event_date: date, day_of_week: int) -> date:
     return event_date - timedelta(days=days_to_subtract)
 
 
-def is_during_late_reaction_window(message_content: str) -> bool:
+def is_during_late_reaction_window(
+    message_content: str, windows: dict[DaysOfWeek, TimeWindow]
+) -> bool:
     """
     Check if the current time is within a late-reaction window for any ride
     announcement day (Wednesday, Friday, Sunday) mentioned in the message.
 
     Args:
         message_content: The text of the ride announcement message.
+        windows: The configured late-reaction windows, keyed by day
+            (e.g. from ``LateReactionWindowsService.get_windows()``).
 
     Returns:
         True if we're inside the target window for a day named in the message.
     """
     content = message_content.lower()
     return (
-        ("friday" in content and is_in_late_reaction_window(DaysOfWeek.FRIDAY))
-        or ("sunday" in content and is_in_late_reaction_window(DaysOfWeek.SUNDAY))
-        or ("wednesday" in content and is_in_late_reaction_window(DaysOfWeek.WEDNESDAY))
+        ("friday" in content and is_in_late_reaction_window(DaysOfWeek.FRIDAY, windows))
+        or ("sunday" in content and is_in_late_reaction_window(DaysOfWeek.SUNDAY, windows))
+        or ("wednesday" in content and is_in_late_reaction_window(DaysOfWeek.WEDNESDAY, windows))
     )

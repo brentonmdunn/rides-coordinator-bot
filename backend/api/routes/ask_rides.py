@@ -8,7 +8,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from api.auth import require_admin, require_ride_coordinator
 from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET, SSE_HEARTBEAT_INTERVAL
@@ -29,6 +29,7 @@ from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
 from bot.services.ask_rides_messages_service import AskRidesMessagesService
 from bot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
 from bot.services.fellowship_season_service import FellowshipSeasonService
+from bot.services.late_reaction_windows_service import LateReactionWindowsService
 from bot.services.locations_service import LocationsService
 from bot.services.message_schedule_service import MessageScheduleService
 from bot.services.non_discord_rides_service import NonDiscordRidesService
@@ -292,6 +293,96 @@ async def set_fellowship_season(request: SetSeasonRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to set season: {e!s}") from e
 
     return {"season": request.season}
+
+
+class LateReactionWindowModel(BaseModel):
+    """A single late-reaction time window: start day/time -> end day/time."""
+
+    start_day: str
+    start_time: str
+    end_day: str
+    end_time: str
+
+    @field_validator("start_day", "end_day")
+    @classmethod
+    def _validate_day(cls, value: str) -> str:
+        try:
+            return DaysOfWeek(value.capitalize()).value
+        except ValueError as e:
+            raise ValueError(f"Invalid day of week: {value!r}") from e
+
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def _validate_time(cls, value: str) -> str:
+        try:
+            hour_str, minute_str = value.split(":")
+            hour, minute = int(hour_str), int(minute_str)
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f"Invalid time format {value!r}; expected HH:MM") from e
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            raise ValueError(f"Invalid time {value!r}; expected HH:MM in 24h format")
+        # Normalize to zero-padded HH:MM so string comparisons order correctly.
+        return f"{hour:02d}:{minute:02d}"
+
+    @model_validator(mode="after")
+    def _validate_same_day_order(self) -> "LateReactionWindowModel":
+        if self.start_day == self.end_day and self.start_time > self.end_time:
+            raise ValueError(
+                f"Invalid window for {self.start_day}: start time {self.start_time} "
+                f"is after end time {self.end_time}"
+            )
+        return self
+
+
+class LateReactionWindowsPayload(BaseModel):
+    """Request/response body for the late-reaction windows setting."""
+
+    wednesday: LateReactionWindowModel
+    friday: LateReactionWindowModel
+    sunday: LateReactionWindowModel
+
+
+@router.get(
+    "/late-reaction-windows",
+    summary="Get Late-Reaction Windows",
+    description="Returns the configured late-reaction time windows from global settings.",
+)
+async def get_late_reaction_windows() -> dict:
+    """Return the Wednesday/Friday/Sunday late-reaction windows."""
+    windows = await LateReactionWindowsService.get_windows()
+    return {
+        day_key: {
+            "start_day": window.start_day.value,
+            "start_time": f"{window.start_hour:02d}:{window.start_minute:02d}",
+            "end_day": window.end_day.value,
+            "end_time": f"{window.end_hour:02d}:{window.end_minute:02d}",
+        }
+        for day_key, window in (
+            ("wednesday", windows[DaysOfWeek.WEDNESDAY]),
+            ("friday", windows[DaysOfWeek.FRIDAY]),
+            ("sunday", windows[DaysOfWeek.SUNDAY]),
+        )
+    }
+
+
+@router.put(
+    "/late-reaction-windows",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Set Late-Reaction Windows",
+    description="Persists the Wednesday/Friday/Sunday late-reaction time windows.",
+)
+async def set_late_reaction_windows(payload: LateReactionWindowsPayload) -> dict:
+    """Validate and persist the late-reaction windows."""
+    windows_json = payload.model_dump()
+    try:
+        await LateReactionWindowsService.set_windows(windows_json)
+    except Exception as e:
+        logger.exception("Error setting late-reaction windows")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to set late-reaction windows: {e!s}"
+        ) from e
+
+    return windows_json
 
 
 @router.get(
