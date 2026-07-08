@@ -1,59 +1,74 @@
 # CLAUDE.md
 
-This file documents conventions and project-specific rules for AI coding assistants working in this repo.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
 
-## Tech Stack
+## Repository Layout
 
-This project contains both a Discord bot (Python) and a frontend web UI.
+Monorepo with three deployables:
 
-- **Discord bot**: Python (`discord.py`)
-- **Backend API**: Python + FastAPI
-- **Frontend**: React + Tailwind CSS v4
-- **Database**: SQLite
+- **`backend/`** — Python 3.13 app: a Discord bot (`discord.py`) and a FastAPI web API that run **in the same process** (the bot is started inside FastAPI's lifespan).
+- **`frontend/`** — React 19 admin SPA (Vite + Tailwind CSS v4 + shadcn/ui). Built output is copied into `backend/admin_ui/` and served by the backend in production.
+- **`portfolio/`** — Separate static site deployed to GitHub Pages (independent of the app).
 
-### Tools
-
-- Use `uv` to run Python or any Python-associated libraries (e.g., `uv run pytest`)
-- Use **Ruff** for linting and formatting
-- Use **ty** for Python type checking (`uv run ty check`)
-- After modifying any Python code, always run:
-  ```
-  uv run invoke format
-  uv run invoke lint
-  uv run ty check
-  ```
+Also: `deploy/` (Docker Compose update script with rollback), `docs/` (architecture/auth/deployment docs), `deploy-frontend.sh` (copies `frontend/dist/` → `backend/admin_ui/`).
 
 ---
 
-## Backend Conventions
+## Commands
 
-The backend is a Python 3.13 application in `backend/`. It runs a Discord bot (`discord.py`) and a FastAPI web API side by side.
+### Backend (run from `backend/`)
 
-### Architecture
+Always use `uv` to run Python and Python tools.
 
-- **Cogs** (`bot/cogs/`): Discord slash commands and event listeners. Each file is a cog that gets auto-loaded.
-  - Disabled cogs go in `bot/cogs_disabled/`, testing cogs in `bot/cogs_testing/`.
-- **Services** (`bot/services/`): Business logic layer. Cogs call services, never repositories directly.
-- **Repositories** (`bot/repositories/`): Data access layer. All SQL/database queries live here.
-- **Jobs** (`bot/jobs/`): Scheduled tasks run by APScheduler. Disabled jobs go in `bot/jobs_disabled/`.
-- **API** (`api/`): FastAPI routes in `api/routes/`, auth in `api/auth.py`, middleware in `api/middleware/`.
+```bash
+uv run python main.py                 # Run the Discord bot only
+uv run python run_api.py              # Run API + bot together (uvicorn api.app:app on :8000)
 
-### Key Patterns
+uv run invoke lint                    # Ruff linter
+uv run invoke format                  # Ruff formatter
+uv run invoke fix                     # Ruff autofix
+uv run invoke all                     # lint + fix + format
+uv run ty check                       # Type check (or: uv run invoke typecheck)
 
-- Use `async`/`await` everywhere — the DB uses aiosqlite + async SQLAlchemy.
-- Never use hardcoded strings for enums — always use `bot/core/enums.py` (e.g., `JobName`, `FeatureFlagNames`, `DaysOfWeek`, `RideType`).
-- Constants go in `bot/utils/constants.py` (bot-side) or `api/constants.py` (API-side).
-- Logging goes through `bot/core/logger.py` — never use `print()`.
-- Entry point is `backend/main.py`.
-- The API entry point is `backend/run_api.py`.
+uv run invoke test                    # All tests (pytest, verbose)
+uv run pytest tests/unit/test_foo.py                 # Single file
+uv run pytest tests/unit/test_foo.py::test_name -v   # Single test
 
-### Centralizing Shared Logic (No Duplication Between Cogs and API)
+uv run invoke migrate -m "description"   # Generate Alembic migration (autogenerate)
+uv run alembic upgrade head              # Apply migrations
+```
 
-Cogs and API routes are both **thin entry points** — they handle input/output for their respective interfaces (Discord vs. HTTP) but must not contain business logic themselves.
+Set `DISABLE_DISCORD_BOT=true` for API-only mode (no bot login, no jobs).
 
-If a piece of logic is needed by both a cog and an API route (or could be in the future), it **must** live in a service:
+### Frontend (run from `frontend/`)
+
+```bash
+npm run dev          # Vite dev server
+npm run build        # tsc -b && vite build
+npm run lint         # ESLint
+npm test             # Vitest
+npx tsc --noEmit     # Type check only
+```
+
+### After modifying code (do not ask before running these)
+
+- Python: `uv run invoke format`, `uv run invoke lint`, `uv run ty check`
+- Frontend: `npm run lint`, `npx tsc --noEmit`
+
+---
+
+## Backend Architecture
+
+### Entry points & lifecycle
+
+- `backend/main.py` — bot-only entry point: builds the bot, auto-loads cogs, starts scheduled jobs.
+- `backend/run_api.py` — runs `uvicorn api.app:app`; the bot is started/stopped via `bot_lifespan()` in `bot/api.py` inside FastAPI's lifespan, so **bot and API share one process**. The bot instance is globally accessible via `bot.core.bot_instance.get_bot()`.
+- Cog auto-loading lives in `bot/core/lifecycle.py` (`load_extensions()`); `job_scheduler.py` loads first, failures are tracked in `_failed_extensions` and exposed by `/health`.
+- Startup also seeds feature flags (from `FeatureFlagNames`) and admin accounts (from `ADMIN_EMAILS`).
+
+### Layers
 
 ```
 Cog  ──┐
@@ -61,10 +76,31 @@ Cog  ──┐
 API  ──┘
 ```
 
+- **Cogs** (`bot/cogs/`): Discord slash commands and event listeners; auto-loaded. `bot/cogs_disabled/` are never loaded; `bot/cogs_testing/` load only when `APP_ENV=local`.
+- **Services** (`bot/services/`): Business logic layer. Cogs call services, never repositories directly.
+- **Repositories** (`bot/repositories/`): Data access layer. All SQL/database queries live here.
+- **Jobs** (`bot/jobs/`): Scheduled tasks run by APScheduler via the `JobScheduler` cog (`bot/cogs/job_scheduler.py`, LA timezone). Disabled jobs go in `bot/jobs_disabled/`.
+- **API** (`api/`): FastAPI routes in `api/routes/`, auth in `api/auth.py` / `api/auth_session.py`, middleware in `api/middleware/`, rate limiting via slowapi in `api/rate_limit.py`.
+
+### Centralizing Shared Logic (No Duplication Between Cogs and API)
+
+Cogs and API routes are both **thin entry points** — they handle input/output for their respective interfaces (Discord vs. HTTP) but must not contain business logic themselves.
+
 **Rules:**
 - Never duplicate logic between a cog and an API route — extract it into a service method.
 - Cogs call services. API routes call services. Neither calls repositories directly.
 - If you find yourself copy-pasting logic from a cog into a route (or vice versa), stop and put it in a service instead.
+
+### Key Patterns
+
+- Use `async`/`await` everywhere — the DB uses aiosqlite + async SQLAlchemy.
+- Never use hardcoded strings for enums — always use `bot/core/enums.py` (e.g., `JobName`, `FeatureFlagNames`, `DaysOfWeek`, `RideType`, `ChannelIds`, `RoleIds`, `AccountRoles`).
+- Constants go in `bot/utils/constants.py` (bot-side) or `api/constants.py` (API-side).
+- Logging goes through `bot/core/logger.py` — never use `print()`.
+- Cache layer (`bot/utils/cache.py`, `bot/utils/cache_backends.py`): Redis backend with in-memory fallback in local mode; namespaced keys for grouped invalidation.
+- Feature flags: stored in the `feature_flags` table, seeded from `FeatureFlagNames` on startup, accessed via `feature_flags_repository.py`. Local dev auto-disables job/message flags to prevent spam (`disable_features_for_local_env()`).
+- Error reporting: `bot/core/error_reporter.py:send_error_to_discord()` posts exceptions to the `ERROR_CHANNEL_ID` channel (gated by the `SEND_ERRORS_TO_DISCORD` flag; skipped locally; falls back to stderr).
+- Health check: `GET /health` reports bot readiness, DB connectivity, and failed cog loads (bypasses auth).
 
 ---
 
@@ -101,7 +137,7 @@ Users must be pre-invited before they can log in. Admins invite by Discord usern
 ### Sessions
 
 - 256-bit random token in cookie; SHA-256 hash stored in `auth_sessions` table.
-- 30-day sliding expiry, throttled touch (max one DB write per 5 min per session).
+- 30-day sliding expiry (`SESSION_TTL_DAYS`), throttled touch (max one DB write per 5 min per session).
 - Logout (`POST /api/auth/logout`) deletes the row server-side before clearing cookies.
 
 ### Local development
@@ -128,19 +164,14 @@ Users must be pre-invited before they can log in. Admins invite by Discord usern
 ### Stack
 
 - **SQLite** via **aiosqlite** (async driver) + **SQLAlchemy** (async ORM).
-- Database file stored in `backend/db/`.
+- Engine/session factory in `bot/core/database.py` (`pool_pre_ping=True`, `pool_recycle=3600`); models in `bot/core/models.py`; DB file at `backend/db/bot.db` (override with `DATABASE_URL`).
 
 ### Migrations
 
-- Managed by **Alembic** (config: `backend/alembic.ini`, migrations dir: `backend/alembic/`).
-- Generate a new migration: `uv run alembic revision --autogenerate -m "description"`
-- Apply migrations: `uv run alembic upgrade head`
-
-### Data Access Pattern
-
-- **Repositories** (`bot/repositories/`): All database queries go here. Each repository file focuses on one domain (e.g., `locations_repository.py`, `feature_flags_repository.py`).
-- **Services** (`bot/services/`): Call repositories — never write raw SQL in cogs or services.
-- Cogs and API routes should call services, not repositories directly.
+- Managed by **Alembic** (config: `backend/alembic.ini`, versions: `backend/alembic/versions/`).
+- Generate: `uv run invoke migrate -m "description"` (wraps `alembic revision --autogenerate`).
+- Apply: `uv run alembic upgrade head`. In Docker, `entrypoint.sh` backs up the SQLite file then runs `upgrade head` automatically before the app starts.
+- CI (`migrations.yaml`) rejects multiple heads, model drift, and broken downgrades.
 
 ### Repository Conventions
 
@@ -150,7 +181,7 @@ Three rules apply to every DB repository:
 2. **`session: AsyncSession` as the first parameter** — every DB method accepts a session. Repositories never open their own sessions.
 3. **Consistent naming** — file: `<domain>_repository.py`, class: `<Domain>Repository`.
 
-The **service layer owns the unit-of-work**: services open sessions with `async with AsyncSessionLocal() as session:` and pass them into repository calls.
+The **service layer owns the unit-of-work**: services open sessions with `async with AsyncSessionLocal() as session:` and pass them into repository calls. Never write raw SQL in cogs or services.
 
 ```python
 # ✅ Correct — service opens session, passes to repo
@@ -168,40 +199,11 @@ class FooRepository:
 
 ---
 
-## Discord Bot Conventions
-
-### Structure
-
-- **Entry point**: `backend/main.py` — boots the bot, auto-loads cogs, starts scheduled jobs.
-- **Cogs** (`bot/cogs/`): Each file is a cog with slash commands or event listeners. Auto-loaded on startup.
-- **Disabled cogs** (`bot/cogs_disabled/`): Cogs that are temporarily turned off — move files here to disable.
-- **Testing cogs** (`bot/cogs_testing/`): Cogs used only during development.
-- **Jobs** (`bot/jobs/`): Scheduled tasks using APScheduler (e.g., asking for rides on specific days).
-- **Disabled jobs** (`bot/jobs_disabled/`): Move job files here to disable.
-
-### Enums (Single Source of Truth)
-
-All enums are in `bot/core/enums.py`. Key enums:
-
-- `ChannelIds` / `RoleIds` / `CategoryIds` — Discord resource IDs
-- `FeatureFlagNames` — feature flag identifiers
-- `JobName` — scheduled job identifiers
-- `DaysOfWeek` / `DaysOfWeekNumber` — day representations
-- `PickupLocations` / `CampusLivingLocations` — ride locations
-- `RideType` / `AskRidesMessage` — ride-related message types
-
-### Feature Flags
-
-- Managed via `FeatureFlagNames` enum and `feature_flags_repository.py`.
-- Local development auto-disables jobs and message flags to prevent spam (see `disable_features_for_local_env()` in `main.py`).
-
----
-
 ## Logging Conventions
 
 ### Setup
 
-- Logging is configured in `bot/core/logger.py`. It sets up the root logger with console + rotating file handlers.
+- Logging is configured in `bot/core/logger.py` (console + rotating file handlers → `logs/bot.log`).
 - Every file uses its own per-module logger:
   ```python
   import logging
@@ -237,27 +239,14 @@ All enums are in `bot/core/enums.py`. Key enums:
   except Exception as e:
       logger.error(f"Failed to sync locations: {e}")
   ```
-- **Never silently swallow exceptions.** If an `except` block returns a default value, still log the exception:
-  ```python
-  except Exception:
-      logger.exception("Failed to check coverage status")
-      return False
-  ```
+- **Never silently swallow exceptions.** If an `except` block returns a default value, still log the exception first.
 
 ### Transaction IDs & Context
 
 - Slash commands: wrap with `@log_cmd` (from `bot.core.logger`) to auto-assign a transaction ID and log the command invocation.
 - Scheduled jobs: wrap with `@log_job` to auto-assign a transaction ID.
 - API requests: transaction IDs are injected via `api/middleware/access_logger.py`.
-- Log format includes `[txn:%(txn_id)s]` and `[%(user_email)s]` for tracing.
-
-### Log Format
-
-```
-%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(name)s:%(lineno)d] [%(user_email)s] %(message)s
-```
-
-- `%(name)s` shows the full module path (e.g., `bot.services.locations_service`), so there's no need to prefix messages with the module name manually.
+- Log format includes `[txn:%(txn_id)s]` and `[%(user_email)s]` for tracing. `%(name)s` shows the full module path, so don't prefix messages with the module name manually.
 
 ### Common Patterns
 
@@ -271,29 +260,21 @@ All enums are in `bot/core/enums.py`. Key enums:
 
 ## Frontend Conventions
 
-The frontend is a React 19 SPA in `frontend/`, built with Vite and Tailwind CSS v4.
+React 19 SPA in `frontend/`, built with Vite and Tailwind CSS v4. Path alias `@` → `src/`.
 
 ### Architecture
 
-- **Components** (`src/components/`): Reusable UI components. Uses shadcn/ui (`components.json` present).
-- **Pages** (`src/pages/`): Top-level page components.
-- **Types** (`src/types.ts`): Shared TypeScript type definitions.
-- **Utilities** (`src/lib/utils.ts`): Shared helper functions (e.g., `getAutomaticDay`, `useCopyToClipboard`).
-
-### Key Libraries
-
-- **@tanstack/react-query**: Server state management and data fetching.
-- **react-router-dom**: Client-side routing.
-- **@dnd-kit**: Drag-and-drop functionality.
-- **lucide-react**: Icon library.
-- **class-variance-authority** + **clsx** + **tailwind-merge**: Conditional styling utilities (shadcn pattern).
+- **Entry/routing**: `src/main.tsx` — react-router routes, React Query provider, `ThemeProvider` (system/light/dark via `.dark` class), top-level `ErrorBoundary`, Sonner toasts. Non-home pages are lazy-loaded.
+- **Pages** (`src/pages/`): `Home.tsx` is the main dashboard with role-gated sections; `Learn`, `ReactionLog`, `Locations`, `Login`.
+- **Components** (`src/components/`): shadcn/ui primitives in `ui/` (new-york style), feature components at top level (e.g., `RouteBuilder/`, `AskRidesDashboard/`, `UserManagement`), shared layout in `shared/`.
+- **API layer**: `src/lib/api.ts` — `apiFetch()` wrapper resolves `VITE_API_URL` (dev: `http://localhost:8000`; prod: same origin), sends `credentials: include`, attaches `X-CSRF-Token` from the cookie on mutating methods, and throws `ApiError` on non-2xx. Use it for all backend calls.
+- **Server state**: @tanstack/react-query. Types in `src/types.ts`; helpers in `src/lib/utils.ts`.
 
 ### Standards
 
 - Use TypeScript — no `any` types.
-- Run `npm run lint` (ESLint) before committing frontend changes.
-- Environment configs: `.env.development` (local) and `.env.production`.
-- Build with `npm run build` (`tsc -b && vite build`).
+- Run `npm run lint` and `npx tsc --noEmit` before committing frontend changes.
+- Environment configs: `.env.development` (local) and `.env.production` (see `frontend/ENV_CONFIG.md`).
 
 ### Color Tokens
 
@@ -317,80 +298,41 @@ Exceptions: `emerald` (route builder map accent) and `amber` (revert button) are
 
 ---
 
-## Docker & Deployment
+## Testing Conventions
 
-### Docker
+### Backend
 
-- Main Dockerfile: `backend/Dockerfile`
-- Preprod Dockerfile: `backend/Dockerfile.preprod`
-- Image: `brentonmdunn/ride-bot`
-- CI/CD builds multi-platform images on merge to `main` (see `.github/workflows/`).
+- Tests live in `backend/tests/` (`unit/`, `integration/`, `api/`). pytest config is in `pyproject.toml` (`asyncio_mode = "strict"`).
+- `tests/unit/conftest.py` provides Discord fakes (`FakeBot`, `FakeCommandTree`, etc.) for testing cogs without a live bot.
+- Use `pytest-asyncio` for async tests; `pytest-cov` is available for coverage.
 
-### Environment Configs
+### Frontend
 
-All in `backend/`:
-
-- `.env.dev` — Local development
-- `.env.preprod` — Pre-production
-- `.env.prod` — Production
-- `.env.example` — Template for new setups
-
-### Frontend Deployment
-
-- Deploy script: `deploy-frontend.sh` (root of repo)
-- Build output: `frontend/dist/`
-
-### CI/CD
-
-- Workflows are in `.github/workflows/`.
-- Docker startup test runs on PRs to validate the image builds and starts correctly.
+- Vitest via `npm test`.
 
 ---
 
-## Testing Conventions
+## Docker & Deployment
 
-### Backend (Python)
+- `backend/Dockerfile` (prod, port 8000) and `backend/Dockerfile.preprod` (port 7999, `APP_ENV=preprod`); two-stage uv builds, image `brentonmdunn/ride-bot` (preprod: `ride-bot-preprod`).
+- `backend/entrypoint.sh` backs up the SQLite DB to a timestamped file, runs `alembic upgrade head`, then execs uvicorn.
+- `backend/deployment/docker-compose.yaml`: redis + ride-bot with health checks; `deploy/update.sh` does pull-and-restart with automatic rollback on failed health check.
+- Frontend ships inside the backend image: CI builds `frontend/dist/` and copies it to `backend/admin_ui/` (locally: `./deploy-frontend.sh`).
+- Env files in `backend/`: `.env.dev`, `.env.preprod`, `.env.prod`, `.env.example` (template — document new env vars here).
+- `/metrics` (Prometheus) requires `Authorization: Bearer $METRICS_TOKEN` when the token is set.
 
-- Tests live in `backend/tests/`, split into `unit/` and `integration/` directories.
-- Run tests: `uv run pytest` (from `backend/`).
-- Use `pytest-asyncio` for async test functions.
-- Use `pytest-cov` for coverage reporting.
+### CI (`.github/workflows/`)
 
-### Available Invoke Tasks
+PRs to main/staging run pytest, Ruff, ty + `tsc --noEmit`, ESLint, an Alembic migration check, and a preprod Docker build. Merges to main build/push the multi-arch prod image; `portfolio/**` changes deploy to GitHub Pages. Pre-commit hooks (`.pre-commit-config.yaml`) run Ruff and ESLint.
 
-All run from `backend/` with `uv run invoke <task>`:
+---
 
-- `uv run invoke lint` — Run Ruff linter
-- `uv run invoke format` — Format code with Ruff
-- `uv run invoke fix` — Autofix lint errors
-- `uv run invoke typecheck` — Run ty type checker
-- `uv run invoke all` — Run lint + fix + format
-- `uv run invoke test` — Run pytest
-- `uv run invoke clean` — Remove dev commands
+## Git Guidelines
 
-### Frontend (TypeScript)
-
-- Run linter: `npm run lint` (from `frontend/`).
-
-### Before Committing
-
-- Always run `uv run invoke format` and `uv run invoke lint` after modifying Python code.
-- Always run `uv run ty check` after modifying Python code.
-- Always run `npm run lint` after modifying frontend code.
-- Always run `npx tsc --noEmit` after modifying frontend code.
-- You do not need to ask before running these commands and fixing code based on the output.
-
-## Git Commit Guidelines
-When creating commits:
-- Follow conventional commit format (e.g., feat:, fix:, refactor:).
-- Keep the first line under 50 characters.
-- Do not include AI attribution in commit messages.
-- Always use the imperative mood ("Add feature", not "Added feature").
-
-## Development
-Never commits to main branch. For each major change, create a new branch with conventional commit prefix then a snake case short summary. For example, feat/xyz-dashboard.
-
-When making commits, use conventional commits. Do not give attritubtion to Claude.
+- **Never commit to main.** For each major change, create a branch named `<conventional-prefix>/<short-kebab-summary>` (e.g., `feat/xyz-dashboard`).
+- Follow conventional commit format (`feat:`, `fix:`, `refactor:`).
+- Keep the first line under 50 characters; use the imperative mood ("Add feature", not "Added feature").
+- Do not include AI/Claude attribution in commit messages.
 
 ---
 
