@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Sparkles, Church, BookOpen, ClipboardList, ChevronDown } from 'lucide-react'
 import type React from 'react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch, ApiError } from '../lib/api'
+import { QUERY_STALE_1_MIN } from '../lib/constants'
 import { Button } from './ui/button'
 import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import ErrorMessage from "./ErrorMessage"
@@ -39,57 +41,51 @@ const EMOJI_LABELS: Record<string, string> = {
 }
 
 function ReactionDetails() {
-    const [data, setData] = useState<AskRidesReactionsData | null>(null)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
-    const [selectedType, setSelectedType] = useState<MessageType>('friday')
+    const [selectedType, setSelectedType] = useState<MessageType>(() => getAutomaticDay())
 
     const [showInfo, setShowInfo] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
 
-
-
-    const fetchDataForType = async (messageType: MessageType) => {
-        setLoading(true)
-        setError('')
-        try {
-            const response = await apiFetch(`/api/ask-rides/reactions/${messageType}`)
-            const result = await response.json()
-            setData(result)
-            setSelectedType(messageType)
-        } catch (err) {
-            if (err instanceof ApiError && err.status === 404) {
-                setData({
-                    message_type: messageType,
-                    reactions: {},
-                    username_to_name: {},
-                    message_found: false
-                })
-                setSelectedType(messageType)
-                return
+    const {
+        data,
+        isFetching: loading,
+        error: queryError,
+        refetch
+    } = useQuery<AskRidesReactionsData>({
+        queryKey: ['askRidesReactions', selectedType],
+        queryFn: async () => {
+            try {
+                const response = await apiFetch(`/api/ask-rides/reactions/${selectedType}`)
+                return await response.json()
+            } catch (err) {
+                if (err instanceof ApiError && err.status === 404) {
+                    return {
+                        message_type: selectedType,
+                        reactions: {},
+                        username_to_name: {},
+                        message_found: false
+                    }
+                }
+                throw err
             }
-            setError(err instanceof Error ? err.message : 'Unknown error')
-        } finally {
-            setLoading(false)
+        },
+        staleTime: QUERY_STALE_1_MIN,
+    })
+
+    const error = queryError ? (queryError instanceof Error ? queryError.message : 'Unknown error') : ''
+
+    const handleTypeChange = (messageType: MessageType) => {
+        setSelectedType(messageType)
+    }
+
+    const handleRefresh = () => {
+        const automaticType = getAutomaticDay()
+        if (automaticType === selectedType) {
+            refetch()
+        } else {
+            setSelectedType(automaticType)
         }
     }
-
-    const updateTypeAndFetch = useCallback(async () => {
-        const currentType = getAutomaticDay()
-        await fetchDataForType(currentType)
-    }, [])
-
-    const handleTypeChange = async (messageType: MessageType) => {
-        if (messageType === selectedType && data) return
-        await fetchDataForType(messageType)
-    }
-
-
-
-    useEffect(() => {
-        // Run once on mount
-        updateTypeAndFetch()
-    }, [updateTypeAndFetch])
 
     const selectedOption = MESSAGE_TYPES.find(t => t.value === selectedType)
 
@@ -115,7 +111,7 @@ function ReactionDetails() {
             actions={
                 <>
                     <RefreshIconButton
-                        onClick={updateTypeAndFetch}
+                        onClick={handleRefresh}
                         isLoading={loading}
                         title="Refresh data (resets to auto)"
                     />
