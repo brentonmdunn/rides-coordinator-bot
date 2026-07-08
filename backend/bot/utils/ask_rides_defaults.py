@@ -2,7 +2,7 @@
 Default title/body/color templates for editable ask-rides messages.
 
 Single source of truth for both the scheduled job's fallback and the API's
-pristine/default state. See DESIGN.ask-rides-messages.md.
+pristine/default state.
 """
 
 from dataclasses import dataclass

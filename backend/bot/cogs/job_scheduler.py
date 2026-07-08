@@ -41,7 +41,7 @@ class JobScheduler(commands.Cog):
         """
         self.bot = bot
         # Pin the scheduler's timezone explicitly — otherwise cron fires in the
-        # container's OS timezone rather than LA time (see DESIGN.ask-rides-schedule.md).
+        # container's OS timezone rather than LA time.
         self.scheduler = AsyncIOScheduler(timezone=LA_TZ)
 
         # # Register all jobs
