@@ -23,6 +23,38 @@ class RideReactionLogService:
     """Business logic for persisting ride reaction events."""
 
     @staticmethod
+    async def broadcast_driver_chat_reaction(
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        action: ReactionAction,
+    ) -> None:
+        """
+        Broadcast a driver-chat reaction event to SSE subscribers.
+
+        Driver-chat reactions are not persisted to the reaction log; this only
+        notifies live listeners (e.g. the driver reactions and ride coverage
+        views) so they can refetch. Exceptions are logged but never re-raised.
+
+        Args:
+            user: The Discord member who reacted.
+            payload: The raw reaction action payload.
+            action: Whether the reaction was added or removed.
+        """
+        try:
+            await reaction_broadcaster.publish(
+                {
+                    "source": "driver_chat",
+                    "message_id": str(payload.message_id),
+                    "discord_username": user.name,
+                    "emoji": str(payload.emoji),
+                    "action": action.value,
+                    "occurred_at": datetime.datetime.now(datetime.UTC).isoformat(),
+                }
+            )
+        except Exception:
+            logger.exception("Failed to broadcast driver-chat reaction event")
+
+    @staticmethod
     async def record_ask_rides_reaction(
         user: discord.Member,
         payload: discord.RawReactionActionEvent,
@@ -92,6 +124,7 @@ class RideReactionLogService:
             )
             await reaction_broadcaster.publish(
                 {
+                    "source": "rides_announcements",
                     "id": event_row.id,
                     "message_id": event_row.message_id,
                     "discord_username": event_row.discord_username,

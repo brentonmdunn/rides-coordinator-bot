@@ -261,6 +261,10 @@ class Reactions(commands.Cog):
         if user is None:
             logger.debug("_record_ask_rides_reaction: user is None, skipping")
             return
+        if payload.channel_id == ChannelIds.SERVING__DRIVER_CHAT_WOOOOO:
+            logger.debug("_record_ask_rides_reaction: broadcasting driver-chat reaction")
+            await RideReactionLogService.broadcast_driver_chat_reaction(user, payload, action)
+            return
         if payload.channel_id != ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS:
             logger.debug(
                 "_record_ask_rides_reaction: channel mismatch (%s != %s), skipping",
