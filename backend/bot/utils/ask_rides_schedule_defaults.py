@@ -31,7 +31,7 @@ DEFAULT_SCHEDULE: dict[AskRidesScheduleSlot, ScheduleDefault] = {
 }
 
 # Per-slot allowed send days — the send day must precede the first event the
-# slot announces (see DESIGN.ask-rides-schedule.md §5 for the rationale).
+# slot announces.
 ALLOWED_DAYS: dict[AskRidesScheduleSlot, frozenset[int]] = {
     AskRidesScheduleSlot.WEDNESDAY_REMINDER: frozenset(
         {DaysOfWeekNumber.MONDAY, DaysOfWeekNumber.TUESDAY}

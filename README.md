@@ -54,7 +54,6 @@ graph TD
 ## Documentation & Guides
 
 - [Documentation Hub](docs/README.md)
-- [Contributing Guide](CONTRIBUTING.md)
 - [CI/CD Strategy](docs/CI_CD.md)
 - [Frontend Config](frontend/ENV_CONFIG.md)
 

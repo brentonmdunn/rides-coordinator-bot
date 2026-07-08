@@ -29,6 +29,5 @@ The project consists of three main components:
 
 ## Quick links
 
-- **Contributing:** See `CONTRIBUTING.md` at the repo root for branching, PR, and linting requirements.
 - **Frontend env config:** `frontend/ENV_CONFIG.md` explains `VITE_API_URL` and how dev vs. prod API calls work.
 - **AI assistant guide:** `CLAUDE.md` at the repo root contains project conventions for AI coding assistants — not end-user documentation.
