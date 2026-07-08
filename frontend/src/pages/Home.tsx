@@ -2,8 +2,9 @@ import { Suspense, lazy, useMemo, useState } from 'react'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { Link } from 'react-router-dom'
 import { BookOpen, Car, History, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation, UserCheck, UserPlus, Settings } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
+import { useReactionStream } from '../hooks/useReactionStream'
 import type { AccountRole } from '../types'
 import PickupLocations from '../components/PickupLocations'
 import NonDiscordRides from '../components/NonDiscordRides'
@@ -101,6 +102,21 @@ function SectionNav({ isAdmin, canManage }: { isAdmin: boolean; canManage: boole
     )
 }
 
+/**
+ * Invisible subscriber that refreshes reaction-derived queries when a live
+ * reaction event arrives. Mounted only for roles allowed to open the stream;
+ * on stream error the views fall back to their manual refresh buttons.
+ */
+function LiveReactionUpdates() {
+    const queryClient = useQueryClient()
+    useReactionStream(() => {
+        void queryClient.invalidateQueries({ queryKey: ['rideCoverage'] })
+        void queryClient.invalidateQueries({ queryKey: ['askRidesReactions'] })
+        void queryClient.invalidateQueries({ queryKey: ['driverReactions'] })
+    })
+    return null
+}
+
 function Home() {
     const { data: meData } = useQuery<{ email: string; role: AccountRole; is_local: boolean }>({
         queryKey: ['me'],
@@ -119,6 +135,7 @@ function Home() {
 
     return (
         <>
+            {canManage && <LiveReactionUpdates />}
             {isLocal && <RoleSwitcher currentRole={role} />}
             <PageLayout
                 spacedBody

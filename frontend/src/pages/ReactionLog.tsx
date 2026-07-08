@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, getApiUrl } from '../lib/api'
+import { apiFetch } from '../lib/api'
+import { useReactionStream } from '../hooks/useReactionStream'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import {
@@ -218,7 +219,6 @@ function LoadingSkeleton() {
 
 function ReactionLog() {
     const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
-    const [streamError, setStreamError] = useState(false)
 
     const { data, isLoading, isError, error } = useQuery<ReactionLogResponse>({
         queryKey: ['reaction-log', filters],
@@ -244,18 +244,10 @@ function ReactionLog() {
 
     const queryClient = useQueryClient()
 
-    useEffect(() => {
-        const es = new EventSource(getApiUrl('/api/reaction-log/stream'), { withCredentials: true })
-        es.onmessage = () => {
-            void queryClient.invalidateQueries({ queryKey: ['reaction-log'] })
-            void queryClient.invalidateQueries({ queryKey: ['reaction-log-all-emojis'] })
-        }
-        es.onerror = () => {
-            setStreamError(true)
-            es.close()
-        }
-        return () => es.close()
-    }, [queryClient])
+    const { streamError } = useReactionStream(() => {
+        void queryClient.invalidateQueries({ queryKey: ['reaction-log'] })
+        void queryClient.invalidateQueries({ queryKey: ['reaction-log-all-emojis'] })
+    })
 
     const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
         setFilters((prev) => ({ ...prev, [key]: value }))
