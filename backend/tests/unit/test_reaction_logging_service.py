@@ -118,6 +118,15 @@ class TestFormatReactionLogLateRides:
         )
         assert "Sunday Service" in result
 
+    def test_wednesday_message(self):
+        svc = ReactionLoggingService(bot=None)
+        message = _make_message("React for Wednesday fellowship 4/22")
+
+        result = svc._format_reaction_log_late_rides(
+            _make_user(), _make_payload(), message, ReactionAction.ADD
+        )
+        assert "Wednesday Fellowship" in result
+
     def test_unknown_message(self):
         svc = ReactionLoggingService(bot=None)
         message = _make_message("Something random")

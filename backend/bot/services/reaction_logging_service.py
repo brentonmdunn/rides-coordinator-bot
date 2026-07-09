@@ -172,6 +172,7 @@ class ReactionLoggingService:
         event_map = {
             JobName.SUNDAY: "Sunday Service",
             JobName.FRIDAY: "Friday Fellowship",
+            JobName.WEDNESDAY: "Wednesday Fellowship",
         }
 
         event_name = None
