@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Car } from 'lucide-react'
 import { getAutomaticDay } from '../lib/utils'
 import { apiFetch } from '../lib/api'
@@ -6,6 +7,7 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import { SegmentedControl } from './ui/segmented-control'
 import ErrorMessage from "./ErrorMessage"
 import { ListSkeleton } from './LoadingSkeleton'
+import { QUERY_STALE_1_MIN } from '../lib/constants'
 
 import { CopyPill } from './CopyPill'
 import { RefreshIconButton, SectionCard } from './shared'
@@ -18,42 +20,40 @@ interface DriverReactionsData {
 }
 
 function DriverReactions() {
-    const [data, setData] = useState<DriverReactionsData | null>(null)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
     const [activeDay, setActiveDay] = useState<'friday' | 'sunday'>('friday')
 
     const [showInfo, setShowInfo] = useState(false)
 
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-    const fetchDataForDay = async (day: 'friday' | 'sunday') => {
-        setLoading(true)
-        setError('')
-        try {
-            const response = await apiFetch(`/api/check-pickups/driver-reactions/${day}`)
-            const result = await response.json()
-            setData(result)
-            setActiveDay(day)
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error')
-        } finally {
-            setLoading(false)
+    const {
+        data,
+        isLoading: loading,
+        error,
+        refetch
+    } = useQuery<DriverReactionsData>({
+        queryKey: ['driverReactions', activeDay],
+        queryFn: async () => {
+            const response = await apiFetch(`/api/check-pickups/driver-reactions/${activeDay}`)
+            return response.json()
+        },
+        staleTime: QUERY_STALE_1_MIN,
+    })
+
+    const errorMessage = error instanceof Error ? error.message : error ? 'Unknown error' : ''
+
+    const handleDayToggle = (day: 'friday' | 'sunday') => {
+        setActiveDay(day)
+    }
+
+    const updateDayAndFetch = () => {
+        const automaticDay = getAutomaticDay()
+        if (automaticDay === activeDay) {
+            refetch()
+        } else {
+            setActiveDay(automaticDay)
         }
     }
-
-    const updateDayAndFetch = useCallback(async () => {
-        await fetchDataForDay(getAutomaticDay())
-    }, [])
-
-    const handleDayToggle = async (day: 'friday' | 'sunday') => {
-        setActiveDay(day)
-        await fetchDataForDay(day)
-    }
-
-    useEffect(() => {
-        updateDayAndFetch()
-    }, [updateDayAndFetch])
 
     return (
         <SectionCard
@@ -109,7 +109,7 @@ function DriverReactions() {
 
                 {loading && <ListSkeleton rows={4} />}
 
-                {error && <ErrorMessage message={error} />}
+                {errorMessage && <ErrorMessage message={errorMessage} />}
 
                 {!loading && !error && data && (
                     <>
