@@ -5,6 +5,7 @@ Scheduled jobs for asking for rides.
 """
 
 import logging
+import traceback
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Literal
@@ -545,6 +546,42 @@ async def run_ask_rides_manual(
 # State for rotating periodic warmers
 _periodic_warmer_idx = 0
 
+# State for batching cache warming error reports: only alert Discord once
+# more than CACHE_WARMING_ERROR_THRESHOLD errors have occurred within
+# CACHE_WARMING_ERROR_WINDOW, then flush all buffered tracebacks at once.
+# If the window elapses with CACHE_WARMING_ERROR_THRESHOLD or fewer errors,
+# they are dropped (already logged individually) without alerting Discord.
+CACHE_WARMING_ERROR_WINDOW = timedelta(minutes=60)
+CACHE_WARMING_ERROR_THRESHOLD = 3
+_cache_warming_errors: list[tuple[datetime, str]] = []
+
+
+async def _report_cache_warming_error(idx: int) -> None:
+    now = datetime.now()
+    tb_text = traceback.format_exc()
+    _cache_warming_errors.append((now, tb_text))
+
+    cutoff = now - CACHE_WARMING_ERROR_WINDOW
+    while _cache_warming_errors and _cache_warming_errors[0][0] < cutoff:
+        _cache_warming_errors.pop(0)
+
+    if len(_cache_warming_errors) <= CACHE_WARMING_ERROR_THRESHOLD:
+        logger.info(
+            f"Cache warming error buffered ({len(_cache_warming_errors)} in the last "
+            f"{int(CACHE_WARMING_ERROR_WINDOW.total_seconds() // 60)}m); not alerting Discord yet"
+        )
+        return
+
+    combined_tb = "\n\n".join(tb for _, tb in _cache_warming_errors)
+    error_count = len(_cache_warming_errors)
+    _cache_warming_errors.clear()
+
+    await send_error_to_discord(
+        f"**Unexpected Error** in `run_periodic_cache_warming` (idx={idx}): "
+        f"{error_count} errors in the last {int(CACHE_WARMING_ERROR_WINDOW.total_seconds() // 60)} minutes",
+        tb_text=combined_tb,
+    )
+
 
 @log_job
 async def run_periodic_cache_warming(bot: Bot) -> None:
@@ -578,9 +615,7 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
             await locations_svc.get_driver_reactions(AskRidesMessage.SUNDAY_SERVICE)
     except Exception:
         logger.exception(f"Error during periodic cache warming (idx={_periodic_warmer_idx})")
-        await send_error_to_discord(
-            f"**Unexpected Error** in `run_periodic_cache_warming` (idx={_periodic_warmer_idx})"
-        )
+        await _report_cache_warming_error(_periodic_warmer_idx)
 
     _periodic_warmer_idx = (_periodic_warmer_idx + 1) % 2
 
