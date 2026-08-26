@@ -9,7 +9,7 @@ import logging
 import os
 
 import bcrypt
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ class BypassLoginRequest(BaseModel):
 
 
 @router.post("/api/auth/bypass/login")
-async def bypass_login(body: BypassLoginRequest) -> JSONResponse:
+async def bypass_login(body: BypassLoginRequest, request: Request) -> JSONResponse:
     """Verify the shared emergency password and issue a session cookie."""
     if not BYPASS_DISCORD:
         return JSONResponse({"detail": "Not found"}, status_code=404)
@@ -49,8 +49,14 @@ async def bypass_login(body: BypassLoginRequest) -> JSONResponse:
         logger.error("BYPASS_DISCORD=true but BYPASS_PASSWORD is not set")
         return JSONResponse({"detail": "Server misconfigured"}, status_code=500)
 
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
     if not bcrypt.checkpw(body.password.encode(), BYPASS_PASSWORD_HASH.encode()):
         logger.warning("Bypass login attempt with incorrect password")
+        await AuthService.notify_bypass_login(
+            BYPASS_EMAIL, succeeded=False, client_ip=client_ip, user_agent=user_agent
+        )
         return JSONResponse({"detail": "Invalid password"}, status_code=401)
 
     async with AsyncSessionLocal() as db_session:
@@ -82,6 +88,9 @@ async def bypass_login(body: BypassLoginRequest) -> JSONResponse:
         secure=_IS_PROD,
     )
     logger.info(f"Bypass login successful for '{BYPASS_EMAIL}'")
+    await AuthService.notify_bypass_login(
+        BYPASS_EMAIL, succeeded=True, client_ip=client_ip, user_agent=user_agent
+    )
     return response
 
 
