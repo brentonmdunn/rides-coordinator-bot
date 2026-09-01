@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Path to main.py relative to this script
 MAIN_PATH = Path(__file__).parent.parent / "main.py"
-TARGET_LINE = "await load_extensions()"
+TARGET_LINE = "await load_extensions("
 
 
 def comment_out_line(path: Path, target: str):

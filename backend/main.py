@@ -29,13 +29,9 @@ async def main() -> None:
     async with bot:
         try:
             await startup()
-        except Exception:
-            logger.exception("Startup failed")
-            sys.exit(1)
-        try:
             await load_extensions(bot)
         except Exception:
-            logger.exception("Failed to load extensions")
+            logger.exception("Startup failed")
             sys.exit(1)
         assert TOKEN is not None
         await bot.start(TOKEN)
