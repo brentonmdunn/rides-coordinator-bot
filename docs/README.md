@@ -19,6 +19,7 @@ The project consists of three main components:
 | [setup.md](setup.md) | Local development setup, environment variables, running tests |
 | [api-reference.md](api-reference.md) | All HTTP API endpoints with request/response shapes |
 | [bot-commands.md](bot-commands.md) | All Discord slash commands |
+| [adding-a-bot.md](adding-a-bot.md) | Adding another Discord bot to the multi-bot registry |
 | [scheduler.md](scheduler.md) | Scheduled jobs (APScheduler), how they work, how to pause them |
 | [database-schema.md](database-schema.md) | All database tables and their columns |
 | [feature-flags.md](feature-flags.md) | Feature flag reference and management |
