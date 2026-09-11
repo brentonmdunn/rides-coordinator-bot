@@ -5,9 +5,7 @@ __all__ = [
     "CommunityEventsService",
     "CsvSyncService",
     "DriverService",
-    "FeatureFlagsService",
     "GroupRidesService",
-    "HelpService",
     "HousingGroupService",
     "LLMService",
     "LocationsService",
@@ -17,7 +15,5 @@ __all__ = [
     "RideRequestService",
     "RouteService",
     "ThreadService",
-    "UserAccountsService",
-    "UserPreferencesService",
     "WhoisService",
 ]

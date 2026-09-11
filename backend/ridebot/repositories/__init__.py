@@ -4,13 +4,10 @@ __all__ = [
     "CalendarRepository",
     "EventThreadRepository",
     "EventsRepository",
-    "FeatureFlagsRepository",
     "GroupRidesRepository",
     "LocationsRepository",
     "MessageScheduleRepository",
     "NonDiscordRidesRepository",
     "RideCoverageRepository",
-    "UserAccountsRepository",
-    "UserPreferencesRepository",
     "WhoisRepository",
 ]
