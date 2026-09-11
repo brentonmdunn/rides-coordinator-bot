@@ -5,6 +5,7 @@ from typing import Any, cast
 
 import discord
 
+from ridebot.utils.constants import ROSTER_REGISTER_BUTTON_CUSTOM_ID
 from ridebot.views.registration import RegistrationView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
@@ -56,6 +57,12 @@ class RideRequestService:
             if not isinstance(existing_channel, discord.TextChannel):
                 logger.warning(f"Channel {channel_name} exists but is not a text channel.")
                 return False
+            if await self._latest_message_is_prompt(existing_channel):
+                logger.info(
+                    f"Registration prompt is already the latest message in {channel_name}; "
+                    "skipping re-post."
+                )
+                return False
             logger.info(f"Channel {channel_name} already exists; re-posting registration prompt.")
             return await self._send_registration_prompt(existing_channel, user, pin=False)
 
@@ -85,6 +92,34 @@ class RideRequestService:
 
         # The channel exists either way, so a failed prompt doesn't fail the flow.
         return True
+
+    async def _latest_message_is_prompt(self, channel: discord.TextChannel) -> bool:
+        """
+        Return whether the channel's newest message is already a registration prompt.
+
+        This keeps repeated reactions from stacking identical prompts, without
+        storing any state. It fails open: if the history can't be read, the caller
+        posts anyway, since prompting is the point.
+
+        Args:
+            channel: The rider's private new-rides channel.
+
+        Returns:
+            True if the newest message is one of our prompts.
+        """
+        bot_user = getattr(self.bot, "user", None)
+        try:
+            async for message in channel.history(limit=1):
+                if bot_user is not None and message.author.id != bot_user.id:
+                    return False
+                return any(
+                    getattr(child, "custom_id", None) == ROSTER_REGISTER_BUTTON_CUSTOM_ID
+                    for row in message.components
+                    for child in getattr(row, "children", ())
+                )
+        except Exception:
+            logger.exception(f"Couldn't read history in {channel.name}; posting prompt anyway")
+        return False
 
     async def _send_registration_prompt(
         self, channel: discord.TextChannel, user: discord.Member, *, pin: bool
