@@ -1,0 +1,1 @@
+"""StonesBot: event thread bot."""
