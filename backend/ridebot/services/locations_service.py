@@ -2,9 +2,11 @@
 Service for location-related operations.
 
 Acts as a thin coordinator that delegates to:
-- ``CsvSyncService`` for Google Sheets CSV syncing
 - ``ReactionService`` for reaction fetching and caching
 - ``HousingGroupService`` for location grouping and embed building
+
+Location data lives in the ``locations`` table, managed through ``RosterService``
+(the website roster and the Discord registration form). This service only reads it.
 """
 
 import logging
@@ -13,7 +15,6 @@ from collections import defaultdict
 import discord
 
 from ridebot.repositories.locations_repository import LocationsRepository
-from ridebot.services.csv_sync_service import CsvSyncService
 from ridebot.services.housing_group_service import HousingGroupService
 from ridebot.services.reaction_service import ReactionService
 from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
@@ -39,7 +40,6 @@ class LocationsService:
     def __init__(self, bot):
         """Initialize the LocationsService."""
         self.bot = bot
-        self._csv_sync = CsvSyncService()
         self._reactions = ReactionService(bot)
         self._housing = HousingGroupService()
 
@@ -51,13 +51,6 @@ class LocationsService:
         """Return (discord_username, name) pairs for all rows with a non-null username."""
         async with AsyncSessionLocal() as session:
             return await LocationsRepository.get_all_discord_usernames(session)
-
-    # ------------------------------------------------------------------
-    # CSV sync (delegates to CsvSyncService)
-    # ------------------------------------------------------------------
-    async def sync_locations(self):
-        """Syncs the Google Sheet with database table ``locations``."""
-        await self._csv_sync.sync_locations()
 
     # ------------------------------------------------------------------
     # Location lookup
@@ -75,18 +68,6 @@ class LocationsService:
         Returns:
             A list of tuples containing (name, location) if found, otherwise None.
         """
-        async with AsyncSessionLocal() as session:
-            possible_people = (
-                await LocationsRepository.get_location_check_discord(session, name)
-                if discord_only
-                else await LocationsRepository.get_location_check_name_and_discord(session, name)
-            )
-        if possible_people:
-            return possible_people
-
-        logger.info("Cache miss in get_location. Triggering sync and retrying.")
-        await self.sync_locations()
-
         async with AsyncSessionLocal() as session:
             possible_people = (
                 await LocationsRepository.get_location_check_discord(session, name)
@@ -309,20 +290,11 @@ class LocationsService:
         """
         locations_people = defaultdict(list)
         location_found = set()
-        cache_miss = []
         for username in usernames_reacted:
             person = await self.get_name_location_no_sync(username)
             # person is tuple[str, str] = (name, location)
             if person is None or person[1] is None:
-                cache_miss.append(username)
                 continue
             locations_people[person[1]].append((person[0], username))
             location_found.add(username)
-        if cache_miss:
-            await self.sync_locations()
-            for username in cache_miss:
-                person = await self.get_name_location_no_sync(username)
-                if person and person[1]:
-                    locations_people[person[1]].append((person[0], username))
-                    location_found.add(username)
         return locations_people, location_found
