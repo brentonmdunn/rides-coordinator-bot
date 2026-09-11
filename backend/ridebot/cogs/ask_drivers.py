@@ -15,11 +15,10 @@ from shared.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
     ChannelIds,
     DaysOfWeek,
-    FeatureFlagNames,
     JobName,
 )
 from shared.core.logger import log_cmd
-from shared.utils.checks import feature_flag_enabled
+from shared.utils.checks import bot_enabled
 
 
 class AskDrivers(commands.Cog):
@@ -36,7 +35,7 @@ class AskDrivers(commands.Cog):
     )
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
-    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
+    @bot_enabled
     async def ask_drivers(self, interaction: discord.Interaction, day: str, message: str) -> None:
         """
         Pings the driver role with a custom message.
