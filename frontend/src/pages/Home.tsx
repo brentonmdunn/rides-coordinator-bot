@@ -155,6 +155,14 @@ function Home() {
                                             </Link>
                                         </Button>
                                     )}
+                                    {canManage && (
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link to="/roster">
+                                                <Users className="w-4 h-4" />
+                                                Roster
+                                            </Link>
+                                        </Button>
+                                    )}
                                     <Button variant="outline" size="sm" asChild>
                                         <Link to="/reaction-log">
                                             <History className="w-4 h-4" />
