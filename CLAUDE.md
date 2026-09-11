@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Monorepo with three deployables:
 
-- **`backend/`** — Python 3.13 app: a Discord bot (`discord.py`) and a FastAPI web API that run **in the same process** (the bot is started inside FastAPI's lifespan).
+- **`backend/`** — Python 3.13 app: a Discord bot (`discord.py`) and a FastAPI web API that run **in the same process** (the bot is started inside FastAPI's lifespan). Split into `shared/` (infrastructure) and `ridebot/` (ride-specific code) — see "Backend Architecture" below.
 - **`frontend/`** — React 19 admin SPA (Vite + Tailwind CSS v4 + shadcn/ui). Built output is copied into `backend/admin_ui/` and served by the backend in production.
 - **`portfolio/`** — Separate static site deployed to GitHub Pages (independent of the app).
 
@@ -64,9 +64,18 @@ npx tsc --noEmit     # Type check only
 ### Entry points & lifecycle
 
 - `backend/main.py` — bot-only entry point: builds the bot, auto-loads cogs, starts scheduled jobs.
-- `backend/run_api.py` — runs `uvicorn api.app:app`; the bot is started/stopped via `bot_lifespan()` in `bot/api.py` inside FastAPI's lifespan, so **bot and API share one process**. The bot instance is globally accessible via `bot.core.bot_instance.get_bot()`.
-- Cog auto-loading lives in `bot/core/lifecycle.py` (`load_extensions()`); `job_scheduler.py` loads first, failures are tracked in `_failed_extensions` and exposed by `/health`.
+- `backend/run_api.py` — runs `uvicorn api.app:app`; the bot is started/stopped via `bot_lifespan()` in `shared/core/lifespan.py` inside FastAPI's lifespan, so **bot and API share one process**. The bot instance is globally accessible via `shared.core.bot_instance.get_bot()`.
+- Cog auto-loading lives in `shared/core/lifecycle.py` (`load_extensions()`); `job_scheduler.py` loads first, failures are tracked in `_failed_extensions` and exposed by `/health`.
 - Startup also seeds feature flags (from `FeatureFlagNames`) and admin accounts (from `ADMIN_EMAILS`).
+
+### `shared/` vs `ridebot/`
+
+The backend is split into two top-level packages, plus `api/`:
+
+- **`shared/`** — infrastructure every bot needs: DB engine/session (`shared/core/database.py`), models (`shared/core/models.py`), enums (`shared/core/enums.py`), logging (`shared/core/logger.py`), error reporting (`shared/core/error_reporter.py`), bot lifecycle (`shared/core/lifecycle.py`, `shared/core/lifespan.py`, `shared/core/bot_instance.py`), feature flags, auth, user accounts/preferences (`shared/services/`, `shared/repositories/`), and the `/help` cog (`shared/cogs/help.py`). **`shared/` must never import a bot package.**
+- **`ridebot/`** — everything ride-specific: cogs, services, repositories, jobs, and utils for ride coordination.
+- **Rule for where new code goes:** code lives in `shared/` only if it's infrastructure or is actually used by at least two bots. Otherwise it lives in the bot package (`ridebot/`) and is promoted to `shared/` later, when a second consumer appears.
+- **Import-boundary test** (`backend/tests/unit/test_import_boundaries.py`): a pure-AST check enforcing that `shared` imports no bot package, and that bot packages don't import each other or `api`.
 
 ### Layers
 
@@ -76,10 +85,10 @@ Cog  ──┐
 API  ──┘
 ```
 
-- **Cogs** (`bot/cogs/`): Discord slash commands and event listeners; auto-loaded. `bot/cogs_disabled/` are never loaded; `bot/cogs_testing/` load only when `APP_ENV=local`.
-- **Services** (`bot/services/`): Business logic layer. Cogs call services, never repositories directly.
-- **Repositories** (`bot/repositories/`): Data access layer. All SQL/database queries live here.
-- **Jobs** (`bot/jobs/`): Scheduled tasks run by APScheduler via the `JobScheduler` cog (`bot/cogs/job_scheduler.py`, LA timezone). Disabled jobs go in `bot/jobs_disabled/`.
+- **Cogs** (`ridebot/cogs/`, plus `shared/cogs/help.py`): Discord slash commands and event listeners; auto-loaded. `ridebot/cogs_disabled/` are never loaded; `ridebot/cogs_testing/` load only when `APP_ENV=local`.
+- **Services** (`ridebot/services/`, plus infra services in `shared/services/`): Business logic layer. Cogs call services, never repositories directly.
+- **Repositories** (`ridebot/repositories/`, plus infra repositories in `shared/repositories/`): Data access layer. All SQL/database queries live here.
+- **Jobs** (`ridebot/jobs/`): Scheduled tasks run by APScheduler via the `JobScheduler` cog (`ridebot/cogs/job_scheduler.py`, LA timezone). Disabled jobs go in `ridebot/jobs_disabled/`.
 - **API** (`api/`): FastAPI routes in `api/routes/`, auth in `api/auth.py` / `api/auth_session.py`, middleware in `api/middleware/`, rate limiting via slowapi in `api/rate_limit.py`.
 
 ### Centralizing Shared Logic (No Duplication Between Cogs and API)
@@ -94,12 +103,12 @@ Cogs and API routes are both **thin entry points** — they handle input/output 
 ### Key Patterns
 
 - Use `async`/`await` everywhere — the DB uses aiosqlite + async SQLAlchemy.
-- Never use hardcoded strings for enums — always use `bot/core/enums.py` (e.g., `JobName`, `FeatureFlagNames`, `DaysOfWeek`, `RideType`, `ChannelIds`, `RoleIds`, `AccountRoles`).
-- Constants go in `bot/utils/constants.py` (bot-side) or `api/constants.py` (API-side).
-- Logging goes through `bot/core/logger.py` — never use `print()`.
-- Cache layer (`bot/utils/cache.py`, `bot/utils/cache_backends.py`): Redis backend with in-memory fallback in local mode; namespaced keys for grouped invalidation.
+- Never use hardcoded strings for enums — always use `shared/core/enums.py` (e.g., `JobName`, `FeatureFlagNames`, `DaysOfWeek`, `RideType`, `ChannelIds`, `RoleIds`, `AccountRoles`).
+- Constants go in `ridebot/utils/constants.py` (ride) or `shared/utils/constants.py` (infra) or `api/constants.py` (API-side).
+- Logging goes through `shared/core/logger.py` — never use `print()`.
+- Cache layer (`ridebot/utils/cache.py`, `shared/utils/cache_backends.py`): Redis backend with in-memory fallback in local mode; namespaced keys for grouped invalidation.
 - Feature flags: stored in the `feature_flags` table, seeded from `FeatureFlagNames` on startup, accessed via `feature_flags_repository.py`. Local dev auto-disables job/message flags to prevent spam (`disable_features_for_local_env()`).
-- Error reporting: `bot/core/error_reporter.py:send_error_to_discord()` posts exceptions to the `ERROR_CHANNEL_ID` channel (gated by the `SEND_ERRORS_TO_DISCORD` flag; skipped locally; falls back to stderr).
+- Error reporting: `shared/core/error_reporter.py:send_error_to_discord()` posts exceptions to the `ERROR_CHANNEL_ID` channel (gated by the `SEND_ERRORS_TO_DISCORD` flag; skipped locally; falls back to stderr).
 - Health check: `GET /health` reports bot readiness, DB connectivity, and failed cog loads (bypasses auth).
 
 ---
@@ -120,7 +129,7 @@ Auth is controlled by the `AUTH_PROVIDER` env var (`cloudflare` | `self`, defaul
 1. Unauthenticated request to `/api/*` → **401**. Frontend `AuthGuard` redirects to `/login`.
 2. User clicks "Log in with Discord" → `GET /api/auth/discord/login` → redirects to Discord with random `state` cookie.
 3. Discord redirects back to `GET /api/auth/discord/callback` → state validated, code exchanged, `GET /users/@me` called.
-4. **3-tier identity matching** (in `bot/services/auth_service.py`):
+4. **3-tier identity matching** (in `shared/services/auth_service.py`):
    - By `discord_user_id` (stable — used after first login)
    - By `discord_username` where `discord_user_id IS NULL` (first login for invited users)
    - By `email` where `discord_user_id IS NULL` (grandfather path for pre-existing CF Access accounts)
@@ -152,8 +161,8 @@ Users must be pre-invited before they can log in. Admins invite by Discord usern
 | `api/auth.py` | CF Access middleware + `require_admin` / `require_ride_coordinator` dependencies |
 | `api/auth_session.py` | Self-hosted session cookie middleware |
 | `api/routes/auth_discord.py` | OAuth flow routes (`/login`, `/callback`, `/logout`) |
-| `bot/services/auth_service.py` | Identity matching cascade + session lifecycle |
-| `bot/repositories/auth_sessions_repository.py` | `auth_sessions` table access |
+| `shared/services/auth_service.py` | Identity matching cascade + session lifecycle |
+| `shared/repositories/auth_sessions_repository.py` | `auth_sessions` table access |
 | `frontend/src/components/AuthGuard.tsx` | Route guard — redirects to `/login` on 401 |
 | `frontend/src/lib/auth.ts` | CSRF cookie helper + `logout()` |
 
@@ -164,7 +173,7 @@ Users must be pre-invited before they can log in. Admins invite by Discord usern
 ### Stack
 
 - **SQLite** via **aiosqlite** (async driver) + **SQLAlchemy** (async ORM).
-- Engine/session factory in `bot/core/database.py` (`pool_pre_ping=True`, `pool_recycle=3600`); models in `bot/core/models.py`; DB file at `backend/db/bot.db` (override with `DATABASE_URL`).
+- Engine/session factory in `shared/core/database.py` (`pool_pre_ping=True`, `pool_recycle=3600`); models in `shared/core/models.py`; DB file at `backend/db/bot.db` (override with `DATABASE_URL`).
 
 ### Migrations
 
@@ -203,13 +212,13 @@ class FooRepository:
 
 ### Setup
 
-- Logging is configured in `bot/core/logger.py` (console + rotating file handlers → `logs/bot.log`).
+- Logging is configured in `shared/core/logger.py` (console + rotating file handlers → `logs/bot.log`).
 - Every file uses its own per-module logger:
   ```python
   import logging
   logger = logging.getLogger(__name__)
   ```
-- **Never** use `from bot.core.logger import logger` — that's the root logger. Always create a per-module logger with `getLogger(__name__)`.
+- **Never** use `from shared.core.logger import logger` — that's the root logger. Always create a per-module logger with `getLogger(__name__)`.
 - **Never** use `print()` for diagnostics — always use `logger`.
 
 ### Log Levels
@@ -243,7 +252,7 @@ class FooRepository:
 
 ### Transaction IDs & Context
 
-- Slash commands: wrap with `@log_cmd` (from `bot.core.logger`) to auto-assign a transaction ID and log the command invocation.
+- Slash commands: wrap with `@log_cmd` (from `shared.core.logger`) to auto-assign a transaction ID and log the command invocation.
 - Scheduled jobs: wrap with `@log_job` to auto-assign a transaction ID.
 - API requests: transaction IDs are injected via `api/middleware/access_logger.py`.
 - Log format includes `[txn:%(txn_id)s]` and `[%(user_email)s]` for tracing. `%(name)s` shows the full module path, so don't prefix messages with the module name manually.
