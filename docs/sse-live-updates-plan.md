@@ -4,7 +4,7 @@
 
 The app already has working SSE infrastructure:
 
-- **Backend**: `bot/core/reaction_broadcaster.py` — in-process pub/sub. The `reactions` cog publishes every ride-message reaction add/remove. `api/routes/reaction_log_stream.py` exposes it as `GET /api/reaction-log/stream` (SSE, heartbeat every `SSE_HEARTBEAT_INTERVAL`, gated by `require_ride_coordinator`).
+- **Backend**: `ridebot/core/reaction_broadcaster.py` — in-process pub/sub. The `reactions` cog publishes every ride-message reaction add/remove. `api/routes/reaction_log_stream.py` exposes it as `GET /api/reaction-log/stream` (SSE, heartbeat every `SSE_HEARTBEAT_INTERVAL`, gated by `require_ride_coordinator`).
 - **Frontend**: `pages/ReactionLog.tsx` and `AskRidesDashboard/MessageTemplatesEditor.tsx` each open an `EventSource` with an `onerror` → `streamError` fallback, and invalidate react-query keys on message.
 
 Meanwhile, three other views render data **derived from those same reactions** but only fetch on mount or manual refresh:

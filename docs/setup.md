@@ -151,7 +151,7 @@ ADMIN_EMAILS=your-discord-linked@email.com
 
 ## Database migrations
 
-Generate a migration after changing `bot/core/models.py`:
+Generate a migration after changing `shared/core/models.py`:
 
 ```bash
 cd backend

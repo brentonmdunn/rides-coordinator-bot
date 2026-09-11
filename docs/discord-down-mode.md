@@ -4,7 +4,7 @@ When Discord is unavailable (outage, rate limiting, maintenance), you can run th
 
 ## How it works
 
-Setting `DISABLE_DISCORD_BOT=true` causes `bot_lifespan()` in `bot/api.py` to skip bot startup entirely and yield immediately. This means:
+Setting `DISABLE_DISCORD_BOT=true` causes `bot_lifespan()` in `shared/core/lifespan.py` to skip bot startup entirely and yield immediately. This means:
 
 - No gateway connection attempt
 - No rate-limit retries against Discord's API

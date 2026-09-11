@@ -224,7 +224,7 @@ Shows all available slash commands as an ephemeral embed. Useful for discovering
 
 ## Disabled commands
 
-The following cogs are currently in `bot/cogs_disabled/` and are not loaded:
+The following cogs are currently in `ridebot/cogs_disabled/` and are not loaded:
 
 - **infra** — Infrastructure/server management commands.
 - **retreat** — Retreat-specific ride coordination commands.
