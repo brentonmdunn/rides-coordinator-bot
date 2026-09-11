@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from shared.utils.checks import feature_flag_enabled, is_admin
+from shared.core.bot_context import current_bot_var
+from shared.core.enums import BotName, FeatureFlagNames
+from shared.utils.checks import bot_enabled, feature_flag_enabled, is_admin
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -239,3 +241,87 @@ async def test_feature_flag_found_via_kwargs():
 
     assert result is None
     interaction.response.send_message.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# bot_enabled
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_bot_enabled_resolves_current_bot_flag_and_allows():
+    """bot_enabled resolves the current bot's kill-switch flag and runs when enabled."""
+    # The autouse `_current_bot` fixture already sets current_bot_var to RIDEBOT.
+    with patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo:
+        mock_repo._cache = {FeatureFlagNames.RIDEBOT.value: True}
+
+        wrapped = bot_enabled(_dummy_func)
+        result = await wrapped()
+
+    assert result == "called"
+
+
+@pytest.mark.asyncio
+async def test_bot_enabled_blocks_when_flag_disabled():
+    """bot_enabled blocks and responds ephemerally when the bot's flag is disabled."""
+    interaction = _make_async_interaction()
+
+    with patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo:
+        mock_repo._cache = {FeatureFlagNames.RIDEBOT.value: False}
+
+        wrapped = bot_enabled(_dummy_func)
+        result = await wrapped(interaction)
+
+    assert result is None
+    interaction.response.send_message.assert_awaited_once()
+    call_kwargs = interaction.response.send_message.call_args[1]
+    assert call_kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_bot_enabled_fails_closed_when_no_bot_set():
+    """With no current bot (e.g. outside any bot task), bot_enabled fails closed."""
+    token = current_bot_var.set(None)
+    try:
+        interaction = _make_async_interaction()
+
+        wrapped = bot_enabled(_dummy_func)
+        result = await wrapped(interaction)
+    finally:
+        current_bot_var.reset(token)
+
+    assert result is None
+    interaction.response.send_message.assert_awaited_once()
+    call_args = interaction.response.send_message.call_args
+    assert call_args[0][0] == "This command is currently unavailable."
+    assert call_args[1].get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_bot_enabled_fails_closed_no_bot_no_interaction():
+    """With no current bot and no interaction (a job), it just returns None."""
+    token = current_bot_var.set(None)
+    try:
+        wrapped = bot_enabled(_dummy_func)
+        result = await wrapped()
+    finally:
+        current_bot_var.reset(token)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_bot_enabled_resolves_flag_via_get_spec():
+    """bot_enabled looks up the flag through get_spec(current_bot).kill_switch_flag."""
+    with (
+        patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo,
+        patch("shared.utils.checks.get_spec") as mock_get_spec,
+    ):
+        mock_get_spec.return_value.kill_switch_flag = FeatureFlagNames.RIDEBOT
+        mock_repo._cache = {FeatureFlagNames.RIDEBOT.value: True}
+
+        wrapped = bot_enabled(_dummy_func)
+        result = await wrapped()
+
+    mock_get_spec.assert_called_once_with(BotName.RIDEBOT)
+    assert result == "called"
