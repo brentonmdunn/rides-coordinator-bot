@@ -3,7 +3,14 @@
 import pytest
 
 import shared.core.bots as bots_module
-from shared.core.bots import BotSpec, EnabledBot, bot_package_names, get_spec, resolve_enabled_bots
+from shared.core.bots import (
+    BOT_REGISTRY,
+    BotSpec,
+    EnabledBot,
+    bot_package_names,
+    get_spec,
+    resolve_enabled_bots,
+)
 from shared.core.enums import BotName, FeatureFlagNames
 
 
@@ -18,6 +25,52 @@ def _spec(name: BotName, token_env: str, flag: FeatureFlagNames) -> BotSpec:
 
 
 RIDEBOT_SPEC = _spec(BotName.RIDEBOT, "RIDEBOT_TOKEN", FeatureFlagNames.RIDEBOT)
+
+
+class TestStonesBotSpec:
+    """Tests for the real StonesBot entry in BOT_REGISTRY."""
+
+    def _stonesbot_spec(self) -> BotSpec:
+        return get_spec(BotName.STONESBOT)
+
+    def test_cog_packages(self):
+        spec = self._stonesbot_spec()
+        assert spec.cog_packages == ("stonesbot.cogs", "shared.cogs")
+
+    def test_token_env(self):
+        assert self._stonesbot_spec().token_env == "STONESBOT_TOKEN"
+
+    def test_kill_switch_flag(self):
+        assert self._stonesbot_spec().kill_switch_flag == FeatureFlagNames.STONESBOT
+
+    def test_intents_members_on_message_content_off(self):
+        intents = self._stonesbot_spec().intents()
+        assert intents.members is True
+        assert intents.message_content is False
+
+    def test_no_priority_or_testing_extensions(self):
+        spec = self._stonesbot_spec()
+        assert spec.priority_extensions == ()
+        assert spec.testing_cog_package is None
+
+
+class TestRealBotRegistry:
+    """Tests against the real BOT_REGISTRY, now that two bots are registered."""
+
+    def test_bot_package_names_has_both_bots(self):
+        assert bot_package_names() == {"ridebot", "stonesbot"}
+
+    def test_bot_names_are_unique(self):
+        names = [spec.name for spec in BOT_REGISTRY]
+        assert len(names) == len(set(names))
+
+    def test_kill_switch_flags_are_unique(self):
+        flags = [spec.kill_switch_flag for spec in BOT_REGISTRY]
+        assert len(flags) == len(set(flags))
+
+    def test_get_spec_round_trips_for_every_bot_name(self):
+        for name in BotName:
+            assert get_spec(name).name == name
 
 
 class TestGetSpec:
