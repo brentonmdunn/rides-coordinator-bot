@@ -22,6 +22,7 @@ from shared.core.database import (
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
+from shared.core.enums import BotName
 from shared.core.models import FeatureFlags
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 from shared.utils.constants import REDIS_CONNECTION_TIMEOUT
@@ -30,12 +31,23 @@ logger = logging.getLogger(__name__)
 
 APP_ENV: str = os.getenv("APP_ENV", "local")
 
-_failed_extensions: set[str] = set()
+_failed_extensions: dict[BotName, set[str]] = {}
+_enabled_bots: set[BotName] = set()
 
 
-def get_failed_extensions() -> set[str]:
-    """Return the set of extension names that failed to load."""
+def get_failed_extensions() -> dict[BotName, set[str]]:
+    """Return extension names that failed to load, keyed by bot."""
     return _failed_extensions
+
+
+def mark_bot_enabled(name: BotName) -> None:
+    """Record that a bot was started in this process."""
+    _enabled_bots.add(name)
+
+
+def get_enabled_bot_names() -> set[BotName]:
+    """Return the bots started in this process."""
+    return set(_enabled_bots)
 
 
 _SendErrorFn = Callable[..., Awaitable[None]]
@@ -130,7 +142,7 @@ async def load_extensions(bot: Bot) -> None:
             logger.info(f"✅ Loaded extension: {extension}")
         except Exception:
             logger.exception(f"❌ Failed to load extension {extension}")
-            _failed_extensions.add(extension)
+            _failed_extensions.setdefault(BotName.RIDEBOT, set()).add(extension)
 
     shared_cogs_path = Path.cwd() / "shared" / "cogs"
     eligible_files = [
@@ -145,7 +157,7 @@ async def load_extensions(bot: Bot) -> None:
             logger.info(f"✅ Loaded extension: {extension}")
         except Exception:
             logger.exception(f"❌ Failed to load extension {extension}")
-            _failed_extensions.add(extension)
+            _failed_extensions.setdefault(BotName.RIDEBOT, set()).add(extension)
 
     if APP_ENV == "local":
         cogs_testing_path = Path.cwd() / "ridebot" / "cogs_testing"
@@ -161,7 +173,7 @@ async def load_extensions(bot: Bot) -> None:
                 logger.info(f"✅ Loaded extension: {extension}")
             except Exception:
                 logger.exception(f"❌ Failed to load extension {extension}")
-                _failed_extensions.add(extension)
+                _failed_extensions.setdefault(BotName.RIDEBOT, set()).add(extension)
 
 
 def attach_event_handlers(bot: Bot, send_error_fn: _SendErrorFn) -> None:

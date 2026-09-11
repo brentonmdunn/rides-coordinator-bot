@@ -23,7 +23,7 @@ class Locations(commands.Cog):
         name="sync-locations",
         description="Sync Google Sheets with database.",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def sync_locations(self, interaction: discord.Interaction):
         """
@@ -39,7 +39,7 @@ class Locations(commands.Cog):
         name="pickup-location",
         description="Pickup location for a person (name or Discord username).",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def pickup_location(self, interaction: discord.Interaction, name: str):
         """
@@ -60,7 +60,7 @@ class Locations(commands.Cog):
         name="list-pickups-sunday",
         description="List pickups for Sunday service.",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def list_pickups_sunday(self, interaction: discord.Interaction):
         """
@@ -81,7 +81,7 @@ class Locations(commands.Cog):
         name="list-dropoffs-sunday-back",
         description="List dropoffs after Sunday service no lunch.",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def list_dropoffs_sunday_back(self, interaction: discord.Interaction):
         """
@@ -102,7 +102,7 @@ class Locations(commands.Cog):
         name="list-dropoffs-sunday-lunch",
         description="List dropoffs after Sunday service lunch.",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def list_dropoffs_sunday_lunch(self, interaction: discord.Interaction):
         """
@@ -123,7 +123,7 @@ class Locations(commands.Cog):
         name="list-pickups-friday",
         description="List pickups for Friday fellowship.",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def list_locations_friday(self, interaction: discord.Interaction):
         """
@@ -146,7 +146,7 @@ class Locations(commands.Cog):
         message_id="The message ID to fetch pickups from",
         channel_id="Optional channel ID where the message is located",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def list_locations_unknown(
         self,
@@ -185,7 +185,7 @@ class Locations(commands.Cog):
         name="map-links",
         description="Google Map links for pickups",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def map_links(self, interaction: discord.Interaction, location: str | None):
         """

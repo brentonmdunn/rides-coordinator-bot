@@ -7,6 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from ridebot.utils.time_helpers import LA_TZ
 from shared.core.bot_instance import get_bot
+from shared.core.enums import BotName
 
 if TYPE_CHECKING:
     from ridebot.cogs.job_scheduler import JobScheduler
@@ -28,7 +29,7 @@ def reschedule_job(job_id: str, *, day_of_week: int, hour: int, minute: int) -> 
         True if the reschedule was applied live, False if the bot/scheduler
         isn't up yet (the caller should surface this as a non-blocking warning).
     """
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
     if bot is None:
         logger.warning("Cannot reschedule %s — bot not ready", job_id)
         return False

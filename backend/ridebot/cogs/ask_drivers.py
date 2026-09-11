@@ -36,7 +36,7 @@ class AskDrivers(commands.Cog):
     )
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     async def ask_drivers(self, interaction: discord.Interaction, day: str, message: str) -> None:
         """
         Pings the driver role with a custom message.

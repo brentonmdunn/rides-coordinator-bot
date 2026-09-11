@@ -109,7 +109,7 @@ class FeatureFlagsRepository:
             A list of FeatureFlagsModel objects.
         """
         order_logic = case(
-            (FeatureFlagsModel.feature == FeatureFlagNames.BOT.value, 0),
+            (FeatureFlagsModel.feature == FeatureFlagNames.RIDEBOT.value, 0),
             else_=1,
         )
         stmt = select(FeatureFlagsModel).order_by(order_logic, FeatureFlagsModel.feature)

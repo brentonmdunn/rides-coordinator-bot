@@ -15,8 +15,15 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 from shared.core.bot_instance import set_bot_instance
+from shared.core.enums import BotName
 from shared.core.error_reporter import send_error_to_discord
-from shared.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
+from shared.core.lifecycle import (
+    attach_event_handlers,
+    build_bot,
+    load_extensions,
+    mark_bot_enabled,
+    startup,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +57,8 @@ async def bot_lifespan():
 
     bot = build_bot()
     attach_event_handlers(bot, send_error_to_discord)
-    set_bot_instance(bot)
+    set_bot_instance(BotName.RIDEBOT, bot)
+    mark_bot_enabled(BotName.RIDEBOT)
 
     try:
         await startup()
@@ -79,5 +87,5 @@ async def bot_lifespan():
         bot_task.cancel()
         with contextlib.suppress(asyncio.CancelledError, Exception):
             await bot_task
-        set_bot_instance(None)
+        set_bot_instance(BotName.RIDEBOT, None)
         logger.info("✅ Discord bot shutdown complete")

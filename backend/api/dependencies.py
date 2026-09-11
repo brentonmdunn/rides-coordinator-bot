@@ -4,7 +4,7 @@ from discord.ext.commands import Bot
 from fastapi import HTTPException
 
 from shared.core.bot_instance import get_bot
-from shared.core.enums import JobName
+from shared.core.enums import BotName, JobName
 
 VALID_RIDE_TYPES = frozenset({JobName.FRIDAY, JobName.SUNDAY, "message_id"})
 VALID_RIDE_TYPES_NO_MSG = frozenset({JobName.FRIDAY, JobName.SUNDAY})
@@ -12,7 +12,7 @@ VALID_RIDE_TYPES_NO_MSG = frozenset({JobName.FRIDAY, JobName.SUNDAY})
 
 def require_bot() -> Bot:
     """Dependency that returns the bot instance or raises 503."""
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
     if not bot:
         raise HTTPException(status_code=503, detail="Bot not initialized")
     return bot
@@ -20,7 +20,7 @@ def require_bot() -> Bot:
 
 def require_ready_bot() -> Bot:
     """Dependency that returns the bot instance only if it is ready."""
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
     if not bot or not bot.is_ready():
         raise HTTPException(status_code=503, detail="Bot not initialized or not ready")
     return bot

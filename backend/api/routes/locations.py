@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from ridebot.services.locations_service import LocationsService
 from shared.core.bot_instance import get_bot
-from shared.core.enums import ChannelIds
+from shared.core.enums import BotName, ChannelIds
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ async def get_pickups_by_message(
     """
     logger.info(f"🔍 Pickups endpoint called with message_id={message_id}, channel_id={channel_id}")
 
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
 
     if bot is None or not bot.is_ready():
         logger.warning("Bot not ready")
@@ -129,7 +129,7 @@ async def get_pickup_location(name: str = Query(..., description="Name or Discor
     Returns:
         JSON with a list of matches, each containing name and location.
     """
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
     service = LocationsService(bot)
     possible_people = await service.get_location(name)
     if not possible_people:

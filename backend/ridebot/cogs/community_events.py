@@ -45,7 +45,7 @@ class CommunityEventsCog(commands.Cog):
         role_name="Name of the role to assign.",
     )
     @log_cmd
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @is_admin()
     async def give_role(
         self,

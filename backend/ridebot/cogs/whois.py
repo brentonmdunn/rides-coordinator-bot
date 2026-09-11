@@ -20,7 +20,7 @@ class Whois(commands.Cog):
         name="whois",
         description="List name and Discord username of potential matches",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def whois(self, interaction: discord.Interaction, name: str) -> None:
         """

@@ -22,7 +22,7 @@ class HelpCog(commands.Cog):
         name="help",
         description="List all slash commands with their parameters",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @log_cmd
     async def help(self, interaction: discord.Interaction):
         """

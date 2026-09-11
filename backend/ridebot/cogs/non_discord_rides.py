@@ -31,7 +31,7 @@ class NonDiscordRidesCog(commands.Cog):
         name="add-pickup",
         description="Add non-Discord user to list of pickups",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @app_commands.autocomplete(location=location_autocomplete)
     @log_cmd
@@ -73,7 +73,7 @@ class NonDiscordRidesCog(commands.Cog):
         name="remove-pickup",
         description="Remove a non-Discord user from the list of pickups",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def remove_pickup(self, interaction: discord.Interaction, name: str, day: str):
@@ -116,7 +116,7 @@ class NonDiscordRidesCog(commands.Cog):
         name="list-added-pickups",
         description="Lists all added pickups for a specific day.",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def list_added_pickups(self, interaction: discord.Interaction, day: str):
