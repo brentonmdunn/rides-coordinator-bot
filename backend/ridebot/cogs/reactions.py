@@ -10,8 +10,10 @@ from ridebot.services.late_reaction_windows_service import LateReactionWindowsSe
 from ridebot.services.reaction_logging_service import ReactionLoggingService
 from ridebot.services.ride_reaction_log_service import RideReactionLogService
 from ridebot.services.ride_request_service import RideRequestService
+from ridebot.services.roster_service import RosterService
 from ridebot.utils.parsing import get_message_and_embed_content
 from ridebot.utils.time_helpers import is_during_late_reaction_window
+from ridebot.views.registration import RegistrationView
 from shared.core.enums import (
     AskRidesMessage,
     ChannelIds,
@@ -59,9 +61,10 @@ class Reactions(commands.Cog):
         self.ride_request_service = ride_request_service
 
     async def cog_load(self):
-        """Wait until the bot is ready to get the cog."""
+        """Wait until the bot is ready to get the cog, and register persistent views."""
         cog = self.bot.get_cog("Locations")
         self.locations_cog = cog if isinstance(cog, Locations) else None
+        self.bot.add_view(RegistrationView())
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -380,10 +383,8 @@ class Reactions(commands.Cog):
                 )
             )
             and user is not None
-            and (
-                self.locations_cog
-                and not await self.locations_cog.service.get_location(user.name, discord_only=True)
-            )
+            and await RosterService.find_member(discord_user_id=user.id, discord_username=user.name)
+            is None
         ):
             return
 
