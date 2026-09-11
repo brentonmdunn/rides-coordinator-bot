@@ -47,6 +47,7 @@ def _make_interaction(user_id=123, username="alice", display_name="Alice"):
     interaction.user.name = username
     interaction.user.display_name = display_name
     interaction.response = AsyncMock()
+    interaction.channel_id = 555
     # Ride coordinators channel the confirmation is mirrored into.
     coordinators_channel = MagicMock(spec=discord.TextChannel)
     coordinators_channel.send = AsyncMock()
@@ -212,8 +213,33 @@ async def test_on_submit_also_notifies_ride_coordinators():
     ):
         await modal.on_submit(interaction)
 
-    expected = "✅ Registered **Alice**: Sixth, 2nd year"
-    _coordinators_channel(interaction).send.assert_awaited_once_with(expected)
+    send = _coordinators_channel(interaction).send
+    send.assert_awaited_once()
+    notice = send.call_args.args[0]
+    assert "New rider registered" in notice
+    assert "**Alice**" in notice
+    assert "`@alice`" in notice
+    assert "Sixth, 2nd year" in notice
+    assert "<#555>" in notice
+    # The coordinator copy is deliberately not the rider's confirmation.
+    assert notice != "✅ Registered **Alice**: Sixth, 2nd year"
+
+
+@pytest.mark.asyncio
+async def test_coordinator_notice_flags_update_and_off_campus():
+    modal = _submitted_modal()
+    interaction = _make_interaction()
+    person = _make_person(name="Alice", year="2nd", location="Costa Verde")
+
+    with patch(
+        "ridebot.views.registration.RosterService.register_from_discord",
+        new=AsyncMock(return_value=(person, False)),
+    ):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert "Roster updated" in notice
+    assert "Costa Verde (off campus — needs a pickup spot)" in notice
 
 
 @pytest.mark.asyncio

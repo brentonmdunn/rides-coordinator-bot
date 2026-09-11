@@ -48,6 +48,39 @@ async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
     return bool(status)
 
 
+def _coordinator_message(interaction: discord.Interaction, person: Person, created: bool) -> str:
+    """
+    Build the ride-coordinator copy of a registration notice.
+
+    Unlike the rider's confirmation, this names the Discord account, flags an
+    off-campus location as needing a pickup spot, and links the channel it came
+    from so coordinators can follow up there.
+
+    Args:
+        interaction: The modal-submit interaction.
+        person: The roster entry that was created or updated.
+        created: Whether this was a new registration.
+
+    Returns:
+        The message to post in the ride coordinators channel.
+    """
+    headline = "📝 New rider registered" if created else "📝 Roster updated"
+
+    campus_values = {location.value for location in CampusLivingLocations}
+    if person.location is None:
+        location = "no location given"
+    elif person.location in campus_values:
+        location = person.location
+    else:
+        location = f"{person.location} (off campus — needs a pickup spot)"
+
+    year = f"{person.year} year" if person.year else "year unknown"
+    return (
+        f"{headline}: **{person.name}** (`@{interaction.user.name}`) — "
+        f"{location}, {year} · <#{interaction.channel_id}>"
+    )
+
+
 async def _notify_ride_coordinators(interaction: discord.Interaction, message: str) -> None:
     """
     Mirror a registration confirmation into the ride coordinators channel.
@@ -234,4 +267,6 @@ class RegistrationModal(discord.ui.Modal, title="Ride registration"):
         message = base_message if created else f"Updated: {base_message}"
         logger.info("Roster registration submitted for %s (created=%s)", interaction.user, created)
         await interaction.response.send_message(message)
-        await _notify_ride_coordinators(interaction, message)
+        await _notify_ride_coordinators(
+            interaction, _coordinator_message(interaction, person, created)
+        )
