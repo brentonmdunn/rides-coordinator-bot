@@ -16,7 +16,7 @@ class TestCog(commands.Cog):
     @app_commands.command(
         name="test",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     async def test(self, interaction: discord.Interaction):
         await interaction.response.send_message("Complete")
         await run_ask_rides_all(self.bot, interaction.channel_id)

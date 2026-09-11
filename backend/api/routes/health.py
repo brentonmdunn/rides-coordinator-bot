@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 from shared.core.bot_instance import get_bot
 from shared.core.database import AsyncSessionLocal
+from shared.core.enums import BotName
 from shared.core.lifecycle import get_failed_extensions
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,8 @@ async def health_check():
     Returns:
         Status dictionary with overall health and component statuses.
     """
-    bot = get_bot()
-    failed_extensions = get_failed_extensions()
+    bot = get_bot(BotName.RIDEBOT)
+    failed_extensions = sorted(ext for exts in get_failed_extensions().values() for ext in exts)
     bot_ok = bot is not None and bot.is_ready() and len(failed_extensions) == 0
 
     db_ok = False

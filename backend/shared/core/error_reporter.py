@@ -6,7 +6,7 @@ import traceback
 import discord
 
 from shared.core.bot_instance import get_bot
-from shared.core.enums import FeatureFlagNames
+from shared.core.enums import BotName, FeatureFlagNames
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ async def send_error_to_discord(
     if not _is_send_errors_enabled():
         return
 
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
     if not bot:
         logger.warning("Could not send error to Discord: Bot is not ready")
         print(f"[error_reporter fallback] {error_msg}", file=sys.stderr)  # noqa: T201

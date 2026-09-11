@@ -24,7 +24,7 @@ class GroupRides(commands.Cog):
         name="group-rides-friday",
         description="Uses GenAI to group riders with drivers",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @discord.app_commands.describe(
         driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
     )
@@ -61,7 +61,7 @@ class GroupRides(commands.Cog):
         name="group-rides-sunday",
         description="Uses GenAI to group riders with drivers",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @discord.app_commands.describe(
         driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
     )
@@ -97,7 +97,7 @@ class GroupRides(commands.Cog):
         name="group-rides-by-message-id",
         description="Uses GenAI to group riders with drivers",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @discord.app_commands.describe(
         message_id="The message ID to fetch pickups from",
         driver_capacity="Optional area to list driver capacities, default 5 drivers with capacity=4 each",
@@ -140,7 +140,7 @@ class GroupRides(commands.Cog):
         name="make-route",
         description="Makes route based on specified locations",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     @discord.app_commands.describe(
         locations="The locations to make a route for, separate each location with a space",
         leave_time="The leave time for the route",

@@ -26,7 +26,7 @@ async def test_get_feature_flag_status_found():
     mock_session.execute.return_value = mock_result
 
     result = await FeatureFlagsRepository.get_feature_flag_status(
-        mock_session, FeatureFlagNames.BOT
+        mock_session, FeatureFlagNames.RIDEBOT
     )
     assert result is True
 
@@ -40,7 +40,7 @@ async def test_get_feature_flag_status_not_found():
     mock_session.execute.return_value = mock_result
 
     result = await FeatureFlagsRepository.get_feature_flag_status(
-        mock_session, FeatureFlagNames.BOT
+        mock_session, FeatureFlagNames.RIDEBOT
     )
     assert result is None
 

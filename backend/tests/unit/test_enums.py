@@ -133,8 +133,8 @@ class TestFeatureFlagNames:
     def test_is_str_enum(self):
         assert issubclass(FeatureFlagNames, StrEnum)
 
-    def test_has_bot_flag(self):
-        assert FeatureFlagNames.BOT == "bot"
+    def test_has_ridebot_flag(self):
+        assert FeatureFlagNames.RIDEBOT == "ridebot"
 
     def test_no_duplicate_values(self):
         values = [f.value for f in FeatureFlagNames]

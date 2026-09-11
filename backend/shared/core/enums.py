@@ -53,10 +53,16 @@ class RoleIds(IntEnum):
     RIDE_COORDINATOR = 1336966439323832381
 
 
+class BotName(StrEnum):
+    """Discord bots run by this process. Values are stable identifiers."""
+
+    RIDEBOT = "ridebot"
+
+
 class FeatureFlagNames(StrEnum):
     """Enum for feature flag names. This is the single source of truth."""
 
-    BOT = "bot"
+    RIDEBOT = "ridebot"
     ASK_FRIDAY_DRIVERS_JOB = "ask_friday_drivers_job"
     ASK_SUNDAY_DRIVERS_JOB = "ask_sunday_drivers_job"
     ASK_FRIDAY_RIDES_JOB = "ask_friday_rides_job"

@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from ridebot.utils.channels import resolve_channel_id
 from shared.core.bot_instance import get_bot
-from shared.core.enums import ChannelIds
+from shared.core.enums import BotName, ChannelIds
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ async def send_discord_message(request: Request):
     Raises:
         HTTPException: If bot not ready or channel not found
     """
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
 
     if bot is None or not bot.is_ready():
         raise HTTPException(status_code=503, detail="Discord bot not ready")

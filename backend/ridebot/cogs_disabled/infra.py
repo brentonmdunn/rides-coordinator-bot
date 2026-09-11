@@ -16,7 +16,7 @@ class Infra(commands.Cog):
         description="Adds user and Discord username to database",
     )
     @is_admin()
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
     async def add_user(
         self,
         interaction: discord.Interaction,
