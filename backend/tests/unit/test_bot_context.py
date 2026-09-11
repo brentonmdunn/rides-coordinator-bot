@@ -8,6 +8,14 @@ from shared.core.bot_context import current_bot_var, get_current_bot_name
 from shared.core.enums import BotName
 
 
+@pytest.fixture(autouse=True)
+def _current_bot():
+    """Override conftest's autouse fixture: these tests need an unset context."""
+    token = current_bot_var.set(None)
+    yield
+    current_bot_var.reset(token)
+
+
 class TestGetCurrentBotName:
     """Tests for get_current_bot_name."""
 
