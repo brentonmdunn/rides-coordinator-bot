@@ -141,9 +141,10 @@ if [ "$heads" -gt 1 ]; then echo "Multiple heads detected"; exit 1; fi
 
 ### H-1 — All external HTTP calls lack timeouts
 **Status:** `done`  
-**Files:** `backend/bot/services/csv_sync_service.py:38`, `backend/api/routes/auth_discord.py:104`, `backend/bot/repositories/calendar_repository.py:34`
+**Files:** `backend/api/routes/auth_discord.py:104`, `backend/bot/repositories/calendar_repository.py:34`
 
-- CSV sync: `httpx.AsyncClient().get(URL)` with no timeout — hangs forever on stalled endpoints
+(The Google Sheets CSV sync this originally flagged, `csv_sync_service.py`, has since been removed entirely — the roster is now managed via `RosterService`/`/api/roster`.)
+
 - Discord OAuth: three sequential `httpx` calls with no timeout — login hangs if Discord API is slow
 - Calendar: uses synchronous `requests.get()` in an async codebase — **blocks the event loop**, freezing all bot responsiveness
 

@@ -53,7 +53,8 @@ ask-rides message text and ask-rides send time.
   (`RIDE_CYCLE_START_HOUR`, `WED_FELLOWSHIP_SEND_HOUR`)
 - Should ride on the same `AskRidesSchedule` mechanism the send-time PR introduces,
   if it doesn't already cover them.
-- Cache-warming interval (every 30 min) and 3 AM locations sync are fine hardcoded.
+- Cache-warming interval (every 30 min) is fine hardcoded. The 3 AM locations
+  sync has been removed; the roster now lives in `RosterService`/`/api/roster`.
 
 ---
 
@@ -67,9 +68,10 @@ ask-rides message text and ask-rides send time.
 - Housing group categories — `backend/ridebot/services/housing_group_service.py:42-67`
 - Travel-time matrix between pickups — `backend/ridebot/utils/locations.py:11-60`
 - Locations do change (new dorms, moved pickup spots) and today require touching 4+
-  files. High-leverage but a bigger project: move to an admin-editable `locations`
-  table (a locations repo/CSV sync already exists). The travel-time matrix is the
-  awkward part — it would need admin editing too.
+  files. High-leverage but a bigger project: move to an admin-editable table
+  (the roster, managed by `RosterService`/`/api/roster`, already covers who lives
+  where). The travel-time matrix is the awkward part — it would need admin
+  editing too.
 
 ### 6. Channel and role targets
 - Channel IDs (rides announcements, driver chat, logs, driver spam, new-rides

@@ -42,12 +42,6 @@ Rotates through two reaction namespaces and warms the cache for each on alternat
 
 ---
 
-### `sync_rides_locations` — daily at 3 AM PT
-
-Syncs location data from the external source (Google Sheets) into the `locations` database table.
-
----
-
 ## Pausing Jobs
 
 Individual ride announcement jobs can be paused through the dashboard or via the API:
@@ -82,7 +76,6 @@ Each job has a corresponding feature flag that must be enabled for the job to ru
 | `ask_wednesday_rides_job` | Wednesday Bible study ride message |
 | `ask_friday_drivers_job` | Friday driver availability message |
 | `ask_sunday_drivers_job` | Sunday driver availability message |
-| `rides_locations_sync_job` | Daily location sync from Google Sheets |
 
 In `APP_ENV=local`, these flags are disabled at startup to prevent sending messages to Discord during development.
 

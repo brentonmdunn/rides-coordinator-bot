@@ -37,7 +37,6 @@ These flags independently gate each automated ride/driver announcement. In `APP_
 | `ask_wednesday_rides_job` | Send the Wednesday Bible study ride request message. |
 | `ask_friday_drivers_job` | Send the Friday driver availability message to the driver chat channel. |
 | `ask_sunday_drivers_job` | Send the Sunday driver availability message to the driver chat channel. |
-| `rides_locations_sync_job` | Run the daily (3 AM) sync of location data from Google Sheets into the database. |
 
 ---
 

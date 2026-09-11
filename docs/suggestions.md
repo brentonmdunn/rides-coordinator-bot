@@ -66,13 +66,12 @@ Multiple API routes (`group_rides.py`, `list_pickups.py`, `ask_rides.py`, `check
 
 ### R2 — `LocationsService` is too large (740 lines)
 
-`bot/services/locations_service.py` handles CSV syncing, message finding, reaction fetching, location sorting, housing grouping, embed building, driver reactions, and caching. This violates single-responsibility.
-
-**Fix:** Split into focused services:
-- `CsvSyncService` — handles Google Sheets sync
+**Status:** `done` — the Google Sheets CSV sync has been removed entirely; the
+roster now lives in `RosterService`/`/api/roster` and the Discord registration
+form. `LocationsService` was split into focused services:
 - `ReactionService` — handles reaction fetching and caching
 - `HousingGroupService` — handles location grouping and embed building
-- Keep `LocationsService` as a thin coordinator
+- `LocationsService` remains a thin coordinator
 
 ### R3 — `GroupRidesService` is too large (699 lines)
 
