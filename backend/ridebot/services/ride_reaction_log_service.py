@@ -13,6 +13,7 @@ from ridebot.repositories.whois_repository import WhoisRepository
 from ridebot.utils.parsing import get_message_and_embed_content
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import ReactionAction
+from shared.utils.datetimes import to_iso_utc
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class RideReactionLogService:
                     "discord_username": user.name,
                     "emoji": str(payload.emoji),
                     "action": action.value,
-                    "occurred_at": datetime.datetime.now(datetime.UTC).isoformat(),
+                    "occurred_at": to_iso_utc(datetime.datetime.now(datetime.UTC)),
                 }
             )
         except Exception:
@@ -131,7 +132,7 @@ class RideReactionLogService:
                     "display_name": event_row.display_name,
                     "emoji": event_row.emoji,
                     "action": event_row.action,
-                    "occurred_at": event_row.occurred_at.isoformat(),
+                    "occurred_at": to_iso_utc(event_row.occurred_at),
                     "ride_date": event_row.ride_date.isoformat() if event_row.ride_date else None,
                     "ride_type": event_row.ride_type,
                 }

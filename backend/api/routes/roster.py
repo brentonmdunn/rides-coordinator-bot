@@ -6,7 +6,6 @@ location). All endpoints require the ride coordinator role.
 """
 
 import logging
-from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,6 +18,7 @@ from ridebot.utils.custom_exceptions import (
     RosterNotFoundError,
     RosterValidationError,
 )
+from shared.utils.datetimes import to_iso_utc
 
 logger = logging.getLogger(__name__)
 
@@ -29,22 +29,6 @@ router = APIRouter(
 )
 
 IdList = Annotated[list[int], Field(min_length=1, max_length=500)]
-
-
-def _to_iso_utc(value: datetime | None) -> str | None:
-    """
-    Serialize a timestamp as an ISO string with an explicit UTC offset.
-
-    SQLite drops tzinfo, so timestamps read back are naive even though the service
-    always writes ``datetime.now(UTC)``. Without an offset the browser parses the
-    string as local time, which puts every timestamp in the future for users west
-    of UTC and freezes relative times at "just now".
-    """
-    if value is None:
-        return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=UTC)
-    return value.astimezone(UTC).isoformat()
 
 
 class PersonOut(BaseModel):
@@ -68,7 +52,7 @@ class PersonOut(BaseModel):
             discord_user_id=person.discord_user_id,
             year=person.year,
             location=person.location,
-            updated_at=_to_iso_utc(person.updated_at),
+            updated_at=to_iso_utc(person.updated_at),
         )
 
 

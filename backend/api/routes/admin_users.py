@@ -15,6 +15,7 @@ from shared.core.database import AsyncSessionLocal
 from shared.core.enums import AccountRoles
 from shared.core.models import UserAccount
 from shared.services.user_accounts_service import UserAccountsService
+from shared.utils.datetimes import to_iso_utc
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +117,7 @@ async def list_users(request: Request):
                 "role": account.role,
                 "role_edited_by": account.role_edited_by,
                 "invited_by": account.invited_by,
-                "created_at": account.created_at.isoformat() if account.created_at else None,
+                "created_at": to_iso_utc(account.created_at),
             }
             for account in accounts
         ],
