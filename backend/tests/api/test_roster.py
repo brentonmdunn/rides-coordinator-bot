@@ -82,6 +82,17 @@ class TestListRoster:
         assert resp.status_code == 200
         assert resp.json()["people"][0]["updated_at"] is None
 
+    def test_naive_updated_at_gets_utc_offset(self):
+        """SQLite drops tzinfo, but the browser parses an offset-less string as local time."""
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.list_people",
+            new=AsyncMock(return_value=[_person(updated_at=datetime(2024, 1, 1, 22, 30))]),
+        ):
+            resp = client.get("/api/roster")
+
+        assert resp.json()["people"][0]["updated_at"] == "2024-01-01T22:30:00+00:00"
+
 
 class TestOptions:
     def test_returns_options(self):
