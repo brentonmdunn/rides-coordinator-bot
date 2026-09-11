@@ -5,11 +5,18 @@ import logging
 import discord
 
 from ridebot.services.roster_service import Person, RosterService
+from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import ROSTER_REGISTER_BUTTON_CUSTOM_ID
 from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
 from shared.core.bots import get_spec
 from shared.core.database import AsyncSessionLocal
-from shared.core.enums import BotName, CampusLivingLocations, ClassYear, FeatureFlagNames
+from shared.core.enums import (
+    BotName,
+    CampusLivingLocations,
+    ChannelIds,
+    ClassYear,
+    FeatureFlagNames,
+)
 from shared.core.error_reporter import send_error_to_discord
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
@@ -39,6 +46,32 @@ async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
     async with AsyncSessionLocal() as session:
         status = await FeatureFlagsRepository.get_feature_flag_status(session, feature)
     return bool(status)
+
+
+async def _notify_ride_coordinators(interaction: discord.Interaction, message: str) -> None:
+    """
+    Mirror a registration confirmation into the ride coordinators channel.
+
+    Never raises: the rider is already registered by this point, so a failure to
+    post the notice must not surface as a registration error.
+
+    Args:
+        interaction: The modal-submit interaction, used for its bot client.
+        message: The same confirmation text the rider was shown.
+    """
+    try:
+        channel = interaction.client.get_channel(
+            resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
+        )
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            logger.warning(
+                f"Ride coordinators channel {ChannelIds.SERVING__RIDE_COORDINATORS} "
+                "unavailable; skipping roster registration notice"
+            )
+            return
+        await channel.send(message)
+    except Exception:
+        logger.exception("Failed to post roster registration notice to ride coordinators")
 
 
 async def _registration_enabled() -> bool:
@@ -201,3 +234,4 @@ class RegistrationModal(discord.ui.Modal, title="Ride registration"):
         message = base_message if created else f"Updated: {base_message}"
         logger.info("Roster registration submitted for %s (created=%s)", interaction.user, created)
         await interaction.response.send_message(message)
+        await _notify_ride_coordinators(interaction, message)

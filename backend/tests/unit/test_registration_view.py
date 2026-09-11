@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import discord
 import pytest
 
 from ridebot.services.roster_service import Person
@@ -46,7 +47,17 @@ def _make_interaction(user_id=123, username="alice", display_name="Alice"):
     interaction.user.name = username
     interaction.user.display_name = display_name
     interaction.response = AsyncMock()
+    # Ride coordinators channel the confirmation is mirrored into.
+    coordinators_channel = MagicMock(spec=discord.TextChannel)
+    coordinators_channel.send = AsyncMock()
+    interaction.client = MagicMock()
+    interaction.client.get_channel = MagicMock(return_value=coordinators_channel)
     return interaction
+
+
+def _coordinators_channel(interaction):
+    """Return the channel mock that `_notify_ride_coordinators` posts into."""
+    return interaction.client.get_channel.return_value
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +198,55 @@ async def test_on_submit_success_updated():
 
     args, _ = interaction.response.send_message.call_args
     assert args[0] == "Updated: ✅ Registered **Alice**: Sixth, 2nd year"
+
+
+@pytest.mark.asyncio
+async def test_on_submit_also_notifies_ride_coordinators():
+    modal = _submitted_modal()
+    interaction = _make_interaction()
+    person = _make_person(name="Alice", year="2nd", location="Sixth")
+
+    with patch(
+        "ridebot.views.registration.RosterService.register_from_discord",
+        new=AsyncMock(return_value=(person, True)),
+    ):
+        await modal.on_submit(interaction)
+
+    expected = "✅ Registered **Alice**: Sixth, 2nd year"
+    _coordinators_channel(interaction).send.assert_awaited_once_with(expected)
+
+
+@pytest.mark.asyncio
+async def test_on_submit_coordinator_notice_failure_is_swallowed():
+    modal = _submitted_modal()
+    interaction = _make_interaction()
+    _coordinators_channel(interaction).send = AsyncMock(side_effect=RuntimeError("boom"))
+    person = _make_person(name="Alice", year="2nd", location="Sixth")
+
+    with patch(
+        "ridebot.views.registration.RosterService.register_from_discord",
+        new=AsyncMock(return_value=(person, True)),
+    ):
+        await modal.on_submit(interaction)
+
+    # The rider still gets their confirmation even though the notice failed.
+    interaction.response.send_message.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_on_submit_skips_notice_when_channel_missing():
+    modal = _submitted_modal()
+    interaction = _make_interaction()
+    interaction.client.get_channel = MagicMock(return_value=None)
+    person = _make_person(name="Alice", year="2nd", location="Sixth")
+
+    with patch(
+        "ridebot.views.registration.RosterService.register_from_discord",
+        new=AsyncMock(return_value=(person, True)),
+    ):
+        await modal.on_submit(interaction)
+
+    interaction.response.send_message.assert_awaited_once()
 
 
 @pytest.mark.asyncio
