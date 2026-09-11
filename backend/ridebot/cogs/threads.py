@@ -9,9 +9,8 @@ from ridebot.services.thread_service import (
     StarterMessageError,
     ThreadService,
 )
-from shared.core.enums import FeatureFlagNames
 from shared.core.logger import log_cmd
-from shared.utils.checks import feature_flag_enabled
+from shared.utils.checks import bot_enabled
 
 
 class Threads(commands.Cog):
@@ -70,7 +69,7 @@ class Threads(commands.Cog):
         name="end-event-thread",
         description="Stops adding everyone who reacts.",
     )
-    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
+    @bot_enabled
     @log_cmd
     async def end_event_thread(self, interaction: discord.Interaction) -> None:
         """
@@ -99,7 +98,7 @@ class Threads(commands.Cog):
         name="create-event-thread",
         description="Must be run in thread. Automatically adds anyone new who reacts.",
     )
-    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
+    @bot_enabled
     @log_cmd
     async def create_event_thread(self, interaction: discord.Interaction) -> None:
         """
@@ -153,7 +152,7 @@ class Threads(commands.Cog):
         name="add-reacts-to-thread",
         description="Must be run in thread. Adds everyone who reacted to parent message to thread.",
     )
-    @feature_flag_enabled(FeatureFlagNames.RIDEBOT)
+    @bot_enabled
     @log_cmd
     async def add_reacts_to_thread(self, interaction: discord.Interaction) -> None:
         """
