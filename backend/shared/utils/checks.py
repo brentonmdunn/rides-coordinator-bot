@@ -8,6 +8,8 @@ from typing import Any
 import discord
 from discord import app_commands
 
+from shared.core.bot_context import get_current_bot_name
+from shared.core.bots import get_spec
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import FeatureFlagNames
 from shared.core.error_reporter import send_error_to_discord
@@ -119,3 +121,53 @@ def feature_flag_enabled(feature: FeatureFlagNames, enable_logs: bool = True):
         return wrapper
 
     return decorator
+
+
+def bot_enabled(func: Callable) -> Callable:
+    """
+    A decorator that gates a command or job behind the current bot's kill switch.
+
+    Resolves the running bot from `current_bot_var` and delegates to
+    `feature_flag_enabled` with that bot's `kill_switch_flag`. Cogs never name
+    their bot's flag directly, so moving a cog between bots (or into
+    `shared/cogs`) needs no edits.
+
+    If no bot is set (e.g. a unit test without the context var configured),
+    this fails closed: it logs a warning and, if an `Interaction` is present
+    in the arguments, sends an ephemeral "unavailable" message.
+
+    Args:
+        func: The command or job function to wrap.
+
+    Returns:
+        Callable: The decorated function.
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs) -> Any:
+        bot_name = get_current_bot_name()
+        if bot_name is None:
+            logger.warning(
+                "bot_enabled: no current bot set; blocking '%s'.", getattr(func, "__name__", func)
+            )
+            interaction: discord.Interaction | None = None
+            for arg in args:
+                if isinstance(arg, discord.Interaction):
+                    interaction = arg
+                    break
+            if interaction is None:
+                for value in kwargs.values():
+                    if isinstance(value, discord.Interaction):
+                        interaction = value
+                        break
+            if interaction is not None:
+                await interaction.response.send_message(
+                    "This command is currently unavailable.",
+                    ephemeral=True,
+                )
+            return None
+
+        flag = get_spec(bot_name).kill_switch_flag
+        return await feature_flag_enabled(flag)(func)(*args, **kwargs)
+
+    return wrapper
