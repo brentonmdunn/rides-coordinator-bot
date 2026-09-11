@@ -20,7 +20,7 @@ Feature flags control bot behavior and scheduled jobs at runtime without requiri
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `bot` | `true` | Master switch. When disabled, all slash commands that check this flag become no-ops. |
+| `ridebot` | `true` | RideBot's per-bot kill switch. Applied to its cogs via the `@bot_enabled` decorator (`shared/utils/checks.py`), which resolves the flag for whichever bot is currently running instead of naming it directly. When disabled, all of RideBot's slash commands become no-ops. Each additional bot in the process gets its own kill-switch flag the same way. |
 
 ---
 
@@ -72,4 +72,4 @@ Cache can be forcibly invalidated via `POST /api/cache/invalidate` (admin) or by
 
 1. Add a new entry to `FeatureFlagNames` in `backend/shared/core/enums.py`.
 2. Create an Alembic migration to insert the new row into `feature_flags`.
-3. Use `@feature_flag_enabled(FeatureFlagNames.YOUR_FLAG)` decorator on the function to gate, or call `FeatureFlagsRepository.get_feature_flag_status(session, flag)` directly.
+3. Use `@feature_flag_enabled(FeatureFlagNames.YOUR_FLAG)` decorator on the function to gate, or call `FeatureFlagsRepository.get_feature_flag_status(session, flag)` directly. A cog gating an entire bot's availability should use `@bot_enabled` instead — it resolves the current bot's own kill-switch flag automatically.
