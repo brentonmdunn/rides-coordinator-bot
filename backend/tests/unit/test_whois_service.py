@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from sqlalchemy.engine import Row
 
-from bot.services.whois_service import WhoisService
+from ridebot.services.whois_service import WhoisService
 
 
 # Helper setup for Mocking Rows with attribute access
@@ -16,8 +16,8 @@ def create_mock_row(name, discord_username):
 
 
 @pytest.mark.asyncio
-@patch("bot.services.whois_service.WhoisRepository")
-@patch("bot.services.whois_service.AsyncSessionLocal")
+@patch("ridebot.services.whois_service.WhoisRepository")
+@patch("ridebot.services.whois_service.AsyncSessionLocal")
 async def test_get_whois_data_found(mock_async_session_local, mock_whois_repo):
     """Tests the service formats multiple results correctly."""
     # Arrange
@@ -55,8 +55,8 @@ async def test_get_whois_data_found(mock_async_session_local, mock_whois_repo):
 
 
 @pytest.mark.asyncio
-@patch("bot.services.whois_service.WhoisRepository")
-@patch("bot.services.whois_service.AsyncSessionLocal")
+@patch("ridebot.services.whois_service.WhoisRepository")
+@patch("ridebot.services.whois_service.AsyncSessionLocal")
 async def test_get_whois_data_not_found(mock_async_session_local, mock_whois_repo):
     """Tests the service returns None when no results are found."""
     # Arrange

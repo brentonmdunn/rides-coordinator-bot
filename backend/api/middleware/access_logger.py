@@ -14,7 +14,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.constants import ACCESS_LOG_BACKUP_COUNT, ACCESS_LOG_MAX_BYTES
-from bot.core.logger import txn_id_var
+from shared.core.logger import txn_id_var
 
 # Configure access logger
 access_logger = logging.getLogger("api.access")

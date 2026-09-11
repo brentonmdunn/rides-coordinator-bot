@@ -4,7 +4,7 @@ The literals here are frozen copies of the Alembic seed (migration
 44f6b5bdaeef), which itself froze the previously hardcoded constants.
 """
 
-from bot.services.pickup_locations_service import (
+from ridebot.services.pickup_locations_service import (
     EdgeInfo,
     LocationInfo,
     RoutingContext,

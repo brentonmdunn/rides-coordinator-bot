@@ -55,7 +55,7 @@ The DB query in `get_coverage_summary` also uses the start of this window as its
 
 ## Configuration
 
-Windows are defined in `backend/bot/utils/time_helpers.py`:
+Windows are defined in `backend/ridebot/utils/time_helpers.py`:
 
 | Constant | Controls |
 |----------|----------|
@@ -105,7 +105,7 @@ Force-rescans the rides-announcements channel history (back to last Sunday) and 
 
 ## Cog listeners
 
-All live in `backend/bot/cogs/ride_coverage.py`.
+All live in `backend/ridebot/cogs/ride_coverage.py`.
 
 ### `on_ready`
 

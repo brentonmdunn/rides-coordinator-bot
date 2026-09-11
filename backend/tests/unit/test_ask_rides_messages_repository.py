@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import AskRidesMessageType
-from bot.repositories.ask_rides_messages_repository import AskRidesMessagesRepository
+from ridebot.repositories.ask_rides_messages_repository import AskRidesMessagesRepository
+from shared.core.enums import AskRidesMessageType
 
 
 @pytest.mark.asyncio

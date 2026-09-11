@@ -1,8 +1,8 @@
-"""Unit tests for bot.core.enums — ensure enum values are consistent and complete."""
+"""Unit tests for shared.core.enums — ensure enum values are consistent and complete."""
 
 from enum import IntEnum, StrEnum
 
-from bot.core.enums import (
+from shared.core.enums import (
     AccountRoles,
     CacheNamespace,
     CampusLivingLocations,

@@ -14,8 +14,8 @@ API  ──┘
 - Cogs and API routes are thin entry points — no business logic
 - Services call repositories; routes/cogs call services only
 - Repositories: `@staticmethod`, `session` as first param, never open their own sessions
-- Enums in `bot/core/enums.py`, constants in `bot/utils/constants.py` or `api/constants.py`
-- Logging via `bot/core/logger.py` — never `print()`
+- Enums in `shared/core/enums.py`, constants in `ridebot/utils/constants.py` or `shared/utils/constants.py` or `api/constants.py`
+- Logging via `shared/core/logger.py` — never `print()`
 
 ---
 
@@ -47,7 +47,7 @@ grouped = service.group_locations_by_housing(...)
 | File | Repository Called Directly | Notes |
 |---|---|---|
 | `api/routes/feature_flags.py:39,65,86,89,93` | `FeatureFlagsRepository` | Re-implements toggle logic already in `FeatureFlagsService.modify_feature_flag()` |
-| `api/routes/ask_rides.py:82,122,129` | `MessageScheduleRepository` | No `MessageScheduleService` exists; formatting logic duplicated from `bot/jobs/ask_rides.py` |
+| `api/routes/ask_rides.py:82,122,129` | `MessageScheduleRepository` | No `MessageScheduleService` exists; formatting logic duplicated from `ridebot/jobs/ask_rides.py` |
 | `api/routes/admin_users.py:106,166` | `UserAccountsRepository` | `list_accounts` and `update_role` bypass `UserAccountsService` |
 | `api/routes/me.py:88` | `UserAccountsRepository` | `switch_role` calls repo directly |
 | `api/routes/reaction_log.py:94` | `RideReactionEventsRepository` | Grouping/formatting logic in the route |
@@ -64,11 +64,11 @@ grouped = service.group_locations_by_housing(...)
 
 ### ~~HIGH-2 — API Calling a Cog Directly for Business Logic~~ ✅ RESOLVED
 
-**Files:** `bot/cogs/ride_coverage.py`, `api/routes/check_pickups.py:177`
+**Files:** `ridebot/cogs/ride_coverage.py`, `api/routes/check_pickups.py:177`
 
 `check_pickups.py` calls `bot.get_cog("RideCoverage")` to invoke `sync_ride_coverage()`. The cog contains the implementation. An API route calling a Discord cog is an antipattern — cogs are presentation layer for Discord, not a service layer.
 
-**Fix applied:** Extracted `sync_ride_coverage`, `is_grouping_message`, and `extract_passengers` into `bot/services/ride_coverage_service.py`. Both the cog and the API route call the service.
+**Fix applied:** Extracted `sync_ride_coverage`, `is_grouping_message`, and `extract_passengers` into `ridebot/services/ride_coverage_service.py`. Both the cog and the API route call the service.
 
 ---
 
@@ -79,8 +79,8 @@ grouped = service.group_locations_by_housing(...)
 - `api/routes/list_pickups.py:83`
 - `api/routes/check_pickups.py:89,104,110,114`
 - `api/routes/locations.py:73` (also the CRIT-1 bug above)
-- `bot/cogs/reactions.py:279`
-- `bot/services/group_rides_service.py:107,269,341`
+- `ridebot/cogs/reactions.py:279`
+- `ridebot/services/group_rides_service.py:107,269,341`
 
 **Fix applied:** Renamed both methods to remove the leading underscore in `LocationsService`. Updated all 7 call sites.
 
@@ -88,11 +88,11 @@ grouped = service.group_locations_by_housing(...)
 
 ### ~~HIGH-4 — Business Logic in the `RideCoverage` Cog (311 lines)~~ ✅ RESOLVED
 
-**File:** `bot/cogs/ride_coverage.py`
+**File:** `ridebot/cogs/ride_coverage.py`
 
 `sync_ride_coverage()`, `_is_grouping_message()`, and `_extract_passengers()` are pure business logic living in a cog. Cogs should only contain Discord event listeners and slash command entry points.
 
-**Fix applied:** Moved all three methods into `bot/services/ride_coverage_service.py`. The cog delegates to the service.
+**Fix applied:** Moved all three methods into `ridebot/services/ride_coverage_service.py`. The cog delegates to the service.
 
 ---
 
@@ -102,9 +102,9 @@ grouped = service.group_locations_by_housing(...)
 
 The sequence "find the correct ask-rides message → get reacting usernames → exclude Sunday class attendees" appears in:
 
-1. `bot/services/locations_service.py` — `list_locations()` (canonical version)
+1. `ridebot/services/locations_service.py` — `list_locations()` (canonical version)
 2. `api/routes/check_pickups.py` — `get_pickup_coverage()` (~40 lines, re-implemented inline)
-3. `bot/services/group_rides_service.py` — `_filter_class_attendees()` (partial)
+3. `ridebot/services/group_rides_service.py` — `_filter_class_attendees()` (partial)
 
 **Fix:** Consolidate into `RideCoverageService.get_coverage_summary(ride_type)` and have all three call sites use it.
 
@@ -122,7 +122,7 @@ Both routes build a `housing_groups` dict by iterating `grouped_data["groups"]` 
 
 ### MED-3 — `ride_type` Returned as Plain String, Not Enum
 
-**File:** `bot/services/ride_reaction_log_service.py:109–129`
+**File:** `ridebot/services/ride_reaction_log_service.py:109–129`
 
 `_detect_ride_type()` returns `"sunday_class"`, `"sunday"`, `"friday"`, `"wednesday"` as plain strings. These match `JobName` enum values but are not enforced. `RideReactionEvent.ride_type` is typed `Mapped[str | None]` with no constraint.
 
@@ -134,11 +134,11 @@ Both routes build a `housing_groups` dict by iterating `grouped_data["groups"]` 
 
 The following use `logger.error(...)` inside `except` blocks, which loses the full traceback. Per CLAUDE.md, use `logger.exception(...)` instead.
 
-- `bot/jobs/ask_rides.py:219`
-- `bot/jobs/ask_drivers.py:39`
-- `bot/services/thread_service.py:44,61,80`
-- `bot/repositories/community_events_repository.py:123`
-- `bot/utils/checks.py:85`
+- `ridebot/jobs/ask_rides.py:219`
+- `ridebot/jobs/ask_drivers.py:39`
+- `ridebot/services/thread_service.py:44,61,80`
+- `ridebot/repositories/community_events_repository.py:123`
+- `shared/utils/checks.py:85`
 
 **Fix:** Replace `logger.error(f"...{e}")` with `logger.exception("...")` in all `except` blocks. Never include `{e}` in the format string — `logger.exception` appends the traceback automatically.
 
@@ -146,14 +146,14 @@ The following use `logger.error(...)` inside `except` blocks, which loses the fu
 
 ### MED-5 — `get_ask_rides_status` Dashboard Helper in Jobs File
 
-**File:** `bot/jobs/ask_rides.py` (593 lines total)
+**File:** `ridebot/jobs/ask_rides.py` (593 lines total)
 
 `get_ask_rides_status` (110 lines) and related helpers `find_message_in_history` and `get_next_run_time` are dashboard/API utilities living in a jobs file. The file has four mixed responsibilities: message construction, job runners, cache warming, and API helpers.
 
 **Recommended split:**
-- Message formatters → `bot/utils/ride_messages.py`
-- Status/dashboard helpers → `bot/services/ask_rides_service.py`
-- Job runners + cache warming → `bot/jobs/ask_rides.py` (slimmed down)
+- Message formatters → `ridebot/utils/ride_messages.py`
+- Status/dashboard helpers → `ridebot/services/ask_rides_service.py`
+- Job runners + cache warming → `ridebot/jobs/ask_rides.py` (slimmed down)
 
 ---
 
@@ -171,7 +171,7 @@ Many `logger.info` calls use decorative emoji (✅, ❌, 🔧, 👤, ⏸️). Th
 
 ### LOW-1 — Typo "Widlcard" in Discord Message
 
-**File:** `bot/jobs/ask_rides.py:271`
+**File:** `ridebot/jobs/ask_rides.py:271`
 
 User-visible Discord message and log both say "Widlcard detected." Should be "Wildcard".
 
@@ -179,7 +179,7 @@ User-visible Discord message and log both say "Widlcard detected." Should be "Wi
 
 ### LOW-2 — `CategoryIds` is `StrEnum` While All Other ID Enums Are `IntEnum`
 
-**File:** `bot/core/enums.py:101`
+**File:** `shared/core/enums.py:101`
 
 `CategoryIds(StrEnum)` stores IDs as strings, requiring callers to cast: `int(CategoryIds.NEW_RIDES)`. All other ID enums (`ChannelIds`, `RoleIds`) are `IntEnum`.
 
@@ -189,15 +189,15 @@ User-visible Discord message and log both say "Widlcard detected." Should be "Wi
 
 ### LOW-3 — `living_to_pickup` Module-Level Dict Should Be a Constant
 
-**File:** `bot/services/group_rides_service.py:43–55`
+**File:** `ridebot/services/group_rides_service.py:43–55`
 
-This mapping never changes and maps between two enum types. It belongs in `bot/utils/constants.py` or `bot/core/enums.py`.
+This mapping never changes and maps between two enum types. It belongs in `ridebot/utils/constants.py` or `shared/core/enums.py`.
 
 ---
 
 ### LOW-4 — `RideOptionsSchema = RideOption` Unused Alias
 
-**File:** `bot/services/locations_service.py:31`
+**File:** `ridebot/services/locations_service.py:31`
 
 This alias is defined but not used anywhere in the file. Remove it.
 

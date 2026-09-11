@@ -6,8 +6,8 @@ on:
       - main
       - staging
     paths:
-      - 'backend/bot/core/models.py'
-      - 'backend/bot/core/base.py'
+      - 'backend/shared/core/models.py'
+      - 'backend/shared/core/base.py'
       - 'backend/alembic/**'
 
 concurrency:

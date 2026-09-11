@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 from api.constants import GROUP_RIDES_DEFAULT_CAPACITY, GROUP_RIDES_RATE_LIMIT
 from api.dependencies import parse_int_param, require_bot, validate_ride_type
 from api.rate_limit import limiter
-from bot.core.enums import ChannelIds, JobName
-from bot.services.group_rides_service import GroupRidesService
+from ridebot.services.group_rides_service import GroupRidesService
+from shared.core.enums import ChannelIds, JobName
 
 logger = logging.getLogger(__name__)
 

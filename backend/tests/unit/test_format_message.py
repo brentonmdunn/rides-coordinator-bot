@@ -1,13 +1,13 @@
-"""Unit tests for bot.utils.format_message."""
+"""Unit tests for ridebot.utils.format_message."""
 
-from bot.core.enums import ChannelIds, RoleIds
-from bot.utils.format_message import (
+from ridebot.utils.format_message import (
     message_link,
     ping_channel,
     ping_role,
     ping_role_with_message,
     ping_user,
 )
+from shared.core.enums import ChannelIds, RoleIds
 
 
 class TestPingRole:

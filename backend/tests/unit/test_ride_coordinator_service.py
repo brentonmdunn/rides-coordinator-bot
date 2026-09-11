@@ -1,4 +1,4 @@
-"""Unit tests for bot.services.ride_coordinator_service."""
+"""Unit tests for ridebot.services.ride_coordinator_service."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,7 +6,7 @@ import discord
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from bot.services.ride_coordinator_service import (
+from ridebot.services.ride_coordinator_service import (
     FALLBACK_PING_TEXT,
     RideCoordinatorService,
     UserLookupStatus,
@@ -43,11 +43,11 @@ class TestGetCoordinatorId:
 
         with (
             patch(
-                "bot.services.ride_coordinator_service.AsyncSessionLocal",
+                "ridebot.services.ride_coordinator_service.AsyncSessionLocal",
                 return_value=mock_session_cm,
             ),
             patch(
-                "bot.services.ride_coordinator_service.GlobalSettingsRepository.get",
+                "ridebot.services.ride_coordinator_service.GlobalSettingsRepository.get",
                 new=AsyncMock(return_value="123456789012345678"),
             ),
         ):
@@ -58,7 +58,7 @@ class TestGetCoordinatorId:
     @pytest.mark.asyncio
     async def test_returns_none_on_db_failure(self):
         with patch(
-            "bot.services.ride_coordinator_service.AsyncSessionLocal",
+            "ridebot.services.ride_coordinator_service.AsyncSessionLocal",
             side_effect=OperationalError("stmt", {}, Exception("no such table")),
         ):
             result = await RideCoordinatorService.get_coordinator_id()
@@ -83,11 +83,11 @@ class TestSetCoordinatorId:
 
         with (
             patch(
-                "bot.services.ride_coordinator_service.AsyncSessionLocal",
+                "ridebot.services.ride_coordinator_service.AsyncSessionLocal",
                 return_value=mock_session_cm,
             ),
             patch(
-                "bot.services.ride_coordinator_service.GlobalSettingsRepository.set",
+                "ridebot.services.ride_coordinator_service.GlobalSettingsRepository.set",
                 new=AsyncMock(),
             ) as mock_set,
         ):
@@ -102,7 +102,7 @@ class TestResolvePingText:
     @pytest.mark.asyncio
     async def test_falls_back_when_unset(self):
         with patch(
-            "bot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
+            "ridebot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
             new=AsyncMock(return_value=None),
         ):
             text, configured = await RideCoordinatorService.resolve_ping_text(None)
@@ -113,7 +113,7 @@ class TestResolvePingText:
     @pytest.mark.asyncio
     async def test_falls_back_when_malformed(self):
         with patch(
-            "bot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
+            "ridebot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
             new=AsyncMock(return_value="not-numeric"),
         ):
             text, configured = await RideCoordinatorService.resolve_ping_text(None)
@@ -126,7 +126,7 @@ class TestResolvePingText:
         # get_coordinator_id itself never raises; simulate the underlying
         # OperationalError being swallowed and surfaced as None.
         with patch(
-            "bot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
+            "ridebot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
             new=AsyncMock(return_value=None),
         ):
             text, configured = await RideCoordinatorService.resolve_ping_text(None)
@@ -137,7 +137,7 @@ class TestResolvePingText:
     @pytest.mark.asyncio
     async def test_returns_mention_when_configured(self):
         with patch(
-            "bot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
+            "ridebot.services.ride_coordinator_service.RideCoordinatorService.get_coordinator_id",
             new=AsyncMock(return_value="123456789012345678"),
         ):
             text, configured = await RideCoordinatorService.resolve_ping_text(None)

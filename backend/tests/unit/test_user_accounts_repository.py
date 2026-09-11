@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import AccountRoles
-from bot.core.models import UserAccount
-from bot.repositories.user_accounts_repository import UserAccountsRepository
+from shared.core.enums import AccountRoles
+from shared.core.models import UserAccount
+from shared.repositories.user_accounts_repository import UserAccountsRepository
 
 
 def _make_session(first_return=None, all_return=None, get_return=None):

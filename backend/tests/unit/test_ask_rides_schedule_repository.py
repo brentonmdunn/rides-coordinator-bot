@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import AskRidesScheduleSlot
-from bot.repositories.ask_rides_schedule_repository import AskRidesScheduleRepository
+from ridebot.repositories.ask_rides_schedule_repository import AskRidesScheduleRepository
+from shared.core.enums import AskRidesScheduleSlot
 
 
 def _make_session(scalars_first=None, scalars_all=None):

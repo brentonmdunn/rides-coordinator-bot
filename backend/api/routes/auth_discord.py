@@ -26,8 +26,8 @@ from api.constants import (
     SESSION_COOKIE_NAME,
     SESSION_TTL_SECONDS,
 )
-from bot.core.database import AsyncSessionLocal
-from bot.services.auth_service import AuthService
+from shared.core.database import AsyncSessionLocal
+from shared.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 

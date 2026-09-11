@@ -1,11 +1,10 @@
-"""Unit tests for bot.jobs.ask_rides (wildcard dates, message builders)."""
+"""Unit tests for ridebot.jobs.ask_rides (wildcard dates, message builders)."""
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from bot.core.enums import AskRidesMessageType, EmbedColorChoice
-from bot.jobs.ask_rides import (
+from ridebot.jobs.ask_rides import (
     WILDCARD_DATES,
     _is_wildcard_date,
     _make_friday_msg,
@@ -13,7 +12,8 @@ from bot.jobs.ask_rides import (
     _make_sunday_msg_class,
     _make_wednesday_msg,
 )
-from bot.services.ask_rides_messages_service import EffectiveTemplate
+from ridebot.services.ask_rides_messages_service import EffectiveTemplate
+from shared.core.enums import AskRidesMessageType, EmbedColorChoice
 
 
 class TestIsWildcardDate:
@@ -29,7 +29,7 @@ class TestIsWildcardDate:
         # If current year is 2025, 6/20 matches. Otherwise it won't.
         from datetime import datetime
 
-        from bot.utils.time_helpers import LA_TZ
+        from ridebot.utils.time_helpers import LA_TZ
 
         year_suffix = datetime.now(tz=LA_TZ).strftime("%y")
         expected = f"6/20/{year_suffix}" in WILDCARD_DATES
@@ -76,10 +76,10 @@ class TestMakeWednesdayMsg:
     """Tests for _make_wednesday_msg."""
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/22")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=False)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/22")
     @patch(
-        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
         new_callable=AsyncMock,
     )
     async def test_returns_default_message(self, mock_get_template, mock_date, mock_wildcard):
@@ -93,10 +93,10 @@ class TestMakeWednesdayMsg:
         mock_get_template.assert_awaited_once_with(AskRidesMessageType.WEDNESDAY_FELLOWSHIP)
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/22")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=False)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/22")
     @patch(
-        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
         new_callable=AsyncMock,
     )
     async def test_uses_customized_template_when_present(
@@ -110,8 +110,8 @@ class TestMakeWednesdayMsg:
         assert body == "Custom body with 4/22!"
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=True)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="6/20")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=True)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="6/20")
     async def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
         assert await _make_wednesday_msg() is None
 
@@ -120,14 +120,14 @@ class TestMakeFridayMsg:
     """Tests for _make_friday_msg."""
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/24")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=False)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/24")
     @patch(
-        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
         new_callable=AsyncMock,
     )
     async def test_returns_message(self, mock_get_template, mock_date, mock_wildcard):
-        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+        from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 
         template = DEFAULT_TEMPLATES[AskRidesMessageType.FRIDAY_FELLOWSHIP]
         mock_get_template.return_value = EffectiveTemplate(
@@ -144,8 +144,8 @@ class TestMakeFridayMsg:
         assert "fellowship" in body
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=True)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="6/27")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=True)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="6/27")
     async def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
         assert await _make_friday_msg() is None
 
@@ -154,19 +154,19 @@ class TestMakeSundayMsg:
     """Tests for _make_sunday_msg."""
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/26")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=False)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/26")
     @patch(
-        "bot.jobs.ask_rides.RideCoordinatorService.resolve_ping_text",
+        "ridebot.jobs.ask_rides.RideCoordinatorService.resolve_ping_text",
         new_callable=AsyncMock,
         return_value=("@coordinator", True),
     )
     @patch(
-        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
         new_callable=AsyncMock,
     )
     async def test_returns_message(self, mock_get_template, mock_ping, mock_date, mock_wildcard):
-        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+        from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 
         template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_SERVICE]
         mock_get_template.return_value = EffectiveTemplate(
@@ -182,27 +182,27 @@ class TestMakeSundayMsg:
         assert "4/26" in body
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=True)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="6/29")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=True)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="6/29")
     async def test_returns_none_for_wildcard(self, mock_date, mock_wildcard):
         assert await _make_sunday_msg() is None
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides._is_wildcard_date", return_value=False)
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/26")
+    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=False)
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/26")
     @patch(
-        "bot.jobs.ask_rides.RideCoordinatorService.resolve_ping_text",
+        "ridebot.jobs.ask_rides.RideCoordinatorService.resolve_ping_text",
         new_callable=AsyncMock,
         return_value=("@coordinator", True),
     )
     @patch(
-        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
         new_callable=AsyncMock,
     )
     async def test_message_contains_emojis(
         self, mock_get_template, mock_ping, mock_date, mock_wildcard
     ):
-        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+        from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 
         template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_SERVICE]
         mock_get_template.return_value = EffectiveTemplate(
@@ -223,9 +223,9 @@ class TestMakeSundayMsgClass:
     """Tests for _make_sunday_msg_class."""
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/27")
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/27")
     @patch(
-        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
         new_callable=AsyncMock,
     )
     async def test_uses_customized_template_when_present(self, mock_get_template, mock_date):
@@ -242,13 +242,13 @@ class TestMakeSundayMsgClass:
         assert body == "Custom class body 4/27"
 
     @pytest.mark.asyncio
-    @patch("bot.jobs.ask_rides.get_next_date_str", return_value="4/27")
+    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/27")
     @patch(
-        "bot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
+        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
         new_callable=AsyncMock,
     )
     async def test_uses_default_when_not_customized(self, mock_get_template, mock_date):
-        from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+        from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 
         template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_CLASS]
         mock_get_template.return_value = EffectiveTemplate(

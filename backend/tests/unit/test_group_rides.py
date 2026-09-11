@@ -4,9 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from bot.core.enums import CampusLivingLocations
-from bot.core.schemas import Identity, Passenger
-from bot.services.ride_grouping import (
+from ridebot.core.schemas import Identity, Passenger
+from ridebot.services.ride_grouping import (
     PassengersByLocation,
     calculate_pickup_time,
     count_tuples,
@@ -17,6 +16,7 @@ from bot.services.ride_grouping import (
     llm_input_pickups,
     parse_numbers,
 )
+from shared.core.enums import CampusLivingLocations
 from tests.unit.routing_fixtures import make_seed_context
 
 SEED_CTX = make_seed_context()
@@ -314,7 +314,7 @@ def charlie():
 class TestCreateOutput:
     """Tests for the `create_output` function (lines 165-246)."""
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time")
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time")
     def test_single_driver_single_location(self, mock_pickup_time, alice):
         """Single driver, single pickup location: no intermediate time calculation."""
         locations_people: PassengersByLocation = {
@@ -337,7 +337,7 @@ class TestCreateOutput:
         # Code block present
         assert "```" in result[2]
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
     def test_single_driver_two_locations(self, mock_pickup_time, alice, bob):
         """Single driver picks up passengers at two different locations."""
         locations_people: PassengersByLocation = {
@@ -362,7 +362,7 @@ class TestCreateOutput:
         assert "@alice" in result[1]
         assert "@bob" in result[1]
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
     def test_two_drivers(self, mock_pickup_time, alice, bob):
         """Two drivers each picking up one passenger."""
         locations_people: PassengersByLocation = {
@@ -380,7 +380,7 @@ class TestCreateOutput:
         assert len(result) == 5
         assert "==== summary ====" in result[0]
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
     def test_map_url_included_when_present(self, mock_pickup_time, alice):
         """Seeded locations have coordinates, so a Google Maps link should appear."""
         locations_people: PassengersByLocation = {"Sixth loop": [alice]}
@@ -389,7 +389,7 @@ class TestCreateOutput:
 
         assert "Google Maps" in result[1]
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
     def test_unknown_passenger_skipped(self, mock_pickup_time, alice):
         """Passengers not in locations_people are skipped without raising an error."""
         locations_people: PassengersByLocation = {"Sixth loop": [alice]}
@@ -403,7 +403,7 @@ class TestCreateOutput:
         # Should still produce output without crashing; Ghost should be absent
         assert "Ghost" not in result[1]
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
     def test_off_campus_passengers_in_summary(self, mock_pickup_time, alice):
         """Off-campus passengers should appear in the summary block."""
         locations_people: PassengersByLocation = {"Sixth loop": [alice]}
@@ -415,7 +415,7 @@ class TestCreateOutput:
         assert "Dave" in result[0]
         assert "dave_username" in result[0]
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
     def test_username_none_falls_back_to_name(self, mock_pickup_time, charlie):
         """When a passenger has no username, the name should appear in the drive string."""
         locations_people: PassengersByLocation = {"Muir tennis courts": [charlie]}
@@ -424,7 +424,7 @@ class TestCreateOutput:
 
         assert "Charlie" in result[1]
 
-    @patch("bot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
+    @patch("ridebot.services.ride_grouping.calculate_pickup_time", return_value=time(16, 45))
     def test_same_location_passengers_grouped(self, mock_pickup_time, alice, charlie):
         """Two passengers at the same location should be grouped into one stop."""
         # Give charlie the same pickup location as alice

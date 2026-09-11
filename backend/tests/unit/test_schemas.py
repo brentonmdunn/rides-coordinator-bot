@@ -1,12 +1,11 @@
-"""Unit tests for bot.core.schemas (Pydantic models)."""
+"""Unit tests for ridebot.core.schemas (Pydantic models)."""
 
 from typing import cast
 
 import pytest
 from pydantic import ValidationError
 
-from bot.core.enums import CampusLivingLocations
-from bot.core.schemas import (
+from ridebot.core.schemas import (
     Identity,
     LLMOutputError,
     LLMOutputNominal,
@@ -15,6 +14,7 @@ from bot.core.schemas import (
     Passenger,
     RidesUser,
 )
+from shared.core.enums import CampusLivingLocations
 
 
 class TestIdentity:

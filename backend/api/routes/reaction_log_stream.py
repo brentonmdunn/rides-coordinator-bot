@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 
 from api.auth import require_ride_coordinator
 from api.constants import SSE_HEARTBEAT_INTERVAL
-from bot.core import reaction_broadcaster
+from ridebot.core import reaction_broadcaster
 
 logger = logging.getLogger(__name__)
 

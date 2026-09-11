@@ -137,8 +137,8 @@ const { data: usernames } = useUsernames()
 
 | File | Change |
 |------|--------|
-| `backend/bot/repositories/locations_repository.py` | Add `get_all_discord_usernames` static method |
-| `backend/bot/services/locations_service.py` | Add `get_all_discord_usernames` method |
+| `backend/ridebot/repositories/locations_repository.py` | Add `get_all_discord_usernames` static method |
+| `backend/ridebot/services/locations_service.py` | Add `get_all_discord_usernames` method |
 | `backend/api/routes/usernames.py` | New file — `GET /api/usernames` |
 | `backend/api/main.py` (or router file) | Register new router |
 | `frontend/src/hooks/useUsernames.ts` | New file — React Query hook |

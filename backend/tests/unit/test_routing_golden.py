@@ -7,7 +7,7 @@ and frozen here. The DB-backed Dijkstra must reproduce them exactly.
 
 import pytest
 
-from bot.services.pickup_locations_service import END_NODE, START_NODE
+from ridebot.services.pickup_locations_service import END_NODE, START_NODE
 from tests.unit.routing_fixtures import make_seed_context
 
 # All-pairs travel times from the old hardcoded LOCATIONS_MATRIX.

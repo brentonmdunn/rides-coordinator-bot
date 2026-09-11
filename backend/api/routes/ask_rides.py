@@ -13,8 +13,26 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from api.auth import require_admin, require_ride_coordinator
 from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET, SSE_HEARTBEAT_INTERVAL
 from api.dependencies import require_bot, require_ready_bot
-from bot.core import messages_broadcaster
-from bot.core.enums import (
+from ridebot.core import messages_broadcaster
+from ridebot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
+from ridebot.services.ask_rides_messages_service import AskRidesMessagesService
+from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
+from ridebot.services.fellowship_season_service import FellowshipSeasonService
+from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
+from ridebot.services.locations_service import LocationsService
+from ridebot.services.message_schedule_service import MessageScheduleService
+from ridebot.services.non_discord_rides_service import NonDiscordRidesService
+from ridebot.utils.ask_rides_defaults import ALLOWED_PLACEHOLDERS, DEFAULT_TEMPLATES, MAX_REACTIONS
+from ridebot.utils.ask_rides_schedule_defaults import (
+    ALLOWED_DAYS,
+    SCHEDULE_MAX_HOUR,
+    SCHEDULE_MAX_MINUTE,
+    SCHEDULE_MIN_HOUR,
+    SCHEDULE_MIN_MINUTE,
+)
+from ridebot.utils.cache import invalidate_namespace
+from ridebot.utils.time_helpers import get_next_date_obj, get_send_wednesday
+from shared.core.enums import (
     AskRidesMessage,
     AskRidesMessageType,
     AskRidesScheduleSlot,
@@ -25,24 +43,6 @@ from bot.core.enums import (
     FellowshipSeason,
     JobName,
 )
-from bot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
-from bot.services.ask_rides_messages_service import AskRidesMessagesService
-from bot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
-from bot.services.fellowship_season_service import FellowshipSeasonService
-from bot.services.late_reaction_windows_service import LateReactionWindowsService
-from bot.services.locations_service import LocationsService
-from bot.services.message_schedule_service import MessageScheduleService
-from bot.services.non_discord_rides_service import NonDiscordRidesService
-from bot.utils.ask_rides_defaults import ALLOWED_PLACEHOLDERS, DEFAULT_TEMPLATES, MAX_REACTIONS
-from bot.utils.ask_rides_schedule_defaults import (
-    ALLOWED_DAYS,
-    SCHEDULE_MAX_HOUR,
-    SCHEDULE_MAX_MINUTE,
-    SCHEDULE_MIN_HOUR,
-    SCHEDULE_MIN_MINUTE,
-)
-from bot.utils.cache import invalidate_namespace
-from bot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 
 logger = logging.getLogger(__name__)
 

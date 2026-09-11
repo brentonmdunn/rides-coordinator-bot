@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.auth import require_ride_coordinator
-from bot.services.ride_reaction_log_service import RideReactionLogService
+from ridebot.services.ride_reaction_log_service import RideReactionLogService
 
 logger = logging.getLogger(__name__)
 

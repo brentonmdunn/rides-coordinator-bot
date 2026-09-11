@@ -37,10 +37,10 @@ if __name__ == "__main__":
     load_dotenv(Path(__file__).parent.parent / ".env")
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from bot.services.pickup_locations_service import PickupLocationsService  # noqa: E402
-from bot.services.route_service import RouteService  # noqa: E402
-from bot.utils.parsing import parse_time  # noqa: E402
-from bot.utils.time_helpers import is_in_ride_day_window  # noqa: E402
+from ridebot.services.pickup_locations_service import PickupLocationsService  # noqa: E402
+from ridebot.services.route_service import RouteService  # noqa: E402
+from ridebot.utils.parsing import parse_time  # noqa: E402
+from ridebot.utils.time_helpers import is_in_ride_day_window  # noqa: E402
 
 # --- LLM -------------------------------------------------------------------
 

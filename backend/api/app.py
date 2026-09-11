@@ -48,7 +48,7 @@ from api.routes.ride_coordinators import router as ride_coordinators_router
 from api.routes.route_builder import router as route_builder_router
 from api.routes.user_preferences import router as user_preferences_router
 from api.routes.usernames import router as usernames_router
-from bot.api import bot_lifespan
+from shared.core.lifespan import bot_lifespan
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

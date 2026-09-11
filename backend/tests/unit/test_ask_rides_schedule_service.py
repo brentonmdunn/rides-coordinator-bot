@@ -6,15 +6,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from bot.core.enums import AskRidesScheduleSlot, JobName
-from bot.services.ask_rides_schedule_service import (
+from ridebot.services.ask_rides_schedule_service import (
     AskRidesScheduleService,
     EffectiveSchedule,
     get_next_schedule_occurrence,
     has_send_time_passed,
 )
-from bot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
-from bot.utils.time_helpers import LA_TZ
+from ridebot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
+from ridebot.utils.time_helpers import LA_TZ
+from shared.core.enums import AskRidesScheduleSlot, JobName
 
 
 def _la(year, month, day, hour=0, minute=0):
@@ -33,10 +33,10 @@ def _mock_session_local(mock_session_local):
 class TestGetEffectiveSchedule:
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_schedule_service.AskRidesScheduleRepository.get",
+        "ridebot.services.ask_rides_schedule_service.AskRidesScheduleRepository.get",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_returns_default_when_row_missing(self, mock_session_local, mock_get):
         _mock_session_local(mock_session_local)
         mock_get.return_value = None
@@ -53,10 +53,10 @@ class TestGetEffectiveSchedule:
 
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_schedule_service.AskRidesScheduleRepository.get",
+        "ridebot.services.ask_rides_schedule_service.AskRidesScheduleRepository.get",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_returns_db_row_when_present(self, mock_session_local, mock_get):
         _mock_session_local(mock_session_local)
         fake_row = MagicMock(day_of_week=3, hour=14, minute=30)
@@ -69,7 +69,7 @@ class TestGetEffectiveSchedule:
         assert result == EffectiveSchedule(day_of_week=3, hour=14, minute=30, is_customized=True)
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_falls_back_to_default_on_operational_error(self, mock_session_local):
         mock_session_local.side_effect = OperationalError("stmt", {}, Exception("no such table"))
 
@@ -82,7 +82,7 @@ class TestGetEffectiveSchedule:
         assert result.is_customized is False
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_never_raises_on_unexpected_error(self, mock_session_local):
         mock_session_local.side_effect = RuntimeError("boom")
 
@@ -98,10 +98,10 @@ class TestGetEffectiveSchedule:
 class TestGetEffectiveSchedules:
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_schedule_service.AskRidesScheduleRepository.get_all",
+        "ridebot.services.ask_rides_schedule_service.AskRidesScheduleRepository.get_all",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_merges_db_rows_over_defaults(self, mock_session_local, mock_get_all):
         _mock_session_local(mock_session_local)
         fake_row = MagicMock(
@@ -116,7 +116,7 @@ class TestGetEffectiveSchedules:
         assert result[AskRidesScheduleSlot.WEDNESDAY_REMINDER].is_customized is False
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_falls_back_to_all_defaults_on_db_error(self, mock_session_local):
         mock_session_local.side_effect = OperationalError("stmt", {}, Exception("no such table"))
 
@@ -177,14 +177,16 @@ class TestValidate:
 
 class TestUpdateSchedule:
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
-    @patch("bot.services.ask_rides_schedule_service.invalidate_namespace", new_callable=AsyncMock)
-    @patch("bot.services.ask_rides_schedule_service.reschedule_job")
+    @patch("ridebot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
     @patch(
-        "bot.services.ask_rides_schedule_service.AskRidesScheduleRepository.upsert",
+        "ridebot.services.ask_rides_schedule_service.invalidate_namespace", new_callable=AsyncMock
+    )
+    @patch("ridebot.services.ask_rides_schedule_service.reschedule_job")
+    @patch(
+        "ridebot.services.ask_rides_schedule_service.AskRidesScheduleRepository.upsert",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_validates_then_upserts_reschedules_and_publishes(
         self, mock_session_local, mock_upsert, mock_reschedule, mock_invalidate, mock_publish
     ):
@@ -212,7 +214,7 @@ class TestUpdateSchedule:
         )
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
+    @patch("ridebot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
     async def test_raises_on_invalid_input_without_touching_db(self, mock_publish):
         with pytest.raises(ValueError):
             await AskRidesScheduleService.update_schedule(
@@ -225,14 +227,16 @@ class TestUpdateSchedule:
         mock_publish.assert_not_awaited()
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
-    @patch("bot.services.ask_rides_schedule_service.invalidate_namespace", new_callable=AsyncMock)
-    @patch("bot.services.ask_rides_schedule_service.reschedule_job")
+    @patch("ridebot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
     @patch(
-        "bot.services.ask_rides_schedule_service.AskRidesScheduleRepository.upsert",
+        "ridebot.services.ask_rides_schedule_service.invalidate_namespace", new_callable=AsyncMock
+    )
+    @patch("ridebot.services.ask_rides_schedule_service.reschedule_job")
+    @patch(
+        "ridebot.services.ask_rides_schedule_service.AskRidesScheduleRepository.upsert",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_reschedule_failure_does_not_raise_and_is_returned(
         self, mock_session_local, mock_upsert, mock_reschedule, mock_invalidate, mock_publish
     ):
@@ -253,14 +257,16 @@ class TestUpdateSchedule:
 
 class TestResetSchedule:
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
-    @patch("bot.services.ask_rides_schedule_service.invalidate_namespace", new_callable=AsyncMock)
-    @patch("bot.services.ask_rides_schedule_service.reschedule_job")
+    @patch("ridebot.services.ask_rides_schedule_service.publish", new_callable=AsyncMock)
     @patch(
-        "bot.services.ask_rides_schedule_service.AskRidesScheduleRepository.delete",
+        "ridebot.services.ask_rides_schedule_service.invalidate_namespace", new_callable=AsyncMock
+    )
+    @patch("ridebot.services.ask_rides_schedule_service.reschedule_job")
+    @patch(
+        "ridebot.services.ask_rides_schedule_service.AskRidesScheduleRepository.delete",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_schedule_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_schedule_service.AsyncSessionLocal")
     async def test_deletes_reschedules_to_default_and_publishes(
         self, mock_session_local, mock_delete, mock_reschedule, mock_invalidate, mock_publish
     ):
@@ -289,7 +295,7 @@ class TestGetNextScheduleOccurrence:
     """Tests for get_next_schedule_occurrence — the single source of truth for 'next run'."""
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_rolls_forward_when_today_is_configured_day_but_time_passed(self, mock_dt):
         # Wednesday April 22, 2026 at 3 PM; FRI_SUN_GROUP default is Wed noon —
         # noon has already passed, so this should roll to next Wednesday.
@@ -311,7 +317,7 @@ class TestGetNextScheduleOccurrence:
         assert result.hour == 12
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_returns_today_when_time_has_not_passed(self, mock_dt):
         # Wednesday April 22, 2026 at 9 AM — noon hasn't happened yet.
         mock_dt.now.return_value = _la(2026, 4, 22, 9, 0)
@@ -332,7 +338,7 @@ class TestGetNextScheduleOccurrence:
         assert result.hour == 12
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_customized_schedule_computes_from_effective_values(self, mock_dt):
         # Monday April 20, 2026 at 10 AM; a customized Tuesday 9 AM send.
         mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
@@ -355,7 +361,7 @@ class TestHasSendTimePassed:
     """Tests for has_send_time_passed — the schedule-aware is_ride_cycle_active replacement."""
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_false_before_send_time_on_send_day(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 11, 0)  # Wed 11 AM
 
@@ -373,7 +379,7 @@ class TestHasSendTimePassed:
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_true_at_send_time(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 12, 0)  # Wed noon
 
@@ -391,7 +397,7 @@ class TestHasSendTimePassed:
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_true_after_send_day(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 24, 10, 0)  # Fri, after Wed send
 
@@ -409,7 +415,7 @@ class TestHasSendTimePassed:
         assert result is True
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_false_before_send_day(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)  # Mon, before Wed send
 
@@ -427,7 +433,7 @@ class TestHasSendTimePassed:
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_schedule_service.datetime")
+    @patch("ridebot.services.ask_rides_schedule_service.datetime")
     async def test_customized_send_day_used_instead_of_default(self, mock_dt):
         # Customized send day is Monday; by Tuesday it should already be "passed"
         # even though the default FRI_SUN_GROUP send day (Wednesday) hasn't arrived.

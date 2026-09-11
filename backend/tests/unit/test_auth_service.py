@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from bot.core.enums import AccountRoles
-from bot.core.models import AuthSession, UserAccount
-from bot.services.auth_service import AuthService, _hash_token
-from bot.utils.constants import SESSION_TOUCH_THROTTLE_MINUTES
+from shared.core.enums import AccountRoles
+from shared.core.models import AuthSession, UserAccount
+from shared.services.auth_service import AuthService, _hash_token
+from shared.utils.constants import SESSION_TOUCH_THROTTLE_MINUTES
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -96,7 +96,7 @@ async def test_match_branch1_returns_existing_account():
     session = AsyncMock()
 
     with patch(
-        "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+        "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
         new=AsyncMock(return_value=account),
     ):
         result = await AuthService.match_or_reject(session, "u123", "username", "u@e.com")
@@ -111,11 +111,11 @@ async def test_match_branch1_skips_further_branches():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+            "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
             new=AsyncMock(return_value=account),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
             new=AsyncMock(return_value=None),
         ) as mock_branch2,
     ):
@@ -137,15 +137,15 @@ async def test_match_branch2_links_and_returns():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+            "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
             new=AsyncMock(return_value=unlinked),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.link_discord_identity",
+            "shared.services.auth_service.UserAccountsRepository.link_discord_identity",
             new=AsyncMock(return_value=linked),
         ),
     ):
@@ -168,14 +168,15 @@ async def test_match_branch2_race_condition_falls_back_to_branch1():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id", new=get_by_id
+            "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+            new=get_by_id,
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
             new=AsyncMock(return_value=unlinked),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.link_discord_identity",
+            "shared.services.auth_service.UserAccountsRepository.link_discord_identity",
             new=AsyncMock(side_effect=IntegrityError(None, None, Exception("mock"))),
         ),
     ):
@@ -198,19 +199,19 @@ async def test_match_branch3_grandfather_links_and_returns():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+            "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_email",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_email",
             new=AsyncMock(return_value=unlinked),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.link_discord_identity",
+            "shared.services.auth_service.UserAccountsRepository.link_discord_identity",
             new=AsyncMock(return_value=linked),
         ),
     ):
@@ -225,15 +226,15 @@ async def test_match_branch3_skipped_when_no_email():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+            "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_email",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_email",
             new=AsyncMock(return_value=None),
         ) as mock_email_lookup,
     ):
@@ -254,15 +255,15 @@ async def test_match_returns_none_when_not_invited():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+            "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_discord_username",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_unlinked_by_email",
+            "shared.services.auth_service.UserAccountsRepository.get_unlinked_by_email",
             new=AsyncMock(return_value=None),
         ),
     ):
@@ -281,7 +282,7 @@ async def test_create_session_returns_plaintext_and_csrf():
     session = AsyncMock()
 
     with patch(
-        "bot.services.auth_service.AuthSessionsRepository.create",
+        "shared.services.auth_service.AuthSessionsRepository.create",
         new=AsyncMock(return_value=MagicMock()),
     ) as mock_create:
         session_id, csrf = await AuthService.create_session(session, "u@e.com")
@@ -307,7 +308,7 @@ async def test_get_session_valid_returns_auth_session():
     session = AsyncMock()
 
     with patch(
-        "bot.services.auth_service.AuthSessionsRepository.get_by_hash",
+        "shared.services.auth_service.AuthSessionsRepository.get_by_hash",
         new=AsyncMock(return_value=auth_session),
     ):
         result = await AuthService.get_session(session, "plain-token")
@@ -320,7 +321,7 @@ async def test_get_session_not_found_returns_none():
     session = AsyncMock()
 
     with patch(
-        "bot.services.auth_service.AuthSessionsRepository.get_by_hash",
+        "shared.services.auth_service.AuthSessionsRepository.get_by_hash",
         new=AsyncMock(return_value=None),
     ):
         result = await AuthService.get_session(session, "missing")
@@ -335,11 +336,11 @@ async def test_get_session_expired_deletes_and_returns_none():
 
     with (
         patch(
-            "bot.services.auth_service.AuthSessionsRepository.get_by_hash",
+            "shared.services.auth_service.AuthSessionsRepository.get_by_hash",
             new=AsyncMock(return_value=expired),
         ),
         patch(
-            "bot.services.auth_service.AuthSessionsRepository.delete_by_hash",
+            "shared.services.auth_service.AuthSessionsRepository.delete_by_hash",
             new=AsyncMock(),
         ) as mock_delete,
     ):
@@ -361,7 +362,7 @@ async def test_touch_session_slides_expiry_when_stale():
     session = AsyncMock()
 
     with patch(
-        "bot.services.auth_service.AuthSessionsRepository.update_activity",
+        "shared.services.auth_service.AuthSessionsRepository.update_activity",
         new=AsyncMock(),
     ) as mock_update:
         await AuthService.touch_session(session, "plain-token", auth_session)
@@ -376,7 +377,7 @@ async def test_touch_session_skips_when_recent():
     session = AsyncMock()
 
     with patch(
-        "bot.services.auth_service.AuthSessionsRepository.update_activity",
+        "shared.services.auth_service.AuthSessionsRepository.update_activity",
         new=AsyncMock(),
     ) as mock_update:
         await AuthService.touch_session(session, "plain-token", auth_session)
@@ -394,7 +395,7 @@ async def test_revoke_session_deletes_by_hash():
     session = AsyncMock()
 
     with patch(
-        "bot.services.auth_service.AuthSessionsRepository.delete_by_hash",
+        "shared.services.auth_service.AuthSessionsRepository.delete_by_hash",
         new=AsyncMock(),
     ) as mock_delete:
         await AuthService.revoke_session(session, "plain-token")
@@ -417,11 +418,11 @@ async def test_provision_from_guild_role_creates_ride_coordinator():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.create_account",
+            "shared.services.auth_service.UserAccountsRepository.create_account",
             new=AsyncMock(return_value=created),
         ) as mock_create,
         patch(
-            "bot.services.auth_service.UserAccountsRepository.link_discord_identity",
+            "shared.services.auth_service.UserAccountsRepository.link_discord_identity",
             new=AsyncMock(return_value=linked),
         ),
     ):
@@ -439,11 +440,11 @@ async def test_provision_from_guild_role_uses_real_email_when_available():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.create_account",
+            "shared.services.auth_service.UserAccountsRepository.create_account",
             new=AsyncMock(return_value=created),
         ) as mock_create,
         patch(
-            "bot.services.auth_service.UserAccountsRepository.link_discord_identity",
+            "shared.services.auth_service.UserAccountsRepository.link_discord_identity",
             new=AsyncMock(return_value=linked),
         ),
     ):
@@ -459,11 +460,11 @@ async def test_provision_from_guild_role_race_condition_recovers():
 
     with (
         patch(
-            "bot.services.auth_service.UserAccountsRepository.create_account",
+            "shared.services.auth_service.UserAccountsRepository.create_account",
             new=AsyncMock(side_effect=IntegrityError(None, None, Exception("mock"))),
         ),
         patch(
-            "bot.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
+            "shared.services.auth_service.UserAccountsRepository.get_by_discord_user_id",
             new=AsyncMock(return_value=recovered),
         ),
     ):

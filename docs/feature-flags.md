@@ -70,6 +70,6 @@ Cache can be forcibly invalidated via `POST /api/cache/invalidate` (admin) or by
 
 ## Adding a new flag
 
-1. Add a new entry to `FeatureFlagNames` in `backend/bot/core/enums.py`.
+1. Add a new entry to `FeatureFlagNames` in `backend/shared/core/enums.py`.
 2. Create an Alembic migration to insert the new row into `feature_flags`.
 3. Use `@feature_flag_enabled(FeatureFlagNames.YOUR_FLAG)` decorator on the function to gate, or call `FeatureFlagsRepository.get_feature_flag_status(session, flag)` directly.

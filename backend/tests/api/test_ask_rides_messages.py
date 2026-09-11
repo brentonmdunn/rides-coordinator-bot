@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from api.auth import require_ride_coordinator
 from api.routes.ask_rides import router as ask_rides_router
-from bot.core.enums import AskRidesMessageType
-from bot.services.ask_rides_messages_service import EffectiveTemplate
+from ridebot.services.ask_rides_messages_service import EffectiveTemplate
+from shared.core.enums import AskRidesMessageType
 
 
 def _build_client() -> TestClient:
@@ -21,7 +21,7 @@ def _build_client() -> TestClient:
 
 
 def _all_defaults() -> dict[AskRidesMessageType, EffectiveTemplate]:
-    from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+    from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 
     return {
         message_type: EffectiveTemplate(

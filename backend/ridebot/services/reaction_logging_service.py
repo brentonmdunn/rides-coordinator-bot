@@ -1,0 +1,187 @@
+"""Service for logging reaction events."""
+
+import logging
+
+import discord
+
+from ridebot.utils.channels import resolve_channel_id
+from ridebot.utils.format_message import message_link
+from ridebot.utils.parsing import get_message_and_embed_content
+from shared.core.enums import ChannelIds, JobName, ReactionAction
+from shared.core.error_reporter import send_error_to_discord
+
+logger = logging.getLogger(__name__)
+
+
+class ReactionLoggingService:
+    """Business logic for logging reaction events."""
+
+    def __init__(self, bot):
+        """
+        Initialize the service with a bot instance.
+
+        Args:
+            bot: The Discord bot instance.
+        """
+        self.bot = bot
+
+    async def log_reaction(
+        self,
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        message: discord.Message,
+        channel: discord.TextChannel,
+        action: ReactionAction,
+    ) -> bool:
+        """
+        Log a reaction event to the bot logs channel.
+
+        Args:
+            user: The user who reacted.
+            payload: The raw reaction event payload.
+            message: The message that was reacted to.
+            channel: The channel where the message was sent.
+            action: Whether the reaction was added or removed.
+
+        Returns:
+            True if logged successfully, False otherwise.
+        """
+        log_channel = self.bot.get_channel(resolve_channel_id(ChannelIds.BOT_STUFF__BOT_LOGS))
+        if not log_channel or not isinstance(log_channel, discord.TextChannel):
+            return False
+
+        log_message = self._format_reaction_log(user, payload, message, channel, action)
+
+        try:
+            await log_channel.send(log_message)
+            return True
+        except discord.Forbidden:
+            logger.error(f"Missing permissions to send to channel {log_channel.id}")
+            return False
+        except Exception:
+            logger.exception("Failed to send log message in log_reaction")
+            await send_error_to_discord("**Unexpected Error** in `log_reaction`")
+            return False
+
+    async def log_late_ride_reaction(
+        self,
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        message: discord.Message,
+        action: ReactionAction,
+    ) -> bool:
+        """
+        Log a late ride reaction to the driver bot spam channel.
+
+        Args:
+            user: The user who reacted.
+            payload: The raw reaction event payload.
+            message: The message that was reacted to.
+            action: Whether the reaction was added or removed.
+
+        Returns:
+            True if logged successfully, False otherwise.
+        """
+        log_channel = self.bot.get_channel(
+            resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
+        )
+        if not log_channel or not isinstance(log_channel, discord.TextChannel):
+            return False
+
+        log_message = self._format_reaction_log_late_rides(user, payload, message, action)
+
+        try:
+            await log_channel.send(log_message)
+            return True
+        except discord.Forbidden:
+            logger.error(f"Missing permissions to send to channel {log_channel.id}")
+            return False
+        except Exception:
+            logger.exception("Failed to send log message in log_late_ride_reaction")
+            await send_error_to_discord("**Unexpected Error** in `log_late_ride_reaction`")
+            return False
+
+    def _format_reaction_log(
+        self,
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        message: discord.Message,
+        channel: discord.TextChannel,
+        action: ReactionAction,
+    ) -> str:
+        """
+        Formats a reaction log message.
+
+        Args:
+            user: The user who reacted.
+            payload: The payload of the reaction event.
+            message: The message that was reacted to.
+            channel: The channel where the message was sent.
+            action: The action taken (add or remove).
+
+        Returns:
+            The formatted log message.
+
+        Raises:
+            ValueError: If the action is not valid.
+        """
+        if action == ReactionAction.ADD:
+            verb = "reacted"
+        elif action == ReactionAction.REMOVE:
+            verb = "removed their reaction"
+        else:
+            raise ValueError(f"Invalid action: {action}")
+
+        link = message_link(channel.guild.id, channel.id, message.id)
+
+        # Handle empty message content (e.g., embeds, images)
+        content = message.content or "[No Content/Embed]"
+
+        return f"`{user.name}` {verb} {payload.emoji} to message \n```{content}\n```Message link: {link}"
+
+    def _format_reaction_log_late_rides(
+        self,
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        message: discord.Message,
+        action: ReactionAction,
+    ) -> str:
+        """
+        Format a log message for late ride reactions.
+
+        Creates a human-readable log message indicating which user reacted to which
+        event (Friday Fellowship or Sunday Service) during a late time window.
+
+        Args:
+            user: The user who reacted.
+            payload: The raw reaction event payload containing emoji information.
+            message: The message that was reacted to.
+            action: Whether the reaction was added or removed.
+
+        Returns:
+            A formatted string describing the late ride reaction.
+
+        Raises:
+            ValueError: If the action is not ADD or REMOVE.
+        """
+        if action not in (ReactionAction.ADD, ReactionAction.REMOVE):
+            raise ValueError(f"Invalid action: {action}")
+
+        action_verb = "reacted" if action == ReactionAction.ADD else "removed their reaction"
+
+        event_map = {
+            JobName.SUNDAY: "Sunday Service",
+            JobName.FRIDAY: "Friday Fellowship",
+            JobName.WEDNESDAY: "Wednesday Fellowship",
+        }
+
+        event_name = None
+        for keyword, full_name in event_map.items():
+            if keyword in get_message_and_embed_content(message).lower():
+                event_name = full_name
+                break
+
+        if event_name is None:
+            return f"`{user.name}` {action_verb} {payload.emoji} to an unknown message."
+
+        return f"`{user.name}` {action_verb} {payload.emoji} to {event_name}"

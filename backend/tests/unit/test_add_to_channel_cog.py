@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from bot.cogs.admin import Admin
+from ridebot.cogs.admin import Admin
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ async def test_add_to_channel_success(admin_cog):
     interaction.guild = MagicMock(spec=discord.Guild)
 
     with patch(
-        "bot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
+        "ridebot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
     ) as mock_service:
         mock_service.return_value = (3, [])
 
@@ -55,7 +55,7 @@ async def test_add_to_channel_with_failures(admin_cog):
     interaction.guild = MagicMock(spec=discord.Guild)
 
     with patch(
-        "bot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
+        "ridebot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
     ) as mock_service:
         mock_service.return_value = (1, ["unknown_user"])
 
@@ -79,9 +79,9 @@ async def test_add_to_channel_service_exception(admin_cog):
 
     with (
         patch(
-            "bot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
+            "ridebot.cogs.admin.AdminService.add_users_to_channel", new_callable=AsyncMock
         ) as mock_service,
-        patch("bot.cogs.admin.send_error_to_discord", new_callable=AsyncMock),
+        patch("ridebot.cogs.admin.send_error_to_discord", new_callable=AsyncMock),
     ):
         mock_service.side_effect = Exception("Unexpected")
 

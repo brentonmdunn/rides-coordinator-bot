@@ -25,7 +25,7 @@ The main weekly job. Sends ride announcement messages to the rides announcements
 - Its feature flag (e.g. `ask_friday_rides_job`).
 - Whether the job is paused (via `message_schedule_pauses` table).
 - For Sunday jobs: whether the master calendar (Google Calendar) shows a wildcard/skip event.
-- Whether the date appears in the `WILDCARD_DATES` hardcoded list in `bot/jobs/ask_rides.py`.
+- Whether the date appears in the `WILDCARD_DATES` hardcoded list in `ridebot/jobs/ask_rides.py`.
 
 **Triggering manually:** Use `POST /api/ask-rides/send-now` from the dashboard or API.
 
@@ -98,9 +98,9 @@ When a Sunday message is suppressed due to a wildcard, the bot posts a notificat
 
 ## Adding a New Job
 
-1. Create the job function in `bot/jobs/` (or a new file there).
+1. Create the job function in `ridebot/jobs/` (or a new file there).
 2. Add a new `@log_job`-decorated async function.
-3. Register it in `bot/cogs/job_scheduler.py` with an `AsyncIOScheduler.add_job()` call.
-4. If it should be feature-flagged, add a new entry to `FeatureFlagNames` in `bot/core/enums.py` and decorate the function with `@feature_flag_enabled(FeatureFlagNames.YOUR_FLAG)`.
+3. Register it in `ridebot/cogs/job_scheduler.py` with an `AsyncIOScheduler.add_job()` call.
+4. If it should be feature-flagged, add a new entry to `FeatureFlagNames` in `shared/core/enums.py` and decorate the function with `@feature_flag_enabled(FeatureFlagNames.YOUR_FLAG)`.
 
-To disable a job without deleting it, move its file to `bot/jobs_disabled/`.
+To disable a job without deleting it, move its file to `ridebot/jobs_disabled/`.

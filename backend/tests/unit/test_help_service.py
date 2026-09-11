@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 
-from bot.services.help_service import HelpService
+from shared.services.help_service import HelpService
 
 
 def test_help_embed_structure(fake_bot):

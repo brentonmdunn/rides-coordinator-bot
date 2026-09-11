@@ -1,0 +1,266 @@
+"""
+Database models.
+
+This module defines the SQLAlchemy models for the application's database tables.
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+
+from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column
+
+from shared.core.base import Base
+from shared.core.enums import AccountRoles, AskRidesMessageType, AskRidesScheduleSlot, JobName
+
+
+class DiscordUsers(Base):
+    """Model representing a Discord user in the system."""
+
+    __tablename__ = "discord_usernames"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    discord_username: Mapped[str]
+    first_name: Mapped[str]
+    last_name: Mapped[str]
+
+
+class FeatureFlags(Base):
+    """Model representing a feature flag."""
+
+    __tablename__ = "feature_flags"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    feature: Mapped[str] = mapped_column(unique=True)
+    enabled: Mapped[bool] = mapped_column(default=False)
+
+
+class Locations(Base):
+    """Model representing a user's location and ride preferences."""
+
+    __tablename__ = "locations"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    name: Mapped[str]
+    discord_username: Mapped[str | None]
+    year: Mapped[str | None]
+    location: Mapped[str | None]
+    driver: Mapped[str | None]
+
+
+class EventThreads(Base):
+    """Model representing a thread associated with an event."""
+
+    __tablename__ = "event_threads"
+
+    message_id: Mapped[str] = mapped_column(primary_key=True)
+
+
+class NonDiscordRides(Base):
+    """Model representing a ride request from a non-Discord user."""
+
+    __tablename__ = "non_discord_rides"
+
+    name: Mapped[str] = mapped_column(primary_key=True)
+    date: Mapped[date] = mapped_column(primary_key=True)  # ty: ignore[invalid-type-form]
+    location: Mapped[str | None]
+    emoji: Mapped[str | None]
+
+
+class RideCoverage(Base):
+    """Model representing a ride coverage entry."""
+
+    __tablename__ = "ride_coverage"
+
+    discord_username: Mapped[str] = mapped_column(primary_key=True)
+    message_id: Mapped[str] = mapped_column(primary_key=True)
+    datetime_detected: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class MessageSchedulePause(Base):
+    """
+    Model representing a pause/delay for a scheduled ask-rides job.
+
+    Each job (friday, sunday, sunday_class) can be independently paused
+    either indefinitely or until a specific event date.
+    """
+
+    __tablename__ = "message_schedule_pauses"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    # values_callable stores StrEnum .value (lowercase string) instead of the default .name
+    # (uppercase), matching what was written when role was a plain String column.
+    job_name: Mapped[JobName] = mapped_column(
+        SQLEnum(JobName, values_callable=lambda obj: [e.value for e in obj]), unique=True
+    )
+    is_paused: Mapped[bool] = mapped_column(default=False)
+    resume_after_date: Mapped[date | None]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class UserAccount(Base):
+    """Model representing a user account with role-based access."""
+
+    __tablename__ = "user_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str | None] = mapped_column(unique=True, index=True)
+    # values_callable stores StrEnum .value (lowercase string) instead of the default .name
+    # (uppercase), matching what was written when role was a plain String column.
+    role: Mapped[AccountRoles] = mapped_column(
+        SQLEnum(AccountRoles, values_callable=lambda obj: [e.value for e in obj]),
+        default=AccountRoles.VIEWER,
+    )
+    role_edited_by: Mapped[str | None]
+    discord_user_id: Mapped[str | None] = mapped_column(unique=True, index=True)
+    discord_username: Mapped[str | None]
+    invited_by: Mapped[str | None]
+    invited_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class AuthSession(Base):
+    """Model representing a server-side auth session."""
+
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id_hash: Mapped[str] = mapped_column(unique=True, index=True)
+    email: Mapped[str] = mapped_column(index=True)
+    csrf_token: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_activity_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(index=True)
+
+
+class UserPreferences(Base):
+    """
+    Model representing per-user UI/app preferences.
+
+    Keyed by email (matching user_accounts.email).
+    New preference columns can be added here without touching user_accounts.
+    """
+
+    __tablename__ = "user_preferences"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    show_map_labels: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class GlobalSetting(Base):
+    """Key-value store for app-wide settings shared across all users."""
+
+    __tablename__ = "global_settings"
+
+    key: Mapped[str] = mapped_column(primary_key=True)
+    value: Mapped[str]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class AskRidesMessageTemplate(Base):
+    """Model representing a customized ask-rides message template (title/body/color)."""
+
+    __tablename__ = "ask_rides_message_templates"
+
+    # values_callable stores StrEnum .value (lowercase string) instead of the default .name
+    # (uppercase), matching what was written when role was a plain String column.
+    message_type: Mapped[AskRidesMessageType] = mapped_column(
+        SQLEnum(AskRidesMessageType, values_callable=lambda obj: [e.value for e in obj]),
+        primary_key=True,
+    )
+    title: Mapped[str]
+    body: Mapped[str]
+    color: Mapped[str]
+    # JSON-encoded list of emoji strings; NULL means "use the default reactions".
+    reactions: Mapped[str | None]
+    updated_by: Mapped[str]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class AskRidesSchedule(Base):
+    """Model representing a customized send day/time for an ask-rides schedule slot."""
+
+    __tablename__ = "ask_rides_schedules"
+
+    slot: Mapped[AskRidesScheduleSlot] = mapped_column(
+        SQLEnum(AskRidesScheduleSlot, values_callable=lambda obj: [e.value for e in obj]),
+        primary_key=True,
+    )
+    day_of_week: Mapped[int]  # 0=Monday .. 6=Sunday, matches DaysOfWeekNumber
+    hour: Mapped[int]
+    minute: Mapped[int]
+    updated_by: Mapped[str]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class PickupLocation(Base):
+    """Model representing a ride pickup location with GPS coordinates."""
+
+    __tablename__ = "pickup_locations"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(unique=True)
+    latitude: Mapped[float]
+    longitude: Mapped[float]
+    # Travel minutes between the trip origin/destination ("START"/"END" virtual
+    # nodes in the routing graph) and this location. NULL = not directly connected.
+    minutes_from_start: Mapped[int | None]
+    minutes_to_end: Mapped[int | None]
+    is_active: Mapped[bool] = mapped_column(default=True)
+    is_seeded: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class PickupLocationEdge(Base):
+    """
+    Model representing an undirected travel-time edge between two pickup locations.
+
+    Rows are stored with location_a_id < location_b_id (normalized in the service).
+    """
+
+    __tablename__ = "pickup_location_edges"
+    __table_args__ = (
+        UniqueConstraint("location_a_id", "location_b_id"),
+        CheckConstraint("minutes > 0"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    location_a_id: Mapped[int] = mapped_column(
+        ForeignKey("pickup_locations.id", ondelete="CASCADE")
+    )
+    location_b_id: Mapped[int] = mapped_column(
+        ForeignKey("pickup_locations.id", ondelete="CASCADE")
+    )
+    minutes: Mapped[int]
+
+
+class LivingLocationPickup(Base):
+    """Model mapping a campus living location (enum value) to its pickup location."""
+
+    __tablename__ = "living_location_pickups"
+
+    living_location: Mapped[str] = mapped_column(primary_key=True)
+    pickup_location_id: Mapped[int] = mapped_column(ForeignKey("pickup_locations.id"))
+
+
+class RideReactionEvent(Base):
+    """Model representing a single reaction or unreaction on an ask-rides announcement message."""
+
+    __tablename__ = "ride_reaction_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    message_id: Mapped[str] = mapped_column(index=True)
+    discord_username: Mapped[str]
+    display_name: Mapped[str | None]
+    emoji: Mapped[str]
+    action: Mapped[str]  # "add" or "remove"
+    occurred_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
+    ride_date: Mapped[date | None]
+    ride_type: Mapped[str | None]  # "friday", "sunday", "sunday_class", "wednesday"

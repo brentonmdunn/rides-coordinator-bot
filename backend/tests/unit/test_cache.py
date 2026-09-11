@@ -5,21 +5,21 @@ from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
-from bot.core.enums import AskRidesMessage, CacheNamespace
-from bot.utils.cache import (
+from ridebot.utils.cache import (
     alru_cache,
     invalidate_all_namespaces,
     invalidate_namespace,
     warm_ask_drivers_reactions_cache,
     warm_ask_rides_reactions_cache,
 )
-from bot.utils.cache_backends import InMemoryBackend, set_backend
+from shared.core.enums import AskRidesMessage, CacheNamespace
+from shared.utils.cache_backends import InMemoryBackend, set_backend
 
 
 @pytest.fixture(autouse=True)
 def _fresh_backend():
     """Install a fresh InMemoryBackend before each test so tests don't leak state."""
-    from bot.utils.cache import _func_registry, _namespace_registry
+    from ridebot.utils.cache import _func_registry, _namespace_registry
 
     _namespace_registry.clear()
     _func_registry.clear()
@@ -131,7 +131,7 @@ async def test_invalidate_all_namespaces():
     await invalidate_all_namespaces()
 
     # All should be cleared — verify via backend
-    from bot.utils.cache_backends import get_backend
+    from shared.utils.cache_backends import get_backend
 
     backend = get_backend()
     hit_a, _ = await backend.get(str(CacheNamespace.ASK_RIDES_MESSAGE_ID), "anything")
@@ -202,8 +202,10 @@ async def test_warm_ask_rides_reactions_cache():
     bot = AsyncMock()
 
     with (
-        patch("bot.services.locations_service.LocationsService") as mock_locations_service,
-        patch("bot.utils.cache.invalidate_namespace", new_callable=AsyncMock) as mock_invalidate,
+        patch("ridebot.services.locations_service.LocationsService") as mock_locations_service,
+        patch(
+            "ridebot.utils.cache.invalidate_namespace", new_callable=AsyncMock
+        ) as mock_invalidate,
     ):
         svc_instance = AsyncMock()
         mock_locations_service.return_value = svc_instance
@@ -223,8 +225,10 @@ async def test_warm_ask_drivers_reactions_cache():
     bot = AsyncMock()
 
     with (
-        patch("bot.services.locations_service.LocationsService") as mock_locations_service,
-        patch("bot.utils.cache.invalidate_namespace", new_callable=AsyncMock) as mock_invalidate,
+        patch("ridebot.services.locations_service.LocationsService") as mock_locations_service,
+        patch(
+            "ridebot.utils.cache.invalidate_namespace", new_callable=AsyncMock
+        ) as mock_invalidate,
     ):
         svc_instance = AsyncMock()
         mock_locations_service.return_value = svc_instance
@@ -246,7 +250,7 @@ async def test_warm_ask_drivers_reactions_cache_specific():
     """warm_ask_drivers_reactions_cache with event should selectively drop and warm."""
     bot = AsyncMock()
 
-    with patch("bot.services.locations_service.LocationsService") as mock_locations_service:
+    with patch("ridebot.services.locations_service.LocationsService") as mock_locations_service:
         svc_instance = AsyncMock()
         svc_instance.get_driver_reactions.cache_invalidate = AsyncMock()
         mock_locations_service.return_value = svc_instance

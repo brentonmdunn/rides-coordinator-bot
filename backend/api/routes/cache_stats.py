@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, Depends
 
 from api.auth import require_admin
-from bot.utils.cache import invalidate_all_namespaces
+from ridebot.utils.cache import invalidate_all_namespaces
 
 logger = logging.getLogger(__name__)
 

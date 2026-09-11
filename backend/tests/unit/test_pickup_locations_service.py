@@ -8,9 +8,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from bot.core.base import Base
-from bot.core.models import GlobalSetting, LivingLocationPickup, PickupLocation
-from bot.services.pickup_locations_service import PickupLocationsService
+from ridebot.services.pickup_locations_service import PickupLocationsService
+from shared.core.base import Base
+from shared.core.models import GlobalSetting, LivingLocationPickup, PickupLocation
 
 
 @pytest_asyncio.fixture
@@ -21,7 +21,7 @@ async def session_local():
         await conn.run_sync(Base.metadata.create_all)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     PickupLocationsService.invalidate_cache()
-    with patch("bot.services.pickup_locations_service.AsyncSessionLocal", factory):
+    with patch("ridebot.services.pickup_locations_service.AsyncSessionLocal", factory):
         yield factory
     PickupLocationsService.invalidate_cache()
     await engine.dispose()

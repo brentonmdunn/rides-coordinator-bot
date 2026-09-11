@@ -10,9 +10,9 @@ import os
 from fastapi import APIRouter
 from sqlalchemy import text
 
-from bot.core.bot_instance import get_bot
-from bot.core.database import AsyncSessionLocal
-from bot.core.lifecycle import get_failed_extensions
+from shared.core.bot_instance import get_bot
+from shared.core.database import AsyncSessionLocal
+from shared.core.lifecycle import get_failed_extensions
 
 logger = logging.getLogger(__name__)
 

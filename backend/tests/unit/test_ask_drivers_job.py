@@ -1,10 +1,10 @@
-"""Smoke unit tests for bot.jobs.ask_drivers — Wednesday driver message."""
+"""Smoke unit tests for ridebot.jobs.ask_drivers — Wednesday driver message."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import Emoji, FeatureFlagNames, FellowshipSeason, JobName
+from shared.core.enums import Emoji, FeatureFlagNames, FellowshipSeason, JobName
 
 
 def _patch_season(module: str, season: FellowshipSeason):
@@ -36,21 +36,21 @@ class TestRunAskDriversWedPaused:
 
         with (
             patch(
-                "bot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
+                "ridebot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "bot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
+                "ridebot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
                 new=AsyncMock(return_value=0),
             ),
-            patch("bot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
-            patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
-            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
+            patch("ridebot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
+            patch("ridebot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
+            _patch_season("ridebot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            from bot.jobs.ask_drivers import run_ask_drivers_wed
+            from ridebot.jobs.ask_drivers import run_ask_drivers_wed
 
             await run_ask_drivers_wed.__wrapped__(bot)
 
@@ -64,29 +64,29 @@ class TestRunAskDriversWedSends:
     async def test_sends_when_not_paused(self):
         bot = MagicMock()
 
-        from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+        from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
         with (
             patch(
-                "bot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
+                "ridebot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=False),
             ),
             patch(
-                "bot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
+                "ridebot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
                 new=AsyncMock(return_value=0),
             ),
-            patch("bot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
-            patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
+            patch("ridebot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
+            patch("ridebot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
             patch.dict(
                 FeatureFlagsRepository._cache,
                 {FeatureFlagNames.ASK_WEDNESDAY_DRIVERS_JOB: True},
             ),
-            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
+            _patch_season("ridebot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            from bot.jobs.ask_drivers import run_ask_drivers_wed
+            from ridebot.jobs.ask_drivers import run_ask_drivers_wed
 
             await run_ask_drivers_wed.__wrapped__(bot)
 
@@ -107,29 +107,29 @@ class TestRunAskDriversWedSends:
         """Wednesday fellowship uses the same 5-emoji set as Friday, not Sunday's 7."""
         bot = MagicMock()
 
-        from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+        from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
         with (
             patch(
-                "bot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
+                "ridebot.jobs.ask_drivers.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=False),
             ),
             patch(
-                "bot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
+                "ridebot.jobs.ask_drivers.AskRidesScheduleService.get_send_day_for_job",
                 new=AsyncMock(return_value=0),
             ),
-            patch("bot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
-            patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
+            patch("ridebot.jobs.ask_drivers.AsyncSessionLocal") as mock_session_ctx,
+            patch("ridebot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
             patch.dict(
                 FeatureFlagsRepository._cache,
                 {FeatureFlagNames.ASK_WEDNESDAY_DRIVERS_JOB: True},
             ),
-            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
+            _patch_season("ridebot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            from bot.jobs.ask_drivers import run_ask_drivers_wed
+            from ridebot.jobs.ask_drivers import run_ask_drivers_wed
 
             await run_ask_drivers_wed.__wrapped__(bot)
 
@@ -152,29 +152,30 @@ class TestRunAskRidesWedCallsDriverJob:
 
         with (
             patch(
-                "bot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
+                "ridebot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=False),
             ),
             patch(
-                "bot.jobs.ask_rides.AskRidesScheduleService.get_send_day_for_job",
+                "ridebot.jobs.ask_rides.AskRidesScheduleService.get_send_day_for_job",
                 new=AsyncMock(return_value=0),
             ),
-            patch("bot.jobs.ask_rides.AsyncSessionLocal") as mock_session_ctx,
+            patch("ridebot.jobs.ask_rides.AsyncSessionLocal") as mock_session_ctx,
             patch(
-                "bot.jobs.ask_rides._ask_rides_template", new=AsyncMock(return_value=fake_message)
+                "ridebot.jobs.ask_rides._ask_rides_template",
+                new=AsyncMock(return_value=fake_message),
             ),
-            patch("bot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
-            _patch_season("bot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
+            patch("ridebot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
+            _patch_season("ridebot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
             import discord
 
-            with patch("bot.jobs.ask_rides.discord.TextChannel", discord.TextChannel):
+            with patch("ridebot.jobs.ask_rides.discord.TextChannel", discord.TextChannel):
                 fake_channel.__class__ = discord.TextChannel
 
-                from bot.jobs.ask_rides import run_ask_rides_wed
+                from ridebot.jobs.ask_rides import run_ask_rides_wed
 
                 await run_ask_rides_wed.__wrapped__(bot)
 
@@ -186,21 +187,21 @@ class TestRunAskRidesWedCallsDriverJob:
 
         with (
             patch(
-                "bot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
+                "ridebot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=True),
             ),
             patch(
-                "bot.jobs.ask_rides.AskRidesScheduleService.get_send_day_for_job",
+                "ridebot.jobs.ask_rides.AskRidesScheduleService.get_send_day_for_job",
                 new=AsyncMock(return_value=0),
             ),
-            patch("bot.jobs.ask_rides.AsyncSessionLocal") as mock_session_ctx,
-            patch("bot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
-            _patch_season("bot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
+            patch("ridebot.jobs.ask_rides.AsyncSessionLocal") as mock_session_ctx,
+            patch("ridebot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
+            _patch_season("ridebot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            from bot.jobs.ask_rides import run_ask_rides_wed
+            from ridebot.jobs.ask_rides import run_ask_rides_wed
 
             await run_ask_rides_wed.__wrapped__(bot)
 

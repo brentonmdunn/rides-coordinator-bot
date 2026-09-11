@@ -1,7 +1,7 @@
 """Unit tests for DriverService."""
 
-from bot.core.enums import DaysOfWeek, Emoji, RoleIds
-from bot.services.driver_service import DriverService
+from ridebot.services.driver_service import DriverService
+from shared.core.enums import DaysOfWeek, Emoji, RoleIds
 
 
 class TestGetEmojis:

@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from api.auth import require_ride_coordinator
-from bot.core.bot_instance import get_bot
-from bot.core.enums import RoleIds
-from bot.services.role_management_service import RoleManagementService
-from bot.utils.constants import GUILD_ID
+from ridebot.services.role_management_service import RoleManagementService
+from ridebot.utils.constants import GUILD_ID
+from shared.core.bot_instance import get_bot
+from shared.core.enums import RoleIds
 
 logger = logging.getLogger(__name__)
 

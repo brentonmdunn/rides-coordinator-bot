@@ -1,4 +1,4 @@
-"""Unit tests for bot.services.reaction_logging_service."""
+"""Unit tests for ridebot.services.reaction_logging_service."""
 
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock
@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
-from bot.core.enums import ReactionAction
-from bot.services.reaction_logging_service import ReactionLoggingService
+from ridebot.services.reaction_logging_service import ReactionLoggingService
+from shared.core.enums import ReactionAction
 
 
 def _make_user(name="testuser"):

@@ -4,7 +4,7 @@ This document outlines how Role-Based Access Control is enforced across the back
 
 ## Roles
 
-The system has three established roles in the database (defined in `bot/core/enums.py -> AccountRoles`):
+The system has three established roles in the database (defined in `shared/core/enums.py -> AccountRoles`):
 1. **Admin** (`admin`): Full access to everything, including user management and global feature flags.
 2. **Ride Coordinator** (`ride_coordinator`): Can trigger manual sends and pause/resume automated scheduled jobs.
 3. **Viewer** (`viewer`): Default role on first login. Can view all data on the dashboard (read-only).

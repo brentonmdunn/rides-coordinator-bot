@@ -2,7 +2,7 @@
 
 The backend uses SQLite via SQLAlchemy (async) with Alembic for migrations. The database file lives at `backend/db/rides.db`.
 
-Models are defined in `backend/bot/core/models.py`. All migrations are in `backend/alembic/versions/`.
+Models are defined in `backend/shared/core/models.py`. All migrations are in `backend/alembic/versions/`.
 
 ---
 
@@ -99,7 +99,7 @@ Feature toggles for bot behavior and scheduled jobs.
 | `feature` | str (unique) | Flag name, e.g. `bot`, `ask_friday_rides_job` |
 | `enabled` | bool | |
 
-See `FeatureFlagNames` enum in `bot/core/enums.py` for all valid flag names, and [feature-flags.md](feature-flags.md) for descriptions.
+See `FeatureFlagNames` enum in `shared/core/enums.py` for all valid flag names, and [feature-flags.md](feature-flags.md) for descriptions.
 
 ---
 

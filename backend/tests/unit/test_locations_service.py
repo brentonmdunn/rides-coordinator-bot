@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import JobName, RideOption
-from bot.services.locations_service import LocationsService
-from bot.utils.custom_exceptions import NoMatchingMessageFoundError
+from ridebot.services.locations_service import LocationsService
+from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError
+from shared.core.enums import JobName, RideOption
 
 
 @pytest.mark.asyncio
@@ -45,11 +45,11 @@ async def test_sync_locations(monkeypatch):
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.get = AsyncMock(return_value=mock_response)
     monkeypatch.setattr("httpx.AsyncClient", MagicMock(return_value=mock_client))
-    monkeypatch.setattr("bot.services.csv_sync_service.LSCC_PPL_CSV_URL", "http://example.com")
+    monkeypatch.setattr("ridebot.services.csv_sync_service.LSCC_PPL_CSV_URL", "http://example.com")
 
     mock_sync = AsyncMock()
     monkeypatch.setattr(
-        "bot.services.csv_sync_service.LocationsRepository.sync_locations", mock_sync
+        "ridebot.services.csv_sync_service.LocationsRepository.sync_locations", mock_sync
     )
 
     mock_session = AsyncMock()
@@ -57,7 +57,7 @@ async def test_sync_locations(monkeypatch):
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
     monkeypatch.setattr(
-        "bot.services.csv_sync_service.AsyncSessionLocal",
+        "ridebot.services.csv_sync_service.AsyncSessionLocal",
         MagicMock(return_value=mock_session_cm),
     )
 
@@ -156,9 +156,9 @@ async def test_get_location_returns_cached_results():
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
         patch(
-            "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
+            "ridebot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
             new_callable=AsyncMock,
             return_value=[("Alice", "Revelle")],
         ),
@@ -190,9 +190,9 @@ async def test_get_location_triggers_sync_on_cache_miss():
     svc.sync_locations = AsyncMock()
 
     with (
-        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
         patch(
-            "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
+            "ridebot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
             side_effect=fake_lookup,
         ),
     ):
@@ -215,9 +215,9 @@ async def test_get_location_returns_none_after_sync_miss():
     svc.sync_locations = AsyncMock()
 
     with (
-        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
         patch(
-            "bot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
+            "ridebot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
             new_callable=AsyncMock,
             return_value=[],
         ),
@@ -237,9 +237,9 @@ async def test_get_location_discord_only_uses_discord_check():
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
         patch(
-            "bot.services.locations_service.LocationsRepository.get_location_check_discord",
+            "ridebot.services.locations_service.LocationsRepository.get_location_check_discord",
             new_callable=AsyncMock,
             return_value=[("Alice", "Revelle")],
         ) as mock_discord_check,
@@ -262,9 +262,9 @@ async def test_get_name_location_no_sync_delegates_to_repo():
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
         patch(
-            "bot.services.locations_service.LocationsRepository.get_name_location",
+            "ridebot.services.locations_service.LocationsRepository.get_name_location",
             new_callable=AsyncMock,
             return_value=fake_person,
         ),
@@ -311,7 +311,7 @@ async def test_list_locations_wrapper_handles_unexpected_error():
     interaction = AsyncMock()
     svc.list_locations = AsyncMock(side_effect=RuntimeError("boom"))
 
-    with patch("bot.services.locations_service.send_error_to_discord", new_callable=AsyncMock):
+    with patch("ridebot.services.locations_service.send_error_to_discord", new_callable=AsyncMock):
         await svc.list_locations_wrapper(interaction)
 
     call_kwargs = interaction.response.send_message.call_args[1]
@@ -347,9 +347,9 @@ async def test_list_locations_no_day_uses_message_id():
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("bot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
         patch(
-            "bot.services.locations_service.LocationsRepository.get_non_discord_pickups",
+            "ridebot.services.locations_service.LocationsRepository.get_non_discord_pickups",
             new_callable=AsyncMock,
             return_value=[],
         ),

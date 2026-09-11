@@ -8,7 +8,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from bot.services.locations_service import LocationsService
+from ridebot.services.locations_service import LocationsService
 
 logger = logging.getLogger(__name__)
 

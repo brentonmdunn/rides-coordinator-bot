@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.repositories.auth_sessions_repository import AuthSessionsRepository
+from shared.repositories.auth_sessions_repository import AuthSessionsRepository
 
 
 def _make_session(scalars_first=None, rowcount=0):

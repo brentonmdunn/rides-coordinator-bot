@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from bot.cogs.admin import Admin
+from ridebot.cogs.admin import Admin
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ async def test_give_role_success(admin_cog):
     role.mention = "@Role"
 
     with patch(
-        "bot.cogs.admin.AdminService.assign_roles_from_csv",
+        "ridebot.cogs.admin.AdminService.assign_roles_from_csv",
         new_callable=AsyncMock,
         return_value=(2, []),
     ):
@@ -57,7 +57,7 @@ async def test_give_role_with_failures(admin_cog):
     role.mention = "@Role"
 
     with patch(
-        "bot.cogs.admin.AdminService.assign_roles_from_csv",
+        "ridebot.cogs.admin.AdminService.assign_roles_from_csv",
         new_callable=AsyncMock,
         return_value=(1, ["charlie"]),
     ):
@@ -76,11 +76,11 @@ async def test_give_role_unexpected_error(admin_cog):
 
     with (
         patch(
-            "bot.cogs.admin.AdminService.assign_roles_from_csv",
+            "ridebot.cogs.admin.AdminService.assign_roles_from_csv",
             new_callable=AsyncMock,
             side_effect=RuntimeError("boom"),
         ),
-        patch("bot.cogs.admin.send_error_to_discord", new_callable=AsyncMock),
+        patch("ridebot.cogs.admin.send_error_to_discord", new_callable=AsyncMock),
     ):
         await admin_cog.give_role.callback(admin_cog, interaction, role, "alice")
 
@@ -94,7 +94,7 @@ async def test_add_to_channel_success(admin_cog):
     interaction = _make_interaction("add-to-channel")
 
     with patch(
-        "bot.cogs.admin.AdminService.add_users_to_channel",
+        "ridebot.cogs.admin.AdminService.add_users_to_channel",
         new_callable=AsyncMock,
         return_value=(1, []),
     ):
@@ -111,11 +111,11 @@ async def test_add_to_channel_unexpected_error(admin_cog):
 
     with (
         patch(
-            "bot.cogs.admin.AdminService.add_users_to_channel",
+            "ridebot.cogs.admin.AdminService.add_users_to_channel",
             new_callable=AsyncMock,
             side_effect=RuntimeError("boom"),
         ),
-        patch("bot.cogs.admin.send_error_to_discord", new_callable=AsyncMock),
+        patch("ridebot.cogs.admin.send_error_to_discord", new_callable=AsyncMock),
     ):
         await admin_cog.add_to_channel.callback(admin_cog, interaction, "alice")
 

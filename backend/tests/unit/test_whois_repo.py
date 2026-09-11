@@ -4,11 +4,11 @@ import pytest
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import Locations as LocationsModel
-from bot.repositories.whois_repository import WhoisRepository
+from ridebot.repositories.whois_repository import WhoisRepository
+from shared.core.models import Locations as LocationsModel
 
 
-@patch("bot.repositories.whois_repository.select")
+@patch("ridebot.repositories.whois_repository.select")
 @pytest.mark.asyncio
 async def test_fetch_data_by_name_found(mock_select):  # Renamed to mock_select
     """Tests the repository returns data when matches are found."""
@@ -50,7 +50,7 @@ async def test_fetch_data_by_name_found(mock_select):  # Renamed to mock_select
 
 
 # --- Test Case 2 ---
-@patch("bot.repositories.whois_repository.select")
+@patch("ridebot.repositories.whois_repository.select")
 @pytest.mark.asyncio
 async def test_fetch_data_by_name_not_found(mock_select):  # Renamed to mock_select
     """Tests the repository returns an empty list when no matches are found."""

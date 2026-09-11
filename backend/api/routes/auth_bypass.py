@@ -14,9 +14,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from api.constants import BYPASS_SESSION_TTL, CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from bot.core.database import AsyncSessionLocal
-from bot.repositories.user_accounts_repository import UserAccountsRepository
-from bot.services.auth_service import AuthService
+from shared.core.database import AsyncSessionLocal
+from shared.repositories.user_accounts_repository import UserAccountsRepository
+from shared.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 

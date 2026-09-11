@@ -1,6 +1,6 @@
 import pytest
 
-from bot.utils.parsing import column_letter_to_index
+from ridebot.utils.parsing import column_letter_to_index
 
 
 @pytest.mark.parametrize(

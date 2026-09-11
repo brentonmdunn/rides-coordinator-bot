@@ -20,9 +20,9 @@ from api.constants import (
     INTERNAL_API_SECRET,
     INTERNAL_SECRET_HEADER,
 )
-from bot.core.enums import AccountRoles
-from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
-from bot.services.user_accounts_service import UserAccountsService
+from shared.core.enums import AccountRoles
+from shared.core.logger import generate_txn_id, txn_id_var, user_email_var
+from shared.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
 
