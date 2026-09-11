@@ -96,7 +96,7 @@ ask-rides message text and ask-rides send time.
   reaction cache windows, message history limit) and agent knobs in
   `backend/ridebot/cogs/agent.py:20-23`. Operator tuning, not coordinator-facing;
   env vars at most.
-- **Guild ID, category IDs** — `backend/shared/utils/constants.py:5`. Deployment config;
+- **Guild ID, category IDs** — `backend/ridebot/utils/constants.py:7`. Deployment config;
   belongs in env, not a UI.
 - **Message-detection keywords** — "drive:" (`ride_coverage_service.py:143`),
   "sunday service" / "friday night fellowship" (`ask_rides.py:453-454, 565-570`,
