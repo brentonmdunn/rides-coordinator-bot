@@ -124,7 +124,8 @@ await warm_ask_drivers_message_cache(bot, event)
 | `run_ask_rides_all()` sends new messages | `warm_ask_rides_message_cache()` | `ASK_RIDES_STATUS`, `ASK_RIDES_MESSAGE_ID` | ✅ All `AskRidesMessage` types |
 | `/ask-drivers` command sends a message | `warm_ask_drivers_message_cache()` | `ASK_DRIVERS_MESSAGE_ID` | ✅ The relevant day |
 | Any User reacts/un-reacts | `_check_if_ask_message()` | `ASK_RIDES_REACTIONS` or `ASK_DRIVERS_REACTIONS` | ✅ Updates instantly |
-| 20-min Cron | `run_periodic_cache_warming()` | `ASK_RIDES_REACTIONS` + `ASK_DRIVERS_REACTIONS` | ✅ Refreshes out-of-band Sheet edits |
+| 20-min Cron | `run_periodic_cache_warming()` | `ASK_RIDES_REACTIONS` + `ASK_DRIVERS_REACTIONS` | ✅ Periodic refresh |
+| Roster write (`RosterService` — website or Discord registration) | `invalidate_namespace()` | `ASK_RIDES_REACTIONS` + `ASK_DRIVERS_REACTIONS` | Next read re-fetches |
 
 **Cache warming** re-populates the cache immediately after invalidation so the next request is served from cache rather than hitting the Discord API. This combination of **Reaction-driven Invalidations** and **Cron-driven Periodics** means cache TTLs can be remarkably long (up to 45+ mins) completely safely without locking the data.
 
