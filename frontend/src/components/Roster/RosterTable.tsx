@@ -24,6 +24,7 @@ interface RosterTableProps {
     onEdit: (person: RosterPerson) => void
     onDelete: (person: RosterPerson) => void
     onBulkDelete: (ids: number[]) => void
+    onDeleteAll: () => void
     onAdd: () => void
 }
 
@@ -84,6 +85,7 @@ export function RosterTable({
     onEdit,
     onDelete,
     onBulkDelete,
+    onDeleteAll,
     onAdd,
 }: RosterTableProps) {
     const [search, setSearch] = useState('')
@@ -166,9 +168,17 @@ export function RosterTable({
             icon={<Users className="h-4 w-4" />}
             title="Roster"
             actions={
-                <Button size="sm" onClick={onAdd}>
-                    Add person
-                </Button>
+                <div className="flex items-center gap-2">
+                    {people.length > 0 && (
+                        <Button size="sm" variant="destructive" onClick={onDeleteAll}>
+                            <Trash2 className="h-4 w-4" />
+                            Delete all
+                        </Button>
+                    )}
+                    <Button size="sm" onClick={onAdd}>
+                        Add person
+                    </Button>
+                </div>
             }
         >
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">

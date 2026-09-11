@@ -30,7 +30,11 @@ const options: RosterOptions = {
     locations: ['Pepper Canyon West', 'Muir'],
 }
 
-function renderTable(people: RosterPerson[], opts: RosterOptions | undefined = options) {
+function renderTable(
+    people: RosterPerson[],
+    opts: RosterOptions | undefined = options,
+    overrides: { onDeleteAll?: () => void } = {}
+) {
     return render(
         <RosterTable
             people={people}
@@ -39,6 +43,7 @@ function renderTable(people: RosterPerson[], opts: RosterOptions | undefined = o
             onEdit={vi.fn()}
             onDelete={vi.fn()}
             onBulkDelete={vi.fn()}
+            onDeleteAll={overrides.onDeleteAll ?? vi.fn()}
             onAdd={vi.fn()}
         />
     )
@@ -94,6 +99,21 @@ describe('RosterTable', () => {
 
         const janeRow = screen.getByText('Jane Doe').closest('tr')
         expect(janeRow?.textContent).not.toContain('Needs fix')
+    })
+
+    it('calls onDeleteAll when the delete all button is clicked', async () => {
+        const onDeleteAll = vi.fn()
+        const user = userEvent.setup()
+        renderTable([person()], options, { onDeleteAll })
+
+        await user.click(screen.getByRole('button', { name: /delete all/i }))
+        expect(onDeleteAll).toHaveBeenCalledTimes(1)
+    })
+
+    it('hides the delete all button when the roster is empty', () => {
+        renderTable([])
+
+        expect(screen.queryByRole('button', { name: /delete all/i })).toBeNull()
     })
 
     it('does not flag an off-campus location', () => {

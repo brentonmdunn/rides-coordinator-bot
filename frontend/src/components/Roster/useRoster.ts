@@ -18,6 +18,9 @@ export const ROSTER_OPTIONS_QUERY_KEY = ['roster', 'options']
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
+/** `POST /api/roster/bulk-delete` accepts at most 500 ids per request. */
+const BULK_DELETE_CHUNK = 500
+
 function showMutationError(error: unknown) {
     toast.error(error instanceof ApiError ? error.detail : 'Request failed')
 }
@@ -107,6 +110,28 @@ export function useRoster() {
         onError: showMutationError,
     })
 
+    // Deleting everyone can exceed the per-request id cap, so send it in chunks.
+    const deleteAllPeople = useMutation({
+        mutationFn: async (ids: number[]) => {
+            let deleted = 0
+            for (let i = 0; i < ids.length; i += BULK_DELETE_CHUNK) {
+                const response = await apiFetch('/api/roster/bulk-delete', {
+                    method: 'POST',
+                    headers: JSON_HEADERS,
+                    body: JSON.stringify({ ids: ids.slice(i, i + BULK_DELETE_CHUNK) }),
+                })
+                const body = (await response.json()) as { deleted: number }
+                deleted += body.deleted
+            }
+            return { deleted }
+        },
+        onSuccess: ({ deleted }) => {
+            invalidate()
+            toast.success(`Deleted ${deleted} ${deleted === 1 ? 'person' : 'people'}`)
+        },
+        onError: showMutationError,
+    })
+
     return {
         query,
         optionsQuery,
@@ -114,6 +139,7 @@ export function useRoster() {
         updatePerson,
         deletePerson,
         bulkDeletePeople,
+        deleteAllPeople,
     }
 }
 
