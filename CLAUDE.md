@@ -63,10 +63,38 @@ npx tsc --noEmit     # Type check only
 
 ### Entry points & lifecycle
 
-- `backend/main.py` — bot-only entry point: builds the bot, auto-loads cogs, starts scheduled jobs.
-- `backend/run_api.py` — runs `uvicorn api.app:app`; the bot is started/stopped via `bot_lifespan()` in `shared/core/lifespan.py` inside FastAPI's lifespan, so **bot and API share one process**. The bot instance is globally accessible via `shared.core.bot_instance.get_bot()`.
-- Cog auto-loading lives in `shared/core/lifecycle.py` (`load_extensions()`); `job_scheduler.py` loads first, failures are tracked in `_failed_extensions` and exposed by `/health`.
+The process runs **N Discord bots** (separate Discord applications/tokens) in one event loop, alongside the FastAPI web API.
+
+- `backend/main.py` — bot-only entry point: `resolve_enabled_bots()`, `startup()` once, then `run_bot(spec, token)` for every enabled bot concurrently via `asyncio.gather`.
+- `backend/run_api.py` — runs `uvicorn api.app:app`; bots are started/stopped via `bot_lifespan()` in `shared/core/lifespan.py` inside FastAPI's lifespan, so **bots and API share one process**. Bot instances are globally accessible via `shared.core.bot_instance.get_bot(name)`.
+- Cog auto-loading lives in `shared/core/lifecycle.py` (`load_extensions(bot, spec)`), discovering modules via `pkgutil` over `spec.cog_packages`; `spec.priority_extensions` stems load first (alphabetical after that), and `spec.testing_cog_package` loads last, only when `APP_ENV=local`. Failures are tracked per bot in `_failed_extensions` (`get_failed_extensions() -> dict[BotName, set[str]]`) and exposed by `/health`.
 - Startup also seeds feature flags (from `FeatureFlagNames`) and admin accounts (from `ADMIN_EMAILS`).
+
+### Multi-bot registry (`shared/core/bots.py`)
+
+- `BotSpec` is the static config for one bot: `name` (`BotName`), `token_env`, `cog_packages`, `intents`, `kill_switch_flag`, plus optional `priority_extensions` and `testing_cog_package`.
+- `BOT_REGISTRY: tuple[BotSpec, ...]` lists every bot this process can run; its order is also the error-reporting fallback priority (see below). `get_spec(name)` looks one up (`KeyError` if unregistered); `bot_package_names()` returns the top-level packages of every registered bot's `cog_packages` (used by the import-boundary test).
+- `resolve_enabled_bots() -> list[EnabledBot]` reads each bot's token env var **at call time** (a blank value counts as missing) and decides which bots start this run — see the token behavior table below. It's called once, right after the `DISABLE_DISCORD_BOT` check and before `startup()`, so a misconfigured deploy fails fast without touching the DB.
+- **`get_bot(name: BotName)` requires a bot name** — there is no singleton. Call sites (`api/dependencies.py`, `api/routes/*`, `shared/core/error_reporter.py`, `ridebot/core/scheduler_control.py`) always pass an explicit `BotName`. `ty check` is the safety net that catches call sites that haven't picked one.
+- **`current_bot_var`** (`shared/core/bot_context.py`) is a `ContextVar[BotName | None]` set as the *first* statement of each bot's `run_bot()` task. Asyncio copies context on `create_task`, so it reaches event listeners, slash commands, and APScheduler job callbacks spawned from inside that task — but **not** API requests (uvicorn's own tasks), process `startup()`, or anything run via `loop.run_in_executor` (use `asyncio.to_thread` if you need it to propagate). Read it with `get_current_bot_name()`. Logging (`BotNameFilter`) and the `@bot_enabled` kill switch both key off this contextvar.
+
+#### Token behavior (`resolve_enabled_bots`)
+
+| `DISABLE_DISCORD_BOT` | `APP_ENV` | Tokens set | Result |
+|---|---|---|---|
+| `true` | any | any | API-only. No tokens are read, no bots start, scheduled jobs don't run |
+| unset/`false` | `preprod`/`prod` | all | Every bot starts |
+| unset/`false` | `preprod`/`prod` | some/none missing | `logger.critical` per missing var, then `sys.exit(1)` — the container never becomes healthy, so the deploy rolls back |
+| unset/`false` | `local` | all | Every bot starts |
+| unset/`false` | `local` | some missing | `logger.warning` per skipped bot; the rest still start. A skipped bot loads no cogs, is absent from `/health`, and its commands don't exist |
+| unset/`false` | `local` | none | `sys.exit(1)`: "No bot tokens set — set at least one `<BOT>_TOKEN`, or `DISABLE_DISCORD_BOT=true` for API-only mode" |
+
+A token that's set but **invalid** behaves the same in every environment: that bot's `run_bot` task ends with `LoginFailure` before becoming ready, `bot_lifespan()` (or `main.py`) logs it and `sys.exit(1)`s rather than hanging forever.
+
+### Health and the per-bot kill switch
+
+- `GET /health` reports `{"status": "ok"|"degraded", "database": ..., "bots": {"<name>": "connected"|"unavailable"}, "failed_extensions": {...}}` for every bot in `get_enabled_bot_names()`. It returns **HTTP 503** (not 200) whenever `status == "degraded"` — any enabled bot not ready, or any failed cog load, makes the deploy's health check fail and triggers rollback. A bot skipped locally for lack of a token doesn't count.
+- Every cog command gated by the old single `FeatureFlagNames.BOT` flag now uses the bare decorator `@bot_enabled` (`shared/utils/checks.py`) instead of naming a flag directly. At call time it resolves `get_current_bot_name()`, looks up `get_spec(name).kill_switch_flag`, and delegates to the existing `feature_flag_enabled` check — so a cog moved between bots (or placed in `shared/cogs/`) needs no edits. If no bot name is set (e.g. some unit tests), it fails closed with a warning.
 
 ### `shared/` vs `ridebot/`
 
@@ -108,8 +136,8 @@ Cogs and API routes are both **thin entry points** — they handle input/output 
 - Logging goes through `shared/core/logger.py` — never use `print()`.
 - Cache layer (`ridebot/utils/cache.py`, `shared/utils/cache_backends.py`): Redis backend with in-memory fallback in local mode; namespaced keys for grouped invalidation.
 - Feature flags: stored in the `feature_flags` table, seeded from `FeatureFlagNames` on startup, accessed via `feature_flags_repository.py`. Local dev auto-disables job/message flags to prevent spam (`disable_features_for_local_env()`).
-- Error reporting: `shared/core/error_reporter.py:send_error_to_discord()` posts exceptions to the `ERROR_CHANNEL_ID` channel (gated by the `SEND_ERRORS_TO_DISCORD` flag; skipped locally; falls back to stderr).
-- Health check: `GET /health` reports bot readiness, DB connectivity, and failed cog loads (bypasses auth).
+- Error reporting: `shared/core/error_reporter.py:send_error_to_discord()` posts exceptions to the `ERROR_CHANNEL_ID` channel (gated by the `SEND_ERRORS_TO_DISCORD` flag; skipped locally; falls back to stderr). It picks which bot posts via `get_current_bot_name()` first, then `BOT_REGISTRY` order, then any other ready bot.
+- Health check: `GET /health` reports per-bot readiness, DB connectivity, and failed cog loads for every enabled bot (bypasses auth); see "Health and the per-bot kill switch" above — it's 503, not always 200.
 
 ---
 
