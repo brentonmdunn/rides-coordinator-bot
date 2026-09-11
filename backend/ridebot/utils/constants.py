@@ -81,3 +81,6 @@ ACTIVE_HOURS_END = 1  # 1 AM next day
 
 # Default group rides capacity
 GROUP_RIDES_DEFAULT_CAPACITY = "44444"
+
+# Roster registration
+ROSTER_REGISTER_BUTTON_CUSTOM_ID = "ridebot:roster:register"
