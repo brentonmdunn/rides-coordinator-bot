@@ -57,12 +57,14 @@ class BotName(StrEnum):
     """Discord bots run by this process. Values are stable identifiers."""
 
     RIDEBOT = "ridebot"
+    STONESBOT = "stonesbot"
 
 
 class FeatureFlagNames(StrEnum):
     """Enum for feature flag names. This is the single source of truth."""
 
     RIDEBOT = "ridebot"
+    STONESBOT = "stonesbot"
     ASK_FRIDAY_DRIVERS_JOB = "ask_friday_drivers_job"
     ASK_SUNDAY_DRIVERS_JOB = "ask_sunday_drivers_job"
     ASK_FRIDAY_RIDES_JOB = "ask_friday_rides_job"

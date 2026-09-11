@@ -45,6 +45,12 @@ def _ridebot_intents() -> discord.Intents:
     return intents
 
 
+def _stonesbot_intents() -> discord.Intents:
+    intents = discord.Intents.default()
+    intents.members = True
+    return intents
+
+
 # Order is the error-reporting fallback priority.
 BOT_REGISTRY: tuple[BotSpec, ...] = (
     BotSpec(
@@ -55,6 +61,13 @@ BOT_REGISTRY: tuple[BotSpec, ...] = (
         kill_switch_flag=FeatureFlagNames.RIDEBOT,
         priority_extensions=("job_scheduler",),
         testing_cog_package="ridebot.cogs_testing",
+    ),
+    BotSpec(
+        name=BotName.STONESBOT,
+        token_env="STONESBOT_TOKEN",
+        cog_packages=("stonesbot.cogs", "shared.cogs"),
+        intents=_stonesbot_intents,
+        kill_switch_flag=FeatureFlagNames.STONESBOT,
     ),
 )
 
