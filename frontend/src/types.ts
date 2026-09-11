@@ -300,3 +300,36 @@ export interface LateReactionWindows {
     friday: LateReactionWindow
     sunday: LateReactionWindow
 }
+
+/**
+ * A roster entry from `GET /api/roster`.
+ */
+export interface RosterPerson {
+    id: number
+    name: string
+    discord_username: string | null
+    /** Discord snowflake, kept as a string to avoid JS number precision loss. */
+    discord_user_id: string | null
+    year: string | null
+    location: string | null
+    /** ISO 8601 timestamp. */
+    updated_at: string | null
+}
+
+/**
+ * Valid select values from `GET /api/roster/options`.
+ */
+export interface RosterOptions {
+    years: string[]
+    locations: string[]
+}
+
+/**
+ * Request body for `POST /api/roster` (and, partially, `PATCH /api/roster/{id}`).
+ */
+export interface RosterPersonInput {
+    name: string
+    discord_username: string | null
+    year: string | null
+    location: string | null
+}

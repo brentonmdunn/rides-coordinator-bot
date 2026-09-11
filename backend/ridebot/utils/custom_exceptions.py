@@ -43,3 +43,21 @@ class RoleNotFoundError(RoleServiceError):
     """Raised when a role cannot be found by name."""
 
     pass
+
+
+class RosterValidationError(ValueError):
+    """Raised when roster input is invalid."""
+
+    pass
+
+
+class RosterNotFoundError(LookupError):
+    """Raised when a roster entry does not exist."""
+
+    pass
+
+
+class RosterConflictError(ValueError):
+    """Raised when a roster write would duplicate a Discord username or user ID."""
+
+    pass

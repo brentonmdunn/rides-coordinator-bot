@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from ridebot.repositories.locations_repository import LocationsRepository
 from shared.core.database import AsyncSessionLocal
-from shared.core.enums import CanBeDriver, ClassYear
+from shared.core.enums import ClassYear
 from shared.core.models import Locations as LocationsModel
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class CsvSyncService:
         reader = csv.DictReader(csv_file)
 
         # Validate that all required columns exist
-        required_columns = ["Name", "Discord Username", "Year", "Location", "Driver"]
+        required_columns = ["Name", "Discord Username", "Year", "Location"]
         if reader.fieldnames is None:
             raise Exception("CSV file is empty or has no header row.")
 
@@ -69,7 +69,6 @@ class CsvSyncService:
                     discord_username=self._get_info(row, "Discord Username"),
                     year=self._get_info(row, "Year", self._verify_year),
                     location=self._get_info(row, "Location"),
-                    driver=self._get_info(row, "Driver", self._verify_driver),
                 )
             )
 
@@ -81,10 +80,6 @@ class CsvSyncService:
     def _verify_year(self, year: str) -> bool:
         """Verifies if the year is valid."""
         return year in [y.value for y in ClassYear]
-
-    def _verify_driver(self, driver: str) -> bool:
-        """Verifies if the driver status is valid."""
-        return driver in [d.value for d in CanBeDriver]
 
     def _get_info(self, data: dict, key: str, verify_schema: Callable | None = None) -> str | None:
         """Extracts and verifies information from a dictionary."""
