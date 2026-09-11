@@ -6,6 +6,7 @@ from typing import ClassVar
 from sqlalchemy import case, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from shared.core.bots import BOT_REGISTRY
 from shared.core.enums import FeatureFlagNames
 from shared.core.models import FeatureFlags as FeatureFlagsModel
 
@@ -100,7 +101,7 @@ class FeatureFlagsRepository:
     @staticmethod
     async def get_all_feature_flags(session: AsyncSession) -> list[FeatureFlagsModel]:
         """
-        Return all feature flags, ordered with 'BOT' first then alphabetically.
+        Return all feature flags, per-bot kill switches first then alphabetically.
 
         Args:
             session: The database session.
@@ -108,8 +109,9 @@ class FeatureFlagsRepository:
         Returns:
             A list of FeatureFlagsModel objects.
         """
+        kill_switch_flags = [spec.kill_switch_flag.value for spec in BOT_REGISTRY]
         order_logic = case(
-            (FeatureFlagsModel.feature == FeatureFlagNames.BOT.value, 0),
+            (FeatureFlagsModel.feature.in_(kill_switch_flags), 0),
             else_=1,
         )
         stmt = select(FeatureFlagsModel).order_by(order_logic, FeatureFlagsModel.feature)

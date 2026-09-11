@@ -18,6 +18,8 @@ from typing import Any
 import discord
 from dotenv import load_dotenv
 
+from shared.core.bot_context import get_current_bot_name
+
 load_dotenv()
 
 # Determine log file path
@@ -63,6 +65,20 @@ class TransactionIdFilter(logging.Filter):
         return True
 
 
+class BotNameFilter(logging.Filter):
+    """Injects the name of the bot running the current task into the log record."""
+
+    def filter(self, record):
+        """
+        Inject the current bot name into the log record, or "-" outside any bot.
+
+        Returns:
+            True always (never drops the record).
+        """
+        record.bot_name = get_current_bot_name() or "-"
+        return True
+
+
 # ------------------------------
 # Root logger setup (your code)
 # ------------------------------
@@ -76,9 +92,11 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)  # Allow DEBUG output for your code
 console_handler.addFilter(UserEmailFilter())
 console_handler.addFilter(TransactionIdFilter())
+console_handler.addFilter(BotNameFilter())
 
 formatter = logging.Formatter(
-    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [%(name)s:%(lineno)d] [%(user_email)s] %(message)s"
+    "%(asctime)s %(levelname)-8s [txn:%(txn_id)s] [bot:%(bot_name)s] "
+    "[%(name)s:%(lineno)d] [%(user_email)s] %(message)s"
 )
 
 console_handler.setFormatter(formatter)
@@ -119,6 +137,7 @@ file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 file_handler.addFilter(UserEmailFilter())
 file_handler.addFilter(TransactionIdFilter())
+file_handler.addFilter(BotNameFilter())
 logger.addHandler(file_handler)
 
 

@@ -9,12 +9,9 @@ from discord.ext import commands
 from ridebot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
 from ridebot.utils.autocomplete import location_autocomplete, lscc_day_autocomplete
 from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
-from shared.core.enums import (
-    FeatureFlagNames,
-)
 from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import log_cmd
-from shared.utils.checks import feature_flag_enabled
+from shared.utils.checks import bot_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +28,7 @@ class NonDiscordRidesCog(commands.Cog):
         name="add-pickup",
         description="Add non-Discord user to list of pickups",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @bot_enabled
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @app_commands.autocomplete(location=location_autocomplete)
     @log_cmd
@@ -73,7 +70,7 @@ class NonDiscordRidesCog(commands.Cog):
         name="remove-pickup",
         description="Remove a non-Discord user from the list of pickups",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @bot_enabled
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def remove_pickup(self, interaction: discord.Interaction, name: str, day: str):
@@ -116,7 +113,7 @@ class NonDiscordRidesCog(commands.Cog):
         name="list-added-pickups",
         description="Lists all added pickups for a specific day.",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @bot_enabled
     @app_commands.autocomplete(day=lscc_day_autocomplete)
     @log_cmd
     async def list_added_pickups(self, interaction: discord.Interaction, day: str):

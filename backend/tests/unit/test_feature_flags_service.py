@@ -12,8 +12,8 @@ from shared.services.feature_flags_service import FeatureFlagsService
 async def test_validate_feature_name_valid():
     """Should return enum member for valid name."""
     service = FeatureFlagsService()
-    result = await service.validate_feature_name("bot")
-    assert result == FeatureFlagNames.BOT
+    result = await service.validate_feature_name("ridebot")
+    assert result == FeatureFlagNames.RIDEBOT
 
 
 @pytest.mark.asyncio
@@ -123,7 +123,7 @@ async def test_list_feature_flags_embed_no_session(mock_session_local, mock_get_
     """list_feature_flags_embed should create a session internally when none is provided."""
     import discord
 
-    flag_enabled = type("Flag", (), {"feature": "bot", "enabled": True})
+    flag_enabled = type("Flag", (), {"feature": "ridebot", "enabled": True})
     flag_disabled = type("Flag", (), {"feature": "rides", "enabled": False})
     mock_get_all.return_value = [flag_enabled, flag_disabled]
 
@@ -149,7 +149,7 @@ async def test_list_feature_flags_embed_with_session(mock_get_all):
     """list_feature_flags_embed should use the provided session directly."""
     import discord
 
-    flag = type("Flag", (), {"feature": "bot", "enabled": True})
+    flag = type("Flag", (), {"feature": "ridebot", "enabled": True})
     mock_get_all.return_value = [flag]
 
     mock_session = AsyncMock()
@@ -159,7 +159,7 @@ async def test_list_feature_flags_embed_with_session(mock_get_all):
     assert isinstance(embed, discord.Embed)
     assert len(embed.fields) == 1
     field = embed.fields[0]
-    assert "bot" in field.name
+    assert "ridebot" in field.name
     assert "Enabled" in field.value
 
 

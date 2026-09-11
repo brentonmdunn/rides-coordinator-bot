@@ -17,12 +17,11 @@ from ridebot.utils.custom_exceptions import (
     RoleNotFoundError,
     RoleServiceError,
 )
-from shared.core.enums import FeatureFlagNames
 
 # Your original imports
 from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import log_cmd
-from shared.utils.checks import feature_flag_enabled, is_admin
+from shared.utils.checks import bot_enabled, is_admin
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class CommunityEventsCog(commands.Cog):
         role_name="Name of the role to assign.",
     )
     @log_cmd
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @bot_enabled
     @is_admin()
     async def give_role(
         self,

@@ -5,8 +5,7 @@ from discord.ext import commands
 from ridebot.jobs.ask_rides import (
     run_ask_rides_all,
 )
-from shared.core.enums import FeatureFlagNames
-from shared.utils.checks import feature_flag_enabled
+from shared.utils.checks import bot_enabled
 
 
 class TestCog(commands.Cog):
@@ -16,7 +15,7 @@ class TestCog(commands.Cog):
     @app_commands.command(
         name="test",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @bot_enabled
     async def test(self, interaction: discord.Interaction):
         await interaction.response.send_message("Complete")
         await run_ask_rides_all(self.bot, interaction.channel_id)

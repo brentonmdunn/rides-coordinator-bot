@@ -38,12 +38,12 @@ async def test_initialize_cache():
 @pytest.mark.asyncio
 async def test_get_feature_flag_status_uses_cache():
     """It should use the cache and not hit the DB if the flag is cached."""
-    FeatureFlagsRepository._cache[FeatureFlagNames.BOT.value] = True
+    FeatureFlagsRepository._cache[FeatureFlagNames.RIDEBOT.value] = True
 
     mock_session = AsyncMock(spec=AsyncSession)
 
     result = await FeatureFlagsRepository.get_feature_flag_status(
-        mock_session, FeatureFlagNames.BOT
+        mock_session, FeatureFlagNames.RIDEBOT
     )
 
     assert result is True
@@ -58,15 +58,15 @@ async def test_get_feature_flag_status_updates_cache_on_miss():
     mock_result.one_or_none.return_value = (True,)
     mock_session.execute.return_value = mock_result
 
-    assert FeatureFlagNames.BOT.value not in FeatureFlagsRepository._cache
+    assert FeatureFlagNames.RIDEBOT.value not in FeatureFlagsRepository._cache
 
     result = await FeatureFlagsRepository.get_feature_flag_status(
-        mock_session, FeatureFlagNames.BOT
+        mock_session, FeatureFlagNames.RIDEBOT
     )
 
     assert result is True
     mock_session.execute.assert_called_once()
-    assert FeatureFlagsRepository._cache[FeatureFlagNames.BOT.value] is True
+    assert FeatureFlagsRepository._cache[FeatureFlagNames.RIDEBOT.value] is True
 
 
 @pytest.mark.asyncio

@@ -4,10 +4,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from shared.core.enums import FeatureFlagNames
 from shared.core.logger import log_cmd
 from shared.services.help_service import HelpService
-from shared.utils.checks import feature_flag_enabled
+from shared.utils.checks import bot_enabled
 
 
 class HelpCog(commands.Cog):
@@ -22,7 +21,7 @@ class HelpCog(commands.Cog):
         name="help",
         description="List all slash commands with their parameters",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @bot_enabled
     @log_cmd
     async def help(self, interaction: discord.Interaction):
         """

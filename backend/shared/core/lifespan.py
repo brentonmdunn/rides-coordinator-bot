@@ -14,17 +14,15 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
-from shared.core.bot_instance import set_bot_instance
-from shared.core.error_reporter import send_error_to_discord
-from shared.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
+from shared.core.bot_instance import get_bot
+from shared.core.bots import resolve_enabled_bots
+from shared.core.lifecycle import close_bot, run_bot, startup
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-TOKEN: str | None = os.getenv("TOKEN")
-if not TOKEN and os.getenv("DISABLE_DISCORD_BOT", "").lower() != "true":
-    logger.error("CRITICAL: TOKEN is not set")
-    sys.exit(1)
+
+_READY_POLL_INTERVAL_SECONDS = 0.1
 
 
 @asynccontextmanager
@@ -32,25 +30,23 @@ async def bot_lifespan():
     """
     Async context manager for Discord bot lifecycle.
 
-    Handles bot initialization, startup, and shutdown.
-    Sets the global bot instance for API access.
+    Handles bot initialization, startup, and shutdown for every enabled bot.
+    Sets the global bot instances for API access.
 
     Usage:
         async with bot_lifespan():
-            # Bot is running
+            # Bots are running
             pass
-        # Bot is shutdown
+        # Bots are shutdown
     """
     if os.getenv("DISABLE_DISCORD_BOT", "").lower() == "true":
         logger.warning(
-            "DISABLE_DISCORD_BOT=true — running in API-only mode, bot and all scheduled jobs are disabled"
+            "DISABLE_DISCORD_BOT=true — running in API-only mode, bots and all scheduled jobs are disabled"
         )
         yield None
         return
 
-    bot = build_bot()
-    attach_event_handlers(bot, send_error_to_discord)
-    set_bot_instance(bot)
+    enabled_bots = resolve_enabled_bots()
 
     try:
         await startup()
@@ -58,26 +54,38 @@ async def bot_lifespan():
         logger.exception("Startup failed")
         sys.exit(1)
 
-    await load_extensions(bot)
-
-    assert TOKEN is not None  # guarded by sys.exit(1) above when DISABLE_DISCORD_BOT is false
-    bot_task = asyncio.create_task(bot.start(TOKEN))
+    tasks = {
+        enabled.spec.name: asyncio.create_task(
+            run_bot(enabled.spec, enabled.token), name=f"bot:{enabled.spec.name}"
+        )
+        for enabled in enabled_bots
+    }
 
     try:
-        while not bot.is_ready():
-            await asyncio.sleep(0.1)
+        while not all(get_bot(name) is not None for name in tasks):
+            done = [name for name, task in tasks.items() if task.done()]
+            if done:
+                for name in done:
+                    task = tasks[name]
+                    exc = task.exception()
+                    if exc is not None:
+                        logger.error(
+                            f"[{name}] Bot task failed before becoming ready", exc_info=exc
+                        )
+                    else:
+                        logger.error(f"[{name}] Bot task exited before becoming ready")
+                sys.exit(1)
+            await asyncio.sleep(_READY_POLL_INTERVAL_SECONDS)
 
-        logger.info("🤖 Discord bot is ready and connected!")
-        yield bot
+        logger.info("🤖 All Discord bots are ready and connected!")
+        yield None
 
     finally:
-        logger.info("🛑 Shutting down Discord bot...")
-        try:
-            await asyncio.wait_for(bot.close(), timeout=10.0)
-        except TimeoutError:
-            logger.warning("Bot close timed out after 10s — forcing task cancellation")
-        bot_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError, Exception):
-            await bot_task
-        set_bot_instance(None)
+        logger.info("🛑 Shutting down Discord bots...")
+        await asyncio.gather(*(close_bot(name) for name in tasks), return_exceptions=True)
+        for task in tasks.values():
+            task.cancel()
+        for task in tasks.values():
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task
         logger.info("✅ Discord bot shutdown complete")

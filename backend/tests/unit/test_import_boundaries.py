@@ -7,10 +7,11 @@ cheap and dependency-free so it can run before anything else does.
 import ast
 from pathlib import Path
 
+from shared.core.bots import bot_package_names
+
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
-# PR 1 replaces this with `bot_package_names()` from `shared.core.bots`.
-BOT_PACKAGES = {"ridebot"}
+BOT_PACKAGES = bot_package_names()
 
 
 def _collect_top_level_imports(source: str) -> set[tuple[str, int]]:

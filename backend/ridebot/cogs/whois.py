@@ -4,9 +4,8 @@ import discord
 from discord.ext import commands
 
 from ridebot.services.whois_service import WhoisService
-from shared.core.enums import FeatureFlagNames
 from shared.core.logger import log_cmd
-from shared.utils.checks import feature_flag_enabled
+from shared.utils.checks import bot_enabled
 
 
 class Whois(commands.Cog):
@@ -20,7 +19,7 @@ class Whois(commands.Cog):
         name="whois",
         description="List name and Discord username of potential matches",
     )
-    @feature_flag_enabled(FeatureFlagNames.BOT)
+    @bot_enabled
     @log_cmd
     async def whois(self, interaction: discord.Interaction, name: str) -> None:
         """

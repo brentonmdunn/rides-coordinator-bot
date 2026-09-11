@@ -4,9 +4,12 @@ import sys
 import traceback
 
 import discord
+from discord.ext.commands import Bot
 
-from shared.core.bot_instance import get_bot
-from shared.core.enums import FeatureFlagNames
+from shared.core.bot_context import get_current_bot_name
+from shared.core.bot_instance import get_bot, get_ready_bots
+from shared.core.bots import BOT_REGISTRY
+from shared.core.enums import BotName, FeatureFlagNames
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,31 @@ def _is_send_errors_enabled() -> bool:
     return FeatureFlagsRepository._cache.get(flag_value, False)
 
 
+def _pick_reporting_bot() -> Bot | None:
+    """
+    Choose the best bot instance to post an error to Discord with.
+
+    Candidate order: the bot running the current task (if any), then every
+    bot in registry order, then any other ready bot. Returns the first
+    candidate that is ready, or None if none are.
+    """
+    candidate_names: list[BotName] = []
+    current = get_current_bot_name()
+    if current is not None:
+        candidate_names.append(current)
+    candidate_names.extend(spec.name for spec in BOT_REGISTRY)
+
+    for name in candidate_names:
+        bot = get_bot(name)
+        if bot is not None:
+            return bot
+
+    for bot in get_ready_bots().values():
+        return bot
+
+    return None
+
+
 async def send_error_to_discord(
     error_msg: str, error: Exception | None = None, tb_text: str | None = None
 ) -> None:
@@ -41,7 +69,11 @@ async def send_error_to_discord(
     if not _is_send_errors_enabled():
         return
 
-    bot = get_bot()
+    origin = get_current_bot_name()
+    if origin is not None:
+        error_msg = f"[{origin}] {error_msg}"
+
+    bot = _pick_reporting_bot()
     if not bot:
         logger.warning("Could not send error to Discord: Bot is not ready")
         print(f"[error_reporter fallback] {error_msg}", file=sys.stderr)  # noqa: T201

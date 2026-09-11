@@ -9,7 +9,7 @@ from api.auth import require_ride_coordinator
 from ridebot.services.role_management_service import RoleManagementService
 from ridebot.utils.constants import GUILD_ID
 from shared.core.bot_instance import get_bot
-from shared.core.enums import RoleIds
+from shared.core.enums import BotName, RoleIds
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/drivers", tags=["drivers"])
 
 
 def _get_guild():
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
     if bot is None:
         raise HTTPException(status_code=503, detail="Bot is not ready")
     guild = bot.get_guild(GUILD_ID)

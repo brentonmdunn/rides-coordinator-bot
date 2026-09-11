@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from api.auth import require_ride_coordinator
 from ridebot.services.ride_coordinator_service import RideCoordinatorService, UserLookupStatus
 from shared.core.bot_instance import get_bot
+from shared.core.enums import BotName
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ async def get_coordinator() -> dict:
     if user_id is None:
         return result
 
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
     if bot is not None and bot.is_ready():
         status, user = await RideCoordinatorService.try_resolve_discord_user(bot, user_id)
         if status == UserLookupStatus.VERIFIED and user is not None:
@@ -63,7 +64,7 @@ async def set_coordinator(request: SetCoordinatorRequest) -> dict:
             detail="user_id must be a valid Discord snowflake (digits only, 17-20 characters)",
         )
 
-    bot = get_bot()
+    bot = get_bot(BotName.RIDEBOT)
 
     if bot is not None and bot.user is not None and str(bot.user.id) == user_id:
         raise HTTPException(

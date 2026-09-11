@@ -2,6 +2,26 @@ from types import SimpleNamespace
 
 import pytest
 
+from shared.core.bot_context import current_bot_var
+from shared.core.enums import BotName
+
+
+@pytest.fixture(autouse=True)
+def _current_bot():
+    """Set the current-bot contextvar to RideBot for every unit test.
+
+    Most unit tests exercise RideBot cogs/services, which now rely on
+    `get_current_bot_name()` (e.g. via `bot_enabled`) to resolve which bot
+    they're running under. Outside any bot task (like here), the var
+    defaults to None, so tests need it set explicitly. Reset afterward so
+    tests don't leak state into each other.
+    """
+    token = current_bot_var.set(BotName.RIDEBOT)
+    try:
+        yield
+    finally:
+        current_bot_var.reset(token)
+
 
 class FakeParam:
     """Simulates a Discord command parameter."""
