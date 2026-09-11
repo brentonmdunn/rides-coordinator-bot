@@ -139,11 +139,7 @@ class RideRequestService:
         try:
             message = await channel.send(
                 f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
-                "We don't yet know where to pick you up.\n"
-                "If you live **on campus**, tap **Register** below to tell us your name, "
-                "year, and where you live.\n"
-                "If you live **off campus**, please share your apartment complex or address "
-                "here and a ride coordinator will add you.",
+                "We don't yet know where to pick you up. Please fill out the form below:",
                 allowed_mentions=discord.AllowedMentions(users=True),
                 view=RegistrationView(),
             )

@@ -116,14 +116,14 @@ async def _registration_enabled() -> bool:
 
 
 class RegistrationView(discord.ui.View):
-    """Persistent view with a single "Register" button for self-service roster sign-up."""
+    """Persistent view with a single "Rides Form" button for self-service roster sign-up."""
 
     def __init__(self) -> None:
         """Initialize the view with no timeout so it survives bot restarts."""
         super().__init__(timeout=None)
 
     @discord.ui.button(
-        label="Register",
+        label="Rides Form",
         emoji="📝",
         style=discord.ButtonStyle.primary,
         custom_id=ROSTER_REGISTER_BUTTON_CUSTOM_ID,
@@ -234,7 +234,7 @@ class RegistrationModal(discord.ui.Modal, title="Ride registration"):
             location = (self.other_location_input.value or "").strip()
             if not location:
                 await interaction.response.send_message(
-                    f"Please tap **Register** again and, with **{_OTHER_LOCATION_LABEL}** "
+                    f"Please tap **Rides Form** again and, with **{_OTHER_LOCATION_LABEL}** "
                     "selected, type where you live in the last box.",
                     ephemeral=True,
                 )

@@ -28,7 +28,7 @@ class TestCog(commands.Cog):
     @bot_enabled
     async def test_register(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            "Tap **Register** to test the roster form.", view=RegistrationView()
+            "Tap **Rides Form** to test the roster form.", view=RegistrationView()
         )
 
 
