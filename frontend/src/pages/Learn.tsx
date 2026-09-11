@@ -125,9 +125,9 @@ function Learn() {
                         <TutorialText>
                             Other miscellaneous things to know:
                             <TutorialList>
-                                <li>If someone's Discord username is not on the spreadsheet and they react for a ride, a new channel will automatically be created for them and RideBot will ask where they live.</li>
-                                <li>For drivers, if they react and their Discord username is not on the spreadsheet, instead of their name popping up, it will be their username.</li>
-                                <li>Changes made to the spreadsheet may take up to 24 hours to be reflected in RideBot (though usually a lot faster).</li>
+                                <li>Riders register themselves with the "Register" button RideBot posts in their new-rides channel, filling in their name, year, and where they live.</li>
+                                <li>Coordinators can also add or edit anyone directly on the Roster page.</li>
+                                <li>Changes apply immediately — there's no sync delay like the old spreadsheet.</li>
                             </TutorialList>
                         </TutorialText>
             </article>
