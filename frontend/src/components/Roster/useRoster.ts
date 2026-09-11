@@ -1,0 +1,120 @@
+/**
+ * useRoster.ts
+ *
+ * Data layer for the Roster management page — one query for the full people
+ * list, one for the year/location select options, plus mutations for every
+ * management operation. Mutations invalidate the shared query keys (and
+ * `['usernames']`, which the rest of the app reads from) so everything stays
+ * in sync.
+ */
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { apiFetch, ApiError } from '../../lib/api'
+import type { RosterOptions, RosterPerson, RosterPersonInput } from '../../types'
+
+export const ROSTER_QUERY_KEY = ['roster']
+export const ROSTER_OPTIONS_QUERY_KEY = ['roster', 'options']
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
+
+function showMutationError(error: unknown) {
+    toast.error(error instanceof ApiError ? error.detail : 'Request failed')
+}
+
+/** Extract an inline-displayable message from a mutation error, or null. */
+export function formDialogError(error: unknown): string | null {
+    if (error instanceof ApiError && (error.status === 400 || error.status === 409)) {
+        return error.detail
+    }
+    return null
+}
+
+export function useRoster() {
+    const queryClient = useQueryClient()
+
+    const query = useQuery<{ people: RosterPerson[] }>({
+        queryKey: ROSTER_QUERY_KEY,
+        queryFn: async () => {
+            const response = await apiFetch('/api/roster')
+            return response.json()
+        },
+    })
+
+    const optionsQuery = useQuery<RosterOptions>({
+        queryKey: ROSTER_OPTIONS_QUERY_KEY,
+        queryFn: async () => {
+            const response = await apiFetch('/api/roster/options')
+            return response.json()
+        },
+    })
+
+    const invalidate = () => {
+        void queryClient.invalidateQueries({ queryKey: ROSTER_QUERY_KEY })
+        void queryClient.invalidateQueries({ queryKey: ['usernames'] })
+    }
+
+    const createPerson = useMutation({
+        mutationFn: async (input: RosterPersonInput) => {
+            const response = await apiFetch('/api/roster', {
+                method: 'POST',
+                headers: JSON_HEADERS,
+                body: JSON.stringify(input),
+            })
+            return response.json() as Promise<RosterPerson>
+        },
+        onSuccess: invalidate,
+        onError: showMutationError,
+    })
+
+    const updatePerson = useMutation({
+        mutationFn: async ({
+            id,
+            changes,
+        }: {
+            id: number
+            changes: Partial<RosterPersonInput>
+        }) => {
+            const response = await apiFetch(`/api/roster/${id}`, {
+                method: 'PATCH',
+                headers: JSON_HEADERS,
+                body: JSON.stringify(changes),
+            })
+            return response.json() as Promise<RosterPerson>
+        },
+        onSuccess: invalidate,
+        onError: showMutationError,
+    })
+
+    const deletePerson = useMutation({
+        mutationFn: async (id: number) => {
+            await apiFetch(`/api/roster/${id}`, { method: 'DELETE' })
+        },
+        onSuccess: invalidate,
+        onError: showMutationError,
+    })
+
+    const bulkDeletePeople = useMutation({
+        mutationFn: async (ids: number[]) => {
+            const response = await apiFetch('/api/roster/bulk-delete', {
+                method: 'POST',
+                headers: JSON_HEADERS,
+                body: JSON.stringify({ ids }),
+            })
+            return response.json() as Promise<{ deleted: number }>
+        },
+        onSuccess: invalidate,
+        onError: showMutationError,
+    })
+
+    return {
+        query,
+        optionsQuery,
+        createPerson,
+        updatePerson,
+        deletePerson,
+        bulkDeletePeople,
+    }
+}
+
+export type RosterManagerHook = ReturnType<typeof useRoster>
