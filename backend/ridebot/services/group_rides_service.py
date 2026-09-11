@@ -56,15 +56,23 @@ class GroupRidesService:
         """
         Convert location string to CampusLivingLocations enum.
 
+        Matching is case-insensitive, so stored values like ``erc`` or ``sdsu`` resolve
+        to their canonical member regardless of how they were typed.
+
         Args:
             location (str): The location string.
 
         Returns:
             CampusLivingLocations: The corresponding CampusLivingLocations enum member.
+
+        Raises:
+            ValueError: If no living location matches.
         """
-        if location.lower() == "erc":
-            return CampusLivingLocations.ERC
-        return CampusLivingLocations(location.title())
+        cleaned = location.strip().lower()
+        for candidate in CampusLivingLocations:
+            if candidate.value.lower() == cleaned:
+                return candidate
+        raise ValueError(f"Unknown campus living location: {location!r}")
 
     @staticmethod
     def _get_pickup_location(
@@ -116,7 +124,19 @@ class GroupRidesService:
                 continue
 
             living_loc_enum = self._get_living_location(living_location)
-            pickup_key = self._get_pickup_location(routing, living_loc_enum)
+            try:
+                pickup_key = self._get_pickup_location(routing, living_loc_enum)
+            except ValueError:
+                # A campus area with no pickup spot mapped yet. Group its riders as
+                # off campus so coordinators still see them, instead of failing the
+                # whole grouping run.
+                logger.warning(
+                    f"No pickup location mapped for '{living_location}'; "
+                    "grouping its riders as off campus"
+                )
+                off_campus[living_location] = people
+                continue
+
             passengers_by_location.setdefault(pickup_key, []).extend(
                 Passenger(
                     identity=Identity(name=person[0], username=person[1]),

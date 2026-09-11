@@ -60,6 +60,11 @@ def test_get_living_location_title_case():
     assert GroupRidesService._get_living_location("Marshall") == CampusLivingLocations.MARSHALL
 
 
+def test_get_living_location_sdsu_case_insensitive():
+    assert GroupRidesService._get_living_location("sdsu") == CampusLivingLocations.SDSU
+    assert GroupRidesService._get_living_location("SDSU") == CampusLivingLocations.SDSU
+
+
 def test_get_living_location_invalid_raises():
     with pytest.raises(ValueError):
         GroupRidesService._get_living_location("atlantis")
@@ -166,6 +171,27 @@ def test_split_on_off_campus_mixed():
         for passengers in passengers_by_location.values()
         for p in passengers
     )
+
+
+def test_split_on_off_campus_unmapped_campus_area_falls_back():
+    """A campus area with no pickup mapping is grouped off campus, not raised on."""
+    svc = _make_service()
+    locations_people = {"SDSU": [("Dana", "dana")]}
+    passengers_by_location, off_campus = svc._split_on_off_campus(locations_people, SEED_CTX)
+
+    assert passengers_by_location == {}
+    assert off_campus == {"SDSU": [("Dana", "dana")]}
+
+
+def test_split_on_off_campus_lowercase_unmapped_falls_back():
+    """Legacy lowercase rows ('sdsu') take the same fallback path."""
+    svc = _make_service()
+    passengers_by_location, off_campus = svc._split_on_off_campus(
+        {"sdsu": [("Dana", "dana")]}, SEED_CTX
+    )
+
+    assert passengers_by_location == {}
+    assert "sdsu" in off_campus
 
 
 def test_split_on_off_campus_erc_handled():

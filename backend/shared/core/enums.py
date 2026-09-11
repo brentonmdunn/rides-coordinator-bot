@@ -136,6 +136,7 @@ class CampusLivingLocations(StrEnum):
     PCE = "Pepper Canyon East"
     PCW = "Pepper Canyon West"
     REVELLE = "Revelle"
+    SDSU = "SDSU"
 
 
 class CacheNamespace(StrEnum):
