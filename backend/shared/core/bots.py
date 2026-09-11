@@ -1,11 +1,16 @@
 """Registry of Discord bots run by this process."""
 
+import logging
+import os
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import discord
 
 from shared.core.enums import BotName, FeatureFlagNames
+
+logger = logging.getLogger(__name__)
 
 SHARED_PACKAGE = "shared"
 
@@ -74,4 +79,32 @@ def bot_package_names() -> set[str]:
 
 def resolve_enabled_bots() -> list[EnabledBot]:
     """Read bot tokens and decide which bots start; exits on misconfiguration."""
-    raise NotImplementedError
+    app_env = os.getenv("APP_ENV", "local")
+
+    enabled: list[EnabledBot] = []
+    missing: list[BotSpec] = []
+    for spec in BOT_REGISTRY:
+        token = os.getenv(spec.token_env, "").strip()
+        if token:
+            enabled.append(EnabledBot(spec=spec, token=token))
+        else:
+            missing.append(spec)
+
+    if app_env != "local":
+        if missing:
+            for spec in missing:
+                logger.critical(f"CRITICAL: {spec.token_env} is not set (required for {spec.name})")
+            sys.exit(1)
+        return enabled
+
+    for spec in missing:
+        logger.warning(f"{spec.token_env} is not set — skipping {spec.name}")
+
+    if not enabled:
+        logger.critical(
+            "No bot tokens set — set at least one <BOT>_TOKEN, "
+            "or DISABLE_DISCORD_BOT=true for API-only mode"
+        )
+        sys.exit(1)
+
+    return enabled
