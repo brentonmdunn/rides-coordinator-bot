@@ -187,7 +187,7 @@ class GroupRidesService:
             unknown_names = [str(user) for user in unknown_location]
             raise ValueError(
                 f"Unknown location for user(s): {', '.join(unknown_names)}. "
-                "Please ensure usernames and locations are on the spreadsheet."
+                "Please ensure these riders are registered on the roster."
             )
 
         routing = await PickupLocationsService.get_routing_context()
