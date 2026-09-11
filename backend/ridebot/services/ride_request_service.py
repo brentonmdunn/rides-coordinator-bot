@@ -5,7 +5,6 @@ from typing import Any, cast
 
 import discord
 
-from ridebot.utils.channels import resolve_channel_id
 from ridebot.views.registration import RegistrationView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
@@ -31,18 +30,18 @@ class RideRequestService:
         guild: discord.Guild,
     ) -> bool:
         """
-        Handle a new rider reaction by creating a private channel.
+        Prompt an unregistered rider to register, in their own private channel.
 
-        When a user without a registered location reacts to a ride announcement,
-        this creates a private channel where ride coordinators can collect their
-        location information.
+        The channel is created the first time and reused afterwards: reacting again
+        re-posts the registration prompt rather than doing nothing, so riders whose
+        channel predates the Register button still get one.
 
         Args:
             user: The user who reacted to the ride announcement.
             guild: The Discord guild where the reaction occurred.
 
         Returns:
-            True if channel was created successfully, False otherwise.
+            True if a registration prompt was posted, False otherwise.
         """
         channel_name = f"{user.name.lower()}"
         category = discord.utils.get(guild.categories, id=int(CategoryIds.NEW_RIDES))
@@ -51,11 +50,14 @@ class RideRequestService:
             logger.info(f"Category with ID {CategoryIds.NEW_RIDES} not found.")
             return False
 
-        # Check if channel already exists
+        # Reuse the rider's existing channel rather than creating a second one.
         existing_channel = discord.utils.get(category.channels, name=channel_name)
-        if existing_channel:
-            logger.info(f"Channel {channel_name} already exists.")
-            return False
+        if existing_channel is not None:
+            if not isinstance(existing_channel, discord.TextChannel):
+                logger.warning(f"Channel {channel_name} exists but is not a text channel.")
+                return False
+            logger.info(f"Channel {channel_name} already exists; re-posting registration prompt.")
+            return await self._send_registration_prompt(existing_channel, user, pin=False)
 
         # Build permissions
         overwrites = self._build_channel_permissions(guild, user)
@@ -79,26 +81,28 @@ class RideRequestService:
             )
             return False
 
-        # Announce the new rider channel in the driver bot spam channel
-        try:
-            spam_channel = self.bot.get_channel(
-                resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
-            )
-            if spam_channel:
-                await spam_channel.send(f"new hooman! {new_channel.mention}")
-            else:
-                logger.warning(
-                    f"Driver bot spam channel {ChannelIds.SERVING__RIDE_COORDINATORS} not found."
-                )
-        except Exception:
-            logger.exception(
-                f"Failed to announce new rider channel {new_channel.name} in driver bot spam"
-            )
-            # Channel was created, so don't fail the whole flow
+        await self._send_registration_prompt(new_channel, user, pin=True)
 
-        # Send welcome message with the self-service registration button
+        # The channel exists either way, so a failed prompt doesn't fail the flow.
+        return True
+
+    async def _send_registration_prompt(
+        self, channel: discord.TextChannel, user: discord.Member, *, pin: bool
+    ) -> bool:
+        """
+        Post the welcome text and the Register button into a rider's channel.
+
+        Args:
+            channel: The rider's private new-rides channel.
+            user: The rider to greet.
+            pin: Whether to pin the message. Only a freshly created channel pins it;
+                re-posts skip pinning so pins don't pile up.
+
+        Returns:
+            True if the prompt was posted.
+        """
         try:
-            message = await new_channel.send(
+            message = await channel.send(
                 f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
                 "We don't yet know where to pick you up.\n"
                 "If you live **on campus**, tap **Register** below to tell us your name, "
@@ -109,17 +113,17 @@ class RideRequestService:
                 view=RegistrationView(),
             )
         except Exception:
-            logger.exception(f"Failed to send welcome message to {new_channel.name}")
+            logger.exception(f"Failed to send registration prompt to {channel.name}")
             await send_error_to_discord(
-                f"**Unexpected Error** sending welcome message to `{new_channel.name}`"
+                f"**Unexpected Error** sending registration prompt to `{channel.name}`"
             )
-            # Channel was created, so still return True
-            return True
+            return False
 
-        try:
-            await message.pin()
-        except (discord.Forbidden, discord.HTTPException):
-            logger.warning(f"Failed to pin welcome message in {new_channel.name}")
+        if pin:
+            try:
+                await message.pin()
+            except (discord.Forbidden, discord.HTTPException):
+                logger.warning(f"Failed to pin welcome message in {channel.name}")
 
         return True
 

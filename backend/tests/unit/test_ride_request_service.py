@@ -38,6 +38,17 @@ def _make_new_channel():
     return channel
 
 
+def _make_existing_channel(name="alice"):
+    """A channel already sitting in the new-rides category for this rider."""
+    channel = MagicMock(spec=discord.TextChannel)
+    channel.name = name
+    channel.mention = f"#{name}"
+    sent_message = MagicMock()
+    sent_message.pin = AsyncMock()
+    channel.send = AsyncMock(return_value=sent_message)
+    return channel
+
+
 @pytest.mark.asyncio
 async def test_welcome_message_attaches_view_and_pins():
     guild, _ = _make_guild_and_category()
@@ -59,6 +70,54 @@ async def test_welcome_message_attaches_view_and_pins():
     _, kwargs = new_channel.send.call_args
     assert isinstance(kwargs["view"], RegistrationView)
     sent_message.pin.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_existing_channel_is_reused_and_prompt_reposted():
+    existing = _make_existing_channel()
+    guild, _ = _make_guild_and_category(existing_channel=existing)
+    guild.create_text_channel = AsyncMock()
+
+    service = RideRequestService(MagicMock())
+    result = await service.handle_new_rider_reaction(_make_user(), guild)
+
+    assert result is True
+    guild.create_text_channel.assert_not_called()
+    existing.send.assert_awaited_once()
+    _, kwargs = existing.send.call_args
+    assert isinstance(kwargs["view"], RegistrationView)
+
+
+@pytest.mark.asyncio
+async def test_repost_into_existing_channel_is_not_pinned():
+    """Re-posts skip the pin so pins don't pile up in a long-lived channel."""
+    existing = _make_existing_channel()
+    guild, _ = _make_guild_and_category(existing_channel=existing)
+    guild.create_text_channel = AsyncMock()
+
+    service = RideRequestService(MagicMock())
+    await service.handle_new_rider_reaction(_make_user(), guild)
+
+    existing.send.return_value.pin.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_no_coordinator_announcement_on_channel_creation():
+    guild, _ = _make_guild_and_category()
+    guild.create_text_channel = AsyncMock()
+    new_channel = _make_new_channel()
+    guild.create_text_channel.return_value = new_channel
+    sent_message = MagicMock()
+    sent_message.pin = AsyncMock()
+    new_channel.send.return_value = sent_message
+
+    bot = MagicMock()
+    service = RideRequestService(bot)
+
+    await service.handle_new_rider_reaction(_make_user(), guild)
+
+    # The "new hooman!" notice is gone; coordinators hear about riders when they register.
+    bot.get_channel.assert_not_called()
 
 
 @pytest.mark.asyncio
