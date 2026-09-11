@@ -33,60 +33,20 @@ async def test_pickup_location_none():
 
 
 @pytest.mark.asyncio
-async def test_sync_locations(monkeypatch):
-    """Should call LocationsRepository.sync_locations() exactly once."""
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.content = (
-        b"Name,Discord Username,Year,Location,Driver\nAlice,alice,2025,Revelle,Yes"
-    )
-
-    mock_client = AsyncMock()
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.get = AsyncMock(return_value=mock_response)
-    monkeypatch.setattr("httpx.AsyncClient", MagicMock(return_value=mock_client))
-    monkeypatch.setattr("ridebot.services.csv_sync_service.LSCC_PPL_CSV_URL", "http://example.com")
-
-    mock_sync = AsyncMock()
-    monkeypatch.setattr(
-        "ridebot.services.csv_sync_service.LocationsRepository.sync_locations", mock_sync
-    )
-
-    mock_session = AsyncMock()
-    mock_session_cm = MagicMock()
-    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
-    monkeypatch.setattr(
-        "ridebot.services.csv_sync_service.AsyncSessionLocal",
-        MagicMock(return_value=mock_session_cm),
-    )
-
-    svc = LocationsService(bot=None)
-    await svc.sync_locations()
-    mock_sync.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_sort_locations_with_cache_and_miss():
-    """Should call sync_locations() on cache miss and then resolve names."""
+async def test_sort_locations_skips_unmatched():
+    """Should skip usernames with no matching location, no resync."""
     # _sort_locations uses person[0] (name) and person[1] (location), so use tuples
     mock_person_hit = ("PersonHit", "Revelle")
     mock_person_miss = None
-    mock_person_after_sync = ("PersonMiss", "ERC")
 
     svc = LocationsService(bot=None)
-    svc.get_name_location_no_sync: Any = AsyncMock(
-        side_effect=[mock_person_hit, mock_person_miss, mock_person_after_sync]
-    )
-    svc.sync_locations: Any = AsyncMock()
+    svc.get_name_location_no_sync: Any = AsyncMock(side_effect=[mock_person_hit, mock_person_miss])
 
     result, found = await svc._sort_locations({"u_hit", "u_miss"})
 
     assert "Revelle" in result
-    assert "ERC" in result
     assert "u_hit" in found
-    assert "u_miss" in found
-    svc.sync_locations.assert_awaited_once()
+    assert "u_miss" not in found
 
 
 @pytest.mark.asyncio
@@ -146,8 +106,8 @@ async def test_list_locations_adds_non_discord_pickups():
 
 
 @pytest.mark.asyncio
-async def test_get_location_returns_cached_results():
-    """When DB returns results immediately, sync is never triggered."""
+async def test_get_location_returns_results():
+    """When DB returns results, they're returned directly."""
     svc = LocationsService(bot=None)
 
     mock_session = AsyncMock()
@@ -163,56 +123,20 @@ async def test_get_location_returns_cached_results():
             return_value=[("Alice", "Revelle")],
         ),
     ):
-        svc.sync_locations = AsyncMock()
         result = await svc.get_location("Alice")
 
     assert result == [("Alice", "Revelle")]
-    svc.sync_locations.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_get_location_triggers_sync_on_cache_miss():
-    """When DB returns nothing, sync is called and result is re-queried."""
+async def test_get_location_returns_none_on_miss():
+    """If nothing matches, None is returned with no resync."""
     svc = LocationsService(bot=None)
 
     mock_session = AsyncMock()
     mock_session_cm = MagicMock()
     mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
-
-    call_count = 0
-
-    async def fake_lookup(*_args, **_kwargs):
-        nonlocal call_count
-        call_count += 1
-        return [] if call_count == 1 else [("Bob", "Warren")]
-
-    svc.sync_locations = AsyncMock()
-
-    with (
-        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
-        patch(
-            "ridebot.services.locations_service.LocationsRepository.get_location_check_name_and_discord",
-            side_effect=fake_lookup,
-        ),
-    ):
-        result = await svc.get_location("Bob")
-
-    assert result == [("Bob", "Warren")]
-    svc.sync_locations.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_get_location_returns_none_after_sync_miss():
-    """If still not found after sync, None is returned."""
-    svc = LocationsService(bot=None)
-
-    mock_session = AsyncMock()
-    mock_session_cm = MagicMock()
-    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
-
-    svc.sync_locations = AsyncMock()
 
     with (
         patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
@@ -244,7 +168,6 @@ async def test_get_location_discord_only_uses_discord_check():
             return_value=[("Alice", "Revelle")],
         ) as mock_discord_check,
     ):
-        svc.sync_locations = AsyncMock()
         result = await svc.get_location("alice", discord_only=True)
 
     assert result == [("Alice", "Revelle")]
@@ -339,7 +262,6 @@ async def test_list_locations_no_day_uses_message_id():
     fake_person.location = "Revelle"
     fake_person.name = "Alice"
     svc.get_name_location_no_sync = AsyncMock(return_value=fake_person)
-    svc.sync_locations = AsyncMock()
 
     mock_session = AsyncMock()
     mock_session_cm = MagicMock()
