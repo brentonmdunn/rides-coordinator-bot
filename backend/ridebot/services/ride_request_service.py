@@ -6,6 +6,7 @@ from typing import Any, cast
 import discord
 
 from ridebot.utils.channels import resolve_channel_id
+from ridebot.views.registration import RegistrationView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
 
@@ -95,15 +96,17 @@ class RideRequestService:
             )
             # Channel was created, so don't fail the whole flow
 
-        # Send welcome message
+        # Send welcome message with the self-service registration button
         try:
-            await new_channel.send(
+            message = await new_channel.send(
                 f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
-                "We don't yet know where to pick you up. "
-                "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "
-                "If you live **off campus**, please share your apartment complex or address. "
-                "One of our ride coordinators will check in with you shortly!",
+                "We don't yet know where to pick you up.\n"
+                "If you live **on campus**, tap **Register** below to tell us your name, "
+                "year, and where you live.\n"
+                "If you live **off campus**, please share your apartment complex or address "
+                "here and a ride coordinator will add you.",
                 allowed_mentions=discord.AllowedMentions(users=True),
+                view=RegistrationView(),
             )
         except Exception:
             logger.exception(f"Failed to send welcome message to {new_channel.name}")
@@ -111,6 +114,12 @@ class RideRequestService:
                 f"**Unexpected Error** sending welcome message to `{new_channel.name}`"
             )
             # Channel was created, so still return True
+            return True
+
+        try:
+            await message.pin()
+        except (discord.Forbidden, discord.HTTPException):
+            logger.warning(f"Failed to pin welcome message in {new_channel.name}")
 
         return True
 
