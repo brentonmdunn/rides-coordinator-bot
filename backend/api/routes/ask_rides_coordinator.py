@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
-from bot.core.bot_instance import get_bot
-from bot.services.ride_coordinator_service import RideCoordinatorService, UserLookupStatus
+from ridebot.services.ride_coordinator_service import RideCoordinatorService, UserLookupStatus
+from shared.core.bot_instance import get_bot
 
 logger = logging.getLogger(__name__)
 

@@ -6,9 +6,9 @@ Business logic layer for per-user UI/app preferences.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.models import UserPreferences
-from bot.repositories.user_preferences_repository import UserPreferencesRepository
+from shared.core.database import AsyncSessionLocal
+from shared.core.models import UserPreferences
+from shared.repositories.user_preferences_repository import UserPreferencesRepository
 
 
 class UserPreferencesService:

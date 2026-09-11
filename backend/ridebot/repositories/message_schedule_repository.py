@@ -6,9 +6,9 @@ from datetime import date, datetime
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import JobName
-from bot.core.models import MessageSchedulePause
-from bot.utils.time_helpers import get_send_day_before
+from ridebot.utils.time_helpers import get_send_day_before
+from shared.core.enums import JobName
+from shared.core.models import MessageSchedulePause
 
 logger = logging.getLogger(__name__)
 

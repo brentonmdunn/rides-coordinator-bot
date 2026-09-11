@@ -19,9 +19,9 @@ from api.constants import (
     INTERNAL_SECRET_HEADER,
     SESSION_COOKIE_NAME,
 )
-from bot.core.database import AsyncSessionLocal
-from bot.core.logger import generate_txn_id, txn_id_var, user_email_var
-from bot.services.auth_service import AuthService
+from shared.core.database import AsyncSessionLocal
+from shared.core.logger import generate_txn_id, txn_id_var, user_email_var
+from shared.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 

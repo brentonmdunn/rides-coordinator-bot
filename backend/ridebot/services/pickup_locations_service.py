@@ -13,11 +13,11 @@ from dataclasses import dataclass, field
 
 from rapidfuzz import fuzz, process, utils
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import CampusLivingLocations
-from bot.core.models import PickupLocation, PickupLocationEdge
-from bot.repositories.global_settings_repository import GlobalSettingsRepository
-from bot.repositories.pickup_locations_repository import PickupLocationsRepository
+from ridebot.repositories.global_settings_repository import GlobalSettingsRepository
+from ridebot.repositories.pickup_locations_repository import PickupLocationsRepository
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import CampusLivingLocations
+from shared.core.models import PickupLocation, PickupLocationEdge
 
 logger = logging.getLogger(__name__)
 

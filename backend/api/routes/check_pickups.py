@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from api.dependencies import require_bot, validate_ride_type
-from bot.core.enums import AskRidesMessage, JobName
-from bot.services.locations_service import LocationsService
-from bot.services.ride_coverage_service import RideCoverageService
+from ridebot.services.locations_service import LocationsService
+from ridebot.services.ride_coverage_service import RideCoverageService
+from shared.core.enums import AskRidesMessage, JobName
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 
 import discord
 
-from bot.core.enums import DaysOfWeek, EmbedColorChoice, Emoji
+from shared.core.enums import DaysOfWeek, EmbedColorChoice, Emoji
 
 GUILD_ID = 916817752918982716
 

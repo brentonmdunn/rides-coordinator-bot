@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import GlobalSetting
+from shared.core.models import GlobalSetting
 
 logger = logging.getLogger(__name__)
 

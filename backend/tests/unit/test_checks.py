@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from bot.utils.checks import feature_flag_enabled, is_admin
+from shared.utils.checks import feature_flag_enabled, is_admin
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -113,7 +113,7 @@ def _make_async_interaction() -> MagicMock:
 @pytest.mark.asyncio
 async def test_feature_flag_enabled_from_cache_allows_execution():
     """Feature flag in cache (True) allows the wrapped function to run."""
-    with patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo:
+    with patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo:
         mock_repo._cache = {"my_feature": True}
 
         wrapped = feature_flag_enabled("my_feature")(_dummy_func)
@@ -127,7 +127,7 @@ async def test_feature_flag_disabled_in_cache_blocks_with_interaction():
     """Feature flag cached False sends ephemeral message and returns None."""
     interaction = _make_async_interaction()
 
-    with patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo:
+    with patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo:
         mock_repo._cache = {"my_feature": False}
 
         wrapped = feature_flag_enabled("my_feature")(_dummy_func)
@@ -142,7 +142,7 @@ async def test_feature_flag_disabled_in_cache_blocks_with_interaction():
 @pytest.mark.asyncio
 async def test_feature_flag_disabled_in_cache_blocks_job_no_interaction():
     """Feature flag cached False with no interaction simply returns None."""
-    with patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo:
+    with patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo:
         mock_repo._cache = {"my_feature": False}
 
         wrapped = feature_flag_enabled("my_feature")(_dummy_func)
@@ -160,8 +160,8 @@ async def test_feature_flag_fetched_from_db_when_not_in_cache():
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo,
-        patch("bot.utils.checks.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo,
+        patch("shared.utils.checks.AsyncSessionLocal", return_value=mock_session_cm),
     ):
         mock_repo._cache = {}
         mock_repo.get_feature_flag_status = AsyncMock(return_value=True)
@@ -181,8 +181,8 @@ async def test_feature_flag_db_returns_none_blocks_execution():
     mock_session_cm.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo,
-        patch("bot.utils.checks.AsyncSessionLocal", return_value=mock_session_cm),
+        patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo,
+        patch("shared.utils.checks.AsyncSessionLocal", return_value=mock_session_cm),
     ):
         mock_repo._cache = {}
         mock_repo.get_feature_flag_status = AsyncMock(return_value=None)
@@ -199,8 +199,8 @@ async def test_feature_flag_db_exception_with_interaction_sends_error():
     interaction = _make_async_interaction()
 
     with (
-        patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo,
-        patch("bot.utils.checks.AsyncSessionLocal", side_effect=RuntimeError("db gone")),
+        patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo,
+        patch("shared.utils.checks.AsyncSessionLocal", side_effect=RuntimeError("db gone")),
     ):
         mock_repo._cache = {}
 
@@ -215,8 +215,8 @@ async def test_feature_flag_db_exception_with_interaction_sends_error():
 async def test_feature_flag_db_exception_no_interaction_returns_none():
     """DB exception without an interaction just returns None silently."""
     with (
-        patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo,
-        patch("bot.utils.checks.AsyncSessionLocal", side_effect=RuntimeError("db gone")),
+        patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo,
+        patch("shared.utils.checks.AsyncSessionLocal", side_effect=RuntimeError("db gone")),
     ):
         mock_repo._cache = {}
 
@@ -231,7 +231,7 @@ async def test_feature_flag_found_via_kwargs():
     """Interaction passed as a keyword argument is found correctly."""
     interaction = _make_async_interaction()
 
-    with patch("bot.utils.checks.FeatureFlagsRepository") as mock_repo:
+    with patch("shared.utils.checks.FeatureFlagsRepository") as mock_repo:
         mock_repo._cache = {"my_feature": False}
 
         wrapped = feature_flag_enabled("my_feature")(_dummy_func)

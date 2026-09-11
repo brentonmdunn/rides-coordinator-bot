@@ -6,8 +6,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import DiscordUsers
-from bot.core.models import Locations as LocationsModel
+from shared.core.models import DiscordUsers
+from shared.core.models import Locations as LocationsModel
 
 logger = logging.getLogger(__name__)
 

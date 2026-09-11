@@ -5,12 +5,12 @@ from typing import TypedDict
 
 import discord
 
-from bot.core.enums import Emoji
-from bot.utils.constants import (
+from ridebot.utils.constants import (
     RITA_LOCATIONS,
     SCHOLARS_LOCATIONS,
     WARREN_PEPPER_CANYON_LOCATIONS,
 )
+from shared.core.enums import Emoji
 
 logger = logging.getLogger(__name__)
 

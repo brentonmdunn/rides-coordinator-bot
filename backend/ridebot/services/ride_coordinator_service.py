@@ -13,9 +13,9 @@ from enum import Enum
 import discord
 from discord.ext.commands import Bot
 
-from bot.core.database import AsyncSessionLocal
-from bot.repositories.global_settings_repository import GlobalSettingsRepository
-from bot.utils.format_message import ping_user
+from ridebot.repositories.global_settings_repository import GlobalSettingsRepository
+from ridebot.utils.format_message import ping_user
+from shared.core.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 

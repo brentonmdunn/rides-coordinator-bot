@@ -4,22 +4,22 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.enums import (
+from ridebot.services.driver_service import DriverService
+from ridebot.utils.autocomplete import lscc_day_autocomplete
+from ridebot.utils.cache import warm_ask_drivers_message_cache
+from ridebot.utils.channel_whitelist import (
+    BOT_TESTING_CHANNELS,
+    cmd_is_allowed,
+)
+from shared.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
     JobName,
 )
-from bot.core.logger import log_cmd
-from bot.services.driver_service import DriverService
-from bot.utils.autocomplete import lscc_day_autocomplete
-from bot.utils.cache import warm_ask_drivers_message_cache
-from bot.utils.channel_whitelist import (
-    BOT_TESTING_CHANNELS,
-    cmd_is_allowed,
-)
-from bot.utils.checks import feature_flag_enabled
+from shared.core.logger import log_cmd
+from shared.utils.checks import feature_flag_enabled
 
 
 class AskDrivers(commands.Cog):

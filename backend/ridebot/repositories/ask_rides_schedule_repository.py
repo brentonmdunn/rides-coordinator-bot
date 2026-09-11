@@ -4,8 +4,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import AskRidesScheduleSlot
-from bot.core.models import AskRidesSchedule
+from shared.core.enums import AskRidesScheduleSlot
+from shared.core.models import AskRidesSchedule
 
 
 class AskRidesScheduleRepository:

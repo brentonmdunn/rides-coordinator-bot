@@ -5,9 +5,9 @@ import logging
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import Locations as LocationsModel
-from bot.core.models import NonDiscordRides
-from bot.utils.time_helpers import get_next_date_obj
+from ridebot.utils.time_helpers import get_next_date_obj
+from shared.core.models import Locations as LocationsModel
+from shared.core.models import NonDiscordRides
 
 logger = logging.getLogger(__name__)
 

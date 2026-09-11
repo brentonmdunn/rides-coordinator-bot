@@ -4,12 +4,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames, JobName
-from bot.core.logger import log_cmd
-from bot.services.group_rides_service import GroupRidesService
-from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
-from bot.utils.checks import feature_flag_enabled
-from bot.utils.constants import GROUP_RIDES_DEFAULT_CAPACITY
+from ridebot.services.group_rides_service import GroupRidesService
+from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
+from ridebot.utils.constants import GROUP_RIDES_DEFAULT_CAPACITY
+from shared.core.enums import FeatureFlagNames, JobName
+from shared.core.logger import log_cmd
+from shared.utils.checks import feature_flag_enabled
 
 
 class GroupRides(commands.Cog):

@@ -10,8 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import FeatureFlagNames, FellowshipSeason
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.core.enums import FeatureFlagNames, FellowshipSeason
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
 def _patch_season(module: str, season: FellowshipSeason):
@@ -36,10 +36,10 @@ class TestFridayRidesSeasonGate:
         bot = MagicMock()
 
         with (
-            _patch_season("bot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
-            patch("bot.jobs.ask_rides._ask_rides_template", new=AsyncMock()) as mock_send,
+            _patch_season("ridebot.jobs.ask_rides", FellowshipSeason.WEDNESDAY),
+            patch("ridebot.jobs.ask_rides._ask_rides_template", new=AsyncMock()) as mock_send,
         ):
-            from bot.jobs.ask_rides import run_ask_rides_fri
+            from ridebot.jobs.ask_rides import run_ask_rides_fri
 
             await run_ask_rides_fri.__wrapped__(bot)
 
@@ -52,20 +52,21 @@ class TestFridayRidesSeasonGate:
         fake_message.add_reaction = AsyncMock()
 
         with (
-            _patch_season("bot.jobs.ask_rides", FellowshipSeason.FRIDAY),
+            _patch_season("ridebot.jobs.ask_rides", FellowshipSeason.FRIDAY),
             patch(
-                "bot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
+                "ridebot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
                 new=AsyncMock(return_value=False),
             ),
-            _patch_session("bot.jobs.ask_rides") as mock_session_ctx,
+            _patch_session("ridebot.jobs.ask_rides") as mock_session_ctx,
             patch(
-                "bot.jobs.ask_rides._ask_rides_template", new=AsyncMock(return_value=fake_message)
+                "ridebot.jobs.ask_rides._ask_rides_template",
+                new=AsyncMock(return_value=fake_message),
             ) as mock_send,
         ):
             mock_session_ctx.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            from bot.jobs.ask_rides import run_ask_rides_fri
+            from ridebot.jobs.ask_rides import run_ask_rides_fri
 
             await run_ask_rides_fri.__wrapped__(bot)
 
@@ -80,11 +81,11 @@ class TestWednesdayRidesSeasonGate:
         bot = MagicMock()
 
         with (
-            _patch_season("bot.jobs.ask_rides", FellowshipSeason.FRIDAY),
-            patch("bot.jobs.ask_rides._ask_rides_template", new=AsyncMock()) as mock_send,
-            patch("bot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
+            _patch_season("ridebot.jobs.ask_rides", FellowshipSeason.FRIDAY),
+            patch("ridebot.jobs.ask_rides._ask_rides_template", new=AsyncMock()) as mock_send,
+            patch("ridebot.jobs.ask_rides.run_ask_drivers_wed", new=AsyncMock()) as mock_driver,
         ):
-            from bot.jobs.ask_rides import run_ask_rides_wed
+            from ridebot.jobs.ask_rides import run_ask_rides_wed
 
             await run_ask_rides_wed.__wrapped__(bot)
 
@@ -100,14 +101,14 @@ class TestDriverJobsSeasonGate:
         bot = MagicMock()
 
         with (
-            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
-            patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
+            _patch_season("ridebot.jobs.ask_drivers", FellowshipSeason.WEDNESDAY),
+            patch("ridebot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
             patch.dict(
                 FeatureFlagsRepository._cache,
                 {FeatureFlagNames.ASK_FRIDAY_DRIVERS_JOB: True},
             ),
         ):
-            from bot.jobs.ask_drivers import run_ask_drivers_fri
+            from ridebot.jobs.ask_drivers import run_ask_drivers_fri
 
             await run_ask_drivers_fri.__wrapped__(bot)
 
@@ -118,14 +119,14 @@ class TestDriverJobsSeasonGate:
         bot = MagicMock()
 
         with (
-            _patch_season("bot.jobs.ask_drivers", FellowshipSeason.FRIDAY),
-            patch("bot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
+            _patch_season("ridebot.jobs.ask_drivers", FellowshipSeason.FRIDAY),
+            patch("ridebot.jobs.ask_drivers._ask_drivers_template", new=AsyncMock()) as mock_send,
             patch.dict(
                 FeatureFlagsRepository._cache,
                 {FeatureFlagNames.ASK_WEDNESDAY_DRIVERS_JOB: True},
             ),
         ):
-            from bot.jobs.ask_drivers import run_ask_drivers_wed
+            from ridebot.jobs.ask_drivers import run_ask_drivers_wed
 
             await run_ask_drivers_wed.__wrapped__(bot)
 

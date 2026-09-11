@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import EventThreads
+from shared.core.models import EventThreads
 
 logger = logging.getLogger(__name__)
 

@@ -5,15 +5,15 @@ import logging
 import discord
 from discord.ext import commands
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import ChannelIds
-from bot.core.error_reporter import send_error_to_discord
-from bot.repositories.ride_coverage_repository import RideCoverageRepository
-from bot.services.ride_coverage_service import RideCoverageService
-from bot.utils.time_helpers import (
+from ridebot.repositories.ride_coverage_repository import RideCoverageRepository
+from ridebot.services.ride_coverage_service import RideCoverageService
+from ridebot.utils.time_helpers import (
     is_in_any_coverage_message_lookup_window,
     is_message_in_any_coverage_lookup_window,
 )
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import ChannelIds
+from shared.core.error_reporter import send_error_to_discord
 
 logger = logging.getLogger(__name__)
 

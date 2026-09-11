@@ -6,8 +6,8 @@ import logging
 from sqlalchemy import delete, distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import RideCoverage as RideCoverageModel
-from bot.utils.constants import COVERAGE_STATUS_DEFAULT_HOURS
+from ridebot.utils.constants import COVERAGE_STATUS_DEFAULT_HOURS
+from shared.core.models import RideCoverage as RideCoverageModel
 
 logger = logging.getLogger(__name__)
 

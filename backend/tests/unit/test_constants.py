@@ -1,4 +1,4 @@
-"""Unit tests for RoutingContext map helpers (formerly bot.utils.constants)."""
+"""Unit tests for RoutingContext map helpers (formerly ridebot.utils.constants)."""
 
 from tests.unit.routing_fixtures import make_seed_context
 

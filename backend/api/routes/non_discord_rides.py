@@ -12,9 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
-from bot.core.enums import CampusLivingLocations
-from bot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
-from bot.utils.constants import LSCC_DAYS, RIDE_REACTION_LABELS
+from ridebot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
+from ridebot.utils.constants import LSCC_DAYS, RIDE_REACTION_LABELS
+from shared.core.enums import CampusLivingLocations
 
 logger = logging.getLogger(__name__)
 

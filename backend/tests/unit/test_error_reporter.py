@@ -1,13 +1,13 @@
-"""Unit tests for bot.core.error_reporter."""
+"""Unit tests for shared.core.error_reporter."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
 import pytest
 
-from bot.core.error_reporter import _get_config, send_error_to_discord
+from shared.core.error_reporter import _get_config, send_error_to_discord
 
-_ENABLED = "bot.core.error_reporter._is_send_errors_enabled"
+_ENABLED = "shared.core.error_reporter._is_send_errors_enabled"
 
 
 class TestGetConfig:
@@ -35,34 +35,34 @@ class TestSendErrorToDiscord:
     """Tests for send_error_to_discord."""
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("local", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("local", 123))
     async def test_skips_in_local_env(self, mock_config):
         # Should return early without sending
         await send_error_to_discord("test error")
         # No exception means success
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", None))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", None))
     async def test_skips_when_no_channel_id(self, mock_config):
         await send_error_to_discord("test error")
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=False)
     async def test_skips_when_flag_disabled(self, mock_flag, mock_config):
         await send_error_to_discord("test error")
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=True)
-    @patch("bot.core.error_reporter.get_bot", return_value=None)
+    @patch("shared.core.error_reporter.get_bot", return_value=None)
     async def test_skips_when_bot_not_ready(self, mock_bot, mock_flag, mock_config):
         await send_error_to_discord("test error")
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=True)
-    @patch("bot.core.error_reporter.get_bot")
+    @patch("shared.core.error_reporter.get_bot")
     async def test_sends_error_message(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
@@ -76,9 +76,9 @@ class TestSendErrorToDiscord:
         assert "Something broke" in sent_msg
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=True)
-    @patch("bot.core.error_reporter.get_bot")
+    @patch("shared.core.error_reporter.get_bot")
     async def test_sends_error_with_traceback(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
@@ -93,9 +93,9 @@ class TestSendErrorToDiscord:
         mock_channel.send.assert_awaited()
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=True)
-    @patch("bot.core.error_reporter.get_bot")
+    @patch("shared.core.error_reporter.get_bot")
     async def test_sends_error_with_explicit_traceback(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
@@ -106,9 +106,9 @@ class TestSendErrorToDiscord:
         mock_channel.send.assert_awaited()
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=True)
-    @patch("bot.core.error_reporter.get_bot")
+    @patch("shared.core.error_reporter.get_bot")
     async def test_long_traceback_chunked(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = AsyncMock(spec=discord.TextChannel)
         mock_bot = MagicMock()
@@ -121,9 +121,9 @@ class TestSendErrorToDiscord:
         assert mock_channel.send.await_count >= 2
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=True)
-    @patch("bot.core.error_reporter.get_bot")
+    @patch("shared.core.error_reporter.get_bot")
     async def test_channel_not_text_channel(self, mock_get_bot, mock_flag, mock_config):
         mock_channel = MagicMock()  # Not a TextChannel
         mock_bot = MagicMock()
@@ -134,9 +134,9 @@ class TestSendErrorToDiscord:
         await send_error_to_discord("Error")
 
     @pytest.mark.asyncio
-    @patch("bot.core.error_reporter._get_config", return_value=("production", 123))
+    @patch("shared.core.error_reporter._get_config", return_value=("production", 123))
     @patch(_ENABLED, return_value=True)
-    @patch("bot.core.error_reporter.get_bot")
+    @patch("shared.core.error_reporter.get_bot")
     async def test_channel_not_found(self, mock_get_bot, mock_flag, mock_config):
         mock_bot = MagicMock()
         mock_bot.get_channel.return_value = None

@@ -2,9 +2,9 @@
 
 import logging
 
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.logger import log_job
-from bot.services.non_discord_rides_service import NonDiscordRidesService
+from ridebot.services.non_discord_rides_service import NonDiscordRidesService
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.logger import log_job
 
 logger = logging.getLogger(__name__)
 

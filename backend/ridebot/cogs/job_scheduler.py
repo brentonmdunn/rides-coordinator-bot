@@ -6,18 +6,17 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from discord.ext import commands
 
-from bot.core.enums import AskRidesScheduleSlot, ChannelIds
-
 # from jobs_disabled.retreat_sync_roles import run_csv_job
-from bot.jobs.ask_rides import (
+from ridebot.jobs.ask_rides import (
     run_ask_rides_all,
     run_ask_rides_wed,
     run_periodic_cache_warming,
 )
-from bot.jobs.sync_rides_locations import sync_rides_locations
-from bot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
-from bot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
-from bot.utils.time_helpers import LA_TZ
+from ridebot.jobs.sync_rides_locations import sync_rides_locations
+from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
+from ridebot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
+from ridebot.utils.time_helpers import LA_TZ
+from shared.core.enums import AskRidesScheduleSlot, ChannelIds
 
 logger = logging.getLogger(__name__)
 

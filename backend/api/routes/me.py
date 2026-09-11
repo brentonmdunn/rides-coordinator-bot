@@ -11,8 +11,8 @@ import os
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from bot.core.enums import AccountRoles
-from bot.services.user_accounts_service import UserAccountsService
+from shared.core.enums import AccountRoles
+from shared.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@
 
 from discord import app_commands
 
-from bot.core.enums import CampusLivingLocations
-from bot.utils.constants import LSCC_DAYS
+from ridebot.utils.constants import LSCC_DAYS
+from shared.core.enums import CampusLivingLocations
 
 
 async def lscc_day_autocomplete(

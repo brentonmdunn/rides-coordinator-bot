@@ -6,7 +6,7 @@ This module defines the Pydantic models used for data validation and serializati
 
 from pydantic import BaseModel, RootModel, field_validator
 
-from bot.core.enums import CampusLivingLocations
+from shared.core.enums import CampusLivingLocations
 
 
 class LocationQuery(BaseModel):

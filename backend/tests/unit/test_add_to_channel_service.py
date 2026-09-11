@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import discord
 import pytest
 
-from bot.services.admin_service import AdminService
+from ridebot.services.admin_service import AdminService
 
 
 @pytest.fixture

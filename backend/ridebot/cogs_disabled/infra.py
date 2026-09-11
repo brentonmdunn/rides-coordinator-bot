@@ -1,10 +1,10 @@
 import discord
 from discord.ext import commands
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import FeatureFlagNames
-from bot.core.models import DiscordUsers
-from bot.utils.checks import feature_flag_enabled, is_admin
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import FeatureFlagNames
+from shared.core.models import DiscordUsers
+from shared.utils.checks import feature_flag_enabled, is_admin
 
 
 class Infra(commands.Cog):

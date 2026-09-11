@@ -3,8 +3,8 @@
 import logging
 from datetime import datetime, time, timedelta
 
-from bot.core.schemas import Passenger
-from bot.services.pickup_locations_service import RoutingContext
+from ridebot.core.schemas import Passenger
+from ridebot.services.pickup_locations_service import RoutingContext
 
 logger = logging.getLogger(__name__)
 

@@ -9,10 +9,10 @@ import discord
 from discord.ext import commands
 
 from agent.ridebot_agent import run_agent
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import ChannelIds, FeatureFlagNames, RoleIds
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
-from bot.utils.cache_backends import get_backend
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import ChannelIds, FeatureFlagNames, RoleIds
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.utils.cache_backends import get_backend
 
 logger = logging.getLogger(__name__)
 

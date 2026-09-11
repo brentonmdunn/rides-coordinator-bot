@@ -4,16 +4,16 @@ import logging
 
 import discord
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AskRidesMessage, ChannelIds, JobName
-from bot.core.error_reporter import send_error_to_discord
-from bot.repositories.ride_coverage_repository import RideCoverageRepository
-from bot.utils.time_helpers import (
+from ridebot.repositories.ride_coverage_repository import RideCoverageRepository
+from ridebot.utils.time_helpers import (
     get_coverage_message_lookup_start,
     get_last_sunday,
     is_in_coverage_widget_window,
     is_message_in_any_coverage_lookup_window,
 )
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import AskRidesMessage, ChannelIds, JobName
+from shared.core.error_reporter import send_error_to_discord
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +176,7 @@ class RideCoverageService:
         Returns:
             Dict with users, total, assigned, message_found, has_coverage_entries.
         """
-        from bot.services.locations_service import LocationsService
+        from ridebot.services.locations_service import LocationsService
 
         locations_service = LocationsService(self.bot)
 

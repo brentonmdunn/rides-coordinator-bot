@@ -6,15 +6,15 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.enums import (
+from ridebot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
+from ridebot.utils.autocomplete import location_autocomplete, lscc_day_autocomplete
+from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
+from shared.core.enums import (
     FeatureFlagNames,
 )
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.logger import log_cmd
-from bot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
-from bot.utils.autocomplete import location_autocomplete, lscc_day_autocomplete
-from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
-from bot.utils.checks import feature_flag_enabled
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.logger import log_cmd
+from shared.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
 

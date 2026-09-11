@@ -12,21 +12,21 @@ from collections import defaultdict
 
 import discord
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import (
+from ridebot.repositories.locations_repository import LocationsRepository
+from ridebot.services.csv_sync_service import CsvSyncService
+from ridebot.services.housing_group_service import HousingGroupService
+from ridebot.services.reaction_service import ReactionService
+from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
+from ridebot.utils.parsing import get_message_and_embed_content
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
     AskRidesMessage,
     ChannelIds,
     JobName,
     RideOption,
 )
-from bot.core.error_reporter import send_error_to_discord
-from bot.repositories.locations_repository import LocationsRepository
-from bot.services.csv_sync_service import CsvSyncService
-from bot.services.housing_group_service import HousingGroupService
-from bot.services.reaction_service import ReactionService
-from bot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
-from bot.utils.parsing import get_message_and_embed_content
+from shared.core.error_reporter import send_error_to_discord
 
 logger = logging.getLogger(__name__)
 

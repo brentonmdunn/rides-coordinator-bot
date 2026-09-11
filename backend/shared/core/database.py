@@ -12,9 +12,9 @@ import sys
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from bot.core.base import Base
-from bot.core.enums import AccountRoles, FeatureFlagNames, JobName
-from bot.core.models import FeatureFlags, MessageSchedulePause, UserAccount
+from shared.core.base import Base
+from shared.core.enums import AccountRoles, FeatureFlagNames, JobName
+from shared.core.models import FeatureFlags, MessageSchedulePause, UserAccount
 
 logger = logging.getLogger(__name__)
 

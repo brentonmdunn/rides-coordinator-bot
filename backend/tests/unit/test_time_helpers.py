@@ -1,13 +1,12 @@
-"""Extensive unit tests for bot.utils.time_helpers."""
+"""Extensive unit tests for ridebot.utils.time_helpers."""
 
 from datetime import date, datetime
 from unittest.mock import patch
 
 import pytz
 
-from bot.core.enums import DaysOfWeek, DaysOfWeekNumber
-from bot.services.late_reaction_windows_service import DEFAULT_LATE_REACTION_WINDOWS
-from bot.utils.time_helpers import (
+from ridebot.services.late_reaction_windows_service import DEFAULT_LATE_REACTION_WINDOWS
+from ridebot.utils.time_helpers import (
     LA_TZ,
     get_current_cycle_start,
     get_last_sunday,
@@ -20,6 +19,7 @@ from bot.utils.time_helpers import (
     is_in_late_reaction_window,
     is_in_ride_day_window,
 )
+from shared.core.enums import DaysOfWeek, DaysOfWeekNumber
 
 
 def _la(year, month, day, hour=0, minute=0):
@@ -33,67 +33,67 @@ def _la(year, month, day, hour=0, minute=0):
 class TestIsInRideDayWindow:
     """Tests for the ride-day window checker."""
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_wednesday_window_tuesday_before_7pm(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 21, 18, 0)  # Tuesday 6 PM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Wednesday") is False
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_wednesday_window_tuesday_at_7pm(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 21, 19, 0)  # Tuesday 7 PM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Wednesday") is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_wednesday_window_wednesday_before_7pm(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 12, 0)  # Wednesday noon
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Wednesday") is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_wednesday_window_wednesday_at_7pm(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 19, 0)  # Wednesday 7 PM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Wednesday") is False
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_friday_window_thursday_at_7pm(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 23, 19, 0)  # Thursday 7 PM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Friday") is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_friday_window_friday_before_7pm(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 24, 14, 0)  # Friday 2 PM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Friday") is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_friday_window_friday_at_7pm(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 24, 19, 0)  # Friday 7 PM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Friday") is False
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_sunday_window_saturday_at_10am(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 25, 10, 0)  # Saturday 10 AM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Sunday") is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_sunday_window_saturday_before_10am(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 25, 9, 0)  # Saturday 9 AM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Sunday") is False
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_sunday_window_sunday_before_10am(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 26, 9, 0)  # Sunday 9 AM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert is_in_ride_day_window("Sunday") is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_sunday_window_sunday_at_10am(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 26, 10, 0)  # Sunday 10 AM
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -117,7 +117,7 @@ class TestIsInRideDayWindow:
 class TestGetNextDateStr:
     """Tests for get_next_date_str."""
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_returns_next_wednesday_from_monday(self, mock_dt):
         # Monday April 20, 2026
         mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
@@ -125,7 +125,7 @@ class TestGetNextDateStr:
         result = get_next_date_str(DaysOfWeekNumber.WEDNESDAY)
         assert result == "4/22"
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_skips_to_next_week_on_same_day(self, mock_dt):
         # Wednesday April 22, 2026
         mock_dt.now.return_value = _la(2026, 4, 22, 10, 0)
@@ -133,7 +133,7 @@ class TestGetNextDateStr:
         result = get_next_date_str(DaysOfWeekNumber.WEDNESDAY)
         assert result == "4/29"
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_next_friday_from_thursday(self, mock_dt):
         # Thursday April 23, 2026
         mock_dt.now.return_value = _la(2026, 4, 23, 10, 0)
@@ -141,7 +141,7 @@ class TestGetNextDateStr:
         result = get_next_date_str(DaysOfWeekNumber.FRIDAY)
         assert result == "4/24"
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_next_sunday_from_saturday(self, mock_dt):
         # Saturday April 25, 2026
         mock_dt.now.return_value = _la(2026, 4, 25, 10, 0)
@@ -156,7 +156,7 @@ class TestGetNextDateStr:
 class TestGetNextDateObj:
     """Tests for get_next_date_obj."""
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_returns_date_object(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -164,7 +164,7 @@ class TestGetNextDateObj:
         assert isinstance(result, date)
         assert result == date(2026, 4, 24)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_skips_same_day(self, mock_dt):
         # Sunday April 26, 2026
         mock_dt.now.return_value = _la(2026, 4, 26, 10, 0)
@@ -172,7 +172,7 @@ class TestGetNextDateObj:
         result = get_next_date_obj(DaysOfWeek.SUNDAY)
         assert result == date(2026, 5, 3)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_every_day_of_week(self, mock_dt):
         # Wednesday April 22, 2026
         mock_dt.now.return_value = _la(2026, 4, 22, 10, 0)
@@ -190,7 +190,7 @@ class TestGetNextDateObj:
 class TestGetLastSunday:
     """Tests for get_last_sunday."""
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_monday(self, mock_dt):
         # Monday April 20, 2026
         mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
@@ -199,7 +199,7 @@ class TestGetLastSunday:
         assert result.weekday() == 6  # Sunday
         assert result.date() == date(2026, 4, 19)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_sunday_returns_previous_sunday(self, mock_dt):
         # Sunday April 26, 2026
         mock_dt.now.return_value = _la(2026, 4, 26, 10, 0)
@@ -207,7 +207,7 @@ class TestGetLastSunday:
         result = get_last_sunday()
         assert result.date() == date(2026, 4, 19)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_saturday(self, mock_dt):
         # Saturday April 25, 2026
         mock_dt.now.return_value = _la(2026, 4, 25, 10, 0)
@@ -215,7 +215,7 @@ class TestGetLastSunday:
         result = get_last_sunday()
         assert result.date() == date(2026, 4, 19)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_wednesday(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 10, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -229,37 +229,37 @@ class TestGetLastSunday:
 class TestIsActiveHours:
     """Tests for is_active_hours."""
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_midnight_is_active(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 0, 30)  # 12:30 AM
         assert is_active_hours() is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_1am_is_not_active(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 1, 0)
         assert is_active_hours() is False
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_3am_is_not_active(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 3, 0)
         assert is_active_hours() is False
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_6am_is_not_active(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 6, 59)
         assert is_active_hours() is False
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_7am_is_active(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 7, 0)
         assert is_active_hours() is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_noon_is_active(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 12, 0)
         assert is_active_hours() is True
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_11pm_is_active(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 23, 0)
         assert is_active_hours() is True
@@ -271,7 +271,7 @@ class TestIsActiveHours:
 class TestGetCurrentCycleStart:
     """Tests for get_current_cycle_start (Monday-start calendar week)."""
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_thursday(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 23, 15, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -280,7 +280,7 @@ class TestGetCurrentCycleStart:
         assert result.hour == 0
         assert result.date() == date(2026, 4, 20)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_monday_returns_today(self, mock_dt):
         # Monday April 20, 2026 at 10 AM — should return today at 00:00
         mock_dt.now.return_value = _la(2026, 4, 20, 10, 0)
@@ -291,21 +291,21 @@ class TestGetCurrentCycleStart:
         assert result.hour == 0
         assert result.minute == 0
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_monday_midnight(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 20, 0, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         result = get_current_cycle_start()
         assert result.date() == date(2026, 4, 20)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_sunday(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 26, 10, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         result = get_current_cycle_start()
         assert result.date() == date(2026, 4, 20)
 
-    @patch("bot.utils.time_helpers.datetime")
+    @patch("ridebot.utils.time_helpers.datetime")
     def test_on_wednesday(self, mock_dt):
         mock_dt.now.return_value = _la(2026, 4, 22, 15, 0)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -382,7 +382,7 @@ class TestGetSendDayBefore:
 class TestIsDuringLateReactionWindow:
     """Tests for is_during_late_reaction_window."""
 
-    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
+    @patch("ridebot.utils.time_helpers.is_in_late_reaction_window")
     def test_friday_message_in_window(self, mock_window):
         mock_window.return_value = True
         assert (
@@ -392,7 +392,7 @@ class TestIsDuringLateReactionWindow:
             is True
         )
 
-    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
+    @patch("ridebot.utils.time_helpers.is_in_late_reaction_window")
     def test_sunday_message_in_window(self, mock_window):
         mock_window.return_value = True
         assert (
@@ -402,7 +402,7 @@ class TestIsDuringLateReactionWindow:
             is True
         )
 
-    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
+    @patch("ridebot.utils.time_helpers.is_in_late_reaction_window")
     def test_wednesday_message_in_window(self, mock_window):
         mock_window.return_value = True
         assert (
@@ -412,7 +412,7 @@ class TestIsDuringLateReactionWindow:
             is True
         )
 
-    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
+    @patch("ridebot.utils.time_helpers.is_in_late_reaction_window")
     def test_no_day_in_message(self, mock_window):
         mock_window.return_value = True
         assert (
@@ -420,7 +420,7 @@ class TestIsDuringLateReactionWindow:
             is False
         )
 
-    @patch("bot.utils.time_helpers.is_in_late_reaction_window")
+    @patch("ridebot.utils.time_helpers.is_in_late_reaction_window")
     def test_day_in_message_but_not_in_window(self, mock_window):
         mock_window.return_value = False
         assert (
@@ -441,7 +441,7 @@ class TestIsInLateReactionWindow:
 
     def test_minute_precision_boundary_inside(self):
         # Wednesday window: Tue 19:00 -> Wed 19:00. Just before the end boundary.
-        with patch("bot.utils.time_helpers.datetime") as mock_dt:
+        with patch("ridebot.utils.time_helpers.datetime") as mock_dt:
             mock_dt.now.return_value = _la(2026, 4, 22, 18, 59)  # Wednesday 18:59
             assert (
                 is_in_late_reaction_window(DaysOfWeek.WEDNESDAY, DEFAULT_LATE_REACTION_WINDOWS)
@@ -450,7 +450,7 @@ class TestIsInLateReactionWindow:
 
     def test_minute_precision_boundary_outside(self):
         # One minute past the end boundary should be outside the window.
-        with patch("bot.utils.time_helpers.datetime") as mock_dt:
+        with patch("ridebot.utils.time_helpers.datetime") as mock_dt:
             mock_dt.now.return_value = _la(2026, 4, 22, 19, 1)  # Wednesday 19:01
             assert (
                 is_in_late_reaction_window(DaysOfWeek.WEDNESDAY, DEFAULT_LATE_REACTION_WINDOWS)

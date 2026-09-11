@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, cast
 
 from apscheduler.triggers.cron import CronTrigger
 
-from bot.core.bot_instance import get_bot
-from bot.utils.time_helpers import LA_TZ
+from ridebot.utils.time_helpers import LA_TZ
+from shared.core.bot_instance import get_bot
 
 if TYPE_CHECKING:
-    from bot.cogs.job_scheduler import JobScheduler
+    from ridebot.cogs.job_scheduler import JobScheduler
 
 logger = logging.getLogger(__name__)
 

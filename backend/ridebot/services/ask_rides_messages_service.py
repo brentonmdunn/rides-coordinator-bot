@@ -13,16 +13,16 @@ from dataclasses import dataclass
 
 from sqlalchemy.exc import OperationalError
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AskRidesMessageType, EmbedColorChoice
-from bot.core.messages_broadcaster import publish
-from bot.repositories.ask_rides_messages_repository import AskRidesMessagesRepository
-from bot.utils.ask_rides_defaults import (
+from ridebot.core.messages_broadcaster import publish
+from ridebot.repositories.ask_rides_messages_repository import AskRidesMessagesRepository
+from ridebot.utils.ask_rides_defaults import (
     ALLOWED_PLACEHOLDERS,
     DEFAULT_TEMPLATES,
     MAX_REACTIONS,
     MessageTemplate,
 )
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import AskRidesMessageType, EmbedColorChoice
 
 logger = logging.getLogger(__name__)
 

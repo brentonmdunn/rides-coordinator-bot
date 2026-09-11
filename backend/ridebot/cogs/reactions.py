@@ -5,22 +5,22 @@ import logging
 import discord
 from discord.ext import commands
 
-from bot.cogs.locations import Locations
-from bot.core.enums import (
+from ridebot.cogs.locations import Locations
+from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
+from ridebot.services.reaction_logging_service import ReactionLoggingService
+from ridebot.services.ride_reaction_log_service import RideReactionLogService
+from ridebot.services.ride_request_service import RideRequestService
+from ridebot.services.thread_service import ThreadService
+from ridebot.utils.parsing import get_message_and_embed_content
+from ridebot.utils.time_helpers import is_during_late_reaction_window
+from shared.core.enums import (
     AskRidesMessage,
     ChannelIds,
     FeatureFlagNames,
     ReactionAction,
 )
-from bot.core.logger import generate_txn_id, txn_id_var
-from bot.services.late_reaction_windows_service import LateReactionWindowsService
-from bot.services.reaction_logging_service import ReactionLoggingService
-from bot.services.ride_reaction_log_service import RideReactionLogService
-from bot.services.ride_request_service import RideRequestService
-from bot.services.thread_service import ThreadService
-from bot.utils.checks import feature_flag_enabled
-from bot.utils.parsing import get_message_and_embed_content
-from bot.utils.time_helpers import is_during_late_reaction_window
+from shared.core.logger import generate_txn_id, txn_id_var
+from shared.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +276,7 @@ class Reactions(commands.Cog):
         await RideReactionLogService.record_ask_rides_reaction(user, payload, message, action)
 
     async def _check_if_ask_message(self, message_id, channel_id):
-        from bot.utils.cache import (
+        from ridebot.utils.cache import (
             warm_ask_drivers_reactions_cache,
             warm_ask_rides_reactions_cache,
         )

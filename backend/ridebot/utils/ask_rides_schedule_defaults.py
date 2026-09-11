@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from bot.core.enums import AskRidesScheduleSlot, DaysOfWeekNumber, JobName
+from shared.core.enums import AskRidesScheduleSlot, DaysOfWeekNumber, JobName
 
 # Daytime send window, inclusive. 22:00 is allowed, 22:30 is not.
 SCHEDULE_MIN_HOUR = 6

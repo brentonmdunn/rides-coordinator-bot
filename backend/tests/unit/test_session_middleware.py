@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from api.auth_session import SESSION_COOKIE_NAME, session_cookie_middleware
-from bot.core.models import AuthSession
+from shared.core.models import AuthSession
 
 # ---------------------------------------------------------------------------
 # Helpers

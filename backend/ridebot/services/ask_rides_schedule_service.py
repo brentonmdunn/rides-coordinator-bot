@@ -12,12 +12,10 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.exc import OperationalError
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AskRidesScheduleSlot, CacheNamespace, JobName
-from bot.core.messages_broadcaster import publish
-from bot.core.scheduler_control import reschedule_job
-from bot.repositories.ask_rides_schedule_repository import AskRidesScheduleRepository
-from bot.utils.ask_rides_schedule_defaults import (
+from ridebot.core.messages_broadcaster import publish
+from ridebot.core.scheduler_control import reschedule_job
+from ridebot.repositories.ask_rides_schedule_repository import AskRidesScheduleRepository
+from ridebot.utils.ask_rides_schedule_defaults import (
     ALLOWED_DAYS,
     DEFAULT_SCHEDULE,
     JOB_NAME_TO_SLOT,
@@ -28,9 +26,11 @@ from bot.utils.ask_rides_schedule_defaults import (
     SLOT_TO_JOB_ID,
     ScheduleDefault,
 )
-from bot.utils.cache import invalidate_namespace
-from bot.utils.constants import DAYS_IN_WEEK
-from bot.utils.time_helpers import LA_TZ
+from ridebot.utils.cache import invalidate_namespace
+from ridebot.utils.constants import DAYS_IN_WEEK
+from ridebot.utils.time_helpers import LA_TZ
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import AskRidesScheduleSlot, CacheNamespace, JobName
 
 logger = logging.getLogger(__name__)
 

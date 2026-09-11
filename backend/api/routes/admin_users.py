@@ -11,10 +11,10 @@ from pydantic import BaseModel
 
 from api.auth import require_admin
 from api.constants import ADMIN_EMAILS
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AccountRoles
-from bot.core.models import UserAccount
-from bot.services.user_accounts_service import UserAccountsService
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import AccountRoles
+from shared.core.models import UserAccount
+from shared.services.user_accounts_service import UserAccountsService
 
 logger = logging.getLogger(__name__)
 

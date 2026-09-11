@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from bot.core.enums import FeatureFlagNames
-from bot.services.feature_flags_service import FeatureFlagsService
+from shared.core.enums import FeatureFlagNames
+from shared.services.feature_flags_service import FeatureFlagsService
 
 
 @pytest.mark.asyncio
@@ -26,14 +26,14 @@ async def test_validate_feature_name_invalid():
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
     new_callable=AsyncMock,
 )
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.update_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.update_feature_flag",
     new_callable=AsyncMock,
 )
-@patch("bot.services.feature_flags_service.AsyncSessionLocal")
+@patch("shared.services.feature_flags_service.AsyncSessionLocal")
 async def test_modify_feature_flag_updates(mock_session_local, _, mock_get):
     """Should update feature flag and return success message."""
     mock_get.return_value = type("Flag", (), {"enabled": False})
@@ -51,10 +51,10 @@ async def test_modify_feature_flag_updates(mock_session_local, _, mock_get):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
     new_callable=AsyncMock,
 )
-@patch("bot.services.feature_flags_service.AsyncSessionLocal")
+@patch("shared.services.feature_flags_service.AsyncSessionLocal")
 async def test_modify_feature_flag_not_found(mock_session_local, mock_get):
     """Should handle not found flags gracefully."""
     mock_get.return_value = None
@@ -72,10 +72,10 @@ async def test_modify_feature_flag_not_found(mock_session_local, mock_get):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
     new_callable=AsyncMock,
 )
-@patch("bot.services.feature_flags_service.AsyncSessionLocal")
+@patch("shared.services.feature_flags_service.AsyncSessionLocal")
 async def test_modify_feature_flag_already_enabled(mock_session_local, mock_get):
     """Should not update if already in desired state."""
     mock_get.return_value = type("Flag", (), {"enabled": True})
@@ -93,11 +93,11 @@ async def test_modify_feature_flag_already_enabled(mock_session_local, mock_get)
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
     new_callable=AsyncMock,
 )
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.update_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.update_feature_flag",
     new_callable=AsyncMock,
 )
 async def test_modify_feature_flag_with_provided_session(mock_update, mock_get):
@@ -115,10 +115,10 @@ async def test_modify_feature_flag_with_provided_session(mock_update, mock_get):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
     new_callable=AsyncMock,
 )
-@patch("bot.services.feature_flags_service.AsyncSessionLocal")
+@patch("shared.services.feature_flags_service.AsyncSessionLocal")
 async def test_list_feature_flags_embed_no_session(mock_session_local, mock_get_all):
     """list_feature_flags_embed should create a session internally when none is provided."""
     import discord
@@ -142,7 +142,7 @@ async def test_list_feature_flags_embed_no_session(mock_session_local, mock_get_
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
     new_callable=AsyncMock,
 )
 async def test_list_feature_flags_embed_with_session(mock_get_all):
@@ -165,7 +165,7 @@ async def test_list_feature_flags_embed_with_session(mock_get_all):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
     new_callable=AsyncMock,
 )
 async def test_list_feature_flags_embed_disabled_flag(mock_get_all):
@@ -187,7 +187,7 @@ async def test_list_feature_flags_embed_disabled_flag(mock_get_all):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_all_feature_flags",
     new_callable=AsyncMock,
 )
 async def test_list_feature_flags_embed_empty(mock_get_all):
@@ -206,11 +206,11 @@ async def test_list_feature_flags_embed_empty(mock_get_all):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.get_feature_flag",
     new_callable=AsyncMock,
 )
 @patch(
-    "bot.services.feature_flags_service.FeatureFlagsRepository.update_feature_flag",
+    "shared.services.feature_flags_service.FeatureFlagsRepository.update_feature_flag",
     new_callable=AsyncMock,
 )
 async def test_modify_feature_flag_disable_existing(mock_update, mock_get):

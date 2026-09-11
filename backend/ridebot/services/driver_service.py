@@ -1,11 +1,11 @@
 """Service for driver-related operations."""
 
-from bot.core.enums import (
+from ridebot.utils.format_message import ping_role_with_message
+from shared.core.enums import (
     DaysOfWeek,
     Emoji,
     RoleIds,
 )
-from bot.utils.format_message import ping_role_with_message
 
 
 class DriverService:

@@ -2,7 +2,7 @@
 Bot API Access Layer
 
 This module provides the bot lifecycle context manager for the FastAPI application.
-Bot instance access is in bot.core.bot_instance; error reporting is in bot.core.error_reporter.
+Bot instance access is in shared.core.bot_instance; error reporting is in shared.core.error_reporter.
 """
 
 import asyncio
@@ -14,9 +14,9 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
-from bot.core.bot_instance import set_bot_instance
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
+from shared.core.bot_instance import set_bot_instance
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
 
 logger = logging.getLogger(__name__)
 

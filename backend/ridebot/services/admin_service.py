@@ -4,7 +4,7 @@ import logging
 
 import discord
 
-from bot.utils.parsing import parse_discord_username
+from ridebot.utils.parsing import parse_discord_username
 
 logger = logging.getLogger(__name__)
 

@@ -5,8 +5,12 @@ from collections import defaultdict
 
 import discord
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import (
+from ridebot.repositories.locations_repository import LocationsRepository
+from ridebot.utils.cache import _get_reaction_cache_ttl, alru_cache
+from ridebot.utils.parsing import get_message_and_embed_content
+from ridebot.utils.time_helpers import get_last_sunday
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import (
     AskRidesMessage,
     CacheNamespace,
     ChannelIds,
@@ -14,10 +18,6 @@ from bot.core.enums import (
     RideOption,
     RoleIds,
 )
-from bot.repositories.locations_repository import LocationsRepository
-from bot.utils.cache import _get_reaction_cache_ttl, alru_cache
-from bot.utils.parsing import get_message_and_embed_content
-from bot.utils.time_helpers import get_last_sunday
 
 logger = logging.getLogger(__name__)
 

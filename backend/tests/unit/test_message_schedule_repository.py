@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import DaysOfWeekNumber, JobName
-from bot.repositories.message_schedule_repository import MessageScheduleRepository
+from ridebot.repositories.message_schedule_repository import MessageScheduleRepository
+from shared.core.enums import DaysOfWeekNumber, JobName
 
 
 def _make_session(scalars_first=None, scalars_all=None, rowcount=0):
@@ -285,7 +285,7 @@ async def test_is_job_paused_customized_send_day_not_hardcoded_wednesday():
     session = AsyncMock(spec=AsyncSession)
     session.execute = AsyncMock(side_effect=[select_result, update_result])
 
-    with patch("bot.repositories.message_schedule_repository.date") as mock_date:
+    with patch("ridebot.repositories.message_schedule_repository.date") as mock_date:
         mock_date.today.return_value = datetime.date(2026, 4, 21)  # Tuesday
         mock_date.side_effect = lambda *a, **kw: datetime.date(*a, **kw)
 

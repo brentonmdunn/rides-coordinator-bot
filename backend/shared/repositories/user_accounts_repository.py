@@ -10,8 +10,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import AccountRoles
-from bot.core.models import UserAccount
+from shared.core.enums import AccountRoles
+from shared.core.models import UserAccount
 
 logger = logging.getLogger(__name__)
 

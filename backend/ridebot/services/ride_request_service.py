@@ -5,9 +5,9 @@ from typing import Any, cast
 
 import discord
 
-from bot.core.enums import CategoryIds, ChannelIds, RoleIds
-from bot.core.error_reporter import send_error_to_discord
-from bot.utils.channels import resolve_channel_id
+from ridebot.utils.channels import resolve_channel_id
+from shared.core.enums import CategoryIds, ChannelIds, RoleIds
+from shared.core.error_reporter import send_error_to_discord
 
 logger = logging.getLogger(__name__)
 

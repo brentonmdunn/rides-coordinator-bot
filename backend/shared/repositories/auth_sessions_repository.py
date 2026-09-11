@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import AuthSession
+from shared.core.models import AuthSession
 
 logger = logging.getLogger(__name__)
 

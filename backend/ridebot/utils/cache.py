@@ -14,13 +14,13 @@ import pickle
 from collections.abc import Callable
 from typing import Any, TypeVar, cast
 
-from bot.core.enums import CacheNamespace, FeatureFlagNames
-from bot.utils.cache_backends import get_backend
-from bot.utils.constants import (
+from ridebot.utils.constants import (
     CACHE_DEFAULT_MAX_SIZE,
     REACTION_CACHE_ACTIVE_TTL,
     REACTION_CACHE_OFF_HOURS_TTL,
 )
+from shared.core.enums import CacheNamespace, FeatureFlagNames
+from shared.utils.cache_backends import get_backend
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def _get_reaction_cache_ttl() -> int:
     Returns:
         TTL in seconds.
     """
-    from bot.utils.time_helpers import is_active_hours
+    from ridebot.utils.time_helpers import is_active_hours
 
     if is_active_hours():
         return REACTION_CACHE_ACTIVE_TTL
@@ -51,7 +51,7 @@ def _get_reaction_cache_ttl() -> int:
 
 
 def _is_cache_enabled() -> bool:
-    from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+    from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
     return FeatureFlagsRepository._cache.get(FeatureFlagNames.USE_CACHE.value, True)
 
@@ -230,8 +230,8 @@ async def warm_ask_rides_message_cache(bot, channel_id=None) -> None:
         bot: The Discord bot instance.
         channel_id: Optional channel ID override (defaults to RIDES_ANNOUNCEMENTS).
     """
-    from bot.core.enums import ChannelIds
-    from bot.services.locations_service import LocationsService
+    from ridebot.services.locations_service import LocationsService
+    from shared.core.enums import ChannelIds
 
     if channel_id is None:
         channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
@@ -255,7 +255,7 @@ async def warm_ask_drivers_message_cache(bot, event=None) -> None:
         bot: The Discord bot instance.
         event: Optional AskRidesMessage enum value. If None, warms all events.
     """
-    from bot.services.locations_service import LocationsService
+    from ridebot.services.locations_service import LocationsService
 
     await invalidate_namespace(CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
 
@@ -272,7 +272,7 @@ async def warm_ask_rides_reactions_cache(bot, event) -> None:
         bot: The Discord bot instance.
         event: The AskRidesMessage event.
     """
-    from bot.services.locations_service import LocationsService
+    from ridebot.services.locations_service import LocationsService
 
     locations_svc = LocationsService(bot)
 
@@ -292,8 +292,8 @@ async def warm_ask_drivers_reactions_cache(bot, event=None) -> None:
         event: Optional AskRidesMessage event. If provided, selectively invalidates
                and warms only that event without touching the rest of the namespace.
     """
-    from bot.core.enums import AskRidesMessage
-    from bot.services.locations_service import LocationsService
+    from ridebot.services.locations_service import LocationsService
+    from shared.core.enums import AskRidesMessage
 
     locations_svc = LocationsService(bot)
 

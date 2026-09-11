@@ -12,8 +12,8 @@ from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
-from bot.core.base import Base
-from bot.core.enums import AccountRoles, AskRidesMessageType, AskRidesScheduleSlot, JobName
+from shared.core.base import Base
+from shared.core.enums import AccountRoles, AskRidesMessageType, AskRidesScheduleSlot, JobName
 
 
 class DiscordUsers(Base):

@@ -3,8 +3,8 @@
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.database import AsyncSessionLocal
-from bot.repositories.whois_repository import WhoisRepository
+from ridebot.repositories.whois_repository import WhoisRepository
+from shared.core.database import AsyncSessionLocal
 
 
 class WhoisService:

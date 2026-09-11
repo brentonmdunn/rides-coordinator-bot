@@ -3,12 +3,12 @@
 import discord
 from discord.ext import commands
 
-from bot.core.enums import ChannelIds, FeatureFlagNames, JobName, RideOption
-from bot.core.logger import log_cmd
-from bot.services.locations_service import LocationsService
-from bot.services.pickup_locations_service import PickupLocationsService
-from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
-from bot.utils.checks import feature_flag_enabled
+from ridebot.services.locations_service import LocationsService
+from ridebot.services.pickup_locations_service import PickupLocationsService
+from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
+from shared.core.enums import ChannelIds, FeatureFlagNames, JobName, RideOption
+from shared.core.logger import log_cmd
+from shared.utils.checks import feature_flag_enabled
 
 
 class Locations(commands.Cog):

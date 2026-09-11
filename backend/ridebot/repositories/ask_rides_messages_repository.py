@@ -4,8 +4,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import AskRidesMessageType
-from bot.core.models import AskRidesMessageTemplate
+from shared.core.enums import AskRidesMessageType
+from shared.core.models import AskRidesMessageTemplate
 
 
 class AskRidesMessagesRepository:

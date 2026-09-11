@@ -6,14 +6,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import (
-    CampusLivingLocations,
-    JobName,
-)
-from bot.core.schemas import Identity, Passenger
-from bot.services.group_rides_service import (
+from ridebot.core.schemas import Identity, Passenger
+from ridebot.services.group_rides_service import (
     EVENT_END_LEAVE_TIMES,
     GroupRidesService,
+)
+from shared.core.enums import (
+    CampusLivingLocations,
+    JobName,
 )
 from tests.unit.routing_fixtures import SEED_LIVING_TO_PICKUP, make_seed_context
 
@@ -270,11 +270,11 @@ async def test_get_pickup_location_fuzzy_delegates():
     svc = _make_service()
     with (
         patch(
-            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            "ridebot.services.group_rides_service.PickupLocationsService.get_routing_context",
             new=AsyncMock(return_value=SEED_CTX),
         ),
         patch(
-            "bot.services.group_rides_service.RouteService.get_pickup_location_fuzzy",
+            "ridebot.services.group_rides_service.RouteService.get_pickup_location_fuzzy",
             return_value="Seventh mail room",
         ) as mock_fuzzy,
     ):
@@ -288,11 +288,11 @@ async def test_make_route_delegates():
     svc = _make_service()
     with (
         patch(
-            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            "ridebot.services.group_rides_service.PickupLocationsService.get_routing_context",
             new=AsyncMock(return_value=SEED_CTX),
         ),
         patch(
-            "bot.services.group_rides_service.RouteService.make_route",
+            "ridebot.services.group_rides_service.RouteService.make_route",
             return_value="some route string",
         ) as mock_route,
     ):
@@ -404,11 +404,11 @@ async def test_process_ride_grouping_raises_on_llm_error_key():
 
     with (
         patch(
-            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            "ridebot.services.group_rides_service.PickupLocationsService.get_routing_context",
             new=AsyncMock(return_value=SEED_CTX),
         ),
         patch(
-            "bot.services.group_rides_service.asyncio.to_thread",
+            "ridebot.services.group_rides_service.asyncio.to_thread",
             new=AsyncMock(return_value={"error": "bad input"}),
         ),
         pytest.raises(ValueError, match="LLM returned with error"),
@@ -429,14 +429,14 @@ async def test_process_ride_grouping_raises_on_llm_exception():
 
     with (
         patch(
-            "bot.services.group_rides_service.PickupLocationsService.get_routing_context",
+            "ridebot.services.group_rides_service.PickupLocationsService.get_routing_context",
             new=AsyncMock(return_value=SEED_CTX),
         ),
         patch(
-            "bot.services.group_rides_service.asyncio.to_thread",
+            "ridebot.services.group_rides_service.asyncio.to_thread",
             new=AsyncMock(side_effect=RuntimeError("LLM down")),
         ),
-        patch("bot.services.group_rides_service.send_error_to_discord", new=AsyncMock()),
+        patch("ridebot.services.group_rides_service.send_error_to_discord", new=AsyncMock()),
         pytest.raises(ValueError, match="Could not process"),
     ):
         await svc._process_ride_grouping(1234, "44444", 9999)

@@ -9,7 +9,7 @@ import logging
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import UserPreferences
+from shared.core.models import UserPreferences
 
 logger = logging.getLogger(__name__)
 

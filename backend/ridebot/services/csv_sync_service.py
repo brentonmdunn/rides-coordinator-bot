@@ -9,10 +9,10 @@ from collections.abc import Callable
 import httpx
 from dotenv import load_dotenv
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import CanBeDriver, ClassYear
-from bot.core.models import Locations as LocationsModel
-from bot.repositories.locations_repository import LocationsRepository
+from ridebot.repositories.locations_repository import LocationsRepository
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import CanBeDriver, ClassYear
+from shared.core.models import Locations as LocationsModel
 
 logger = logging.getLogger(__name__)
 

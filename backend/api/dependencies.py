@@ -3,8 +3,8 @@
 from discord.ext.commands import Bot
 from fastapi import HTTPException
 
-from bot.core.bot_instance import get_bot
-from bot.core.enums import JobName
+from shared.core.bot_instance import get_bot
+from shared.core.enums import JobName
 
 VALID_RIDE_TYPES = frozenset({JobName.FRIDAY, JobName.SUNDAY, "message_id"})
 VALID_RIDE_TYPES_NO_MSG = frozenset({JobName.FRIDAY, JobName.SUNDAY})

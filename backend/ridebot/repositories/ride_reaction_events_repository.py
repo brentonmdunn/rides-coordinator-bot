@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import RideReactionEvent
+from shared.core.models import RideReactionEvent
 
 logger = logging.getLogger(__name__)
 

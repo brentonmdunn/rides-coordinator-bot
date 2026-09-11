@@ -1,15 +1,15 @@
-"""Unit tests for bot.services.late_reaction_windows_service."""
+"""Unit tests for ridebot.services.late_reaction_windows_service."""
 
 import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from bot.core.enums import DaysOfWeek
-from bot.services.late_reaction_windows_service import (
+from ridebot.services.late_reaction_windows_service import (
     DEFAULT_LATE_REACTION_WINDOWS,
     LateReactionWindowsService,
 )
+from shared.core.enums import DaysOfWeek
 
 VALID_PAYLOAD = {
     "wednesday": {
@@ -51,10 +51,10 @@ def _mock_session_local(mock_session_local):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
+    "ridebot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
     new_callable=AsyncMock,
 )
-@patch("bot.services.late_reaction_windows_service.AsyncSessionLocal")
+@patch("ridebot.services.late_reaction_windows_service.AsyncSessionLocal")
 async def test_get_windows_missing_key_returns_defaults(mock_session_local, mock_get):
     _mock_session_local(mock_session_local)
     mock_get.return_value = None
@@ -66,10 +66,10 @@ async def test_get_windows_missing_key_returns_defaults(mock_session_local, mock
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
+    "ridebot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
     new_callable=AsyncMock,
 )
-@patch("bot.services.late_reaction_windows_service.AsyncSessionLocal")
+@patch("ridebot.services.late_reaction_windows_service.AsyncSessionLocal")
 async def test_get_windows_malformed_json_returns_defaults(mock_session_local, mock_get):
     _mock_session_local(mock_session_local)
     mock_get.return_value = "not valid json{{{"
@@ -81,10 +81,10 @@ async def test_get_windows_malformed_json_returns_defaults(mock_session_local, m
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
+    "ridebot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
     new_callable=AsyncMock,
 )
-@patch("bot.services.late_reaction_windows_service.AsyncSessionLocal")
+@patch("ridebot.services.late_reaction_windows_service.AsyncSessionLocal")
 async def test_get_windows_one_bad_day_falls_back_only_for_that_day(mock_session_local, mock_get):
     _mock_session_local(mock_session_local)
     bad_payload = json.loads(json.dumps(VALID_PAYLOAD))
@@ -101,10 +101,10 @@ async def test_get_windows_one_bad_day_falls_back_only_for_that_day(mock_session
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
+    "ridebot.services.late_reaction_windows_service.GlobalSettingsRepository.get",
     new_callable=AsyncMock,
 )
-@patch("bot.services.late_reaction_windows_service.AsyncSessionLocal")
+@patch("ridebot.services.late_reaction_windows_service.AsyncSessionLocal")
 async def test_get_windows_round_trip_custom_values(mock_session_local, mock_get):
     _mock_session_local(mock_session_local)
     custom = json.loads(json.dumps(VALID_PAYLOAD))
@@ -119,10 +119,10 @@ async def test_get_windows_round_trip_custom_values(mock_session_local, mock_get
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.late_reaction_windows_service.GlobalSettingsRepository.set",
+    "ridebot.services.late_reaction_windows_service.GlobalSettingsRepository.set",
     new_callable=AsyncMock,
 )
-@patch("bot.services.late_reaction_windows_service.AsyncSessionLocal")
+@patch("ridebot.services.late_reaction_windows_service.AsyncSessionLocal")
 async def test_set_windows_persists_json(mock_session_local, mock_set):
     _mock_session_local(mock_session_local)
 
@@ -136,10 +136,10 @@ async def test_set_windows_persists_json(mock_session_local, mock_set):
 
 @pytest.mark.asyncio
 @patch(
-    "bot.services.late_reaction_windows_service.GlobalSettingsRepository.set",
+    "ridebot.services.late_reaction_windows_service.GlobalSettingsRepository.set",
     new_callable=AsyncMock,
 )
-@patch("bot.services.late_reaction_windows_service.AsyncSessionLocal")
+@patch("ridebot.services.late_reaction_windows_service.AsyncSessionLocal")
 async def test_set_windows_invalidates_cache(mock_session_local, mock_set):
     _mock_session_local(mock_session_local)
     # Prime the cache.

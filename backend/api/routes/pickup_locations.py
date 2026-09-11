@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, StringConstraints
 
 from api.auth import require_ride_coordinator
-from bot.services.pickup_locations_service import PickupLocationsService
+from ridebot.services.pickup_locations_service import PickupLocationsService
 
 logger = logging.getLogger(__name__)
 

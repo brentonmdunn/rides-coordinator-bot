@@ -1,25 +1,25 @@
-"""Unit tests for bot.cogs.job_scheduler — DB-configured schedule wiring at startup."""
+"""Unit tests for ridebot.cogs.job_scheduler — DB-configured schedule wiring at startup."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bot.core.enums import AskRidesScheduleSlot
-from bot.services.ask_rides_schedule_service import EffectiveSchedule
-from bot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
+from ridebot.services.ask_rides_schedule_service import EffectiveSchedule
+from ridebot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
+from shared.core.enums import AskRidesScheduleSlot
 
 
 class TestJobSchedulerTimezone:
     """AsyncIOScheduler must be pinned to LA_TZ (latent-timezone-bug fix)."""
 
     def test_scheduler_constructed_with_la_timezone(self):
-        from bot.cogs.job_scheduler import JobScheduler
-        from bot.utils.time_helpers import LA_TZ
+        from ridebot.cogs.job_scheduler import JobScheduler
+        from ridebot.utils.time_helpers import LA_TZ
 
         wed_schedule = EffectiveSchedule(day_of_week=0, hour=11, minute=0, is_customized=False)
         fri_sun_schedule = EffectiveSchedule(day_of_week=2, hour=12, minute=0, is_customized=False)
 
-        with patch("bot.cogs.job_scheduler.AsyncIOScheduler") as mock_scheduler_cls:
+        with patch("ridebot.cogs.job_scheduler.AsyncIOScheduler") as mock_scheduler_cls:
             mock_scheduler = MagicMock()
             mock_scheduler_cls.return_value = mock_scheduler
 
@@ -33,15 +33,15 @@ class TestJobSchedulerUsesConfiguredSchedule:
     """__init__ builds CronTriggers from the resolved EffectiveSchedule values."""
 
     def test_uses_customized_wed_and_fri_sun_schedules(self):
-        from bot.cogs.job_scheduler import JobScheduler
-        from bot.utils.time_helpers import LA_TZ
+        from ridebot.cogs.job_scheduler import JobScheduler
+        from ridebot.utils.time_helpers import LA_TZ
 
         wed_schedule = EffectiveSchedule(day_of_week=1, hour=9, minute=30, is_customized=True)
         fri_sun_schedule = EffectiveSchedule(day_of_week=3, hour=14, minute=0, is_customized=True)
 
         with (
-            patch("bot.cogs.job_scheduler.AsyncIOScheduler") as mock_scheduler_cls,
-            patch("bot.cogs.job_scheduler.CronTrigger") as mock_cron,
+            patch("ridebot.cogs.job_scheduler.AsyncIOScheduler") as mock_scheduler_cls,
+            patch("ridebot.cogs.job_scheduler.CronTrigger") as mock_cron,
         ):
             mock_scheduler = MagicMock()
             mock_scheduler_cls.return_value = mock_scheduler
@@ -70,8 +70,8 @@ class TestJobSchedulerUsesConfiguredSchedule:
         assert "run_ask_rides_all" in add_job_ids
 
     def test_uses_default_schedule_when_not_customized(self):
-        from bot.cogs.job_scheduler import JobScheduler
-        from bot.utils.time_helpers import LA_TZ
+        from ridebot.cogs.job_scheduler import JobScheduler
+        from ridebot.utils.time_helpers import LA_TZ
 
         wed_default = DEFAULT_SCHEDULE[AskRidesScheduleSlot.WEDNESDAY_REMINDER]
         fri_sun_default = DEFAULT_SCHEDULE[AskRidesScheduleSlot.FRI_SUN_GROUP]
@@ -89,8 +89,8 @@ class TestJobSchedulerUsesConfiguredSchedule:
         )
 
         with (
-            patch("bot.cogs.job_scheduler.AsyncIOScheduler") as mock_scheduler_cls,
-            patch("bot.cogs.job_scheduler.CronTrigger") as mock_cron,
+            patch("ridebot.cogs.job_scheduler.AsyncIOScheduler") as mock_scheduler_cls,
+            patch("ridebot.cogs.job_scheduler.CronTrigger") as mock_cron,
         ):
             mock_scheduler_cls.return_value = MagicMock()
 
@@ -112,7 +112,7 @@ class TestSetupResolvesEffectiveSchedule:
 
     @pytest.mark.asyncio
     async def test_setup_uses_db_configured_schedule(self):
-        from bot.cogs.job_scheduler import setup
+        from ridebot.cogs.job_scheduler import setup
 
         bot = MagicMock()
         bot.add_cog = AsyncMock()
@@ -127,10 +127,10 @@ class TestSetupResolvesEffectiveSchedule:
 
         with (
             patch(
-                "bot.cogs.job_scheduler.AskRidesScheduleService.get_effective_schedule",
+                "ridebot.cogs.job_scheduler.AskRidesScheduleService.get_effective_schedule",
                 new=AsyncMock(side_effect=fake_get_effective_schedule),
             ),
-            patch("bot.cogs.job_scheduler.JobScheduler") as mock_job_scheduler_cls,
+            patch("ridebot.cogs.job_scheduler.JobScheduler") as mock_job_scheduler_cls,
         ):
             await setup(bot)
 
@@ -144,17 +144,17 @@ class TestSetupResolvesEffectiveSchedule:
         own fallback), setup() defends against it anyway so a schedule-config
         problem can never block bot startup.
         """
-        from bot.cogs.job_scheduler import setup
+        from ridebot.cogs.job_scheduler import setup
 
         bot = MagicMock()
         bot.add_cog = AsyncMock()
 
         with (
             patch(
-                "bot.cogs.job_scheduler.AskRidesScheduleService.get_effective_schedule",
+                "ridebot.cogs.job_scheduler.AskRidesScheduleService.get_effective_schedule",
                 new=AsyncMock(side_effect=RuntimeError("boom")),
             ),
-            patch("bot.cogs.job_scheduler.JobScheduler") as mock_job_scheduler_cls,
+            patch("ridebot.cogs.job_scheduler.JobScheduler") as mock_job_scheduler_cls,
         ):
             await setup(bot)
 

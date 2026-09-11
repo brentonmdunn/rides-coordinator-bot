@@ -2,11 +2,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames
-from bot.jobs.ask_rides import (
+from ridebot.jobs.ask_rides import (
     run_ask_rides_all,
 )
-from bot.utils.checks import feature_flag_enabled
+from shared.core.enums import FeatureFlagNames
+from shared.utils.checks import feature_flag_enabled
 
 
 class TestCog(commands.Cog):

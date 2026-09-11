@@ -4,7 +4,7 @@ import logging
 
 import discord
 
-from bot.core.enums import ChannelIds
+from shared.core.enums import ChannelIds
 
 logger = logging.getLogger(__name__)
 

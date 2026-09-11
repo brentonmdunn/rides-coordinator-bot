@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.routes.route_builder import router
-from bot.services.pickup_locations_service import EdgeInfo, LocationInfo, RoutingContext
+from ridebot.services.pickup_locations_service import EdgeInfo, LocationInfo, RoutingContext
 
 SERVICE = "api.routes.route_builder.PickupLocationsService"
 

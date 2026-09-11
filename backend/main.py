@@ -7,9 +7,9 @@ import sys
 
 from dotenv import load_dotenv
 
-from bot.core.bot_instance import set_bot_instance
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
+from shared.core.bot_instance import set_bot_instance
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.lifecycle import attach_event_handlers, build_bot, load_extensions, startup
 
 logger = logging.getLogger(__name__)
 

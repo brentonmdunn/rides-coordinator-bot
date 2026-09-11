@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import FeatureFlagNames
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.core.enums import FeatureFlagNames
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
 @pytest.fixture(autouse=True)

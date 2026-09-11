@@ -14,7 +14,7 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from sqlalchemy import or_, update
 
-from bot.core.database import (
+from shared.core.database import (
     AsyncSessionLocal,
     init_db,
     seed_admin_accounts,
@@ -22,9 +22,9 @@ from bot.core.database import (
     seed_feature_flags,
     seed_message_schedule_pauses,
 )
-from bot.core.models import FeatureFlags
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
-from bot.utils.constants import REDIS_CONNECTION_TIMEOUT
+from shared.core.models import FeatureFlags
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.utils.constants import REDIS_CONNECTION_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ async def startup() -> None:
         import asyncio
 
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        from bot.utils.cache_backends import RedisBackend, set_backend
+        from shared.utils.cache_backends import RedisBackend, set_backend
 
         backend = RedisBackend(redis_url)
         try:
@@ -112,8 +112,8 @@ async def _disable_features_for_local_env() -> None:
 
 
 async def load_extensions(bot: Bot) -> None:
-    """Load all cogs from bot/cogs (and bot/cogs_testing in local env)."""
-    cogs_path = Path.cwd() / "bot" / "cogs"
+    """Load all cogs from ridebot/cogs, shared/cogs (and ridebot/cogs_testing in local env)."""
+    cogs_path = Path.cwd() / "ridebot" / "cogs"
     priority_filename = "job_scheduler.py"
 
     eligible_files = [
@@ -124,7 +124,22 @@ async def load_extensions(bot: Bot) -> None:
     eligible_files.sort(key=lambda f: (f.name != priority_filename, f.name))
 
     for filename in eligible_files:
-        extension = f"bot.cogs.{filename.stem}"
+        extension = f"ridebot.cogs.{filename.stem}"
+        try:
+            await bot.load_extension(extension)
+            logger.info(f"✅ Loaded extension: {extension}")
+        except Exception:
+            logger.exception(f"❌ Failed to load extension {extension}")
+            _failed_extensions.add(extension)
+
+    shared_cogs_path = Path.cwd() / "shared" / "cogs"
+    eligible_files = [
+        f
+        for f in shared_cogs_path.iterdir()
+        if f.is_file() and f.suffix == ".py" and not f.name.startswith("_")
+    ]
+    for filename in eligible_files:
+        extension = f"shared.cogs.{filename.stem}"
         try:
             await bot.load_extension(extension)
             logger.info(f"✅ Loaded extension: {extension}")
@@ -133,14 +148,14 @@ async def load_extensions(bot: Bot) -> None:
             _failed_extensions.add(extension)
 
     if APP_ENV == "local":
-        cogs_testing_path = Path.cwd() / "bot" / "cogs_testing"
+        cogs_testing_path = Path.cwd() / "ridebot" / "cogs_testing"
         eligible_files = [
             f
             for f in cogs_testing_path.iterdir()
             if f.is_file() and f.suffix == ".py" and not f.name.startswith("_")
         ]
         for filename in reversed(eligible_files):
-            extension = f"bot.cogs_testing.{filename.stem}"
+            extension = f"ridebot.cogs_testing.{filename.stem}"
             try:
                 await bot.load_extension(extension)
                 logger.info(f"✅ Loaded extension: {extension}")

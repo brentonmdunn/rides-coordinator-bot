@@ -6,8 +6,8 @@ from typing import ClassVar
 from sqlalchemy import case, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import FeatureFlagNames
-from bot.core.models import FeatureFlags as FeatureFlagsModel
+from shared.core.enums import FeatureFlagNames
+from shared.core.models import FeatureFlags as FeatureFlagsModel
 
 logger = logging.getLogger(__name__)
 

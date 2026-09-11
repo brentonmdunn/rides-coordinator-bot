@@ -6,11 +6,11 @@ Business logic for user account management and role-based access control.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import AccountRoles
-from bot.core.models import UserAccount
-from bot.repositories.auth_sessions_repository import AuthSessionsRepository
-from bot.repositories.user_accounts_repository import UserAccountsRepository
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import AccountRoles
+from shared.core.models import UserAccount
+from shared.repositories.auth_sessions_repository import AuthSessionsRepository
+from shared.repositories.user_accounts_repository import UserAccountsRepository
 
 ROLE_LEVELS: dict[str, int] = {
     AccountRoles.VIEWER: 1,

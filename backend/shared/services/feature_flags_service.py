@@ -5,9 +5,9 @@ import logging
 import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import Emoji, FeatureFlagNames
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import Emoji, FeatureFlagNames
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
 

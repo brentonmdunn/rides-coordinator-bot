@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from bot.core.enums import AskRidesMessageType
-from bot.services.ask_rides_messages_service import AskRidesMessagesService, EffectiveTemplate
-from bot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+from ridebot.services.ask_rides_messages_service import AskRidesMessagesService, EffectiveTemplate
+from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+from shared.core.enums import AskRidesMessageType
 
 
 def _mock_session_local(mock_session_local):
@@ -21,10 +21,10 @@ def _mock_session_local(mock_session_local):
 class TestGetEffectiveTemplate:
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
+        "ridebot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_returns_default_when_row_missing(self, mock_session_local, mock_get):
         _mock_session_local(mock_session_local)
         mock_get.return_value = None
@@ -41,10 +41,10 @@ class TestGetEffectiveTemplate:
 
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
+        "ridebot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_returns_db_row_when_present(self, mock_session_local, mock_get):
         _mock_session_local(mock_session_local)
         fake_row = MagicMock(
@@ -65,7 +65,7 @@ class TestGetEffectiveTemplate:
         )
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_falls_back_to_default_on_operational_error(self, mock_session_local, caplog):
         mock_session_local.side_effect = OperationalError("stmt", {}, Exception("no such table"))
 
@@ -78,7 +78,7 @@ class TestGetEffectiveTemplate:
         assert result.is_customized is False
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_never_raises_on_unexpected_error(self, mock_session_local):
         mock_session_local.side_effect = RuntimeError("boom")
 
@@ -95,10 +95,10 @@ class TestGetEffectiveTemplate:
 class TestGetEffectiveTemplates:
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.get_all",
+        "ridebot.services.ask_rides_messages_service.AskRidesMessagesRepository.get_all",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_merges_db_rows_over_defaults(self, mock_session_local, mock_get_all):
         _mock_session_local(mock_session_local)
         fake_row = MagicMock(
@@ -121,7 +121,7 @@ class TestGetEffectiveTemplates:
         )
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_falls_back_to_all_defaults_on_db_error(self, mock_session_local):
         mock_session_local.side_effect = OperationalError("stmt", {}, Exception("no such table"))
 
@@ -189,10 +189,10 @@ class TestValidate:
 class TestReactions:
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
+        "ridebot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_null_reactions_fall_back_to_defaults(self, mock_session_local, mock_get):
         _mock_session_local(mock_session_local)
         fake_row = MagicMock(title="Custom", body="Body", color="red", reactions=None)
@@ -206,10 +206,10 @@ class TestReactions:
 
     @pytest.mark.asyncio
     @patch(
-        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
+        "ridebot.services.ask_rides_messages_service.AskRidesMessagesRepository.get",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_malformed_reactions_fall_back_to_defaults(self, mock_session_local, mock_get):
         _mock_session_local(mock_session_local)
         fake_row = MagicMock(title="Custom", body="Body", color="red", reactions="not json")
@@ -249,12 +249,12 @@ class TestReactions:
 
 class TestUpdateTemplate:
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_messages_service.publish", new_callable=AsyncMock)
+    @patch("ridebot.services.ask_rides_messages_service.publish", new_callable=AsyncMock)
     @patch(
-        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.upsert",
+        "ridebot.services.ask_rides_messages_service.AskRidesMessagesRepository.upsert",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_validates_then_upserts_and_publishes(
         self, mock_session_local, mock_upsert, mock_publish
     ):
@@ -277,7 +277,7 @@ class TestUpdateTemplate:
         )
 
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_messages_service.publish", new_callable=AsyncMock)
+    @patch("ridebot.services.ask_rides_messages_service.publish", new_callable=AsyncMock)
     async def test_raises_on_invalid_input_without_touching_db(self, mock_publish):
         with pytest.raises(ValueError):
             await AskRidesMessagesService.update_template(
@@ -292,12 +292,12 @@ class TestUpdateTemplate:
 
 class TestResetTemplate:
     @pytest.mark.asyncio
-    @patch("bot.services.ask_rides_messages_service.publish", new_callable=AsyncMock)
+    @patch("ridebot.services.ask_rides_messages_service.publish", new_callable=AsyncMock)
     @patch(
-        "bot.services.ask_rides_messages_service.AskRidesMessagesRepository.delete",
+        "ridebot.services.ask_rides_messages_service.AskRidesMessagesRepository.delete",
         new_callable=AsyncMock,
     )
-    @patch("bot.services.ask_rides_messages_service.AsyncSessionLocal")
+    @patch("ridebot.services.ask_rides_messages_service.AsyncSessionLocal")
     async def test_deletes_and_publishes(self, mock_session_local, mock_delete, mock_publish):
         _mock_session_local(mock_session_local)
 

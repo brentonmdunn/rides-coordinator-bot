@@ -6,11 +6,11 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import DaysOfWeek
-from bot.core.models import NonDiscordRides
-from bot.repositories.non_discord_rides_repository import NonDiscordRidesRepository
-from bot.utils.time_helpers import get_next_date_obj
+from ridebot.repositories.non_discord_rides_repository import NonDiscordRidesRepository
+from ridebot.utils.time_helpers import get_next_date_obj
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import DaysOfWeek
+from shared.core.models import NonDiscordRides
 
 logger = logging.getLogger(__name__)
 

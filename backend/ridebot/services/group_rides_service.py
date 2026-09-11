@@ -6,20 +6,12 @@ from datetime import time
 
 import discord
 
-from bot.core.enums import (
-    DAY_TO_ASK_RIDES_MESSAGE,
-    AskRidesMessage,
-    CampusLivingLocations,
-    ChannelIds,
-    JobName,
-)
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.schemas import Identity, Passenger
-from bot.repositories.group_rides_repository import GroupRidesRepository
-from bot.services.llm_service import LLMService
-from bot.services.locations_service import LocationsService
-from bot.services.pickup_locations_service import PickupLocationsService, RoutingContext
-from bot.services.ride_grouping import (
+from ridebot.core.schemas import Identity, Passenger
+from ridebot.repositories.group_rides_repository import GroupRidesRepository
+from ridebot.services.llm_service import LLMService
+from ridebot.services.locations_service import LocationsService
+from ridebot.services.pickup_locations_service import PickupLocationsService, RoutingContext
+from ridebot.services.ride_grouping import (
     LocationsPeopleType,
     PassengersByLocation,
     count_tuples,
@@ -29,8 +21,16 @@ from bot.services.ride_grouping import (
     llm_input_pickups,
     parse_numbers,
 )
-from bot.services.route_service import RouteService
-from bot.utils.parsing import get_message_and_embed_content
+from ridebot.services.route_service import RouteService
+from ridebot.utils.parsing import get_message_and_embed_content
+from shared.core.enums import (
+    DAY_TO_ASK_RIDES_MESSAGE,
+    AskRidesMessage,
+    CampusLivingLocations,
+    ChannelIds,
+    JobName,
+)
+from shared.core.error_reporter import send_error_to_discord
 
 logger = logging.getLogger(__name__)
 

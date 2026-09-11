@@ -3,10 +3,10 @@
 import discord
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames
-from bot.core.logger import log_cmd
-from bot.services.whois_service import WhoisService
-from bot.utils.checks import feature_flag_enabled
+from ridebot.services.whois_service import WhoisService
+from shared.core.enums import FeatureFlagNames
+from shared.core.logger import log_cmd
+from shared.utils.checks import feature_flag_enabled
 
 
 class Whois(commands.Cog):

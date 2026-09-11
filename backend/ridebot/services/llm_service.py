@@ -9,13 +9,13 @@ import httpx
 import tenacity
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from bot.core.schemas import LLMOutputError, LLMOutputNominal
-from bot.utils.constants import (
+from ridebot.core.schemas import LLMOutputError, LLMOutputNominal
+from ridebot.utils.constants import (
     GEMINI_MODEL,
     LLM_RETRY_ATTEMPTS,
     LLM_RETRY_WAIT_SECONDS,
 )
-from bot.utils.genai.prompt import (
+from ridebot.utils.genai.prompt import (
     CUSTOM_INSTRUCTIONS,
     GROUP_RIDES_PROMPT,
     GROUP_RIDES_PROMPT_LEGACY,

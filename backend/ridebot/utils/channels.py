@@ -2,7 +2,7 @@
 
 import os
 
-from bot.core.enums import ChannelIds
+from shared.core.enums import ChannelIds
 
 
 def resolve_channel_id(channel_id: int) -> int:

@@ -5,12 +5,12 @@ from datetime import date, datetime, timedelta
 
 import pytz
 
-from bot.core.enums import DaysOfWeek, DaysOfWeekNumber
-from bot.utils.constants import (
+from ridebot.utils.constants import (
     ACTIVE_HOURS_END,
     ACTIVE_HOURS_START,
     DAYS_IN_WEEK,
 )
+from shared.core.enums import DaysOfWeek, DaysOfWeekNumber
 
 LA_TZ = pytz.timezone("America/Los_Angeles")
 

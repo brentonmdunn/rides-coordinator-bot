@@ -3,9 +3,9 @@
 import logging
 from datetime import date
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.models import MessageSchedulePause
-from bot.repositories.message_schedule_repository import MessageScheduleRepository
+from ridebot.repositories.message_schedule_repository import MessageScheduleRepository
+from shared.core.database import AsyncSessionLocal
+from shared.core.models import MessageSchedulePause
 
 logger = logging.getLogger(__name__)
 

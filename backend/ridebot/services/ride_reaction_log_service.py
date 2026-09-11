@@ -7,12 +7,12 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-from bot.core import reaction_broadcaster
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import ReactionAction
-from bot.repositories.ride_reaction_events_repository import RideReactionEventsRepository
-from bot.repositories.whois_repository import WhoisRepository
-from bot.utils.parsing import get_message_and_embed_content
+from ridebot.core import reaction_broadcaster
+from ridebot.repositories.ride_reaction_events_repository import RideReactionEventsRepository
+from ridebot.repositories.whois_repository import WhoisRepository
+from ridebot.utils.parsing import get_message_and_embed_content
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import ReactionAction
 
 logger = logging.getLogger(__name__)
 

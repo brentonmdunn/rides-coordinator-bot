@@ -7,9 +7,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from api.dependencies import parse_int_param, require_bot, validate_ride_type
-from bot.core.enums import AskRidesMessage, ChannelIds, JobName
-from bot.services.locations_service import LocationsService
-from bot.utils.custom_exceptions import NoMatchingMessageFoundError
+from ridebot.services.locations_service import LocationsService
+from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError
+from shared.core.enums import AskRidesMessage, ChannelIds, JobName
 
 logger = logging.getLogger(__name__)
 

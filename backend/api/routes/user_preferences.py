@@ -8,7 +8,7 @@ PATCH /api/me/preferences  — update one or more preference fields
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from bot.services.user_preferences_service import UserPreferencesService
+from shared.services.user_preferences_service import UserPreferencesService
 
 router = APIRouter()
 

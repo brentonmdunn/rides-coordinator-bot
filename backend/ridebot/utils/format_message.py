@@ -4,7 +4,7 @@ utils/format_message.py
 Helper functions to format messages.
 """
 
-from bot.core.enums import ChannelIds, RoleIds
+from shared.core.enums import ChannelIds, RoleIds
 
 
 def ping_role(role_id: RoleIds) -> str:

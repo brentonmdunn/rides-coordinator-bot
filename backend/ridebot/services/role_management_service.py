@@ -4,8 +4,8 @@ import logging
 
 import discord
 
-from bot.core.enums import RoleIds
-from bot.utils.parsing import parse_discord_username
+from ridebot.utils.parsing import parse_discord_username
+from shared.core.enums import RoleIds
 
 logger = logging.getLogger(__name__)
 

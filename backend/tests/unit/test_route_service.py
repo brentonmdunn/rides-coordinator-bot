@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from bot.services.route_service import RouteService
+from ridebot.services.route_service import RouteService
 from tests.unit.routing_fixtures import make_seed_context
 
 CTX = make_seed_context()

@@ -12,8 +12,40 @@ from typing import Literal
 import discord
 from discord.ext.commands import Bot
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import (
+from ridebot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun, run_ask_drivers_wed
+from ridebot.repositories.calendar_repository import CalendarRepository
+from ridebot.repositories.message_schedule_repository import MessageScheduleRepository
+from ridebot.services.ask_rides_messages_service import AskRidesMessagesService
+from ridebot.services.ask_rides_schedule_service import (
+    AskRidesScheduleService,
+    get_next_schedule_occurrence,
+    has_send_time_passed,
+)
+from ridebot.services.fellowship_season_service import FellowshipSeasonService
+from ridebot.services.ride_coordinator_service import RideCoordinatorService
+from ridebot.utils.cache import (
+    alru_cache,
+    warm_ask_drivers_message_cache,
+    warm_ask_rides_message_cache,
+)
+from ridebot.utils.channels import resolve_channel_id
+from ridebot.utils.constants import (
+    ASK_RIDES_ACTIVE_CACHE_TTL,
+    ASK_RIDES_HOURLY_CACHE_TTL,
+    ASK_RIDES_MESSAGE_HISTORY_LIMIT,
+    ASK_RIDES_OFF_HOURS_CACHE_TTL,
+    EMBED_COLOR_MAP,
+)
+from ridebot.utils.format_message import ping_role_with_message
+from ridebot.utils.time_helpers import (
+    LA_TZ,
+    get_current_cycle_start,
+    get_next_date_obj,
+    get_next_date_str,
+    get_send_day_before,
+)
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import (
     AskRidesMessageType,
     AskRidesScheduleSlot,
     CacheNamespace,
@@ -26,38 +58,10 @@ from bot.core.enums import (
     JobName,
     RoleIds,
 )
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.logger import log_job
-from bot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun, run_ask_drivers_wed
-from bot.repositories.calendar_repository import CalendarRepository
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
-from bot.repositories.message_schedule_repository import MessageScheduleRepository
-from bot.services.ask_rides_messages_service import AskRidesMessagesService
-from bot.services.ask_rides_schedule_service import (
-    AskRidesScheduleService,
-    get_next_schedule_occurrence,
-    has_send_time_passed,
-)
-from bot.services.fellowship_season_service import FellowshipSeasonService
-from bot.services.ride_coordinator_service import RideCoordinatorService
-from bot.utils.cache import alru_cache, warm_ask_drivers_message_cache, warm_ask_rides_message_cache
-from bot.utils.channels import resolve_channel_id
-from bot.utils.checks import feature_flag_enabled
-from bot.utils.constants import (
-    ASK_RIDES_ACTIVE_CACHE_TTL,
-    ASK_RIDES_HOURLY_CACHE_TTL,
-    ASK_RIDES_MESSAGE_HISTORY_LIMIT,
-    ASK_RIDES_OFF_HOURS_CACHE_TTL,
-    EMBED_COLOR_MAP,
-)
-from bot.utils.format_message import ping_role_with_message
-from bot.utils.time_helpers import (
-    LA_TZ,
-    get_current_cycle_start,
-    get_next_date_obj,
-    get_next_date_str,
-    get_send_day_before,
-)
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.logger import log_job
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +86,7 @@ def _is_wildcard_date(formatted_date: str) -> bool:
     """
     from datetime import datetime
 
-    from bot.utils.time_helpers import LA_TZ
+    from ridebot.utils.time_helpers import LA_TZ
 
     year_suffix = datetime.now(tz=LA_TZ).strftime("%y")
     date_with_year = f"{formatted_date}/{year_suffix}"
@@ -101,7 +105,7 @@ def _get_dynamic_ttl() -> int:
     """
     from datetime import datetime
 
-    from bot.utils.time_helpers import is_active_hours
+    from ridebot.utils.time_helpers import is_active_hours
 
     now = datetime.now()
 
@@ -554,10 +558,10 @@ async def run_periodic_cache_warming(bot: Bot) -> None:
     Skips warming during off-hours (1 AM - 7 AM PT) to avoid unnecessary API calls.
     """
     global _periodic_warmer_idx
-    from bot.core.enums import AskRidesMessage, CacheNamespace
-    from bot.services.locations_service import LocationsService
-    from bot.utils.cache import invalidate_namespace
-    from bot.utils.time_helpers import is_active_hours
+    from ridebot.services.locations_service import LocationsService
+    from ridebot.utils.cache import invalidate_namespace
+    from ridebot.utils.time_helpers import is_active_hours
+    from shared.core.enums import AskRidesMessage, CacheNamespace
 
     if not is_active_hours():
         logger.info("Skipping periodic cache warming during off-hours")

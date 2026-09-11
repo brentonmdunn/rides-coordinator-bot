@@ -8,10 +8,10 @@ from typing import Any
 import discord
 from discord import app_commands
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import FeatureFlagNames
-from bot.core.error_reporter import send_error_to_discord
-from bot.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import FeatureFlagNames
+from shared.core.error_reporter import send_error_to_discord
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
 

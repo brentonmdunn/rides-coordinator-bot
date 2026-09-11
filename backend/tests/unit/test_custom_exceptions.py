@@ -1,8 +1,8 @@
-"""Unit tests for bot.utils.custom_exceptions."""
+"""Unit tests for ridebot.utils.custom_exceptions."""
 
 from discord.ext import commands
 
-from bot.utils.custom_exceptions import (
+from ridebot.utils.custom_exceptions import (
     ChannelNotFoundError,
     GuildNotFoundError,
     MessageNotFoundError,

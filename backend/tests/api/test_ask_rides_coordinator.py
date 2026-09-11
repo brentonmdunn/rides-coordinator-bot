@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from api.auth import require_ride_coordinator
 from api.routes.ask_rides_coordinator import router as coordinator_router
-from bot.services.ride_coordinator_service import UserLookupStatus
+from ridebot.services.ride_coordinator_service import UserLookupStatus
 
 
 def _build_client() -> TestClient:

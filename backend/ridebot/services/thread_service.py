@@ -5,8 +5,8 @@ import logging
 
 import discord
 
-from bot.core.database import AsyncSessionLocal
-from bot.repositories.thread_repository import EventThreadRepository
+from ridebot.repositories.thread_repository import EventThreadRepository
+from shared.core.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 

@@ -13,8 +13,8 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from bot.services.pickup_locations_service import PickupLocationsService
-from bot.services.route_service import RouteService
+from ridebot.services.pickup_locations_service import PickupLocationsService
+from ridebot.services.route_service import RouteService
 
 logger = logging.getLogger(__name__)
 

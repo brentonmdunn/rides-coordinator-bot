@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from bot.repositories.locations_repository import LocationsRepository
+from ridebot.repositories.locations_repository import LocationsRepository
 
 _NOT_SET = object()
 
@@ -139,7 +139,7 @@ async def test_get_all_discord_usernames_returns_pairs():
 @pytest.mark.asyncio
 async def test_sync_locations_deletes_and_adds():
     session = AsyncMock()
-    from bot.core.models import Locations as LocationsModel
+    from shared.core.models import Locations as LocationsModel
 
     loc = LocationsModel()
     await LocationsRepository.sync_locations(session, [loc])
@@ -165,7 +165,7 @@ async def test_get_non_discord_pickups_exception_returns_empty():
     session = AsyncMock()
     session.execute.side_effect = RuntimeError("db error")
 
-    from bot.core.enums import JobName
+    from shared.core.enums import JobName
 
     result = await LocationsRepository.get_non_discord_pickups(session, JobName.FRIDAY)
 

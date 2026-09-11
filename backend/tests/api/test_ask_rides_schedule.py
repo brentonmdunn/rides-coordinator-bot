@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from api.auth import require_ride_coordinator
 from api.routes.ask_rides import router as ask_rides_router
-from bot.core.enums import AskRidesScheduleSlot
-from bot.services.ask_rides_schedule_service import EffectiveSchedule
+from ridebot.services.ask_rides_schedule_service import EffectiveSchedule
+from shared.core.enums import AskRidesScheduleSlot
 
 
 def _build_client(*, forbidden: bool = False) -> TestClient:

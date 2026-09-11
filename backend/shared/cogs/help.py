@@ -4,10 +4,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames
-from bot.core.logger import log_cmd
-from bot.services.help_service import HelpService
-from bot.utils.checks import feature_flag_enabled
+from shared.core.enums import FeatureFlagNames
+from shared.core.logger import log_cmd
+from shared.services.help_service import HelpService
+from shared.utils.checks import feature_flag_enabled
 
 
 class HelpCog(commands.Cog):

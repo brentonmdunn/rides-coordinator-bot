@@ -11,8 +11,8 @@ import requests
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from bot.core.enums import ChannelIds, Emoji
-from bot.utils.constants import SCHOLARS_LOCATIONS
+from ridebot.utils.constants import SCHOLARS_LOCATIONS
+from shared.core.enums import ChannelIds, Emoji
 
 logger = logging.getLogger(__name__)
 

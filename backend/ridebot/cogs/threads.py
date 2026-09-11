@@ -3,15 +3,15 @@
 import discord
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames
-from bot.core.logger import log_cmd
-from bot.services.thread_service import (
+from ridebot.services.thread_service import (
     EventThreadAlreadyExistsError,
     EventThreadNotFoundError,
     StarterMessageError,
     ThreadService,
 )
-from bot.utils.checks import feature_flag_enabled
+from shared.core.enums import FeatureFlagNames
+from shared.core.logger import log_cmd
+from shared.utils.checks import feature_flag_enabled
 
 
 class Threads(commands.Cog):

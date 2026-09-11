@@ -5,7 +5,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import NonDiscordRides
+from shared.core.models import NonDiscordRides
 
 
 class NonDiscordRidesRepository:

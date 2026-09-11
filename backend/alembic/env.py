@@ -7,8 +7,8 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from bot.core.database import Base
-from bot.core.models import (  # noqa: F401
+from shared.core.database import Base
+from shared.core.models import (  # noqa: F401
     AuthSession,
     DiscordUsers,
     EventThreads,

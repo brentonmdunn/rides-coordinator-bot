@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.auth import require_admin
-from bot.core.enums import CacheNamespace
-from bot.services.feature_flags_service import FeatureFlagsService
-from bot.utils.cache import invalidate_namespace
+from ridebot.utils.cache import invalidate_namespace
+from shared.core.enums import CacheNamespace
+from shared.services.feature_flags_service import FeatureFlagsService
 
 logger = logging.getLogger(__name__)
 

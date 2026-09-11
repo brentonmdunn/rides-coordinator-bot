@@ -7,7 +7,7 @@ pristine/default state.
 
 from dataclasses import dataclass
 
-from bot.core.enums import AskRidesMessageType, EmbedColorChoice, Emoji
+from shared.core.enums import AskRidesMessageType, EmbedColorChoice, Emoji
 
 
 @dataclass(frozen=True)

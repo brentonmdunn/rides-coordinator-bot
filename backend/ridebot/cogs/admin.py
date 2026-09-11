@@ -6,9 +6,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.logger import log_cmd
-from bot.services.admin_service import AdminService
+from ridebot.services.admin_service import AdminService
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.logger import log_cmd
 
 logger = logging.getLogger(__name__)
 

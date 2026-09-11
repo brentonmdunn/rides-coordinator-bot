@@ -5,24 +5,24 @@ import logging
 import discord
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames
-
-# Your original imports
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.logger import log_cmd
-from bot.repositories.community_events_repository import (
+from ridebot.repositories.community_events_repository import (
     EventsRepository as CommunityEventsRepository,
 )
 
 # New imports for DI
-from bot.services.community_events_service import EventsService as CommunityEventsService
-from bot.utils.checks import feature_flag_enabled, is_admin
-from bot.utils.custom_exceptions import (
+from ridebot.services.community_events_service import EventsService as CommunityEventsService
+from ridebot.utils.custom_exceptions import (
     ChannelNotFoundError,
     MessageNotFoundError,
     RoleNotFoundError,
     RoleServiceError,
 )
+from shared.core.enums import FeatureFlagNames
+
+# Your original imports
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.logger import log_cmd
+from shared.utils.checks import feature_flag_enabled, is_admin
 
 logger = logging.getLogger(__name__)
 

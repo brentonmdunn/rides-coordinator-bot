@@ -2,11 +2,11 @@
 
 import logging
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import CacheNamespace, FeatureFlagNames, FellowshipSeason
-from bot.repositories.global_settings_repository import GlobalSettingsRepository
-from bot.services.feature_flags_service import FeatureFlagsService
-from bot.utils.cache import invalidate_namespace
+from ridebot.repositories.global_settings_repository import GlobalSettingsRepository
+from ridebot.utils.cache import invalidate_namespace
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import CacheNamespace, FeatureFlagNames, FellowshipSeason
+from shared.services.feature_flags_service import FeatureFlagsService
 
 logger = logging.getLogger(__name__)
 

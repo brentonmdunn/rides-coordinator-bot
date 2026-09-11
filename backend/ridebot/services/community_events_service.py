@@ -2,10 +2,10 @@
 
 import logging
 
-from bot.repositories.community_events_repository import (
+from ridebot.repositories.community_events_repository import (
     EventsRepository as CommunityEventsRepository,
 )
-from bot.utils.custom_exceptions import (
+from ridebot.utils.custom_exceptions import (
     ChannelNotFoundError,
     GuildNotFoundError,
     MessageNotFoundError,

@@ -5,10 +5,10 @@ import logging
 import re
 import time
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import DaysOfWeek
-from bot.repositories.global_settings_repository import GlobalSettingsRepository
-from bot.utils.time_helpers import TimeWindow
+from ridebot.repositories.global_settings_repository import GlobalSettingsRepository
+from ridebot.utils.time_helpers import TimeWindow
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import DaysOfWeek
 
 logger = logging.getLogger(__name__)
 

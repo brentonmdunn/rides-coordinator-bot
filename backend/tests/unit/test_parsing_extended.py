@@ -1,11 +1,11 @@
-"""Extended unit tests for bot.utils.parsing (beyond column_letter_to_index)."""
+"""Extended unit tests for ridebot.utils.parsing (beyond column_letter_to_index)."""
 
 from datetime import time
 from unittest.mock import MagicMock
 
 import pytest
 
-from bot.utils.parsing import (
+from ridebot.utils.parsing import (
     get_first_name,
     get_last_name,
     get_message_and_embed_content,

@@ -5,7 +5,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from bot.core.enums import RoleIds
+from shared.core.enums import RoleIds
 
 logger = logging.getLogger(__name__)
 

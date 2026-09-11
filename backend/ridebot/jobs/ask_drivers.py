@@ -3,22 +3,22 @@ import logging
 import discord
 from discord.ext.commands import Bot
 
-from bot.core.database import AsyncSessionLocal
-from bot.core.enums import (
+from ridebot.repositories.message_schedule_repository import MessageScheduleRepository
+from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService
+from ridebot.services.driver_service import DriverService
+from ridebot.services.fellowship_season_service import FellowshipSeasonService
+from ridebot.utils.channels import resolve_channel_id
+from shared.core.database import AsyncSessionLocal
+from shared.core.enums import (
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
     FellowshipSeason,
     JobName,
 )
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.logger import log_job
-from bot.repositories.message_schedule_repository import MessageScheduleRepository
-from bot.services.ask_rides_schedule_service import AskRidesScheduleService
-from bot.services.driver_service import DriverService
-from bot.services.fellowship_season_service import FellowshipSeasonService
-from bot.utils.channels import resolve_channel_id
-from bot.utils.checks import feature_flag_enabled
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.logger import log_job
+from shared.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
         logger.info("Blocking run_ask_drivers_sun - job is paused")
         return
 
-    from bot.jobs.ask_rides import _should_send_ask_rides_sun
+    from ridebot.jobs.ask_rides import _should_send_ask_rides_sun
 
     if not _should_send_ask_rides_sun():
         logger.info("Blocking run_ask_drivers_sun - blocked by _should_send_ask_rides_sun()")

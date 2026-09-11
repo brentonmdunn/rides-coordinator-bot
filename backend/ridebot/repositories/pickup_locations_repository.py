@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.models import LivingLocationPickup, PickupLocation, PickupLocationEdge
+from shared.core.models import LivingLocationPickup, PickupLocation, PickupLocationEdge
 
 logger = logging.getLogger(__name__)
 

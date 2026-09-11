@@ -4,10 +4,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot.core.enums import FeatureFlagNames
-from bot.core.logger import log_cmd
-from bot.services.feature_flags_service import FeatureFlagsService
-from bot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
+from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
+from shared.core.enums import FeatureFlagNames
+from shared.core.logger import log_cmd
+from shared.services.feature_flags_service import FeatureFlagsService
 
 
 async def feature_name_autocomplete(

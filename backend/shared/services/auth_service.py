@@ -13,12 +13,12 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.core.enums import AccountRoles
-from bot.core.error_reporter import send_error_to_discord
-from bot.core.models import AuthSession, UserAccount
-from bot.repositories.auth_sessions_repository import AuthSessionsRepository
-from bot.repositories.user_accounts_repository import UserAccountsRepository
-from bot.utils.constants import SESSION_TOUCH_THROTTLE_MINUTES, SESSION_TTL_DAYS
+from shared.core.enums import AccountRoles
+from shared.core.error_reporter import send_error_to_discord
+from shared.core.models import AuthSession, UserAccount
+from shared.repositories.auth_sessions_repository import AuthSessionsRepository
+from shared.repositories.user_accounts_repository import UserAccountsRepository
+from shared.utils.constants import SESSION_TOUCH_THROTTLE_MINUTES, SESSION_TTL_DAYS
 
 logger = logging.getLogger(__name__)
 
