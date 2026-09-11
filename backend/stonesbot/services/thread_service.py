@@ -5,8 +5,8 @@ import logging
 
 import discord
 
-from ridebot.repositories.thread_repository import EventThreadRepository
 from shared.core.database import AsyncSessionLocal
+from stonesbot.repositories.thread_repository import EventThreadRepository
 
 logger = logging.getLogger(__name__)
 

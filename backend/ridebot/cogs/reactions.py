@@ -10,7 +10,6 @@ from ridebot.services.late_reaction_windows_service import LateReactionWindowsSe
 from ridebot.services.reaction_logging_service import ReactionLoggingService
 from ridebot.services.ride_reaction_log_service import RideReactionLogService
 from ridebot.services.ride_request_service import RideRequestService
-from ridebot.services.thread_service import ThreadService
 from ridebot.utils.parsing import get_message_and_embed_content
 from ridebot.utils.time_helpers import is_during_late_reaction_window
 from shared.core.enums import (
@@ -30,13 +29,12 @@ class Reactions(commands.Cog):
     Cog for handling reaction events on Discord messages.
 
     This cog monitors reaction additions and removals to trigger various automated
-    behaviors such as logging reactions, managing event threads, creating ride
-    coordination channels, and notifying about late ride requests.
+    behaviors such as logging reactions, creating ride coordination channels, and
+    notifying about late ride requests.
 
     Attributes:
         bot: The Discord bot instance.
         locations_cog: Reference to the Locations cog for location lookups.
-        thread_service: Service for managing event thread operations.
         logging_service: Service for logging reaction events.
         ride_request_service: Service for managing ride request channels.
     """
@@ -44,7 +42,6 @@ class Reactions(commands.Cog):
     def __init__(
         self,
         bot: commands.Bot,
-        thread_service: ThreadService,
         logging_service: ReactionLoggingService,
         ride_request_service: RideRequestService,
     ):
@@ -53,13 +50,11 @@ class Reactions(commands.Cog):
 
         Args:
             bot: The Discord bot instance.
-            thread_service: Service for thread management.
             logging_service: Service for reaction logging.
             ride_request_service: Service for ride request handling.
         """
         self.bot = bot
         self.locations_cog: Locations | None = None
-        self.thread_service = thread_service
         self.logging_service = logging_service
         self.ride_request_service = ride_request_service
 
@@ -140,11 +135,6 @@ class Reactions(commands.Cog):
             logger.exception("_handle_reaction_add: error in _new_rides_helper")
 
         try:
-            await self._event_thread_add(payload, guild, user)
-        except Exception:
-            logger.exception("_handle_reaction_add: error in _event_thread_add")
-
-        try:
             await self._check_if_ask_message(payload.message_id, payload.channel_id)
         except Exception:
             logger.exception("_handle_reaction_add: error in _check_if_ask_message")
@@ -221,11 +211,6 @@ class Reactions(commands.Cog):
             logger.exception("_handle_reaction_remove: error in _log_reactions")
 
         try:
-            await self._event_thread_remove(payload, guild)
-        except Exception:
-            logger.exception("_handle_reaction_remove: error in _event_thread_remove")
-
-        try:
             await self._check_if_ask_message(payload.message_id, payload.channel_id)
         except Exception:
             logger.exception("_handle_reaction_remove: error in _check_if_ask_message")
@@ -299,47 +284,6 @@ class Reactions(commands.Cog):
                 if m_id == message_id:
                     await warm_ask_drivers_reactions_cache(self.bot, event)
                     break
-
-    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
-    async def _event_thread_add(
-        self, payload: discord.RawReactionActionEvent, guild: discord.Guild, user: discord.Member
-    ):
-        """
-        Add a user to an event thread when they react to the thread's starter message.
-
-        This method checks if the reacted message is associated with an event thread.
-        If so, it automatically adds the reacting user to that thread.
-
-        Args:
-            payload: The raw reaction event payload containing message and emoji info.
-            guild: The Discord guild where the reaction occurred.
-            user: The user who added the reaction.
-
-        Note:
-            This method is only active when the EVENT_THREADS feature flag is enabled.
-        """
-        await self.thread_service.add_reactor_to_thread(payload, guild, user)
-
-    @feature_flag_enabled(FeatureFlagNames.EVENT_THREADS)
-    async def _event_thread_remove(
-        self, payload: discord.RawReactionActionEvent, guild: discord.Guild
-    ):
-        """
-        Remove a user from an event thread when they remove all their reactions.
-
-        This method checks if the reacted message is associated with an event thread.
-        If the user has no remaining reactions on the message, they are removed from
-        the thread.
-
-        Args:
-            payload: The raw reaction event payload containing message and emoji info.
-            guild: The Discord guild where the reaction was removed.
-
-        Note:
-            This method is only active when the EVENT_THREADS feature flag is enabled.
-            Users are only removed if they have zero reactions remaining on the message.
-        """
-        await self.thread_service.remove_reactor_from_thread(payload, guild, self.bot)
 
     @feature_flag_enabled(FeatureFlagNames.LATE_RIDES_REACT)
     async def _late_rides_react(
@@ -454,9 +398,8 @@ async def setup(bot: commands.Bot):
     Args:
         bot: The Discord bot instance to add the cog to.
     """
-    thread_service = ThreadService()
     logging_service = ReactionLoggingService(bot)
     ride_request_service = RideRequestService(bot)
 
     # Add cog with dependency injection
-    await bot.add_cog(Reactions(bot, thread_service, logging_service, ride_request_service))
+    await bot.add_cog(Reactions(bot, logging_service, ride_request_service))

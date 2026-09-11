@@ -3,14 +3,14 @@
 import discord
 from discord.ext import commands
 
-from ridebot.services.thread_service import (
+from shared.core.logger import log_cmd
+from shared.utils.checks import bot_enabled
+from stonesbot.services.thread_service import (
     EventThreadAlreadyExistsError,
     EventThreadNotFoundError,
     StarterMessageError,
     ThreadService,
 )
-from shared.core.logger import log_cmd
-from shared.utils.checks import bot_enabled
 
 
 class Threads(commands.Cog):

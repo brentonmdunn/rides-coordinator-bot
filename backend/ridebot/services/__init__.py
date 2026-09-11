@@ -14,6 +14,5 @@ __all__ = [
     "ReactionService",
     "RideRequestService",
     "RouteService",
-    "ThreadService",
     "WhoisService",
 ]
