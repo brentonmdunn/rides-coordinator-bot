@@ -143,6 +143,8 @@ Cogs and API routes are both **thin entry points** — they handle input/output 
 
 ### Adding a new bot
 
+Full walkthrough with examples and Discord portal setup: `docs/adding-a-bot.md`.
+
 1. Add `BotName.<NEW>` and `FeatureFlagNames.<NEW>` to `shared/core/enums.py`.
 2. Write an Alembic data migration seeding the new kill-switch flag row (decide its initial `enabled` value — e.g. copied from an existing bot's flag, as `stonesbot` copies `ridebot`'s).
 3. Add a `BotSpec` entry to `BOT_REGISTRY` in `shared/core/bots.py`: `token_env`, `cog_packages` (include `"shared.cogs"` if the new bot should get `/help`), and an `intents` factory with only what the bot's cogs actually need.
