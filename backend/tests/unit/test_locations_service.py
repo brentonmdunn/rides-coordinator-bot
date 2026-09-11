@@ -36,11 +36,11 @@ async def test_pickup_location_none():
 async def test_sort_locations_skips_unmatched():
     """Should skip usernames with no matching location, no resync."""
     # _sort_locations uses person[0] (name) and person[1] (location), so use tuples
-    mock_person_hit = ("PersonHit", "Revelle")
-    mock_person_miss = None
+    people = {"u_hit": ("PersonHit", "Revelle"), "u_miss": None}
 
     svc = LocationsService(bot=None)
-    svc.get_name_location_no_sync: Any = AsyncMock(side_effect=[mock_person_hit, mock_person_miss])
+    # Keyed by username: set iteration order is not stable across runs.
+    svc.get_name_location_no_sync: Any = AsyncMock(side_effect=people.get)
 
     result, found = await svc._sort_locations({"u_hit", "u_miss"})
 
