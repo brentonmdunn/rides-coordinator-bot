@@ -34,8 +34,12 @@ class TestBotNameFilter:
         assert record.bot_name == BotName.RIDEBOT
 
     def test_defaults_to_dash_when_unset(self):
-        record = _make_record()
-        result = BotNameFilter().filter(record)
+        token = current_bot_var.set(None)
+        try:
+            record = _make_record()
+            result = BotNameFilter().filter(record)
+        finally:
+            current_bot_var.reset(token)
 
         assert result is True
         assert record.bot_name == "-"
