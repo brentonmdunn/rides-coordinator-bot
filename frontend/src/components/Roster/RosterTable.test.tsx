@@ -82,7 +82,7 @@ describe('RosterTable', () => {
         expect(screen.getByText('No matches for your search.')).toBeInTheDocument()
     })
 
-    it('flags rows whose year or location is not a valid option', () => {
+    it('flags rows whose year is not a valid option', () => {
         renderTable([
             person(),
             person({ id: 2, name: 'Old Data', year: 'Grad Student', location: null }),
@@ -94,6 +94,14 @@ describe('RosterTable', () => {
 
         const janeRow = screen.getByText('Jane Doe').closest('tr')
         expect(janeRow?.textContent).not.toContain('Needs fix')
+    })
+
+    it('does not flag an off-campus location', () => {
+        renderTable([person({ id: 3, name: 'Off Campus', location: 'Costa Verde' })])
+
+        const row = screen.getByText('Off Campus').closest('tr')
+        expect(row?.textContent).toContain('Costa Verde')
+        expect(row?.textContent).not.toContain('Needs fix')
     })
 
     it('tracks selection count and shows the bulk delete button', async () => {

@@ -25,6 +25,7 @@ from shared.core.models import Locations
 logger = logging.getLogger(__name__)
 
 _MAX_NAME_LENGTH = 100
+_MAX_LOCATION_LENGTH = 100
 _MAX_USERNAME_LENGTH = 32
 _USERNAME_PATTERN = re.compile(r"^[a-z0-9_.]+$")
 
@@ -99,13 +100,24 @@ def _normalize_year(year: str | None) -> str | None:
 
 
 def _normalize_location(location: str | None) -> str | None:
-    """Match ``location`` to a canonical ``CampusLivingLocations`` value, case-insensitively."""
+    """
+    Canonicalize a campus living location, or keep off-campus text as typed.
+
+    A case-insensitive match for a ``CampusLivingLocations`` value is stored in its
+    canonical form, so ride grouping keeps working. Anything else is an off-campus
+    address and is stored trimmed, exactly as entered.
+    """
     if location is None:
         return None
+    cleaned = location.strip()
+    if cleaned == "":
+        return None
     for candidate in CampusLivingLocations:
-        if candidate.value.lower() == location.strip().lower():
+        if candidate.value.lower() == cleaned.lower():
             return candidate.value
-    raise RosterValidationError(f"Invalid location: {location!r}")
+    if len(cleaned) > _MAX_LOCATION_LENGTH:
+        raise RosterValidationError(f"Location must be {_MAX_LOCATION_LENGTH} characters or fewer")
+    return cleaned
 
 
 async def _check_username_conflict(

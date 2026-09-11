@@ -112,9 +112,23 @@ async def test_create_person_invalid_year(session_local):
 
 
 @pytest.mark.asyncio
-async def test_create_person_invalid_location(session_local):
+async def test_create_person_keeps_off_campus_location(session_local):
+    person = await RosterService.create_person(
+        PersonInput(name="Alice", location="  Costa Verde  ")
+    )
+    assert person.location == "Costa Verde"
+
+
+@pytest.mark.asyncio
+async def test_create_person_blank_location_becomes_none(session_local):
+    person = await RosterService.create_person(PersonInput(name="Alice", location="   "))
+    assert person.location is None
+
+
+@pytest.mark.asyncio
+async def test_create_person_location_too_long(session_local):
     with pytest.raises(RosterValidationError):
-        await RosterService.create_person(PersonInput(name="Alice", location="Mars"))
+        await RosterService.create_person(PersonInput(name="Alice", location="x" * 101))
 
 
 @pytest.mark.asyncio

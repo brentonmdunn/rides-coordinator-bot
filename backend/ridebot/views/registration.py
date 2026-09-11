@@ -19,6 +19,10 @@ _REGISTRATION_UNAVAILABLE_MESSAGE = (
     "Registration is unavailable right now. Please message a ride coordinator."
 )
 
+# Sentinel option value for riders who don't live in one of the campus areas.
+_OTHER_LOCATION_VALUE = "__other__"
+_OTHER_LOCATION_LABEL = "Other (off campus)"
+
 
 async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
     """
@@ -112,18 +116,42 @@ class RegistrationModal(discord.ui.Modal, title="Ride registration"):
         self.add_item(discord.ui.Label(text="Year", component=self.year_select))
 
         existing_location = existing.location if existing else None
+        campus_values = {location.value for location in CampusLivingLocations}
+        existing_is_off_campus = (
+            existing_location is not None and existing_location not in campus_values
+        )
         self.location_select = discord.ui.Select(
             options=[
+                *(
+                    discord.SelectOption(
+                        label=location.value,
+                        value=location.value,
+                        default=location.value == existing_location,
+                    )
+                    for location in CampusLivingLocations
+                ),
                 discord.SelectOption(
-                    label=location.value,
-                    value=location.value,
-                    default=location.value == existing_location,
-                )
-                for location in CampusLivingLocations
+                    label=_OTHER_LOCATION_LABEL,
+                    value=_OTHER_LOCATION_VALUE,
+                    default=existing_is_off_campus,
+                ),
             ],
             required=True,
         )
         self.add_item(discord.ui.Label(text="Where do you live?", component=self.location_select))
+
+        self.other_location_input = discord.ui.TextInput(
+            default=existing_location if existing_is_off_campus else None,
+            required=False,
+            max_length=100,
+            placeholder="e.g. Costa Verde, or a street address",
+        )
+        self.add_item(
+            discord.ui.Label(
+                text="If you picked Other, where do you live?",
+                component=self.other_location_input,
+            )
+        )
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         """
@@ -135,6 +163,16 @@ class RegistrationModal(discord.ui.Modal, title="Ride registration"):
         name = self.name_input.value
         year = self.year_select.values[0]
         location = self.location_select.values[0]
+
+        if location == _OTHER_LOCATION_VALUE:
+            location = (self.other_location_input.value or "").strip()
+            if not location:
+                await interaction.response.send_message(
+                    f"Please tap **Register** again and, with **{_OTHER_LOCATION_LABEL}** "
+                    "selected, type where you live in the last box.",
+                    ephemeral=True,
+                )
+                return
 
         try:
             person, created = await RosterService.register_from_discord(

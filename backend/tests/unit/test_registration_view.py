@@ -6,7 +6,11 @@ import pytest
 
 from ridebot.services.roster_service import Person
 from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
-from ridebot.views.registration import RegistrationModal, RegistrationView
+from ridebot.views.registration import (
+    _OTHER_LOCATION_VALUE,
+    RegistrationModal,
+    RegistrationView,
+)
 from shared.core.enums import FeatureFlagNames
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
@@ -124,16 +128,30 @@ async def test_modal_prefills_display_name_when_unregistered():
     assert not any(o.default for o in modal.location_select.options)
 
 
+@pytest.mark.asyncio
+async def test_modal_prefills_off_campus_location_as_other():
+    existing = _make_person(location="Costa Verde")
+    modal = RegistrationModal(existing, _make_user())
+
+    location_default = next(o for o in modal.location_select.options if o.default)
+    assert location_default.value == _OTHER_LOCATION_VALUE
+    assert modal.other_location_input.default == "Costa Verde"
+
+
 # ---------------------------------------------------------------------------
 # RegistrationModal.on_submit
 # ---------------------------------------------------------------------------
 
 
-def _submitted_modal(existing=None, name="Alice", year="2nd", location="Sixth"):
+def _submitted_modal(
+    existing=None, name="Alice", year="2nd", location="Sixth", other_location=None
+):
     modal = RegistrationModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
     modal.location_select._values = [location]
+    if other_location is not None:
+        modal.other_location_input._value = other_location
     return modal
 
 
@@ -169,6 +187,39 @@ async def test_on_submit_success_updated():
 
     args, _ = interaction.response.send_message.call_args
     assert args[0] == "Updated: ✅ Registered **Alice**: Sixth, 2nd year"
+
+
+@pytest.mark.asyncio
+async def test_on_submit_other_uses_typed_location():
+    modal = _submitted_modal(location=_OTHER_LOCATION_VALUE, other_location="  Costa Verde  ")
+    interaction = _make_interaction()
+    person = _make_person(name="Alice", year="2nd", location="Costa Verde")
+
+    with patch(
+        "ridebot.views.registration.RosterService.register_from_discord",
+        new=AsyncMock(return_value=(person, True)),
+    ) as mock_register:
+        await modal.on_submit(interaction)
+
+    assert mock_register.call_args.kwargs["location"] == "Costa Verde"
+    args, _ = interaction.response.send_message.call_args
+    assert args[0] == "✅ Registered **Alice**: Costa Verde, 2nd year"
+
+
+@pytest.mark.asyncio
+async def test_on_submit_other_without_text_asks_again():
+    modal = _submitted_modal(location=_OTHER_LOCATION_VALUE, other_location="   ")
+    interaction = _make_interaction()
+
+    with patch(
+        "ridebot.views.registration.RosterService.register_from_discord", new=AsyncMock()
+    ) as mock_register:
+        await modal.on_submit(interaction)
+
+    mock_register.assert_not_awaited()
+    args, kwargs = interaction.response.send_message.call_args
+    assert "type where you live" in args[0]
+    assert kwargs.get("ephemeral") is True
 
 
 @pytest.mark.asyncio

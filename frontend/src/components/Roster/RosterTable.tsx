@@ -2,8 +2,9 @@
  * RosterTable.tsx
  *
  * Table of every roster person — searchable, sortable, multi-select with
- * bulk delete, and per-row edit/delete. Flags rows whose `year` or
- * `location` doesn't match a current option with a "Needs fix" badge.
+ * bulk delete, and per-row edit/delete. Flags rows whose `year` doesn't
+ * match a current option with a "Needs fix" badge; off-campus locations
+ * are valid free text and are never flagged.
  * Scrolls horizontally at phone width instead of squeezing columns.
  */
 
@@ -58,9 +59,8 @@ function formatRelativeTime(iso: string | null): string {
 
 function needsFix(person: RosterPerson, options: RosterOptions | undefined): boolean {
     if (!options) return false
-    if (person.year != null && !options.years.includes(person.year)) return true
-    if (person.location != null && !options.locations.includes(person.location)) return true
-    return false
+    // Locations outside the campus list are valid off-campus addresses, not errors.
+    return person.year != null && !options.years.includes(person.year)
 }
 
 function compareValues(a: RosterPerson, b: RosterPerson, key: SortKey): number {
