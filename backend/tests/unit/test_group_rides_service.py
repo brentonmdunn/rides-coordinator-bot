@@ -88,7 +88,7 @@ def test_get_pickup_location_revelle_maps_to_eighth():
 
 def test_get_pickup_location_unmapped_raises():
     with pytest.raises(ValueError, match="No pickup location mapped"):
-        GroupRidesService._get_pickup_location(SEED_CTX, CampusLivingLocations.PANGEA)
+        GroupRidesService._get_pickup_location(SEED_CTX, CampusLivingLocations.SDSU)
 
 
 # ---------------------------------------------------------------------------

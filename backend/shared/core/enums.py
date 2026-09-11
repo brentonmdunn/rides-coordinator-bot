@@ -132,7 +132,6 @@ class CampusLivingLocations(StrEnum):
     WARREN = "Warren"
     RITA = "Rita"
     EIGHTH = "Eighth"
-    PANGEA = "Pangea"
     PCE = "Pepper Canyon East"
     PCW = "Pepper Canyon West"
     REVELLE = "Revelle"
