@@ -3,7 +3,7 @@
 import discord
 from discord.ext import commands
 
-from ridebot.services.thread_service import (
+from stonesbot.services.thread_service import (
     EventThreadAlreadyExistsError,
     EventThreadNotFoundError,
     StarterMessageError,

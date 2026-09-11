@@ -2,7 +2,6 @@
 
 __all__ = [
     "CalendarRepository",
-    "EventThreadRepository",
     "EventsRepository",
     "GroupRidesRepository",
     "LocationsRepository",
