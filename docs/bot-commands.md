@@ -1,6 +1,6 @@
 # Discord Bot Commands
 
-All commands are Discord slash commands (`/command-name`). Most commands are guarded by the `bot` feature flag — if that flag is disabled, the command silently does nothing.
+All commands are Discord slash commands (`/command-name`). This process runs two Discord bots: **RideBot** (ride coordination) and **StonesBot** (event threads). Each bot's commands are guarded by its own per-bot kill-switch flag (`@bot_enabled`) — if that bot's flag is disabled, its commands silently do nothing.
 
 Commands are restricted to whitelisted channels. Attempting a command in a non-whitelisted channel produces an ephemeral error.
 
@@ -146,13 +146,13 @@ List all non-Discord user pickups for a given day.
 
 ---
 
-## Threads
+## Threads (StonesBot)
 
-These commands must be run inside a Discord thread.
+These commands live on **StonesBot** and must be run inside a Discord thread. The reaction-driven auto-add/remove behavior described below also runs on StonesBot.
 
 ### `/create-event-thread`
 
-Mark the current thread as an "event thread." Anyone who reacts to the thread's parent message will be automatically added to the thread.
+Mark the current thread as an "event thread." Anyone who reacts to the thread's parent message will be automatically added to the thread, and reacting/un-reacting afterward automatically adds/removes them from the thread.
 
 Adds all existing reactors immediately. Also prints a note about the `event_threads` feature flag.
 
@@ -218,7 +218,7 @@ Search for a user by name and get their Discord username.
 
 ### `/help`
 
-Shows all available slash commands as an ephemeral embed. Useful for discovering what the bot supports.
+Shows all available slash commands as an ephemeral embed. Useful for discovering what the bot supports. Available on **both** RideBot and StonesBot (`shared/cogs/help.py`), showing that bot's own commands.
 
 ---
 

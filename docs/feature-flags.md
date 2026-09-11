@@ -21,6 +21,7 @@ Feature flags control bot behavior and scheduled jobs at runtime without requiri
 | Flag | Default | Description |
 |------|---------|-------------|
 | `ridebot` | `true` | RideBot's per-bot kill switch. Applied to its cogs via the `@bot_enabled` decorator (`shared/utils/checks.py`), which resolves the flag for whichever bot is currently running instead of naming it directly. When disabled, all of RideBot's slash commands become no-ops. Each additional bot in the process gets its own kill-switch flag the same way. |
+| `stonesbot` | copied from `ridebot` | StonesBot's per-bot kill switch, same mechanism as `ridebot` above. Its initial value is copied from `ridebot`'s value by the migration that introduced it, then managed independently. |
 
 ---
 

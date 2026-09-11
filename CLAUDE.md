@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Monorepo with three deployables:
 
-- **`backend/`** — Python 3.13 app: a Discord bot (`discord.py`) and a FastAPI web API that run **in the same process** (the bot is started inside FastAPI's lifespan). Split into `shared/` (infrastructure) and `ridebot/` (ride-specific code) — see "Backend Architecture" below.
+- **`backend/`** — Python 3.13 app: two Discord bots (`discord.py`) — **RideBot** (ride coordination) and **StonesBot** (event threads) — and a FastAPI web API that all run **in the same process** (the bots are started inside FastAPI's lifespan). Split into `shared/` (infrastructure), `ridebot/` (ride-specific code), and `stonesbot/` (event-thread code) — see "Backend Architecture" below.
 - **`frontend/`** — React 19 admin SPA (Vite + Tailwind CSS v4 + shadcn/ui). Built output is copied into `backend/admin_ui/` and served by the backend in production.
 - **`portfolio/`** — Separate static site deployed to GitHub Pages (independent of the app).
 
@@ -74,6 +74,7 @@ The process runs **N Discord bots** (separate Discord applications/tokens) in on
 
 - `BotSpec` is the static config for one bot: `name` (`BotName`), `token_env`, `cog_packages`, `intents`, `kill_switch_flag`, plus optional `priority_extensions` and `testing_cog_package`.
 - `BOT_REGISTRY: tuple[BotSpec, ...]` lists every bot this process can run; its order is also the error-reporting fallback priority (see below). `get_spec(name)` looks one up (`KeyError` if unregistered); `bot_package_names()` returns the top-level packages of every registered bot's `cog_packages` (used by the import-boundary test).
+- Two bots are registered: **RideBot** (`token_env="RIDEBOT_TOKEN"`, `cog_packages=("ridebot.cogs", "shared.cogs")`, `kill_switch_flag=FeatureFlagNames.RIDEBOT`, loads `job_scheduler` first and `ridebot.cogs_testing` last when local) and **StonesBot** (`token_env="STONESBOT_TOKEN"`, `cog_packages=("stonesbot.cogs", "shared.cogs")`, `kill_switch_flag=FeatureFlagNames.STONESBOT`, intents are default + `members` only — no `message_content`, no priority/testing extensions).
 - `resolve_enabled_bots() -> list[EnabledBot]` reads each bot's token env var **at call time** (a blank value counts as missing) and decides which bots start this run — see the token behavior table below. It's called once, right after the `DISABLE_DISCORD_BOT` check and before `startup()`, so a misconfigured deploy fails fast without touching the DB.
 - **`get_bot(name: BotName)` requires a bot name** — there is no singleton. Call sites (`api/dependencies.py`, `api/routes/*`, `shared/core/error_reporter.py`, `ridebot/core/scheduler_control.py`) always pass an explicit `BotName`. `ty check` is the safety net that catches call sites that haven't picked one.
 - **`current_bot_var`** (`shared/core/bot_context.py`) is a `ContextVar[BotName | None]` set as the *first* statement of each bot's `run_bot()` task. Asyncio copies context on `create_task`, so it reaches event listeners, slash commands, and APScheduler job callbacks spawned from inside that task — but **not** API requests (uvicorn's own tasks), process `startup()`, or anything run via `loop.run_in_executor` (use `asyncio.to_thread` if you need it to propagate). Read it with `get_current_bot_name()`. Logging (`BotNameFilter`) and the `@bot_enabled` kill switch both key off this contextvar.
@@ -102,8 +103,9 @@ The backend is split into two top-level packages, plus `api/`:
 
 - **`shared/`** — infrastructure every bot needs: DB engine/session (`shared/core/database.py`), models (`shared/core/models.py`), enums (`shared/core/enums.py`), logging (`shared/core/logger.py`), error reporting (`shared/core/error_reporter.py`), bot lifecycle (`shared/core/lifecycle.py`, `shared/core/lifespan.py`, `shared/core/bot_instance.py`), feature flags, auth, user accounts/preferences (`shared/services/`, `shared/repositories/`), and the `/help` cog (`shared/cogs/help.py`). **`shared/` must never import a bot package.**
 - **`ridebot/`** — everything ride-specific: cogs, services, repositories, jobs, and utils for ride coordination.
-- **Rule for where new code goes:** code lives in `shared/` only if it's infrastructure or is actually used by at least two bots. Otherwise it lives in the bot package (`ridebot/`) and is promoted to `shared/` later, when a second consumer appears.
-- **Import-boundary test** (`backend/tests/unit/test_import_boundaries.py`): a pure-AST check enforcing that `shared` imports no bot package, and that bot packages don't import each other or `api`.
+- **`stonesbot/`** — event-thread cogs, services, and repositories (`stonesbot/cogs/`, `stonesbot/services/`, `stonesbot/repositories/`). The `EventThreads` model itself stays in `shared/core/models.py`.
+- **Rule for where new code goes:** code lives in `shared/` only if it's infrastructure or is actually used by at least two bots. Otherwise it lives in the owning bot package (`ridebot/` or `stonesbot/`) and is promoted to `shared/` later, when a second consumer appears.
+- **Import-boundary test** (`backend/tests/unit/test_import_boundaries.py`): a pure-AST check enforcing that `shared` imports no bot package, and that bot packages don't import each other or `api` — so `ridebot` and `stonesbot` can never import from one another.
 
 ### Layers
 
@@ -113,9 +115,9 @@ Cog  ──┐
 API  ──┘
 ```
 
-- **Cogs** (`ridebot/cogs/`, plus `shared/cogs/help.py`): Discord slash commands and event listeners; auto-loaded. `ridebot/cogs_disabled/` are never loaded; `ridebot/cogs_testing/` load only when `APP_ENV=local`.
-- **Services** (`ridebot/services/`, plus infra services in `shared/services/`): Business logic layer. Cogs call services, never repositories directly.
-- **Repositories** (`ridebot/repositories/`, plus infra repositories in `shared/repositories/`): Data access layer. All SQL/database queries live here.
+- **Cogs** (`ridebot/cogs/`, `stonesbot/cogs/`, plus `shared/cogs/help.py`): Discord slash commands and event listeners; auto-loaded per bot. `ridebot/cogs_disabled/` are never loaded; `ridebot/cogs_testing/` load only when `APP_ENV=local` (StonesBot has no disabled/testing cog packages).
+- **Services** (`ridebot/services/`, `stonesbot/services/`, plus infra services in `shared/services/`): Business logic layer. Cogs call services, never repositories directly.
+- **Repositories** (`ridebot/repositories/`, `stonesbot/repositories/`, plus infra repositories in `shared/repositories/`): Data access layer. All SQL/database queries live here.
 - **Jobs** (`ridebot/jobs/`): Scheduled tasks run by APScheduler via the `JobScheduler` cog (`ridebot/cogs/job_scheduler.py`, LA timezone). Disabled jobs go in `ridebot/jobs_disabled/`.
 - **API** (`api/`): FastAPI routes in `api/routes/`, auth in `api/auth.py` / `api/auth_session.py`, middleware in `api/middleware/`, rate limiting via slowapi in `api/rate_limit.py`.
 
@@ -138,6 +140,17 @@ Cogs and API routes are both **thin entry points** — they handle input/output 
 - Feature flags: stored in the `feature_flags` table, seeded from `FeatureFlagNames` on startup, accessed via `feature_flags_repository.py`. Local dev auto-disables job/message flags to prevent spam (`disable_features_for_local_env()`).
 - Error reporting: `shared/core/error_reporter.py:send_error_to_discord()` posts exceptions to the `ERROR_CHANNEL_ID` channel (gated by the `SEND_ERRORS_TO_DISCORD` flag; skipped locally; falls back to stderr). It picks which bot posts via `get_current_bot_name()` first, then `BOT_REGISTRY` order, then any other ready bot.
 - Health check: `GET /health` reports per-bot readiness, DB connectivity, and failed cog loads for every enabled bot (bypasses auth); see "Health and the per-bot kill switch" above — it's 503, not always 200.
+
+### Adding a new bot
+
+1. Add `BotName.<NEW>` and `FeatureFlagNames.<NEW>` to `shared/core/enums.py`.
+2. Write an Alembic data migration seeding the new kill-switch flag row (decide its initial `enabled` value — e.g. copied from an existing bot's flag, as `stonesbot` copies `ridebot`'s).
+3. Add a `BotSpec` entry to `BOT_REGISTRY` in `shared/core/bots.py`: `token_env`, `cog_packages` (include `"shared.cogs"` if the new bot should get `/help`), and an `intents` factory with only what the bot's cogs actually need.
+4. Create a top-level `<new>/` package with `cogs/`, plus `services/`/`repositories/` as needed. New models still go in `shared/core/models.py`.
+5. Never import across bot packages — if the new bot needs something living in another bot's package, promote it to `shared/` instead. The import-boundary test (`tests/unit/test_import_boundaries.py`) enforces this.
+6. Add `<NEW>_TOKEN` to `.env.example`, `Dockerfile.preprod`, and the server env files (`.env.dev`/`.env.preprod`/`.env.prod`), in deploy order: Discord app setup first, then the token in server env, then deploy.
+7. Set up the Discord application: enable whatever privileged intents the bot needs, invite it with the required scopes/permissions, and give it access to the `ERROR_CHANNEL_ID` channel.
+8. Update `CLAUDE.md` and `docs/bot-commands.md` (and `docs/feature-flags.md` for the new kill-switch flag).
 
 ---
 
@@ -355,7 +368,7 @@ Exceptions: `emerald` (route builder map accent) and `amber` (revert button) are
 - `backend/entrypoint.sh` backs up the SQLite DB to a timestamped file, runs `alembic upgrade head`, then execs uvicorn.
 - `backend/deployment/docker-compose.yaml`: redis + ride-bot with health checks; `deploy/update.sh` does pull-and-restart with automatic rollback on failed health check.
 - Frontend ships inside the backend image: CI builds `frontend/dist/` and copies it to `backend/admin_ui/` (locally: `./deploy-frontend.sh`).
-- Env files in `backend/`: `.env.dev`, `.env.preprod`, `.env.prod`, `.env.example` (template — document new env vars here).
+- Env files in `backend/`: `.env.dev`, `.env.preprod`, `.env.prod`, `.env.example` (template — document new env vars here). Each bot needs its own token: `RIDEBOT_TOKEN`, `STONESBOT_TOKEN`.
 - `/metrics` (Prometheus) requires `Authorization: Bearer $METRICS_TOKEN` when the token is set.
 
 ### CI (`.github/workflows/`)
