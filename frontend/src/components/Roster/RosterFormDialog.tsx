@@ -202,7 +202,7 @@ function RosterFormBody({
                             id="roster-custom-location"
                             value={customLocation}
                             onChange={(e) => setCustomLocation(e.target.value)}
-                            placeholder="e.g. Costa Verde, or a street address"
+                            placeholder="Apartment name or street address"
                         />
                         {errors.location && (
                             <p className="text-sm text-destructive-text">{errors.location}</p>

@@ -211,7 +211,7 @@ class RegistrationModal(discord.ui.Modal, title="Your pickup info"):
             default=existing_location if existing_is_off_campus else None,
             required=False,
             max_length=100,
-            placeholder="e.g. Costa Verde, or a street address",
+            placeholder="Apartment name or street address",
         )
         self.add_item(
             discord.ui.Label(
