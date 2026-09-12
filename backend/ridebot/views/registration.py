@@ -1,6 +1,7 @@
 """Discord UI for self-service roster registration."""
 
 import logging
+from collections.abc import Callable
 
 import discord
 
@@ -296,14 +297,17 @@ class RegistrationView(discord.ui.View):
         super().__init__(timeout=None)
 
     async def _open_modal(
-        self, interaction: discord.Interaction, modal_cls: type[_BaseRegistrationModal]
+        self,
+        interaction: discord.Interaction,
+        modal_cls: Callable[[Person | None, discord.User | discord.Member], _BaseRegistrationModal],
     ) -> None:
         """
         Open one of the registration modals, refusing when registration is disabled.
 
         Args:
             interaction: The button-press interaction.
-            modal_cls: The modal class matching the button that was pressed.
+            modal_cls: The modal subclass matching the button that was pressed. Typed as a
+                callable because each subclass supplies its own title to the base class.
         """
         if not await _registration_enabled():
             logger.info(
