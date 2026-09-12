@@ -9,6 +9,11 @@ from dataclasses import dataclass
 
 from shared.core.enums import AskRidesMessageType, EmbedColorChoice, Emoji
 
+# Sunday service's `{other}` placeholder renders one of these depending on
+# whether the "Something else" button feature flag is currently on.
+OTHER_BUTTON_ON_TEXT = "react ✳️ and tap **Something else** below"
+OTHER_BUTTON_OFF_TEXT = "please DM {ping}"
+
 
 @dataclass(frozen=True)
 class MessageTemplate:
@@ -46,7 +51,7 @@ DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
             "(leave between 10 and 10:10am)!\n\n"
             "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
             "🏠 = ride to church and back to campus/apt (arrive back ~1:00pm)\n"
-            "✳️ = something else (please DM {ping})"
+            "✳️ = something else ({other})"
         ),
         color=EmbedColorChoice.BLUE,
         reactions=(Emoji.LUNCH, Emoji.NO_LUNCH, Emoji.SOMETHING_ELSE),
@@ -72,6 +77,6 @@ MAX_REACTIONS = 10
 ALLOWED_PLACEHOLDERS: dict[AskRidesMessageType, set[str]] = {
     AskRidesMessageType.WEDNESDAY_FELLOWSHIP: {"date"},
     AskRidesMessageType.FRIDAY_FELLOWSHIP: {"date"},
-    AskRidesMessageType.SUNDAY_SERVICE: {"date", "ping"},
+    AskRidesMessageType.SUNDAY_SERVICE: {"date", "ping", "other"},
     AskRidesMessageType.SUNDAY_CLASS: {"date"},
 }
