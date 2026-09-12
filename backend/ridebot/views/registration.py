@@ -153,7 +153,7 @@ class RegistrationView(discord.ui.View):
         await interaction.response.send_modal(RegistrationModal(existing, interaction.user))
 
 
-class RegistrationModal(discord.ui.Modal, title="Ride registration"):
+class RegistrationModal(discord.ui.Modal, title="Your pickup info"):
     """Modal collecting a rider's name, class year, and living location."""
 
     def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
