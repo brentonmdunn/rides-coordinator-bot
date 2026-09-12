@@ -98,7 +98,7 @@ class TestBuildCoordinatorMessage:
         lines = msg.split("\n")
         assert lines[0] == (
             "✳️ **Something else** from <@42> (`@bob`) on "
-            "**Rides to Sunday Service** · [jump](https://discord.com/channels/1/2/3)"
+            "**Rides to Sunday Service** · [Jump to message](https://discord.com/channels/1/2/3)"
         )
         assert lines[1] == "📍 Alice · Sixth · 2nd year"
         assert lines[2] == "> I need a ride"

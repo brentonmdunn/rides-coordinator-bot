@@ -143,7 +143,7 @@ class AskRidesOtherService:
 
         return (
             f"✳️ **Something else** from <@{user_id}> (`@{username}`) on "
-            f"**{announcement_title}** · [jump]({jump_url})\n"
+            f"**{announcement_title}** · [Jump to message]({jump_url})\n"
             f"{info_line}\n"
             f"{quoted_text}"
         )
