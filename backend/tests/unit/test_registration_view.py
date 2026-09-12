@@ -239,7 +239,7 @@ async def test_coordinator_notice_flags_update_and_off_campus():
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
     assert "Roster updated" in notice
-    assert "Costa Verde (off campus — needs a pickup spot)" in notice
+    assert "Costa Verde (off campus, needs a pickup spot)" in notice
 
 
 @pytest.mark.asyncio

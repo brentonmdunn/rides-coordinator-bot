@@ -73,12 +73,12 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
     elif person.location in campus_values:
         location = person.location
     else:
-        location = f"{person.location} (off campus — needs a pickup spot)"
+        location = f"{person.location} (off campus, needs a pickup spot)"
 
     year = f"{person.year} year" if person.year else "year unknown"
     return (
-        f"{headline}: **{person.name}** (`@{interaction.user.name}`) — "
-        f"{location}, {year} · <#{interaction.channel_id}>"
+        f"{headline}: **{person.name}** (`@{interaction.user.name}`), "
+        f"{location}, {year}. In <#{interaction.channel_id}>"
     )
 
 

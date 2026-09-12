@@ -81,7 +81,7 @@ function RosterManager() {
             : deleteTarget?.kind === 'bulk'
               ? `Delete ${deleteTarget.ids.length} people from the roster? This can't be undone.`
               : deleteTarget?.kind === 'all'
-                ? `Delete all ${deleteTarget.ids.length} people from the roster? This can't be undone — everyone would have to register again, and pickup grouping will be empty until they do.`
+                ? `Delete all ${deleteTarget.ids.length} people from the roster? This can't be undone. Everyone would have to add their pickup info again, and pickup grouping will be empty until they do.`
                 : ''
 
     return (
