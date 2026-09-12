@@ -130,6 +130,16 @@ API (`api/routes/pickup_info.py`, `/api/pickup-info`) and the admin UI's `/picku
 New riders register themselves via a Discord button/modal (the registration view
 in `ridebot/views/pickup_info.py`) posted in their new-rides channel.
 
+### Ask-rides "Something else" button
+
+Ask-rides announcement embeds carry a persistent **Something else** button
+(`ridebot/views/ask_rides_other.py`, one `AskRidesOtherView` per `AskRidesMessageType`,
+registered in the `Reactions` cog's `cog_load`). It opens a modal and forwards the rider's
+text to `SERVING__RIDE_COORDINATORS` via `AskRidesOtherService`
+(`ridebot/services/ask_rides_other_service.py`). Gated by `FeatureFlagNames.ASK_RIDES_OTHER_BUTTON`
+plus RideBot's kill switch; clicks on past-week announcements are refused. Locally,
+`/test-ask-rides-other` posts an embed with the button in the current channel.
+
 ### Centralizing Shared Logic (No Duplication Between Cogs and API)
 
 Cogs and API routes are both **thin entry points** — they handle input/output for their respective interfaces (Discord vs. HTTP) but must not contain business logic themselves.

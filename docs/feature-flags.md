@@ -51,6 +51,7 @@ These flags independently gate each automated ride/driver announcement. In `APP_
 | `send_errors_to_discord` | Post unexpected error tracebacks to the bot logs Discord channel. Useful to disable in local/testing environments. |
 | `use_cache` | Enable in-memory (or Redis) caching of Discord message lookups and reaction data. When disabled, every request hits the Discord API directly. |
 | `agent` | Enable the conversational AI agent feature. |
+| `ask_rides_other_button` | Default `false`. Attach a persistent **Something else** button to ask-rides announcements; riders describe what they need in a modal and it's posted to the ride coordinators channel. When off, no button is attached, clicks on existing buttons get an ephemeral "not available" reply, and the Sunday service `{other}` placeholder renders as "please DM {ping}" instead of pointing at the button. |
 
 ---
 

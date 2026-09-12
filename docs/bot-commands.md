@@ -218,6 +218,28 @@ Shows all available slash commands as an ephemeral embed. Useful for discovering
 
 ---
 
+## Buttons on ride announcements
+
+### Something else
+
+Every ask-rides announcement (Wednesday/Friday fellowship, Sunday service, Sunday class) carries a **Something else** button when the `ask_rides_other_button` flag is on. It opens a modal asking "What do you need?", then posts the answer to the ride coordinators channel with the rider's mention, a link to the announcement, and their pickup info. Clicks are refused (ephemerally) on announcements from a past week, within 60 seconds of the same user's last submission, or when the flag is off. Code: `ridebot/views/ask_rides_other.py`, `ridebot/services/ask_rides_other_service.py`.
+
+---
+
+## Local-only test commands
+
+Loaded from `ridebot/cogs_testing/` only when `APP_ENV=local`.
+
+### `/test-ask-rides-other`
+
+Post an ask-rides embed with the Something else button and its reactions in the current channel. The button is attached even when `ask_rides_other_button` is off, so the refusal path can be tested too.
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `message_type` | Yes | Which announcement to post (Wednesday fellowship, Friday fellowship, Sunday service, Sunday class) |
+
+---
+
 ## Disabled commands
 
 The following cogs are currently in `ridebot/cogs_disabled/` and are not loaded:
