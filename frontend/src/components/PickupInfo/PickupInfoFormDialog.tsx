@@ -1,7 +1,7 @@
 /**
- * RosterFormDialog.tsx
+ * PickupInfoFormDialog.tsx
  *
- * Create/edit dialog for a roster person — name, Discord username, and
+ * Create/edit dialog for a person's pickup info — name, Discord username, and
  * year/location selects. The form body is keyed on the dialog state so
  * fields initialize from props on every open (no state-syncing effects).
  * Server-side validation/conflict errors (400/409) are shown inline.
@@ -25,23 +25,23 @@ import {
     SelectTrigger,
     SelectValue,
 } from '../ui/select'
-import type { RosterOptions, RosterPerson, RosterPersonInput } from '../../types'
+import type { PickupInfoOptions, PickupInfoPerson, PickupInfoPersonInput } from '../../types'
 
 const NONE_VALUE = '__none__'
 /** Sentinel select value for a location outside the campus living areas. */
 const OTHER_VALUE = '__other__'
 
-export interface RosterFormState {
+export interface PickupInfoFormState {
     /** Existing person when editing; null when creating. */
-    person: RosterPerson | null
+    person: PickupInfoPerson | null
 }
 
-interface RosterFormDialogProps {
-    state: RosterFormState | null
-    options: RosterOptions | undefined
+interface PickupInfoFormDialogProps {
+    state: PickupInfoFormState | null
+    options: PickupInfoOptions | undefined
     submitting: boolean
     error: string | null
-    onSubmit: (input: RosterPersonInput) => void
+    onSubmit: (input: PickupInfoPersonInput) => void
     onClose: () => void
 }
 
@@ -51,7 +51,7 @@ interface FieldErrors {
     location?: string
 }
 
-function RosterFormBody({
+function PickupInfoFormBody({
     state,
     options,
     submitting,
@@ -59,11 +59,11 @@ function RosterFormBody({
     onSubmit,
     onClose,
 }: {
-    state: RosterFormState
-    options: RosterOptions | undefined
+    state: PickupInfoFormState
+    options: PickupInfoOptions | undefined
     submitting: boolean
     error: string | null
-    onSubmit: (input: RosterPersonInput) => void
+    onSubmit: (input: PickupInfoPersonInput) => void
     onClose: () => void
 }) {
     const [name, setName] = useState(state.person?.name ?? '')
@@ -120,18 +120,18 @@ function RosterFormBody({
                 <DialogTitle>{isEdit ? 'Edit person' : 'New person'}</DialogTitle>
                 <DialogDescription>
                     {isEdit
-                        ? "Update this person's roster details."
-                        : 'Add someone to the roster.'}
+                        ? "Update this person's pickup info."
+                        : 'Add someone to the pickupInfo.'}
                 </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
                 <div className="space-y-1.5">
-                    <label htmlFor="roster-name" className="text-sm font-medium text-foreground">
+                    <label htmlFor="pickup-info-name" className="text-sm font-medium text-foreground">
                         Name
                     </label>
                     <Input
-                        id="roster-name"
+                        id="pickup-info-name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Jane Doe"
@@ -141,13 +141,13 @@ function RosterFormBody({
 
                 <div className="space-y-1.5">
                     <label
-                        htmlFor="roster-username"
+                        htmlFor="pickup-info-username"
                         className="text-sm font-medium text-foreground"
                     >
                         Discord username
                     </label>
                     <Input
-                        id="roster-username"
+                        id="pickup-info-username"
                         value={discordUsername}
                         onChange={(e) => setDiscordUsername(e.target.value)}
                         placeholder="e.g. janedoe (optional)"
@@ -193,13 +193,13 @@ function RosterFormBody({
                 {location === OTHER_VALUE && (
                     <div className="space-y-1.5">
                         <label
-                            htmlFor="roster-custom-location"
+                            htmlFor="pickup-info-custom-location"
                             className="text-sm font-medium text-foreground"
                         >
                             Off-campus location
                         </label>
                         <Input
-                            id="roster-custom-location"
+                            id="pickup-info-custom-location"
                             value={customLocation}
                             onChange={(e) => setCustomLocation(e.target.value)}
                             placeholder="Apartment name or street address"
@@ -225,19 +225,19 @@ function RosterFormBody({
     )
 }
 
-export function RosterFormDialog({
+export function PickupInfoFormDialog({
     state,
     options,
     submitting,
     error,
     onSubmit,
     onClose,
-}: RosterFormDialogProps) {
+}: PickupInfoFormDialogProps) {
     return (
         <Dialog open={state != null} onOpenChange={(open) => { if (!open) onClose() }}>
             <DialogContent className="sm:max-w-md">
                 {state && (
-                    <RosterFormBody
+                    <PickupInfoFormBody
                         key={state.person?.id ?? 'new'}
                         state={state}
                         options={options}

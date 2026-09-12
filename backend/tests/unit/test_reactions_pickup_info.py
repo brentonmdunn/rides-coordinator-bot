@@ -1,4 +1,4 @@
-"""Unit tests for the roster-related bits of ridebot/cogs/reactions.py."""
+"""Unit tests for the pickup-info bits of ridebot/cogs/reactions.py."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -52,7 +52,7 @@ async def test_new_rides_helper_skips_registered_members():
     guild = MagicMock(spec=discord.Guild)
 
     with patch(
-        "ridebot.cogs.reactions.RosterService.find_member",
+        "ridebot.cogs.reactions.PickupInfoService.find_member",
         new=AsyncMock(return_value=MagicMock()),
     ):
         await cog._new_rides_helper(user, guild, 42)
@@ -76,7 +76,7 @@ async def test_new_rides_helper_continues_for_unregistered_members():
     guild = MagicMock(spec=discord.Guild)
 
     with patch(
-        "ridebot.cogs.reactions.RosterService.find_member",
+        "ridebot.cogs.reactions.PickupInfoService.find_member",
         new=AsyncMock(return_value=None),
     ):
         await cog._new_rides_helper(user, guild, 42)

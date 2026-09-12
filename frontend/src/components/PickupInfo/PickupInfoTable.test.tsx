@@ -1,18 +1,18 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { RosterOptions, RosterPerson } from '../../types'
+import type { PickupInfoOptions, PickupInfoPerson } from '../../types'
 
 // ── Mock the network boundary, not auth ──────────────────────────────────
-// RosterTable is presentational (it takes people/options as props), but we
+// PickupInfoTable is presentational (it takes people/options as props), but we
 // mock `lib/api` anyway so importing it anywhere in the tree never triggers
 // a real fetch, mirroring the AskRidesDashboard tests.
 const { apiFetch } = vi.hoisted(() => ({ apiFetch: vi.fn() }))
 vi.mock('@/lib/api', () => ({ apiFetch, ApiError: class ApiError extends Error {} }))
 
-import { RosterTable } from './RosterTable'
+import { PickupInfoTable } from './PickupInfoTable'
 
-function person(overrides: Partial<RosterPerson> = {}): RosterPerson {
+function person(overrides: Partial<PickupInfoPerson> = {}): PickupInfoPerson {
     return {
         id: 1,
         name: 'Jane Doe',
@@ -25,18 +25,18 @@ function person(overrides: Partial<RosterPerson> = {}): RosterPerson {
     }
 }
 
-const options: RosterOptions = {
+const options: PickupInfoOptions = {
     years: ['Freshman', 'Sophomore', 'Junior', 'Senior'],
     locations: ['Pepper Canyon West', 'Muir'],
 }
 
 function renderTable(
-    people: RosterPerson[],
-    opts: RosterOptions | undefined = options,
+    people: PickupInfoPerson[],
+    opts: PickupInfoOptions | undefined = options,
     overrides: { onDeleteAll?: () => void } = {}
 ) {
     return render(
-        <RosterTable
+        <PickupInfoTable
             people={people}
             options={opts}
             isLoading={false}
@@ -49,7 +49,7 @@ function renderTable(
     )
 }
 
-describe('RosterTable', () => {
+describe('PickupInfoTable', () => {
     it('renders every person', () => {
         renderTable([person(), person({ id: 2, name: 'John Smith', discord_username: 'jsmith' })])
 
@@ -57,10 +57,10 @@ describe('RosterTable', () => {
         expect(screen.getByText('John Smith')).toBeInTheDocument()
     })
 
-    it('shows an empty state when there is no one on the roster', () => {
+    it('shows an empty state when there is no pickup info', () => {
         renderTable([])
 
-        expect(screen.getByText('No one on the roster yet.')).toBeInTheDocument()
+        expect(screen.getByText('No pickup info yet.')).toBeInTheDocument()
     })
 
     it('filters by name and by discord username', async () => {
@@ -110,7 +110,7 @@ describe('RosterTable', () => {
         expect(onDeleteAll).toHaveBeenCalledTimes(1)
     })
 
-    it('hides the delete all button when the roster is empty', () => {
+    it('hides the delete all button when there is no pickup info', () => {
         renderTable([])
 
         expect(screen.queryByRole('button', { name: /delete all/i })).toBeNull()

@@ -1,8 +1,8 @@
 """
-Service for the people roster (the ``locations`` table).
+Service for pickup info (the ``locations`` table).
 
 Single source of truth for creating, editing, deleting, and self-registering the
-people the bot gives rides to. Used by both the ``/api/roster`` routes and the
+people the bot gives rides to. Used by both the ``/api/pickup-info`` routes and the
 Discord registration view.
 """
 
@@ -11,12 +11,12 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from ridebot.repositories.roster_repository import RosterRepository
+from ridebot.repositories.pickup_info_repository import PickupInfoRepository
 from ridebot.utils.cache import invalidate_namespace
 from ridebot.utils.custom_exceptions import (
-    RosterConflictError,
-    RosterNotFoundError,
-    RosterValidationError,
+    PickupInfoConflictError,
+    PickupInfoNotFoundError,
+    PickupInfoValidationError,
 )
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import CacheNamespace, CampusLivingLocations, ClassYear
@@ -32,7 +32,7 @@ _USERNAME_PATTERN = re.compile(r"^[a-z0-9_.]+$")
 
 @dataclass(frozen=True)
 class Person:
-    """A roster entry."""
+    """A pickup info entry."""
 
     id: int
     name: str
@@ -45,7 +45,7 @@ class Person:
 
 @dataclass(frozen=True)
 class PersonInput:
-    """Fields for creating a roster entry."""
+    """Fields for creating a pickup info entry."""
 
     name: str
     discord_username: str | None = None
@@ -73,7 +73,7 @@ def _normalize_name(name: str) -> str:
     """Strip and validate a person's name."""
     cleaned = name.strip()
     if not cleaned or len(cleaned) > _MAX_NAME_LENGTH:
-        raise RosterValidationError(f"Name must be between 1 and {_MAX_NAME_LENGTH} characters")
+        raise PickupInfoValidationError(f"Name must be between 1 and {_MAX_NAME_LENGTH} characters")
     return cleaned
 
 
@@ -85,7 +85,7 @@ def _normalize_discord_username(username: str | None) -> str | None:
     if cleaned == "":
         return None
     if len(cleaned) > _MAX_USERNAME_LENGTH or not _USERNAME_PATTERN.match(cleaned):
-        raise RosterValidationError(f"Invalid Discord username: {username!r}")
+        raise PickupInfoValidationError(f"Invalid Discord username: {username!r}")
     return cleaned
 
 
@@ -96,7 +96,7 @@ def _normalize_year(year: str | None) -> str | None:
     for candidate in ClassYear:
         if candidate.value.lower() == year.strip().lower():
             return candidate.value
-    raise RosterValidationError(f"Invalid year: {year!r}")
+    raise PickupInfoValidationError(f"Invalid year: {year!r}")
 
 
 def _normalize_location(location: str | None) -> str | None:
@@ -116,59 +116,61 @@ def _normalize_location(location: str | None) -> str | None:
         if candidate.value.lower() == cleaned.lower():
             return candidate.value
     if len(cleaned) > _MAX_LOCATION_LENGTH:
-        raise RosterValidationError(f"Location must be {_MAX_LOCATION_LENGTH} characters or fewer")
+        raise PickupInfoValidationError(
+            f"Location must be {_MAX_LOCATION_LENGTH} characters or fewer"
+        )
     return cleaned
 
 
 async def _check_username_conflict(
     session, username: str | None, *, exclude_id: int | None = None
 ) -> None:
-    """Raise ``RosterConflictError`` if another row already has ``username``."""
+    """Raise ``PickupInfoConflictError`` if another row already has ``username``."""
     if username is None:
         return
-    existing = await RosterRepository.get_by_discord_username(session, username)
+    existing = await PickupInfoRepository.get_by_discord_username(session, username)
     if existing is not None and existing.id != exclude_id:
-        raise RosterConflictError(f"Discord username {username!r} is already on the roster")
+        raise PickupInfoConflictError(f"Discord username {username!r} is already in Pickup Info")
 
 
 async def _invalidate_caches() -> None:
-    """Invalidate the caches that read from the roster after a write."""
+    """Invalidate the caches that read pickup info after a write."""
     await invalidate_namespace(CacheNamespace.ASK_RIDES_REACTIONS)
     await invalidate_namespace(CacheNamespace.ASK_DRIVERS_REACTIONS)
 
 
-class RosterService:
-    """Business logic for the people roster."""
+class PickupInfoService:
+    """Business logic for pickup info."""
 
     @staticmethod
     async def list_people() -> list[Person]:
-        """Return every roster entry, ordered by name (case-insensitive)."""
+        """Return every pickup info entry, ordered by name (case-insensitive)."""
         async with AsyncSessionLocal() as session:
-            rows = await RosterRepository.get_all(session)
+            rows = await PickupInfoRepository.get_all(session)
             return [_to_person(row) for row in rows]
 
     @staticmethod
     async def get_person(person_id: int) -> Person:
         """
-        Return one roster entry.
+        Return one pickup info entry.
 
         Raises:
-            RosterNotFoundError: If no entry has ``person_id``.
+            PickupInfoNotFoundError: If no entry has ``person_id``.
         """
         async with AsyncSessionLocal() as session:
-            row = await RosterRepository.get_by_id(session, person_id)
+            row = await PickupInfoRepository.get_by_id(session, person_id)
             if row is None:
-                raise RosterNotFoundError(f"No roster entry with id {person_id}")
+                raise PickupInfoNotFoundError(f"No pickup info entry with id {person_id}")
             return _to_person(row)
 
     @staticmethod
     async def create_person(data: PersonInput) -> Person:
         """
-        Create a roster entry.
+        Create a pickup info entry.
 
         Raises:
-            RosterValidationError: If a field is invalid.
-            RosterConflictError: If the Discord username is already on the roster.
+            PickupInfoValidationError: If a field is invalid.
+            PickupInfoConflictError: If the Discord username is already in Pickup Info.
         """
         name = _normalize_name(data.name)
         discord_username = _normalize_discord_username(data.discord_username)
@@ -177,7 +179,7 @@ class RosterService:
 
         async with AsyncSessionLocal() as session:
             await _check_username_conflict(session, discord_username)
-            row = await RosterRepository.create(
+            row = await PickupInfoRepository.create(
                 session,
                 name=name,
                 discord_username=discord_username,
@@ -188,34 +190,34 @@ class RosterService:
             )
             await session.commit()
 
-        logger.info(f"Created roster entry id={row.id} username={discord_username}")
+        logger.info(f"Created pickup info entry id={row.id} username={discord_username}")
         await _invalidate_caches()
         return _to_person(row)
 
     @staticmethod
     async def update_person(person_id: int, changes: dict[str, str | None]) -> Person:
         """
-        Apply a partial update to a roster entry.
+        Apply a partial update to a pickup info entry.
 
         Only keys present in ``changes`` are applied; keys must be in ``UPDATABLE_FIELDS``.
 
         Raises:
-            RosterNotFoundError: If no entry has ``person_id``.
-            RosterValidationError: If a key or value is invalid.
-            RosterConflictError: If the Discord username is already on the roster.
+            PickupInfoNotFoundError: If no entry has ``person_id``.
+            PickupInfoValidationError: If a key or value is invalid.
+            PickupInfoConflictError: If the Discord username is already in Pickup Info.
         """
         unknown_keys = set(changes) - UPDATABLE_FIELDS
         if unknown_keys:
-            raise RosterValidationError(f"Unknown field(s): {', '.join(sorted(unknown_keys))}")
+            raise PickupInfoValidationError(f"Unknown field(s): {', '.join(sorted(unknown_keys))}")
 
         async with AsyncSessionLocal() as session:
-            row = await RosterRepository.get_by_id(session, person_id)
+            row = await PickupInfoRepository.get_by_id(session, person_id)
             if row is None:
-                raise RosterNotFoundError(f"No roster entry with id {person_id}")
+                raise PickupInfoNotFoundError(f"No pickup info entry with id {person_id}")
 
             if "name" in changes:
                 if changes["name"] is None:
-                    raise RosterValidationError("name cannot be cleared")
+                    raise PickupInfoValidationError("name cannot be cleared")
                 row.name = _normalize_name(changes["name"])
             if "discord_username" in changes:
                 new_username = _normalize_discord_username(changes["discord_username"])
@@ -229,18 +231,18 @@ class RosterService:
             row.updated_at = datetime.now(UTC)
             await session.commit()
 
-        logger.info(f"Updated roster entry id={person_id} username={row.discord_username}")
+        logger.info(f"Updated pickup info entry id={person_id} username={row.discord_username}")
         await _invalidate_caches()
         return _to_person(row)
 
     @staticmethod
     async def delete_people(person_ids: list[int]) -> int:
-        """Delete roster entries by id and return how many were deleted (unknown ids ignored)."""
+        """Delete pickup info entries by id and return how many were deleted (unknown ids ignored)."""
         async with AsyncSessionLocal() as session:
-            count = await RosterRepository.delete_by_ids(session, person_ids)
+            count = await PickupInfoRepository.delete_by_ids(session, person_ids)
             await session.commit()
 
-        logger.info(f"Deleted {count} roster entrie(s): ids={person_ids}")
+        logger.info(f"Deleted {count} pickup info entrie(s): ids={person_ids}")
         if count:
             await _invalidate_caches()
         return count
@@ -255,20 +257,20 @@ class RosterService:
         location: str | None,
     ) -> tuple[Person, bool]:
         """
-        Create or update the roster entry for a Discord member.
+        Create or update the pickup info entry for a Discord member.
 
         ``location`` may be None when the rider asked a coordinator to follow up;
-        the entry is stored without one and shows as missing on the roster.
+        the entry is stored without one and shows as missing on the Pickup Info page.
 
         Returns:
             ``(person, created)``.
 
         Raises:
-            RosterValidationError: If a field is invalid.
-            RosterConflictError: If the username belongs to a row linked to another account.
+            PickupInfoValidationError: If a field is invalid.
+            PickupInfoConflictError: If the username belongs to a row linked to another account.
         """
         if year is None:
-            raise RosterValidationError("year is required to register")
+            raise PickupInfoValidationError("year is required to register")
 
         normalized_name = _normalize_name(name)
         normalized_username = _normalize_discord_username(discord_username)
@@ -277,7 +279,7 @@ class RosterService:
         str_discord_user_id = str(discord_user_id)
 
         async with AsyncSessionLocal() as session:
-            row = await RosterRepository.get_by_discord_user_id(session, str_discord_user_id)
+            row = await PickupInfoRepository.get_by_discord_user_id(session, str_discord_user_id)
             if row is not None:
                 await _check_username_conflict(session, normalized_username, exclude_id=row.id)
                 row.name = normalized_name
@@ -287,19 +289,19 @@ class RosterService:
                 row.updated_at = datetime.now(UTC)
                 await session.commit()
                 logger.info(
-                    f"Updated roster entry id={row.id} username={normalized_username} via register"
+                    f"Updated pickup info entry id={row.id} username={normalized_username} via register"
                 )
                 await _invalidate_caches()
                 return _to_person(row), False
 
             existing = (
-                await RosterRepository.get_by_discord_username(session, normalized_username)
+                await PickupInfoRepository.get_by_discord_username(session, normalized_username)
                 if normalized_username is not None
                 else None
             )
             if existing is not None:
                 if existing.discord_user_id is not None:
-                    raise RosterConflictError(
+                    raise PickupInfoConflictError(
                         f"Discord username {normalized_username!r} belongs to another account"
                     )
                 existing.discord_user_id = str_discord_user_id
@@ -310,13 +312,13 @@ class RosterService:
                 existing.updated_at = datetime.now(UTC)
                 await session.commit()
                 logger.info(
-                    f"Claimed roster entry id={existing.id} username={normalized_username} "
+                    f"Claimed pickup info entry id={existing.id} username={normalized_username} "
                     "via register"
                 )
                 await _invalidate_caches()
                 return _to_person(existing), False
 
-            row = await RosterRepository.create(
+            row = await PickupInfoRepository.create(
                 session,
                 name=normalized_name,
                 discord_username=normalized_username,
@@ -327,14 +329,14 @@ class RosterService:
             )
             await session.commit()
 
-        logger.info(f"Registered new roster entry id={row.id} username={normalized_username}")
+        logger.info(f"Registered new pickup info entry id={row.id} username={normalized_username}")
         await _invalidate_caches()
         return _to_person(row), True
 
     @staticmethod
     async def find_member(*, discord_user_id: int, discord_username: str) -> Person | None:
         """
-        Find a member's roster entry, refreshing a changed username or linking an unlinked row.
+        Find a member's pickup info entry, refreshing a changed username or linking an unlinked row.
 
         Returns:
             The entry, or ``None`` if the member is not registered.
@@ -343,11 +345,13 @@ class RosterService:
         normalized_username = _normalize_discord_username(discord_username)
 
         async with AsyncSessionLocal() as session:
-            row = await RosterRepository.get_by_discord_user_id(session, str_discord_user_id)
+            row = await PickupInfoRepository.get_by_discord_user_id(session, str_discord_user_id)
             if row is not None:
                 if row.discord_username != normalized_username:
                     conflict = (
-                        await RosterRepository.get_by_discord_username(session, normalized_username)
+                        await PickupInfoRepository.get_by_discord_username(
+                            session, normalized_username
+                        )
                         if normalized_username is not None
                         else None
                     )
@@ -364,7 +368,9 @@ class RosterService:
                 return _to_person(row)
 
             if normalized_username is not None:
-                row = await RosterRepository.get_by_discord_username(session, normalized_username)
+                row = await PickupInfoRepository.get_by_discord_username(
+                    session, normalized_username
+                )
                 if row is not None and row.discord_user_id is None:
                     row.discord_user_id = str_discord_user_id
                     row.updated_at = datetime.now(UTC)
@@ -376,7 +382,7 @@ class RosterService:
 
     @staticmethod
     def get_options() -> dict[str, list[str]]:
-        """Return the valid class years and living locations for roster forms."""
+        """Return the valid class years and living locations for pickup info forms."""
         return {
             "years": [year.value for year in ClassYear],
             "locations": [location.value for location in CampusLivingLocations],

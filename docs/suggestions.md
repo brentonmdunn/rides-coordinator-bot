@@ -67,7 +67,7 @@ Multiple API routes (`group_rides.py`, `list_pickups.py`, `ask_rides.py`, `check
 ### R2 — `LocationsService` is too large (740 lines)
 
 **Status:** `done` — the Google Sheets CSV sync has been removed entirely; the
-roster now lives in `RosterService`/`/api/roster` and the Discord registration
+pickup info now lives in `PickupInfoService`/`/api/pickup-info` and the Discord registration
 form. `LocationsService` was split into focused services:
 - `ReactionService` — handles reaction fetching and caching
 - `HousingGroupService` — handles location grouping and embed building

@@ -1,7 +1,7 @@
 /**
- * RosterTable.tsx
+ * PickupInfoTable.tsx
  *
- * Table of every roster person — searchable, sortable, multi-select with
+ * Table of everyone's pickup info — searchable, sortable, multi-select with
  * bulk delete, and per-row edit/delete. Flags rows whose `year` doesn't
  * match a current option with a "Needs fix" badge; off-campus locations
  * are valid free text and are never flagged.
@@ -15,14 +15,14 @@ import { Input } from '../ui/input'
 import { Checkbox } from '../ui/checkbox'
 import { SectionCard } from '../shared'
 import { TableSkeleton } from '../LoadingSkeleton'
-import type { RosterOptions, RosterPerson } from '../../types'
+import type { PickupInfoOptions, PickupInfoPerson } from '../../types'
 
-interface RosterTableProps {
-    people: RosterPerson[]
-    options: RosterOptions | undefined
+interface PickupInfoTableProps {
+    people: PickupInfoPerson[]
+    options: PickupInfoOptions | undefined
     isLoading: boolean
-    onEdit: (person: RosterPerson) => void
-    onDelete: (person: RosterPerson) => void
+    onEdit: (person: PickupInfoPerson) => void
+    onDelete: (person: PickupInfoPerson) => void
     onBulkDelete: (ids: number[]) => void
     onDeleteAll: () => void
     onAdd: () => void
@@ -58,13 +58,13 @@ function formatRelativeTime(iso: string | null): string {
     return date.toLocaleDateString()
 }
 
-function needsFix(person: RosterPerson, options: RosterOptions | undefined): boolean {
+function needsFix(person: PickupInfoPerson, options: PickupInfoOptions | undefined): boolean {
     if (!options) return false
     // Locations outside the campus list are valid off-campus addresses, not errors.
     return person.year != null && !options.years.includes(person.year)
 }
 
-function compareValues(a: RosterPerson, b: RosterPerson, key: SortKey): number {
+function compareValues(a: PickupInfoPerson, b: PickupInfoPerson, key: SortKey): number {
     if (key === 'linked') {
         return Number(a.discord_user_id != null) - Number(b.discord_user_id != null)
     }
@@ -78,7 +78,7 @@ function compareValues(a: RosterPerson, b: RosterPerson, key: SortKey): number {
     return aValue.localeCompare(bValue)
 }
 
-export function RosterTable({
+export function PickupInfoTable({
     people,
     options,
     isLoading,
@@ -87,7 +87,7 @@ export function RosterTable({
     onBulkDelete,
     onDeleteAll,
     onAdd,
-}: RosterTableProps) {
+}: PickupInfoTableProps) {
     const [search, setSearch] = useState('')
     const [sortKey, setSortKey] = useState<SortKey>('name')
     const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -157,7 +157,7 @@ export function RosterTable({
 
     if (isLoading) {
         return (
-            <SectionCard icon={<Users className="h-4 w-4" />} title="Roster">
+            <SectionCard icon={<Users className="h-4 w-4" />} title="Pickup Info">
                 <TableSkeleton rows={6} cols={6} />
             </SectionCard>
         )
@@ -166,7 +166,7 @@ export function RosterTable({
     return (
         <SectionCard
             icon={<Users className="h-4 w-4" />}
-            title="Roster"
+            title="Pickup Info"
             actions={
                 <div className="flex items-center gap-2">
                     {people.length > 0 && (
@@ -187,7 +187,7 @@ export function RosterTable({
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search by name or username…"
                     className="sm:max-w-xs"
-                    aria-label="Search roster"
+                    aria-label="Search pickup info"
                 />
                 {selectedInView.length > 0 && (
                     <Button
@@ -205,7 +205,7 @@ export function RosterTable({
             {filtered.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
                     {people.length === 0
-                        ? 'No one on the roster yet.'
+                        ? 'No pickup info yet.'
                         : 'No matches for your search.'}
                 </p>
             ) : (
@@ -320,4 +320,4 @@ export function RosterTable({
     )
 }
 
-export default RosterTable
+export default PickupInfoTable

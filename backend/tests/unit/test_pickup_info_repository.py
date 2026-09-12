@@ -1,4 +1,4 @@
-"""Unit tests for RosterRepository CRUD against an in-memory DB."""
+"""Unit tests for PickupInfoRepository CRUD against an in-memory DB."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from ridebot.repositories.roster_repository import RosterRepository
+from ridebot.repositories.pickup_info_repository import PickupInfoRepository
 from shared.core.base import Base
 from shared.core.models import Locations
 
@@ -39,7 +39,7 @@ async def test_get_all_orders_by_lowercase_name(session_local):
         Locations(name="bob"),
     )
     async with session_local() as session:
-        rows = await RosterRepository.get_all(session)
+        rows = await PickupInfoRepository.get_all(session)
     assert [row.name for row in rows] == ["Alice", "bob", "charlie"]
 
 
@@ -47,8 +47,8 @@ async def test_get_all_orders_by_lowercase_name(session_local):
 async def test_get_by_id(session_local):
     await _seed(session_local, Locations(id=1, name="Alice"))
     async with session_local() as session:
-        assert (await RosterRepository.get_by_id(session, 1)).name == "Alice"
-        assert await RosterRepository.get_by_id(session, 999) is None
+        assert (await PickupInfoRepository.get_by_id(session, 1)).name == "Alice"
+        assert await PickupInfoRepository.get_by_id(session, 999) is None
 
 
 @pytest.mark.asyncio
@@ -60,37 +60,37 @@ async def test_get_by_ids(session_local):
         Locations(id=3, name="Carl"),
     )
     async with session_local() as session:
-        rows = await RosterRepository.get_by_ids(session, [1, 3, 999])
+        rows = await PickupInfoRepository.get_by_ids(session, [1, 3, 999])
     assert {row.id for row in rows} == {1, 3}
     async with session_local() as session:
-        assert await RosterRepository.get_by_ids(session, []) == []
+        assert await PickupInfoRepository.get_by_ids(session, []) == []
 
 
 @pytest.mark.asyncio
 async def test_get_by_discord_user_id(session_local):
     await _seed(session_local, Locations(name="Alice", discord_user_id="123"))
     async with session_local() as session:
-        row = await RosterRepository.get_by_discord_user_id(session, "123")
+        row = await PickupInfoRepository.get_by_discord_user_id(session, "123")
         assert row is not None
         assert row.name == "Alice"
-        assert await RosterRepository.get_by_discord_user_id(session, "999") is None
+        assert await PickupInfoRepository.get_by_discord_user_id(session, "999") is None
 
 
 @pytest.mark.asyncio
 async def test_get_by_discord_username_case_insensitive(session_local):
     await _seed(session_local, Locations(name="Alice", discord_username="alicew"))
     async with session_local() as session:
-        row = await RosterRepository.get_by_discord_username(session, "AliceW")
+        row = await PickupInfoRepository.get_by_discord_username(session, "AliceW")
         assert row is not None
         assert row.name == "Alice"
-        assert await RosterRepository.get_by_discord_username(session, "nobody") is None
+        assert await PickupInfoRepository.get_by_discord_username(session, "nobody") is None
 
 
 @pytest.mark.asyncio
 async def test_create_flushes_without_committing(session_local):
     now = datetime.now(UTC)
     async with session_local() as session:
-        row = await RosterRepository.create(
+        row = await PickupInfoRepository.create(
             session,
             name="Alice",
             discord_username="alicew",
@@ -103,7 +103,7 @@ async def test_create_flushes_without_committing(session_local):
         await session.rollback()
 
     async with session_local() as session:
-        rows = await RosterRepository.get_all(session)
+        rows = await PickupInfoRepository.get_all(session)
     assert rows == []
 
 
@@ -115,16 +115,16 @@ async def test_delete_by_ids(session_local):
         Locations(id=2, name="Bob"),
     )
     async with session_local() as session:
-        count = await RosterRepository.delete_by_ids(session, [1, 999])
+        count = await PickupInfoRepository.delete_by_ids(session, [1, 999])
         await session.commit()
     assert count == 1
 
     async with session_local() as session:
-        rows = await RosterRepository.get_all(session)
+        rows = await PickupInfoRepository.get_all(session)
     assert [row.id for row in rows] == [2]
 
 
 @pytest.mark.asyncio
 async def test_delete_by_ids_empty_list(session_local):
     async with session_local() as session:
-        assert await RosterRepository.delete_by_ids(session, []) == 0
+        assert await PickupInfoRepository.delete_by_ids(session, []) == 0

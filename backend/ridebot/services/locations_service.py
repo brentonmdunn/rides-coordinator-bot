@@ -5,8 +5,8 @@ Acts as a thin coordinator that delegates to:
 - ``ReactionService`` for reaction fetching and caching
 - ``HousingGroupService`` for location grouping and embed building
 
-Location data lives in the ``locations`` table, managed through ``RosterService``
-(the website roster and the Discord registration form). This service only reads it.
+Location data lives in the ``locations`` table, managed through ``PickupInfoService``
+(the Pickup Info page and the Discord form). This service only reads it.
 """
 
 import logging

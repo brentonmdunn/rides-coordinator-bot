@@ -121,14 +121,14 @@ API  ──┘
 - **Jobs** (`ridebot/jobs/`): Scheduled tasks run by APScheduler via the `JobScheduler` cog (`ridebot/cogs/job_scheduler.py`, LA timezone). Disabled jobs go in `ridebot/jobs_disabled/`.
 - **API** (`api/`): FastAPI routes in `api/routes/`, auth in `api/auth.py` / `api/auth_session.py`, middleware in `api/middleware/`, rate limiting via slowapi in `api/rate_limit.py`.
 
-### People roster
+### Pickup info
 
-The people roster (who the bot gives rides to, and where they live) has no Google
-Sheets sync — it's owned entirely by `RosterService` (`ridebot/services/roster_service.py`),
+Pickup info (who the bot gives rides to, and where they live) has no Google
+Sheets sync — it's owned entirely by `PickupInfoService` (`ridebot/services/pickup_info_service.py`),
 backed by the `locations` table. Coordinators and admins manage it through the web
-API (`api/routes/roster.py`, `/api/roster`) and the admin UI's `/roster` page.
+API (`api/routes/pickup_info.py`, `/api/pickup-info`) and the admin UI's `/pickup-info` page.
 New riders register themselves via a Discord button/modal (the registration view
-in `ridebot/views/registration.py`) posted in their new-rides channel.
+in `ridebot/views/pickup_info.py`) posted in their new-rides channel.
 
 ### Centralizing Shared Logic (No Duplication Between Cogs and API)
 

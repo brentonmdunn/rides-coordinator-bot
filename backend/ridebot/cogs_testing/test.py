@@ -24,12 +24,12 @@ class TestCog(commands.Cog):
 
     @app_commands.command(
         name="test-register",
-        description="Post the roster pickup-info buttons in this channel (local only).",
+        description="Post the pickup-info buttons in this channel (local only).",
     )
     @bot_enabled
     async def test_register(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            "Tap a button to test the roster form.", view=PickupInfoView()
+            "Tap a button to test the pickup info form.", view=PickupInfoView()
         )
 
     @app_commands.command(

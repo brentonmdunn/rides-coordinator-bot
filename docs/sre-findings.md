@@ -143,7 +143,7 @@ if [ "$heads" -gt 1 ]; then echo "Multiple heads detected"; exit 1; fi
 **Status:** `done`  
 **Files:** `backend/api/routes/auth_discord.py:104`, `backend/bot/repositories/calendar_repository.py:34`
 
-(The Google Sheets CSV sync this originally flagged, `csv_sync_service.py`, has since been removed entirely — the roster is now managed via `RosterService`/`/api/roster`.)
+(The Google Sheets CSV sync this originally flagged, `csv_sync_service.py`, has since been removed entirely — pickup info is now managed via `PickupInfoService`/`/api/pickup-info`.)
 
 - Discord OAuth: three sequential `httpx` calls with no timeout — login hangs if Discord API is slow
 - Calendar: uses synchronous `requests.get()` in an async codebase — **blocks the event loop**, freezing all bot responsiveness

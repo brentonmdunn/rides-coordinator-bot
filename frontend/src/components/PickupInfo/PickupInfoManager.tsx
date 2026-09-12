@@ -1,49 +1,49 @@
 /**
- * RosterManager.tsx
+ * PickupInfoManager.tsx
  *
- * Composition root for the Roster management page — wires the table, the
+ * Composition root for the Pickup Info page — wires the table, the
  * add/edit dialog, and the confirm dialog for single and bulk delete.
  */
 
 import { useState } from 'react'
 import ErrorMessage from '../ErrorMessage'
 import { Input } from '../ui/input'
-import { useRoster, formDialogError } from './useRoster'
-import { RosterTable } from './RosterTable'
-import { RosterFormDialog, type RosterFormState } from './RosterFormDialog'
+import { usePickupInfo, formDialogError } from './usePickupInfo'
+import { PickupInfoTable } from './PickupInfoTable'
+import { PickupInfoFormDialog, type PickupInfoFormState } from './PickupInfoFormDialog'
 import { ConfirmDialog } from '../ConfirmDialog'
-import type { RosterPerson, RosterPersonInput } from '../../types'
+import type { PickupInfoPerson, PickupInfoPersonInput } from '../../types'
 
 type DeleteTarget =
-    | { kind: 'single'; person: RosterPerson }
+    | { kind: 'single'; person: PickupInfoPerson }
     | { kind: 'bulk'; ids: number[] }
     | { kind: 'all'; ids: number[] }
 
-/** Typed confirmation required before wiping the whole roster. */
+/** Typed confirmation required before wiping the whole pickupInfo. */
 const DELETE_ALL_PHRASE = 'DELETE'
 
-function RosterManager() {
-    const roster = useRoster()
-    const { data, isLoading, error } = roster.query
+function PickupInfoManager() {
+    const pickupInfo = usePickupInfo()
+    const { data, isLoading, error } = pickupInfo.query
 
-    const [formState, setFormState] = useState<RosterFormState | null>(null)
+    const [formState, setFormState] = useState<PickupInfoFormState | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
     const [deleteAllConfirm, setDeleteAllConfirm] = useState('')
 
     const people = data?.people ?? []
 
-    const submitting = roster.createPerson.isPending || roster.updatePerson.isPending
+    const submitting = pickupInfo.createPerson.isPending || pickupInfo.updatePerson.isPending
     const submitError =
-        formDialogError(roster.createPerson.error) ?? formDialogError(roster.updatePerson.error)
+        formDialogError(pickupInfo.createPerson.error) ?? formDialogError(pickupInfo.updatePerson.error)
 
-    const handleSubmit = (input: RosterPersonInput) => {
+    const handleSubmit = (input: PickupInfoPersonInput) => {
         if (formState?.person) {
-            roster.updatePerson.mutate(
+            pickupInfo.updatePerson.mutate(
                 { id: formState.person.id, changes: input },
                 { onSuccess: () => setFormState(null) }
             )
         } else {
-            roster.createPerson.mutate(input, { onSuccess: () => setFormState(null) })
+            pickupInfo.createPerson.mutate(input, { onSuccess: () => setFormState(null) })
         }
     }
 
@@ -55,12 +55,12 @@ function RosterManager() {
     const handleConfirmDelete = () => {
         if (!deleteTarget) return
         if (deleteTarget.kind === 'single') {
-            roster.deletePerson.mutate(deleteTarget.person.id)
+            pickupInfo.deletePerson.mutate(deleteTarget.person.id)
         } else if (deleteTarget.kind === 'bulk') {
-            roster.bulkDeletePeople.mutate(deleteTarget.ids)
+            pickupInfo.bulkDeletePeople.mutate(deleteTarget.ids)
         } else {
             if (deleteAllConfirm !== DELETE_ALL_PHRASE) return
-            roster.deleteAllPeople.mutate(deleteTarget.ids)
+            pickupInfo.deleteAllPeople.mutate(deleteTarget.ids)
         }
         closeDeleteDialog()
     }
@@ -68,7 +68,7 @@ function RosterManager() {
     if (error) {
         return (
             <ErrorMessage
-                message={error instanceof Error ? error.message : 'Failed to load roster'}
+                message={error instanceof Error ? error.message : 'Failed to load pickup info'}
             />
         )
     }
@@ -77,18 +77,18 @@ function RosterManager() {
 
     const deleteDescription =
         deleteTarget?.kind === 'single'
-            ? `Delete "${deleteTarget.person.name}" from the roster? This can't be undone.`
+            ? `Delete "${deleteTarget.person.name}" from Pickup Info? This can't be undone.`
             : deleteTarget?.kind === 'bulk'
-              ? `Delete ${deleteTarget.ids.length} people from the roster? This can't be undone.`
+              ? `Delete ${deleteTarget.ids.length} people from Pickup Info? This can't be undone.`
               : deleteTarget?.kind === 'all'
-                ? `Delete all ${deleteTarget.ids.length} people from the roster? This can't be undone. Everyone would have to add their pickup info again, and pickup grouping will be empty until they do.`
+                ? `Delete all ${deleteTarget.ids.length} people from Pickup Info? This can't be undone. Everyone would have to add their pickup info again, and pickup grouping will be empty until they do.`
                 : ''
 
     return (
         <div className="space-y-8">
-            <RosterTable
+            <PickupInfoTable
                 people={people}
-                options={roster.optionsQuery.data}
+                options={pickupInfo.optionsQuery.data}
                 isLoading={isLoading}
                 onEdit={(person) => setFormState({ person })}
                 onDelete={(person) => setDeleteTarget({ kind: 'single', person })}
@@ -99,9 +99,9 @@ function RosterManager() {
                 onAdd={() => setFormState({ person: null })}
             />
 
-            <RosterFormDialog
+            <PickupInfoFormDialog
                 state={formState}
-                options={roster.optionsQuery.data}
+                options={pickupInfo.optionsQuery.data}
                 submitting={submitting}
                 error={submitError}
                 onSubmit={handleSubmit}
@@ -110,7 +110,7 @@ function RosterManager() {
 
             <ConfirmDialog
                 isOpen={deleteTarget != null}
-                title={isDeleteAll ? 'Delete the entire roster' : 'Delete from roster'}
+                title={isDeleteAll ? 'Delete all pickup info' : 'Delete from Pickup Info'}
                 description={deleteDescription}
                 confirmText={isDeleteAll ? 'Delete everyone' : 'Delete'}
                 confirmVariant="destructive"
@@ -121,13 +121,13 @@ function RosterManager() {
                 {isDeleteAll && (
                     <div className="space-y-1.5">
                         <label
-                            htmlFor="roster-delete-all-confirm"
+                            htmlFor="pickup-info-delete-all-confirm"
                             className="text-sm font-medium text-foreground"
                         >
                             Type {DELETE_ALL_PHRASE} to confirm
                         </label>
                         <Input
-                            id="roster-delete-all-confirm"
+                            id="pickup-info-delete-all-confirm"
                             value={deleteAllConfirm}
                             onChange={(e) => setDeleteAllConfirm(e.target.value)}
                             placeholder={DELETE_ALL_PHRASE}
@@ -140,4 +140,4 @@ function RosterManager() {
     )
 }
 
-export default RosterManager
+export default PickupInfoManager

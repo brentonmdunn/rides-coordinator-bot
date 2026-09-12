@@ -45,7 +45,7 @@ from api.routes.pickup_locations import router as pickup_locations_router
 from api.routes.reaction_log import router as reaction_log_router
 from api.routes.reaction_log_stream import router as reaction_log_stream_router
 from api.routes.ride_coordinators import router as ride_coordinators_router
-from api.routes.roster import router as roster_router
+from api.routes.pickup_info import router as pickup_info_router
 from api.routes.route_builder import router as route_builder_router
 from api.routes.user_preferences import router as user_preferences_router
 from api.routes.usernames import router as usernames_router
@@ -166,7 +166,7 @@ app.include_router(list_pickups_router)
 app.include_router(check_pickups_router)
 app.include_router(route_builder_router)
 app.include_router(pickup_locations_router)
-app.include_router(roster_router)
+app.include_router(pickup_info_router)
 app.include_router(admin_users_router)
 app.include_router(drivers_router)
 app.include_router(ride_coordinators_router)

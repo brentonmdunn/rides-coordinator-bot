@@ -136,7 +136,7 @@ function PickupLocations() {
                                     <span className="text-sm font-normal text-foreground/80">
                                         ({pickupData.unknown_users.length})
                                     </span>
-                                    <span className="text-sm font-normal text-foreground/80"><em>Make sure they're registered on the Roster page.</em></span>
+                                    <span className="text-sm font-normal text-foreground/80"><em>Make sure they're registered on the Pickup Info page.</em></span>
                                 </h4>
                             </div>
                             <div className="p-4">

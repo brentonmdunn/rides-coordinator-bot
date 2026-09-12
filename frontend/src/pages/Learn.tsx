@@ -126,7 +126,7 @@ function Learn() {
                             Other miscellaneous things to know:
                             <TutorialList>
                                 <li>Riders add themselves with the "Add my pickup info" button RideBot posts in their new-rides channel, filling in their name, year, and where they live.</li>
-                                <li>Coordinators can also add or edit anyone directly on the Roster page.</li>
+                                <li>Coordinators can also add or edit anyone directly on the Pickup Info page.</li>
                                 <li>Changes apply immediately, with no sync delay like the old spreadsheet.</li>
                             </TutorialList>
                         </TutorialText>

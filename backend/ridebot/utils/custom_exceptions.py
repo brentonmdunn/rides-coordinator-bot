@@ -45,19 +45,19 @@ class RoleNotFoundError(RoleServiceError):
     pass
 
 
-class RosterValidationError(ValueError):
-    """Raised when roster input is invalid."""
+class PickupInfoValidationError(ValueError):
+    """Raised when pickup info input is invalid."""
 
     pass
 
 
-class RosterNotFoundError(LookupError):
-    """Raised when a roster entry does not exist."""
+class PickupInfoNotFoundError(LookupError):
+    """Raised when a pickup info entry does not exist."""
 
     pass
 
 
-class RosterConflictError(ValueError):
-    """Raised when a roster write would duplicate a Discord username or user ID."""
+class PickupInfoConflictError(ValueError):
+    """Raised when a pickup info write would duplicate a Discord username or user ID."""
 
     pass

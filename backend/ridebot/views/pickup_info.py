@@ -6,15 +6,15 @@ from collections.abc import Callable
 import discord
 
 from ridebot.services.pickup_locations_service import PickupLocationsService, PickupSpot
-from ridebot.services.roster_service import Person, RosterService
+from ridebot.services.pickup_info_service import Person, PickupInfoService
 from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import (
-    ROSTER_PAGE_URL,
-    ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
-    ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
-    ROSTER_PICKUP_SDSU_CUSTOM_ID,
+    PICKUP_INFO_PAGE_URL,
+    PICKUP_INFO_OFF_CAMPUS_CUSTOM_ID,
+    PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
+    PICKUP_INFO_SDSU_CUSTOM_ID,
 )
-from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
+from ridebot.utils.custom_exceptions import PickupInfoConflictError, PickupInfoValidationError
 from shared.core.bots import get_spec
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import (
@@ -41,7 +41,7 @@ _NEEDS_FOLLOWUP_VALUE = "__needs_followup__"
 _NEEDS_FOLLOWUP_LABEL = "Other - ride coordinators will reach out"
 
 # SDSU riders think in class names, not UCSD's ordinal years, and SDSU has no 5th
-# year. Only the label differs: the stored value stays the ordinal so the roster and
+# year. Only the label differs: the stored value stays the ordinal so pickup info and
 # ride grouping see one vocabulary.
 _SDSU_YEAR_LABELS: dict[str, str] = {
     ClassYear.FIRST.value: "Freshman",
@@ -86,7 +86,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
 
     Args:
         interaction: The modal-submit interaction.
-        person: The roster entry that was created or updated.
+        person: The pickup info entry that was created or updated.
         created: Whether this was a new registration.
 
     Returns:
@@ -100,8 +100,8 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
     if person.location is None:
         return (
             f"🚨 **ACTION NEEDED, no pickup spot**: {who}, {year}, picked **Other** "
-            f"on the form. Someone needs to ask where they live and add it to the "
-            f"roster ([link]({ROSTER_PAGE_URL})) · <#{interaction.channel_id}>"
+            f"on the form. Someone needs to ask where they live and add it on the "
+            f"Pickup Info page ([link]({PICKUP_INFO_PAGE_URL})) · <#{interaction.channel_id}>"
         )
 
     # SDSU saves cleanly but has no pickup spot mapped, so grouping can't place
@@ -134,13 +134,13 @@ async def _notify_ride_coordinators(interaction: discord.Interaction, message: s
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):
             logger.warning(
                 f"Ride coordinators channel {ChannelIds.SERVING__RIDE_COORDINATORS} "
-                "unavailable; skipping roster registration notice"
+                "unavailable; skipping pickup info notice"
             )
             return
-        # The roster link would otherwise unfurl into a preview card.
+        # The Pickup Info link would otherwise unfurl into a preview card.
         await channel.send(message, suppress_embeds=True)
     except Exception:
-        logger.exception("Failed to post roster registration notice to ride coordinators")
+        logger.exception("Failed to post pickup info notice to ride coordinators")
 
 
 async def _pickup_spots(living_location: str) -> list[PickupSpot]:
@@ -190,10 +190,10 @@ class _BasePickupModal(discord.ui.Modal):
         self, existing: Person | None, user: discord.User | discord.Member, *, title: str
     ) -> None:
         """
-        Build the shared fields, pre-filled from an existing roster entry.
+        Build the shared fields, pre-filled from an existing pickup info entry.
 
         Args:
-            existing: The rider's current roster entry, or None if unregistered.
+            existing: The rider's current pickup info entry, or None if unregistered.
             user: The Discord user filling out the form.
             title: The modal's title bar text.
         """
@@ -233,7 +233,7 @@ class _BasePickupModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         """
-        Register or update the submitter's roster entry.
+        Register or update the submitter's pickup info entry.
 
         Args:
             interaction: The modal-submit interaction.
@@ -243,22 +243,24 @@ class _BasePickupModal(discord.ui.Modal):
         location = self._resolve_location()
 
         try:
-            person, created = await RosterService.register_from_discord(
+            person, created = await PickupInfoService.register_from_discord(
                 discord_user_id=interaction.user.id,
                 discord_username=interaction.user.name,
                 name=name,
                 year=year,
                 location=location,
             )
-        except (RosterValidationError, RosterConflictError) as e:
+        except (PickupInfoValidationError, PickupInfoConflictError) as e:
             await interaction.response.send_message(
                 f"Couldn't save that: {e}. Message a ride coordinator and they'll sort it out.",
                 ephemeral=True,
             )
             return
         except Exception:
-            logger.exception("Unexpected error registering %s via roster modal", interaction.user)
-            await send_error_to_discord("**Unexpected Error** in roster registration")
+            logger.exception(
+                "Unexpected error registering %s via pickup info modal", interaction.user
+            )
+            await send_error_to_discord("**Unexpected Error** in the pickup info form")
             await interaction.response.send_message(
                 "Something went wrong on our end, sorry! Message a ride coordinator "
                 "and they'll add you.",
@@ -279,7 +281,7 @@ class _BasePickupModal(discord.ui.Modal):
             if spots:
                 message = f"{message} {_pickup_sentence(spots)}"
 
-        logger.info("Roster registration submitted for %s (created=%s)", interaction.user, created)
+        logger.info("Pickup info submitted for %s (created=%s)", interaction.user, created)
         # Maps links would otherwise unfurl into large previews under the message.
         await interaction.response.send_message(message, suppress_embeds=True)
         await _notify_ride_coordinators(
@@ -393,7 +395,7 @@ class PickupInfoView(discord.ui.View):
         """
         if not await _pickup_info_enabled():
             logger.info(
-                "Roster registration is disabled; refusing button press from %s",
+                "Pickup info is disabled; refusing button press from %s",
                 interaction.user,
             )
             await interaction.response.send_message(
@@ -401,7 +403,7 @@ class PickupInfoView(discord.ui.View):
             )
             return
 
-        existing = await RosterService.find_member(
+        existing = await PickupInfoService.find_member(
             discord_user_id=interaction.user.id, discord_username=interaction.user.name
         )
         await interaction.response.send_modal(modal_cls(existing, interaction.user))
@@ -409,7 +411,7 @@ class PickupInfoView(discord.ui.View):
     @discord.ui.button(
         label="UCSD on campus",
         style=discord.ButtonStyle.primary,
-        custom_id=ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
+        custom_id=PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
     )
     async def on_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         """Open the campus-area form."""
@@ -418,7 +420,7 @@ class PickupInfoView(discord.ui.View):
     @discord.ui.button(
         label="UCSD off campus",
         style=discord.ButtonStyle.primary,
-        custom_id=ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
+        custom_id=PICKUP_INFO_OFF_CAMPUS_CUSTOM_ID,
     )
     async def off_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         """Open the off-campus address form."""
@@ -427,7 +429,7 @@ class PickupInfoView(discord.ui.View):
     @discord.ui.button(
         label="SDSU",
         style=discord.ButtonStyle.primary,
-        custom_id=ROSTER_PICKUP_SDSU_CUSTOM_ID,
+        custom_id=PICKUP_INFO_SDSU_CUSTOM_ID,
     )
     async def sdsu(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         """Open the SDSU form."""

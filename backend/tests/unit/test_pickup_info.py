@@ -6,8 +6,8 @@ import discord
 import pytest
 
 from ridebot.services.pickup_locations_service import PickupSpot
-from ridebot.services.roster_service import Person
-from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
+from ridebot.services.pickup_info_service import Person
+from ridebot.utils.custom_exceptions import PickupInfoConflictError, PickupInfoValidationError
 from ridebot.views.pickup_info import (
     _NEEDS_FOLLOWUP_VALUE,
     CampusPickupModal,
@@ -18,8 +18,8 @@ from ridebot.views.pickup_info import (
 from shared.core.enums import CampusLivingLocations, ChannelIds, ClassYear, FeatureFlagNames
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
-REGISTER = "ridebot.views.pickup_info.RosterService.register_from_discord"
-FIND_MEMBER = "ridebot.views.pickup_info.RosterService.find_member"
+REGISTER = "ridebot.views.pickup_info.PickupInfoService.register_from_discord"
+FIND_MEMBER = "ridebot.views.pickup_info.PickupInfoService.find_member"
 PICKUP_SPOTS = "ridebot.views.pickup_info.PickupLocationsService.pickup_spots_for_living"
 
 
@@ -191,7 +191,7 @@ async def test_off_campus_modal_has_no_address_default_for_campus_person():
 
 @pytest.mark.asyncio
 async def test_sdsu_modal_uses_class_names_mapped_to_ordinals():
-    """SDSU riders pick Freshman/Sophomore; the roster still stores 1st/2nd."""
+    """SDSU riders pick Freshman/Sophomore; pickup info still stores 1st/2nd."""
     modal = SdsuPickupModal(None, _make_user())
     options = [(option.label, option.value) for option in modal.year_select.options]
 
@@ -335,7 +335,7 @@ async def test_pickup_lookup_failure_still_confirms():
 
 
 @pytest.mark.asyncio
-async def test_coordinator_alert_links_to_the_roster_without_a_preview():
+async def test_coordinator_alert_links_to_pickup_info_without_a_preview():
     modal = _submit_campus(location=_NEEDS_FOLLOWUP_VALUE)
     interaction = _make_interaction()
 
@@ -343,7 +343,10 @@ async def test_coordinator_alert_links_to_the_roster_without_a_preview():
         await modal.on_submit(interaction)
 
     send = _coordinators_channel(interaction).send
-    assert "roster ([link](https://ridebot.springroll.app/roster))" in send.call_args.args[0]
+    assert (
+        "Pickup Info page ([link](https://ridebot.springroll.app/pickup-info))"
+        in send.call_args.args[0]
+    )
     assert send.call_args.kwargs.get("suppress_embeds") is True
 
 
@@ -517,7 +520,7 @@ async def test_validation_error_is_ephemeral():
     modal = _submit_campus()
     interaction = _make_interaction()
 
-    with patch(REGISTER, new=AsyncMock(side_effect=RosterValidationError("bad name"))):
+    with patch(REGISTER, new=AsyncMock(side_effect=PickupInfoValidationError("bad name"))):
         await modal.on_submit(interaction)
 
     args, kwargs = interaction.response.send_message.call_args
@@ -530,7 +533,7 @@ async def test_conflict_error_is_ephemeral():
     modal = _submit_off_campus()
     interaction = _make_interaction()
 
-    with patch(REGISTER, new=AsyncMock(side_effect=RosterConflictError("taken"))):
+    with patch(REGISTER, new=AsyncMock(side_effect=PickupInfoConflictError("taken"))):
         await modal.on_submit(interaction)
 
     args, kwargs = interaction.response.send_message.call_args

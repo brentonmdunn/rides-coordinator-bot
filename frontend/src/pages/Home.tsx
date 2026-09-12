@@ -157,9 +157,9 @@ function Home() {
                                     )}
                                     {canManage && (
                                         <Button variant="outline" size="sm" asChild>
-                                            <Link to="/roster">
+                                            <Link to="/pickup-info">
                                                 <Users className="w-4 h-4" />
-                                                Roster
+                                                Pickup Info
                                             </Link>
                                         </Button>
                                     )}

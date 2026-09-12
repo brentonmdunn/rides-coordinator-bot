@@ -6,7 +6,7 @@ import discord
 import pytest
 
 from ridebot.services.ride_request_service import RideRequestService
-from ridebot.utils.constants import ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID
+from ridebot.utils.constants import PICKUP_INFO_ON_CAMPUS_CUSTOM_ID
 from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import CategoryIds
 
@@ -115,7 +115,7 @@ async def test_existing_channel_is_reused_and_prompt_reposted():
 @pytest.mark.asyncio
 async def test_skips_repost_when_prompt_is_already_the_latest_message():
     """Reacting repeatedly must not stack identical prompts."""
-    prompt = _make_message(author_id=1, custom_ids=(ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,))
+    prompt = _make_message(author_id=1, custom_ids=(PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,))
     existing = _make_existing_channel(history=[prompt])
     guild, _ = _make_guild_and_category(existing_channel=existing)
     guild.create_text_channel = AsyncMock()

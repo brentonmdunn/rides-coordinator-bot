@@ -83,7 +83,7 @@ ACTIVE_HOURS_END = 1  # 1 AM next day
 GROUP_RIDES_DEFAULT_CAPACITY = "44444"
 
 # Admin UI
-ROSTER_PAGE_URL = "https://ridebot.springroll.app/roster"
+PICKUP_INFO_PAGE_URL = "https://ridebot.springroll.app/pickup-info"
 
 # Pickup spots a living area is sometimes collected at besides its mapped one, shown
 # to riders after the usual spot. Names must match a pickup location on the
@@ -94,15 +94,15 @@ ALTERNATE_PICKUP_SPOTS: dict[str, tuple[str, ...]] = {
 
 # Pickup-info buttons. These ids are stored inside every posted message, so
 # changing a value orphans buttons already in Discord.
-ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID = "ridebot:roster:pickup:on-campus"
-ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID = "ridebot:roster:pickup:off-campus"
-ROSTER_PICKUP_SDSU_CUSTOM_ID = "ridebot:roster:pickup:sdsu"
+PICKUP_INFO_ON_CAMPUS_CUSTOM_ID = "ridebot:pickup-info:on-campus"
+PICKUP_INFO_OFF_CAMPUS_CUSTOM_ID = "ridebot:pickup-info:off-campus"
+PICKUP_INFO_SDSU_CUSTOM_ID = "ridebot:pickup-info:sdsu"
 
 # Used to recognize one of our own prompts when deciding whether to re-post.
-ROSTER_PICKUP_BUTTON_CUSTOM_IDS = frozenset(
+PICKUP_INFO_BUTTON_CUSTOM_IDS = frozenset(
     {
-        ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
-        ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
-        ROSTER_PICKUP_SDSU_CUSTOM_ID,
+        PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
+        PICKUP_INFO_OFF_CAMPUS_CUSTOM_ID,
+        PICKUP_INFO_SDSU_CUSTOM_ID,
     }
 )

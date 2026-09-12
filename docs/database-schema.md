@@ -23,8 +23,8 @@ Maps Discord usernames to real names.
 
 ### `locations`
 
-The people roster: everyone the bot gives rides to. Owned by `RosterService`,
-managed on the website (`/api/roster`, `/roster` page) and by riders through the
+Pickup info: everyone the bot gives rides to. Owned by `PickupInfoService`,
+managed on the website (`/api/pickup-info`, `/pickup-info` page) and by riders through the
 Discord registration form.
 
 | Column | Type | Notes |

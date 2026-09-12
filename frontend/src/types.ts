@@ -302,9 +302,9 @@ export interface LateReactionWindows {
 }
 
 /**
- * A roster entry from `GET /api/roster`.
+ * A pickup info entry from `GET /api/pickup-info`.
  */
-export interface RosterPerson {
+export interface PickupInfoPerson {
     id: number
     name: string
     discord_username: string | null
@@ -317,17 +317,17 @@ export interface RosterPerson {
 }
 
 /**
- * Valid select values from `GET /api/roster/options`.
+ * Valid select values from `GET /api/pickup-info/options`.
  */
-export interface RosterOptions {
+export interface PickupInfoOptions {
     years: string[]
     locations: string[]
 }
 
 /**
- * Request body for `POST /api/roster` (and, partially, `PATCH /api/roster/{id}`).
+ * Request body for `POST /api/pickup-info` (and, partially, `PATCH /api/pickup-info/{id}`).
  */
-export interface RosterPersonInput {
+export interface PickupInfoPersonInput {
     name: string
     discord_username: string | null
     year: string | null

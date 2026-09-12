@@ -1,7 +1,7 @@
 /**
- * useRoster.ts
+ * usePickupInfo.ts
  *
- * Data layer for the Roster management page — one query for the full people
+ * Data layer for the Pickup Info page — one query for the full people
  * list, one for the year/location select options, plus mutations for every
  * management operation. Mutations invalidate the shared query keys (and
  * `['usernames']`, which the rest of the app reads from) so everything stays
@@ -11,14 +11,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiFetch, ApiError } from '../../lib/api'
-import type { RosterOptions, RosterPerson, RosterPersonInput } from '../../types'
+import type { PickupInfoOptions, PickupInfoPerson, PickupInfoPersonInput } from '../../types'
 
-export const ROSTER_QUERY_KEY = ['roster']
-export const ROSTER_OPTIONS_QUERY_KEY = ['roster', 'options']
+export const PICKUP_INFO_QUERY_KEY = ['pickup-info']
+export const PICKUP_INFO_OPTIONS_QUERY_KEY = ['pickup-info', 'options']
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
-/** `POST /api/roster/bulk-delete` accepts at most 500 ids per request. */
+/** `POST /api/pickup-info/bulk-delete` accepts at most 500 ids per request. */
 const BULK_DELETE_CHUNK = 500
 
 function showMutationError(error: unknown) {
@@ -33,38 +33,38 @@ export function formDialogError(error: unknown): string | null {
     return null
 }
 
-export function useRoster() {
+export function usePickupInfo() {
     const queryClient = useQueryClient()
 
-    const query = useQuery<{ people: RosterPerson[] }>({
-        queryKey: ROSTER_QUERY_KEY,
+    const query = useQuery<{ people: PickupInfoPerson[] }>({
+        queryKey: PICKUP_INFO_QUERY_KEY,
         queryFn: async () => {
-            const response = await apiFetch('/api/roster')
+            const response = await apiFetch('/api/pickup-info')
             return response.json()
         },
     })
 
-    const optionsQuery = useQuery<RosterOptions>({
-        queryKey: ROSTER_OPTIONS_QUERY_KEY,
+    const optionsQuery = useQuery<PickupInfoOptions>({
+        queryKey: PICKUP_INFO_OPTIONS_QUERY_KEY,
         queryFn: async () => {
-            const response = await apiFetch('/api/roster/options')
+            const response = await apiFetch('/api/pickup-info/options')
             return response.json()
         },
     })
 
     const invalidate = () => {
-        void queryClient.invalidateQueries({ queryKey: ROSTER_QUERY_KEY })
+        void queryClient.invalidateQueries({ queryKey: PICKUP_INFO_QUERY_KEY })
         void queryClient.invalidateQueries({ queryKey: ['usernames'] })
     }
 
     const createPerson = useMutation({
-        mutationFn: async (input: RosterPersonInput) => {
-            const response = await apiFetch('/api/roster', {
+        mutationFn: async (input: PickupInfoPersonInput) => {
+            const response = await apiFetch('/api/pickup-info', {
                 method: 'POST',
                 headers: JSON_HEADERS,
                 body: JSON.stringify(input),
             })
-            return response.json() as Promise<RosterPerson>
+            return response.json() as Promise<PickupInfoPerson>
         },
         onSuccess: invalidate,
         onError: showMutationError,
@@ -76,14 +76,14 @@ export function useRoster() {
             changes,
         }: {
             id: number
-            changes: Partial<RosterPersonInput>
+            changes: Partial<PickupInfoPersonInput>
         }) => {
-            const response = await apiFetch(`/api/roster/${id}`, {
+            const response = await apiFetch(`/api/pickup-info/${id}`, {
                 method: 'PATCH',
                 headers: JSON_HEADERS,
                 body: JSON.stringify(changes),
             })
-            return response.json() as Promise<RosterPerson>
+            return response.json() as Promise<PickupInfoPerson>
         },
         onSuccess: invalidate,
         onError: showMutationError,
@@ -91,7 +91,7 @@ export function useRoster() {
 
     const deletePerson = useMutation({
         mutationFn: async (id: number) => {
-            await apiFetch(`/api/roster/${id}`, { method: 'DELETE' })
+            await apiFetch(`/api/pickup-info/${id}`, { method: 'DELETE' })
         },
         onSuccess: invalidate,
         onError: showMutationError,
@@ -99,7 +99,7 @@ export function useRoster() {
 
     const bulkDeletePeople = useMutation({
         mutationFn: async (ids: number[]) => {
-            const response = await apiFetch('/api/roster/bulk-delete', {
+            const response = await apiFetch('/api/pickup-info/bulk-delete', {
                 method: 'POST',
                 headers: JSON_HEADERS,
                 body: JSON.stringify({ ids }),
@@ -115,7 +115,7 @@ export function useRoster() {
         mutationFn: async (ids: number[]) => {
             let deleted = 0
             for (let i = 0; i < ids.length; i += BULK_DELETE_CHUNK) {
-                const response = await apiFetch('/api/roster/bulk-delete', {
+                const response = await apiFetch('/api/pickup-info/bulk-delete', {
                     method: 'POST',
                     headers: JSON_HEADERS,
                     body: JSON.stringify({ ids: ids.slice(i, i + BULK_DELETE_CHUNK) }),
@@ -143,4 +143,4 @@ export function useRoster() {
     }
 }
 
-export type RosterManagerHook = ReturnType<typeof useRoster>
+export type PickupInfoManagerHook = ReturnType<typeof usePickupInfo>

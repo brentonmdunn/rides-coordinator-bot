@@ -1,4 +1,4 @@
-"""Integration tests for /api/roster routes."""
+"""Integration tests for /api/pickup-info routes."""
 
 from __future__ import annotations
 
@@ -9,15 +9,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from api.auth import require_ride_coordinator
-from api.routes.roster import router
-from ridebot.services.roster_service import Person
+from api.routes.pickup_info import router
+from ridebot.services.pickup_info_service import Person
 from ridebot.utils.custom_exceptions import (
-    RosterConflictError,
-    RosterNotFoundError,
-    RosterValidationError,
+    PickupInfoConflictError,
+    PickupInfoNotFoundError,
+    PickupInfoValidationError,
 )
 
-SERVICE = "api.routes.roster.RosterService"
+SERVICE = "api.routes.pickup_info.PickupInfoService"
 
 
 def _build_client(*, forbidden: bool = False) -> TestClient:
@@ -52,18 +52,18 @@ def _person(**overrides) -> Person:
 class TestAuth:
     def test_forbidden_role_rejected(self):
         client = _build_client(forbidden=True)
-        assert client.get("/api/roster").status_code == 403
+        assert client.get("/api/pickup-info").status_code == 403
 
     def test_mutations_forbidden(self):
         client = _build_client(forbidden=True)
-        assert client.delete("/api/roster/1").status_code == 403
+        assert client.delete("/api/pickup-info/1").status_code == 403
 
 
-class TestListRoster:
+class TestListPickupInfo:
     def test_returns_people(self):
         client = _build_client()
         with patch(f"{SERVICE}.list_people", new=AsyncMock(return_value=[_person()])):
-            resp = client.get("/api/roster")
+            resp = client.get("/api/pickup-info")
 
         assert resp.status_code == 200
         body = resp.json()
@@ -77,7 +77,7 @@ class TestListRoster:
             f"{SERVICE}.list_people",
             new=AsyncMock(return_value=[_person(updated_at=None)]),
         ):
-            resp = client.get("/api/roster")
+            resp = client.get("/api/pickup-info")
 
         assert resp.status_code == 200
         assert resp.json()["people"][0]["updated_at"] is None
@@ -89,7 +89,7 @@ class TestListRoster:
             f"{SERVICE}.list_people",
             new=AsyncMock(return_value=[_person(updated_at=datetime(2024, 1, 1, 22, 30))]),
         ):
-            resp = client.get("/api/roster")
+            resp = client.get("/api/pickup-info")
 
         assert resp.json()["people"][0]["updated_at"] == "2024-01-01T22:30:00+00:00"
 
@@ -99,7 +99,7 @@ class TestOptions:
         client = _build_client()
         options = {"years": ["Freshman", "Sophomore"], "locations": ["Muir"]}
         with patch(f"{SERVICE}.get_options", return_value=options):
-            resp = client.get("/api/roster/options")
+            resp = client.get("/api/pickup-info/options")
 
         assert resp.status_code == 200
         assert resp.json() == options
@@ -111,7 +111,7 @@ class TestOptions:
             patch(f"{SERVICE}.get_options", return_value=options) as mock_options,
             patch(f"{SERVICE}.get_person", new=AsyncMock()) as mock_get_person,
         ):
-            resp = client.get("/api/roster/options")
+            resp = client.get("/api/pickup-info/options")
 
         assert resp.status_code == 200
         mock_options.assert_called_once()
@@ -123,7 +123,7 @@ class TestCreatePerson:
         client = _build_client()
         with patch(f"{SERVICE}.create_person", new=AsyncMock(return_value=_person())):
             resp = client.post(
-                "/api/roster",
+                "/api/pickup-info",
                 json={"name": "Alice", "discord_username": "alice"},
             )
 
@@ -134,9 +134,9 @@ class TestCreatePerson:
         client = _build_client()
         with patch(
             f"{SERVICE}.create_person",
-            new=AsyncMock(side_effect=RosterValidationError("name is required")),
+            new=AsyncMock(side_effect=PickupInfoValidationError("name is required")),
         ):
-            resp = client.post("/api/roster", json={"name": ""})
+            resp = client.post("/api/pickup-info", json={"name": ""})
         assert resp.status_code == 400
         assert resp.json()["detail"] == "name is required"
 
@@ -144,20 +144,20 @@ class TestCreatePerson:
         client = _build_client()
         with patch(
             f"{SERVICE}.create_person",
-            new=AsyncMock(side_effect=RosterConflictError("username taken")),
+            new=AsyncMock(side_effect=PickupInfoConflictError("username taken")),
         ):
-            resp = client.post("/api/roster", json={"name": "Alice"})
+            resp = client.post("/api/pickup-info", json={"name": "Alice"})
         assert resp.status_code == 409
 
     def test_missing_name_422(self):
         client = _build_client()
-        resp = client.post("/api/roster", json={})
+        resp = client.post("/api/pickup-info", json={})
         assert resp.status_code == 422
 
     def test_unexpected_error_500(self):
         client = _build_client()
         with patch(f"{SERVICE}.create_person", new=AsyncMock(side_effect=RuntimeError("boom"))):
-            resp = client.post("/api/roster", json={"name": "Alice"})
+            resp = client.post("/api/pickup-info", json={"name": "Alice"})
         assert resp.status_code == 500
         assert resp.json()["detail"] == "Internal server error"
 
@@ -168,7 +168,7 @@ class TestUpdatePerson:
         with patch(
             f"{SERVICE}.update_person", new=AsyncMock(return_value=_person(name="Bob"))
         ) as mock_update:
-            resp = client.patch("/api/roster/1", json={"name": "Bob"})
+            resp = client.patch("/api/pickup-info/1", json={"name": "Bob"})
 
         assert resp.status_code == 200
         assert resp.json()["name"] == "Bob"
@@ -178,27 +178,27 @@ class TestUpdatePerson:
         client = _build_client()
         with patch(
             f"{SERVICE}.update_person",
-            new=AsyncMock(side_effect=RosterNotFoundError("no such person")),
+            new=AsyncMock(side_effect=PickupInfoNotFoundError("no such person")),
         ):
-            resp = client.patch("/api/roster/999", json={"name": "Bob"})
+            resp = client.patch("/api/pickup-info/999", json={"name": "Bob"})
         assert resp.status_code == 404
 
     def test_validation_error_400(self):
         client = _build_client()
         with patch(
             f"{SERVICE}.update_person",
-            new=AsyncMock(side_effect=RosterValidationError("bad year")),
+            new=AsyncMock(side_effect=PickupInfoValidationError("bad year")),
         ):
-            resp = client.patch("/api/roster/1", json={"year": "nope"})
+            resp = client.patch("/api/pickup-info/1", json={"year": "nope"})
         assert resp.status_code == 400
 
     def test_conflict_409(self):
         client = _build_client()
         with patch(
             f"{SERVICE}.update_person",
-            new=AsyncMock(side_effect=RosterConflictError("username taken")),
+            new=AsyncMock(side_effect=PickupInfoConflictError("username taken")),
         ):
-            resp = client.patch("/api/roster/1", json={"discord_username": "bob"})
+            resp = client.patch("/api/pickup-info/1", json={"discord_username": "bob"})
         assert resp.status_code == 409
 
 
@@ -209,7 +209,7 @@ class TestDeletePerson:
             patch(f"{SERVICE}.get_person", new=AsyncMock(return_value=_person())),
             patch(f"{SERVICE}.delete_people", new=AsyncMock(return_value=1)) as mock_delete,
         ):
-            resp = client.delete("/api/roster/1")
+            resp = client.delete("/api/pickup-info/1")
 
         assert resp.status_code == 204
         mock_delete.assert_awaited_once_with([1])
@@ -218,9 +218,9 @@ class TestDeletePerson:
         client = _build_client()
         with patch(
             f"{SERVICE}.get_person",
-            new=AsyncMock(side_effect=RosterNotFoundError("no such person")),
+            new=AsyncMock(side_effect=PickupInfoNotFoundError("no such person")),
         ):
-            resp = client.delete("/api/roster/999")
+            resp = client.delete("/api/pickup-info/999")
         assert resp.status_code == 404
 
 
@@ -228,17 +228,17 @@ class TestBulkDelete:
     def test_bulk_delete_success(self):
         client = _build_client()
         with patch(f"{SERVICE}.delete_people", new=AsyncMock(return_value=2)):
-            resp = client.post("/api/roster/bulk-delete", json={"ids": [1, 2]})
+            resp = client.post("/api/pickup-info/bulk-delete", json={"ids": [1, 2]})
 
         assert resp.status_code == 200
         assert resp.json() == {"deleted": 2}
 
     def test_empty_ids_422(self):
         client = _build_client()
-        resp = client.post("/api/roster/bulk-delete", json={"ids": []})
+        resp = client.post("/api/pickup-info/bulk-delete", json={"ids": []})
         assert resp.status_code == 422
 
     def test_too_many_ids_422(self):
         client = _build_client()
-        resp = client.post("/api/roster/bulk-delete", json={"ids": list(range(501))})
+        resp = client.post("/api/pickup-info/bulk-delete", json={"ids": list(range(501))})
         assert resp.status_code == 422

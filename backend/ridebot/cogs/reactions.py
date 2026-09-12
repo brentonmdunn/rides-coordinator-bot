@@ -10,7 +10,7 @@ from ridebot.services.late_reaction_windows_service import LateReactionWindowsSe
 from ridebot.services.reaction_logging_service import ReactionLoggingService
 from ridebot.services.ride_reaction_log_service import RideReactionLogService
 from ridebot.services.ride_request_service import RideRequestService
-from ridebot.services.roster_service import RosterService
+from ridebot.services.pickup_info_service import PickupInfoService
 from ridebot.utils.parsing import get_message_and_embed_content
 from ridebot.utils.time_helpers import is_during_late_reaction_window
 from ridebot.views.pickup_info import PickupInfoView
@@ -383,7 +383,9 @@ class Reactions(commands.Cog):
                 )
             )
             and user is not None
-            and await RosterService.find_member(discord_user_id=user.id, discord_username=user.name)
+            and await PickupInfoService.find_member(
+                discord_user_id=user.id, discord_username=user.name
+            )
             is None
         ):
             return

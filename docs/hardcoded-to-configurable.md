@@ -54,7 +54,7 @@ ask-rides message text and ask-rides send time.
 - Should ride on the same `AskRidesSchedule` mechanism the send-time PR introduces,
   if it doesn't already cover them.
 - Cache-warming interval (every 30 min) is fine hardcoded. The 3 AM locations
-  sync has been removed; the roster now lives in `RosterService`/`/api/roster`.
+  sync has been removed; pickup info now lives in `PickupInfoService`/`/api/pickup-info`.
 
 ---
 
@@ -69,7 +69,7 @@ ask-rides message text and ask-rides send time.
 - Travel-time matrix between pickups — `backend/ridebot/utils/locations.py:11-60`
 - Locations do change (new dorms, moved pickup spots) and today require touching 4+
   files. High-leverage but a bigger project: move to an admin-editable table
-  (the roster, managed by `RosterService`/`/api/roster`, already covers who lives
+  (pickup info, managed by `PickupInfoService`/`/api/pickup-info`, already covers who lives
   where). The travel-time matrix is the awkward part — it would need admin
   editing too.
 

@@ -5,7 +5,7 @@ from typing import Any, cast
 
 import discord
 
-from ridebot.utils.constants import ROSTER_PICKUP_BUTTON_CUSTOM_IDS
+from ridebot.utils.constants import PICKUP_INFO_BUTTON_CUSTOM_IDS
 from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
@@ -113,7 +113,7 @@ class RideRequestService:
                 if bot_user is not None and message.author.id != bot_user.id:
                     return False
                 return any(
-                    getattr(child, "custom_id", None) in ROSTER_PICKUP_BUTTON_CUSTOM_IDS
+                    getattr(child, "custom_id", None) in PICKUP_INFO_BUTTON_CUSTOM_IDS
                     for row in message.components
                     for child in getattr(row, "children", ())
                 )
