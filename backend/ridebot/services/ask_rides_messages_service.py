@@ -271,6 +271,7 @@ class AskRidesMessagesService:
         *,
         date_str: str,
         ping_text: str = "",
+        other_button_enabled: bool = False,
     ) -> tuple[str, str]:
         """
         Fill `{date}` (and `{ping}` for Sunday service) into title/body.

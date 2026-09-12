@@ -15,8 +15,8 @@ from ridebot.utils.constants import (
     PICKUP_INFO_SDSU_CUSTOM_ID,
 )
 from ridebot.utils.custom_exceptions import PickupInfoConflictError, PickupInfoValidationError
+from ridebot.utils.feature_flags import is_flag_enabled
 from shared.core.bots import get_spec
-from shared.core.database import AsyncSessionLocal
 from shared.core.enums import (
     BotName,
     CampusLivingLocations,
@@ -25,7 +25,6 @@ from shared.core.enums import (
     FeatureFlagNames,
 )
 from shared.core.error_reporter import send_error_to_discord
-from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
 
@@ -51,27 +50,10 @@ _SDSU_YEAR_LABELS: dict[str, str] = {
 }
 
 
-async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
-    """
-    Return whether a feature flag is enabled, checking the cache before the DB.
-
-    Args:
-        feature: The feature flag to check.
-
-    Returns:
-        True if the flag is enabled; False if disabled or missing.
-    """
-    if feature.value in FeatureFlagsRepository._cache:
-        return FeatureFlagsRepository._cache[feature.value]
-    async with AsyncSessionLocal() as session:
-        status = await FeatureFlagsRepository.get_feature_flag_status(session, feature)
-    return bool(status)
-
-
 async def _pickup_info_enabled() -> bool:
     """Return whether RideBot's kill switch and NEW_RIDES_MSG are both enabled."""
     kill_switch_flag = get_spec(BotName.RIDEBOT).kill_switch_flag
-    return await _is_flag_enabled(kill_switch_flag) and await _is_flag_enabled(
+    return await is_flag_enabled(kill_switch_flag) and await is_flag_enabled(
         FeatureFlagNames.NEW_RIDES_MSG
     )
 
