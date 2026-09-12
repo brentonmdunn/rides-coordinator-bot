@@ -333,8 +333,7 @@ class PickupInfoView(discord.ui.View):
 
     @discord.ui.button(
         label="On campus",
-        emoji="🏫",
-        style=discord.ButtonStyle.primary,
+        style=discord.ButtonStyle.secondary,
         custom_id=ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
     )
     async def on_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -343,7 +342,6 @@ class PickupInfoView(discord.ui.View):
 
     @discord.ui.button(
         label="Off campus",
-        emoji="🏠",
         style=discord.ButtonStyle.secondary,
         custom_id=ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
     )
@@ -353,7 +351,6 @@ class PickupInfoView(discord.ui.View):
 
     @discord.ui.button(
         label="SDSU",
-        emoji="🎓",
         style=discord.ButtonStyle.secondary,
         custom_id=ROSTER_PICKUP_SDSU_CUSTOM_ID,
     )
