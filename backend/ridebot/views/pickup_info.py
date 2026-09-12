@@ -99,7 +99,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
         return (
             f"🚨 **ACTION NEEDED, no pickup spot**: {who}, {year}, picked **Other** "
             f"on the form. Someone needs to ask where they live and add it to the "
-            f"roster. In <#{interaction.channel_id}>"
+            f"roster · <#{interaction.channel_id}>"
         )
 
     headline = "📝 New rider registered" if created else "📝 Roster updated"
@@ -109,7 +109,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
         if person.location in campus_values
         else f"{person.location} (off campus, needs a pickup spot)"
     )
-    return f"{headline}: {who}, {location}, {year}. In <#{interaction.channel_id}>"
+    return f"{headline}: {who}, {location}, {year} · <#{interaction.channel_id}>"
 
 
 async def _notify_ride_coordinators(interaction: discord.Interaction, message: str) -> None:
