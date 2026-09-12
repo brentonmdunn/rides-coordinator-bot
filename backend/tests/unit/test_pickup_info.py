@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
+from ridebot.services.pickup_locations_service import PickupSpot
 from ridebot.services.roster_service import Person
 from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
 from ridebot.views.pickup_info import (
@@ -14,11 +15,19 @@ from ridebot.views.pickup_info import (
     PickupInfoView,
     SdsuPickupModal,
 )
-from shared.core.enums import CampusLivingLocations, ClassYear, FeatureFlagNames
+from shared.core.enums import CampusLivingLocations, ChannelIds, ClassYear, FeatureFlagNames
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 REGISTER = "ridebot.views.pickup_info.RosterService.register_from_discord"
 FIND_MEMBER = "ridebot.views.pickup_info.RosterService.find_member"
+PICKUP_SPOTS = "ridebot.views.pickup_info.PickupLocationsService.pickup_spots_for_living"
+
+
+@pytest.fixture(autouse=True)
+def _no_pickup_spots():
+    """Keep tests off the real routing snapshot unless a test opts in to spots."""
+    with patch(PICKUP_SPOTS, new=AsyncMock(return_value=[])):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -264,6 +273,80 @@ async def test_campus_submit_success_created():
 
 
 @pytest.mark.asyncio
+async def test_campus_rider_is_told_their_usual_pickup_spot():
+    modal = _submit_campus(location="ERC")
+    interaction = _make_interaction()
+    spots = [PickupSpot(name="ERC across from bamboo", maps_url="https://maps.example/erc")]
+
+    with (
+        patch(REGISTER, new=AsyncMock(return_value=(_make_person(location="ERC"), True))),
+        patch(PICKUP_SPOTS, new=AsyncMock(return_value=spots)),
+    ):
+        await modal.on_submit(interaction)
+
+    args, kwargs = interaction.response.send_message.call_args
+    assert args[0] == (
+        "✅ Thanks **Alice**! We've got you at ERC. The usual pickup spot is "
+        "**ERC across from bamboo** ([Google Maps](https://maps.example/erc)), although "
+        f"always make sure to check <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}> "
+        "for the latest updates."
+    )
+    # Maps links must not unfurl into previews under the confirmation.
+    assert kwargs.get("suppress_embeds") is True
+
+
+@pytest.mark.asyncio
+async def test_marshall_rider_is_shown_both_pickup_spots():
+    modal = _submit_campus(location="Marshall")
+    interaction = _make_interaction()
+    spots = [
+        PickupSpot(name="Marshall uppers", maps_url="https://maps.example/marshall"),
+        PickupSpot(name="Geisel Loop", maps_url="https://maps.example/geisel"),
+    ]
+
+    with (
+        patch(REGISTER, new=AsyncMock(return_value=(_make_person(location="Marshall"), True))),
+        patch(PICKUP_SPOTS, new=AsyncMock(return_value=spots)),
+    ):
+        await modal.on_submit(interaction)
+
+    message = interaction.response.send_message.call_args.args[0]
+    assert (
+        "The usual pickup spot is **Marshall uppers** ([Google Maps](https://maps.example/marshall)), "
+        "or sometimes **Geisel Loop** ([Google Maps](https://maps.example/geisel))"
+    ) in message
+
+
+@pytest.mark.asyncio
+async def test_pickup_lookup_failure_still_confirms():
+    """The rider is saved either way, so a lookup error only drops the hint."""
+    modal = _submit_campus(location="ERC")
+    interaction = _make_interaction()
+
+    with (
+        patch(REGISTER, new=AsyncMock(return_value=(_make_person(location="ERC"), True))),
+        patch(PICKUP_SPOTS, new=AsyncMock(side_effect=RuntimeError("db down"))),
+    ):
+        await modal.on_submit(interaction)
+
+    args, _ = interaction.response.send_message.call_args
+    assert args[0] == "✅ Thanks **Alice**! We've got you at ERC."
+
+
+@pytest.mark.asyncio
+async def test_coordinator_alert_links_to_the_roster_without_a_preview():
+    modal = _submit_campus(location=_NEEDS_FOLLOWUP_VALUE)
+    interaction = _make_interaction()
+
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(location=None), True))):
+        await modal.on_submit(interaction)
+
+    send = _coordinators_channel(interaction).send
+    assert "roster ([link](https://ridebot.springroll.app/roster))" in send.call_args.args[0]
+    assert send.call_args.kwargs.get("suppress_embeds") is True
+
+
+@pytest.mark.asyncio
 async def test_campus_submit_success_updated():
     modal = _submit_campus()
     interaction = _make_interaction()
@@ -380,7 +463,7 @@ async def test_submit_notifies_ride_coordinators():
         await modal.on_submit(interaction)
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
-    assert "New rider registered" in notice
+    assert "New hooman" in notice
     assert "**Alice**" in notice
     assert "`@alice`" in notice
     assert "Sixth, 2nd year" in notice
@@ -398,7 +481,7 @@ async def test_coordinator_notice_flags_update_and_off_campus():
         await modal.on_submit(interaction)
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
-    assert "Roster updated" in notice
+    assert "Updated" in notice
     assert "Costa Verde (off campus, needs a pickup spot)" in notice
 
 

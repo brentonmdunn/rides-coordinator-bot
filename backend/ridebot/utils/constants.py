@@ -2,7 +2,7 @@
 
 import discord
 
-from shared.core.enums import DaysOfWeek, EmbedColorChoice, Emoji
+from shared.core.enums import CampusLivingLocations, DaysOfWeek, EmbedColorChoice, Emoji
 
 GUILD_ID = 916817752918982716
 
@@ -81,6 +81,16 @@ ACTIVE_HOURS_END = 1  # 1 AM next day
 
 # Default group rides capacity
 GROUP_RIDES_DEFAULT_CAPACITY = "44444"
+
+# Admin UI
+ROSTER_PAGE_URL = "https://ridebot.springroll.app/roster"
+
+# Pickup spots a living area is sometimes collected at besides its mapped one, shown
+# to riders after the usual spot. Names must match a pickup location on the
+# Locations page; an unknown or inactive name is skipped rather than linked.
+ALTERNATE_PICKUP_SPOTS: dict[str, tuple[str, ...]] = {
+    CampusLivingLocations.MARSHALL.value: ("Geisel Loop",),
+}
 
 # Pickup-info buttons. These ids are stored inside every posted message, so
 # changing a value orphans buttons already in Discord.

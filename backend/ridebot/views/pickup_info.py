@@ -5,9 +5,11 @@ from collections.abc import Callable
 
 import discord
 
+from ridebot.services.pickup_locations_service import PickupLocationsService, PickupSpot
 from ridebot.services.roster_service import Person, RosterService
 from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import (
+    ROSTER_PAGE_URL,
     ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
     ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
     ROSTER_PICKUP_SDSU_CUSTOM_ID,
@@ -99,7 +101,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
         return (
             f"🚨 **ACTION NEEDED, no pickup spot**: {who}, {year}, picked **Other** "
             f"on the form. Someone needs to ask where they live and add it to the "
-            f"roster · <#{interaction.channel_id}>"
+            f"roster ([link]({ROSTER_PAGE_URL})) · <#{interaction.channel_id}>"
         )
 
     # SDSU saves cleanly but has no pickup spot mapped, so grouping can't place
@@ -110,7 +112,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
             f"mapped, so they won't be grouped automatically · <#{interaction.channel_id}>"
         )
 
-    headline = "📝 New rider registered" if created else "📝 Roster updated"
+    headline = "📝 New hooman" if created else "📝 Updated"
     campus_values = {location.value for location in CampusLivingLocations}
     location = (
         person.location
@@ -141,9 +143,48 @@ async def _notify_ride_coordinators(interaction: discord.Interaction, message: s
                 "unavailable; skipping roster registration notice"
             )
             return
-        await channel.send(message)
+        # The roster link would otherwise unfurl into a preview card.
+        await channel.send(message, suppress_embeds=True)
     except Exception:
         logger.exception("Failed to post roster registration notice to ride coordinators")
+
+
+async def _pickup_spots(living_location: str) -> list[PickupSpot]:
+    """
+    Return a living location's pickup spots, or none if they can't be loaded.
+
+    The rider is already saved by the time this runs, so a lookup failure should
+    cost them the pickup hint, not their confirmation.
+
+    Args:
+        living_location: The rider's stored living location.
+    """
+    try:
+        return await PickupLocationsService.pickup_spots_for_living(living_location)
+    except Exception:
+        logger.exception(f"Couldn't load pickup spots for {living_location!r}")
+        return []
+
+
+def _pickup_sentence(spots: list[PickupSpot]) -> str:
+    """
+    Describe where a rider is usually collected, with a map link for each spot.
+
+    Args:
+        spots: The usual spot first, then any alternates. Must not be empty.
+
+    Returns:
+        A sentence naming each spot and pointing riders at the announcements channel.
+    """
+    usual, *alternates = spots
+    parts = [f"The usual pickup spot is **{usual.name}** ([Google Maps]({usual.maps_url}))"]
+    parts.extend(
+        f"or sometimes **{spot.name}** ([Google Maps]({spot.maps_url}))" for spot in alternates
+    )
+    return (
+        f"{', '.join(parts)}, although always make sure to check "
+        f"<#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}> for the latest updates."
+    )
 
 
 class _BasePickupModal(discord.ui.Modal):
@@ -244,9 +285,13 @@ class _BasePickupModal(discord.ui.Modal):
             message = f"{opener} We've got you at {person.location}. {reach_out}"
         else:
             message = f"{opener} We've got you at {person.location}."
+            spots = await _pickup_spots(person.location)
+            if spots:
+                message = f"{message} {_pickup_sentence(spots)}"
 
         logger.info("Roster registration submitted for %s (created=%s)", interaction.user, created)
-        await interaction.response.send_message(message)
+        # Maps links would otherwise unfurl into large previews under the message.
+        await interaction.response.send_message(message, suppress_embeds=True)
         await _notify_ride_coordinators(
             interaction, _coordinator_message(interaction, person, created)
         )
