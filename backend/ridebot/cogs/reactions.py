@@ -13,7 +13,7 @@ from ridebot.services.ride_request_service import RideRequestService
 from ridebot.services.roster_service import RosterService
 from ridebot.utils.parsing import get_message_and_embed_content
 from ridebot.utils.time_helpers import is_during_late_reaction_window
-from ridebot.views.registration import RegistrationView
+from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import (
     AskRidesMessage,
     ChannelIds,
@@ -64,7 +64,7 @@ class Reactions(commands.Cog):
         """Wait until the bot is ready to get the cog, and register persistent views."""
         cog = self.bot.get_cog("Locations")
         self.locations_cog = cog if isinstance(cog, Locations) else None
-        self.bot.add_view(RegistrationView())
+        self.bot.add_view(PickupInfoView())
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):

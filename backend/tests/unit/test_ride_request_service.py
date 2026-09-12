@@ -7,7 +7,7 @@ import pytest
 
 from ridebot.services.ride_request_service import RideRequestService
 from ridebot.utils.constants import ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID
-from ridebot.views.registration import RegistrationView
+from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import CategoryIds
 
 
@@ -96,7 +96,7 @@ async def test_welcome_message_attaches_view_and_pins():
     assert result is True
     new_channel.send.assert_awaited_once()
     _, kwargs = new_channel.send.call_args
-    assert isinstance(kwargs["view"], RegistrationView)
+    assert isinstance(kwargs["view"], PickupInfoView)
     sent_message.pin.assert_awaited_once()
 
 
@@ -113,7 +113,7 @@ async def test_existing_channel_is_reused_and_prompt_reposted():
     guild.create_text_channel.assert_not_called()
     existing.send.assert_awaited_once()
     _, kwargs = existing.send.call_args
-    assert isinstance(kwargs["view"], RegistrationView)
+    assert isinstance(kwargs["view"], PickupInfoView)
 
 
 @pytest.mark.asyncio

@@ -6,7 +6,7 @@ import discord
 import pytest
 
 from ridebot.cogs.reactions import Reactions
-from ridebot.views.registration import RegistrationView
+from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import AskRidesMessage, FeatureFlagNames
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
@@ -37,7 +37,7 @@ async def test_cog_load_registers_persistent_view():
 
     bot.add_view.assert_called_once()
     registered_view = bot.add_view.call_args.args[0]
-    assert isinstance(registered_view, RegistrationView)
+    assert isinstance(registered_view, PickupInfoView)
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,4 @@
-"""Unit tests for ridebot/views/registration.py."""
+"""Unit tests for ridebot/views/pickup_info.py."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -7,18 +7,18 @@ import pytest
 
 from ridebot.services.roster_service import Person
 from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
-from ridebot.views.registration import (
+from ridebot.views.pickup_info import (
     _NEEDS_FOLLOWUP_VALUE,
-    CampusRegistrationModal,
-    OffCampusRegistrationModal,
-    RegistrationView,
-    SdsuRegistrationModal,
+    CampusPickupModal,
+    OffCampusPickupModal,
+    PickupInfoView,
+    SdsuPickupModal,
 )
 from shared.core.enums import CampusLivingLocations, FeatureFlagNames
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
-REGISTER = "ridebot.views.registration.RosterService.register_from_discord"
-FIND_MEMBER = "ridebot.views.registration.RosterService.find_member"
+REGISTER = "ridebot.views.pickup_info.RosterService.register_from_discord"
+FIND_MEMBER = "ridebot.views.pickup_info.RosterService.find_member"
 
 
 @pytest.fixture(autouse=True)
@@ -80,15 +80,15 @@ def _coordinators_channel(interaction):
 @pytest.mark.parametrize(
     ("button_name", "expected_modal"),
     [
-        ("on_campus", CampusRegistrationModal),
-        ("off_campus", OffCampusRegistrationModal),
-        ("sdsu", SdsuRegistrationModal),
+        ("on_campus", CampusPickupModal),
+        ("off_campus", OffCampusPickupModal),
+        ("sdsu", SdsuPickupModal),
     ],
 )
 @pytest.mark.asyncio
 async def test_each_button_opens_its_own_modal(button_name, expected_modal):
     interaction = _make_interaction()
-    view = RegistrationView()
+    view = PickupInfoView()
 
     with patch(FIND_MEMBER, new=AsyncMock(return_value=None)):
         await getattr(view, button_name).callback(interaction)
@@ -99,7 +99,7 @@ async def test_each_button_opens_its_own_modal(button_name, expected_modal):
 
 @pytest.mark.asyncio
 async def test_buttons_have_distinct_custom_ids():
-    view = RegistrationView()
+    view = PickupInfoView()
     custom_ids = [child.custom_id for child in view.children]
 
     assert len(custom_ids) == 3
@@ -111,7 +111,7 @@ async def test_refuses_ephemerally_when_kill_switch_disabled():
     FeatureFlagsRepository._cache[FeatureFlagNames.RIDEBOT] = False
     interaction = _make_interaction()
 
-    await RegistrationView().on_campus.callback(interaction)
+    await PickupInfoView().on_campus.callback(interaction)
 
     args, kwargs = interaction.response.send_message.call_args
     assert "ride coordinator" in args[0].lower()
@@ -124,7 +124,7 @@ async def test_refuses_ephemerally_when_new_rides_msg_disabled():
     FeatureFlagsRepository._cache[FeatureFlagNames.NEW_RIDES_MSG] = False
     interaction = _make_interaction()
 
-    await RegistrationView().off_campus.callback(interaction)
+    await PickupInfoView().off_campus.callback(interaction)
 
     interaction.response.send_message.assert_awaited_once()
     interaction.response.send_modal.assert_not_called()
@@ -138,7 +138,7 @@ async def test_refuses_ephemerally_when_new_rides_msg_disabled():
 @pytest.mark.asyncio
 async def test_campus_modal_appends_followup_option_outside_the_enum():
     """The catch-all is a UI affordance only; it must never be a living location."""
-    modal = CampusRegistrationModal(None, _make_user())
+    modal = CampusPickupModal(None, _make_user())
     values = [option.value for option in modal.location_select.options]
     campus_values = {location.value for location in CampusLivingLocations}
 
@@ -149,9 +149,7 @@ async def test_campus_modal_appends_followup_option_outside_the_enum():
 
 @pytest.mark.asyncio
 async def test_campus_modal_prefills_existing_campus_area():
-    modal = CampusRegistrationModal(
-        _make_person(name="Alice", year="3rd", location="Muir"), _make_user()
-    )
+    modal = CampusPickupModal(_make_person(name="Alice", year="3rd", location="Muir"), _make_user())
 
     assert modal.name_input.default == "Alice"
     assert next(o for o in modal.year_select.options if o.default).value == "3rd"
@@ -160,14 +158,14 @@ async def test_campus_modal_prefills_existing_campus_area():
 
 @pytest.mark.asyncio
 async def test_campus_modal_has_no_default_for_off_campus_person():
-    modal = CampusRegistrationModal(_make_person(location="Costa Verde"), _make_user())
+    modal = CampusPickupModal(_make_person(location="Costa Verde"), _make_user())
 
     assert not any(o.default for o in modal.location_select.options)
 
 
 @pytest.mark.asyncio
 async def test_off_campus_modal_prefills_existing_address():
-    modal = OffCampusRegistrationModal(_make_person(location="Costa Verde"), _make_user())
+    modal = OffCampusPickupModal(_make_person(location="Costa Verde"), _make_user())
 
     assert modal.address_input.default == "Costa Verde"
     assert modal.address_input.required is True
@@ -175,14 +173,14 @@ async def test_off_campus_modal_prefills_existing_address():
 
 @pytest.mark.asyncio
 async def test_off_campus_modal_has_no_address_default_for_campus_person():
-    modal = OffCampusRegistrationModal(_make_person(location="Sixth"), _make_user())
+    modal = OffCampusPickupModal(_make_person(location="Sixth"), _make_user())
 
     assert modal.address_input.default is None
 
 
 @pytest.mark.asyncio
 async def test_sdsu_modal_asks_only_name_and_year():
-    modal = SdsuRegistrationModal(None, _make_user(display_name="Bob"))
+    modal = SdsuPickupModal(None, _make_user(display_name="Bob"))
 
     assert modal.name_input.default == "Bob"
     assert not hasattr(modal, "location_select")
@@ -195,7 +193,7 @@ async def test_sdsu_modal_asks_only_name_and_year():
 
 
 def _submit_campus(existing=None, name="Alice", year="2nd", location="Sixth"):
-    modal = CampusRegistrationModal(existing, _make_user())
+    modal = CampusPickupModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
     modal.location_select._values = [location]
@@ -203,7 +201,7 @@ def _submit_campus(existing=None, name="Alice", year="2nd", location="Sixth"):
 
 
 def _submit_off_campus(existing=None, name="Alice", year="2nd", address="  Costa Verde  "):
-    modal = OffCampusRegistrationModal(existing, _make_user())
+    modal = OffCampusPickupModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
     modal.address_input._value = address
@@ -211,7 +209,7 @@ def _submit_off_campus(existing=None, name="Alice", year="2nd", address="  Costa
 
 
 def _submit_sdsu(existing=None, name="Alice", year="2nd"):
-    modal = SdsuRegistrationModal(existing, _make_user())
+    modal = SdsuPickupModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
     return modal
@@ -398,7 +396,7 @@ async def test_unexpected_error_reports_and_replies_ephemeral():
     with (
         patch(REGISTER, new=AsyncMock(side_effect=RuntimeError("boom"))),
         patch(
-            "ridebot.views.registration.send_error_to_discord", new=AsyncMock()
+            "ridebot.views.pickup_info.send_error_to_discord", new=AsyncMock()
         ) as mock_send_error,
     ):
         await modal.on_submit(interaction)

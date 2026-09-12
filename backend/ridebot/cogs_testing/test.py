@@ -6,7 +6,7 @@ from ridebot.jobs.ask_rides import (
     run_ask_rides_all,
 )
 from ridebot.services.ride_request_service import RideRequestService
-from ridebot.views.registration import RegistrationView
+from ridebot.views.pickup_info import PickupInfoView
 from shared.utils.checks import bot_enabled
 
 
@@ -29,7 +29,7 @@ class TestCog(commands.Cog):
     @bot_enabled
     async def test_register(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            "Tap a button to test the roster form.", view=RegistrationView()
+            "Tap a button to test the roster form.", view=PickupInfoView()
         )
 
     @app_commands.command(

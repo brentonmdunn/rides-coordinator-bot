@@ -6,7 +6,7 @@ from typing import Any, cast
 import discord
 
 from ridebot.utils.constants import ROSTER_PICKUP_BUTTON_CUSTOM_IDS
-from ridebot.views.registration import RegistrationView
+from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
 
@@ -142,7 +142,7 @@ class RideRequestService:
                 "Glad you're coming! We just need to know where to pick you up, so tap the "
                 "button below that matches where you live. (You only need to do this once.)",
                 allowed_mentions=discord.AllowedMentions(users=True),
-                view=RegistrationView(),
+                view=PickupInfoView(),
             )
         except Exception:
             logger.exception(f"Failed to send registration prompt to {channel.name}")

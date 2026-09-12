@@ -1,4 +1,4 @@
-"""Discord UI for self-service roster registration."""
+"""Discord UI for self-service pickup info."""
 
 import logging
 from collections.abc import Callable
@@ -27,7 +27,7 @@ from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
 
-_REGISTRATION_UNAVAILABLE_MESSAGE = (
+_PICKUP_INFO_UNAVAILABLE_MESSAGE = (
     "Sorry, this isn't available right now. Message a ride coordinator "
     "and they'll add your pickup info for you."
 )
@@ -56,7 +56,7 @@ async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
     return bool(status)
 
 
-async def _registration_enabled() -> bool:
+async def _pickup_info_enabled() -> bool:
     """Return whether RideBot's kill switch and NEW_RIDES_MSG are both enabled."""
     kill_switch_flag = get_spec(BotName.RIDEBOT).kill_switch_flag
     return await _is_flag_enabled(kill_switch_flag) and await _is_flag_enabled(
@@ -128,7 +128,7 @@ async def _notify_ride_coordinators(interaction: discord.Interaction, message: s
         logger.exception("Failed to post roster registration notice to ride coordinators")
 
 
-class _BaseRegistrationModal(discord.ui.Modal):
+class _BasePickupModal(discord.ui.Modal):
     """
     Shared Name and Year fields for every registration modal.
 
@@ -219,7 +219,7 @@ class _BaseRegistrationModal(discord.ui.Modal):
         )
 
 
-class CampusRegistrationModal(_BaseRegistrationModal):
+class CampusPickupModal(_BasePickupModal):
     """Modal for riders living in a campus living area."""
 
     def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
@@ -251,7 +251,7 @@ class CampusRegistrationModal(_BaseRegistrationModal):
         return None if value == _NEEDS_FOLLOWUP_VALUE else value
 
 
-class OffCampusRegistrationModal(_BaseRegistrationModal):
+class OffCampusPickupModal(_BasePickupModal):
     """Modal for riders living off campus, who type their own address."""
 
     def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
@@ -277,7 +277,7 @@ class OffCampusRegistrationModal(_BaseRegistrationModal):
         return (self.address_input.value or "").strip()
 
 
-class SdsuRegistrationModal(_BaseRegistrationModal):
+class SdsuPickupModal(_BasePickupModal):
     """Modal for SDSU riders, whose location is implied by the button."""
 
     def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
@@ -289,7 +289,7 @@ class SdsuRegistrationModal(_BaseRegistrationModal):
         return CampusLivingLocations.SDSU.value
 
 
-class RegistrationView(discord.ui.View):
+class PickupInfoView(discord.ui.View):
     """Persistent view whose buttons each open a registration form for one situation."""
 
     def __init__(self) -> None:
@@ -299,7 +299,7 @@ class RegistrationView(discord.ui.View):
     async def _open_modal(
         self,
         interaction: discord.Interaction,
-        modal_cls: Callable[[Person | None, discord.User | discord.Member], _BaseRegistrationModal],
+        modal_cls: Callable[[Person | None, discord.User | discord.Member], _BasePickupModal],
     ) -> None:
         """
         Open one of the registration modals, refusing when registration is disabled.
@@ -309,13 +309,13 @@ class RegistrationView(discord.ui.View):
             modal_cls: The modal subclass matching the button that was pressed. Typed as a
                 callable because each subclass supplies its own title to the base class.
         """
-        if not await _registration_enabled():
+        if not await _pickup_info_enabled():
             logger.info(
                 "Roster registration is disabled; refusing button press from %s",
                 interaction.user,
             )
             await interaction.response.send_message(
-                _REGISTRATION_UNAVAILABLE_MESSAGE, ephemeral=True
+                _PICKUP_INFO_UNAVAILABLE_MESSAGE, ephemeral=True
             )
             return
 
@@ -332,7 +332,7 @@ class RegistrationView(discord.ui.View):
     )
     async def on_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         """Open the campus-area form."""
-        await self._open_modal(interaction, CampusRegistrationModal)
+        await self._open_modal(interaction, CampusPickupModal)
 
     @discord.ui.button(
         label="Off campus",
@@ -342,7 +342,7 @@ class RegistrationView(discord.ui.View):
     )
     async def off_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         """Open the off-campus address form."""
-        await self._open_modal(interaction, OffCampusRegistrationModal)
+        await self._open_modal(interaction, OffCampusPickupModal)
 
     @discord.ui.button(
         label="SDSU",
@@ -352,4 +352,4 @@ class RegistrationView(discord.ui.View):
     )
     async def sdsu(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         """Open the SDSU form."""
-        await self._open_modal(interaction, SdsuRegistrationModal)
+        await self._open_modal(interaction, SdsuPickupModal)
