@@ -79,6 +79,7 @@ class FeatureFlagNames(StrEnum):
     SEND_ERRORS_TO_DISCORD = "send_errors_to_discord"
     USE_CACHE = "use_cache"
     AGENT = "agent"
+    ASK_RIDES_OTHER_BUTTON = "ask_rides_other_button"
 
 
 class JobName(StrEnum):

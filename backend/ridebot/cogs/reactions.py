@@ -13,9 +13,11 @@ from ridebot.services.ride_reaction_log_service import RideReactionLogService
 from ridebot.services.ride_request_service import RideRequestService
 from ridebot.utils.parsing import get_message_and_embed_content
 from ridebot.utils.time_helpers import is_during_late_reaction_window
+from ridebot.views.ask_rides_other import AskRidesOtherView
 from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import (
     AskRidesMessage,
+    AskRidesMessageType,
     ChannelIds,
     FeatureFlagNames,
     ReactionAction,
@@ -65,6 +67,8 @@ class Reactions(commands.Cog):
         cog = self.bot.get_cog("Locations")
         self.locations_cog = cog if isinstance(cog, Locations) else None
         self.bot.add_view(PickupInfoView())
+        for message_type in AskRidesMessageType:
+            self.bot.add_view(AskRidesOtherView(message_type))
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):

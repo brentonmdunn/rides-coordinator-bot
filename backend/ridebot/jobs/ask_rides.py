@@ -5,7 +5,6 @@ Scheduled jobs for asking for rides.
 """
 
 import logging
-from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Literal
 
@@ -16,6 +15,7 @@ from ridebot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun, r
 from ridebot.repositories.calendar_repository import CalendarRepository
 from ridebot.repositories.message_schedule_repository import MessageScheduleRepository
 from ridebot.services.ask_rides_messages_service import AskRidesMessagesService
+from ridebot.services.ask_rides_other_service import AskRidesOtherService
 from ridebot.services.ask_rides_schedule_service import (
     AskRidesScheduleService,
     get_next_schedule_occurrence,
@@ -44,6 +44,7 @@ from ridebot.utils.time_helpers import (
     get_next_date_str,
     get_send_day_before,
 )
+from ridebot.views.ask_rides_other import AskRidesOtherView
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import (
     AskRidesMessageType,
@@ -124,12 +125,20 @@ RenderedTemplate = tuple[str, str, discord.Color, tuple[str, ...]]
 
 
 async def _render_effective_template(
-    message_type: AskRidesMessageType, date_str: str, *, ping_text: str = ""
+    message_type: AskRidesMessageType,
+    date_str: str,
+    *,
+    ping_text: str = "",
+    other_button_enabled: bool = False,
 ) -> RenderedTemplate:
     """Fetch the effective (customized or default) template and render it for sending."""
     template = await AskRidesMessagesService.get_effective_template(message_type)
     title, body = AskRidesMessagesService.render(
-        template, message_type, date_str=date_str, ping_text=ping_text
+        template,
+        message_type,
+        date_str=date_str,
+        ping_text=ping_text,
+        other_button_enabled=other_button_enabled,
     )
     try:
         color = EMBED_COLOR_MAP[EmbedColorChoice(template.color)]
@@ -139,41 +148,54 @@ async def _render_effective_template(
     return title, body, color, template.reactions
 
 
-async def _make_wednesday_msg() -> RenderedTemplate | None:
-    """Create message for Wednesday rides."""
-    formatted_date: str = get_next_date_str(DaysOfWeekNumber.WEDNESDAY)
-    if _is_wildcard_date(formatted_date):
+# Which day-of-week each message type's announcement is sent for.
+_MESSAGE_TYPE_DAY: dict[AskRidesMessageType, DaysOfWeekNumber] = {
+    AskRidesMessageType.WEDNESDAY_FELLOWSHIP: DaysOfWeekNumber.WEDNESDAY,
+    AskRidesMessageType.FRIDAY_FELLOWSHIP: DaysOfWeekNumber.FRIDAY,
+    AskRidesMessageType.SUNDAY_SERVICE: DaysOfWeekNumber.SUNDAY,
+    AskRidesMessageType.SUNDAY_CLASS: DaysOfWeekNumber.SUNDAY,
+}
+
+# Built ask-rides announcement, ready to send: embed, reaction emojis, and an
+# optional "Something else" view (None when the flag is off).
+BuiltAskRidesMessage = tuple[discord.Embed, tuple[str, ...], AskRidesOtherView | None]
+
+
+async def build_ask_rides_message(
+    message_type: AskRidesMessageType,
+) -> BuiltAskRidesMessage | None:
+    """
+    Build the embed, reactions, and optional view for an ask-rides announcement.
+
+    Args:
+        message_type: Which announcement type to build. The "Something else"
+            view is attached only when its feature flag is enabled.
+
+    Returns:
+        (embed, reactions, view), or None for a wildcard date (nothing to send).
+        `message_type == SUNDAY_CLASS` never returns None, matching prior
+        behavior — Sunday class isn't subject to the wildcard-date list.
+    """
+    enabled = await AskRidesOtherService.is_enabled()
+
+    formatted_date = get_next_date_str(_MESSAGE_TYPE_DAY[message_type])
+    if message_type != AskRidesMessageType.SUNDAY_CLASS and _is_wildcard_date(formatted_date):
         return None
-    return await _render_effective_template(
-        AskRidesMessageType.WEDNESDAY_FELLOWSHIP, formatted_date
-    )
 
+    ping_text = ""
+    if message_type == AskRidesMessageType.SUNDAY_SERVICE:
+        ping_text, _configured = await RideCoordinatorService.resolve_ping_text()
 
-async def _make_friday_msg() -> RenderedTemplate | None:
-    """Create message for Friday rides."""
-    formatted_date: str = get_next_date_str(DaysOfWeekNumber.FRIDAY)
-    if _is_wildcard_date(formatted_date):
-        return None
-    return await _render_effective_template(AskRidesMessageType.FRIDAY_FELLOWSHIP, formatted_date)
-
-
-async def _make_sunday_msg() -> RenderedTemplate | None:
-    """Create message for Sunday service rides."""
-    formatted_date: str = get_next_date_str(DaysOfWeekNumber.SUNDAY)
-    if _is_wildcard_date(formatted_date):
-        return None
-    ping_text, _configured = await RideCoordinatorService.resolve_ping_text()
-    return await _render_effective_template(
-        AskRidesMessageType.SUNDAY_SERVICE,
+    title, body, color, reactions = await _render_effective_template(
+        message_type,
         formatted_date,
         ping_text=ping_text,
+        other_button_enabled=enabled,
     )
 
-
-async def _make_sunday_msg_class() -> RenderedTemplate | None:
-    """Create message for Sunday class rides."""
-    formatted_date: str = get_next_date_str(DaysOfWeekNumber.SUNDAY)
-    return await _render_effective_template(AskRidesMessageType.SUNDAY_CLASS, formatted_date)
+    embed = discord.Embed(title=title, description=body, color=color)
+    view = AskRidesOtherView(message_type) if enabled else None
+    return embed, reactions, view
 
 
 def _format_message(message: str) -> str:
@@ -183,12 +205,13 @@ def _format_message(message: str) -> str:
 
 async def _ask_rides_template(
     bot: Bot,
-    make_message: Callable[[], Awaitable[RenderedTemplate | None]],
+    message_type: AskRidesMessageType,
     channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
 ) -> discord.Message | None:
     """
-    Helper method for ask rides jobs. Sends the rendered embed and adds the
-    template's configured reaction emojis to it.
+    Helper method for ask rides jobs. Sends the rendered embed (with the
+    "Something else" view attached when enabled) and adds the template's
+    configured reaction emojis to it.
     """
     channel_id = resolve_channel_id(channel_id)
     raw_channel = bot.get_channel(channel_id)
@@ -197,22 +220,17 @@ async def _ask_rides_template(
         return None
     channel: discord.TextChannel = raw_channel
 
-    rendered = await make_message()
-    if not rendered:
-        logger.error("make_message() returned None, skipping message send.")
+    built = await build_ask_rides_message(message_type)
+    if not built:
+        logger.error("build_ask_rides_message() returned None, skipping message send.")
         return None
-    title, body, color, reactions = rendered
-
-    embed = discord.Embed(
-        title=title,
-        description=body,
-        color=color,
-    )
+    embed, reactions, view = built
 
     try:
         sent_message = await channel.send(
             allowed_mentions=discord.AllowedMentions(roles=True),
             embed=embed,
+            view=view if view is not None else discord.utils.MISSING,
         )
     except discord.HTTPException:
         logger.exception(f"Failed to send message to channel {channel_id}")
@@ -256,7 +274,7 @@ async def run_ask_rides_wed(bot: Bot) -> None:
         allowed_mentions=discord.AllowedMentions(roles=True),
     )
 
-    sent_message = await _ask_rides_template(bot, _make_wednesday_msg)
+    sent_message = await _ask_rides_template(bot, AskRidesMessageType.WEDNESDAY_FELLOWSHIP)
     if not sent_message:
         return
 
@@ -280,7 +298,7 @@ async def run_ask_rides_fri(
     if paused:
         logger.info("Blocking run_ask_rides_fri - job is paused")
         return
-    await _ask_rides_template(bot, _make_friday_msg, channel_id)
+    await _ask_rides_template(bot, AskRidesMessageType.FRIDAY_FELLOWSHIP, channel_id)
 
 
 async def _should_send_ask_rides_sun() -> bool:
@@ -317,7 +335,7 @@ async def run_ask_rides_sun(
         )
         return
 
-    await _ask_rides_template(bot, _make_sunday_msg, channel_id)
+    await _ask_rides_template(bot, AskRidesMessageType.SUNDAY_SERVICE, channel_id)
 
 
 async def _should_send_ask_rides_sun_class() -> bool:
@@ -344,7 +362,7 @@ async def run_ask_rides_sun_class(
     if not await _should_send_ask_rides_sun_class():
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
-    await _ask_rides_template(bot, _make_sunday_msg_class, channel_id)
+    await _ask_rides_template(bot, AskRidesMessageType.SUNDAY_CLASS, channel_id)
 
 
 async def run_ask_rides_header(

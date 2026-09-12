@@ -2,7 +2,13 @@
 
 import discord
 
-from shared.core.enums import CampusLivingLocations, DaysOfWeek, EmbedColorChoice, Emoji
+from shared.core.enums import (
+    AskRidesMessageType,
+    CampusLivingLocations,
+    DaysOfWeek,
+    EmbedColorChoice,
+    Emoji,
+)
 
 GUILD_ID = 916817752918982716
 
@@ -106,3 +112,15 @@ PICKUP_INFO_BUTTON_CUSTOM_IDS = frozenset(
         PICKUP_INFO_SDSU_CUSTOM_ID,
     }
 )
+
+# "Something else" button on ask-rides announcements. Like the pickup-info ids,
+# changing the prefix orphans buttons already posted in Discord.
+ASK_RIDES_OTHER_CUSTOM_ID_PREFIX = "ridebot:ask-rides-other"
+ASK_RIDES_OTHER_MAX_LEN = 1000
+ASK_RIDES_OTHER_COOLDOWN_SECONDS = 60
+ASK_RIDES_OTHER_BUTTON_LABEL = "Something else"
+
+
+def ask_rides_other_custom_id(message_type: AskRidesMessageType) -> str:
+    """Return the persistent custom_id for a message type's "Something else" button."""
+    return f"{ASK_RIDES_OTHER_CUSTOM_ID_PREFIX}:{message_type.value}"
