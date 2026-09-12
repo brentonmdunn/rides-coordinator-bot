@@ -333,7 +333,7 @@ class PickupInfoView(discord.ui.View):
 
     @discord.ui.button(
         label="UCSD on campus",
-        style=discord.ButtonStyle.secondary,
+        style=discord.ButtonStyle.primary,
         custom_id=ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
     )
     async def on_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -342,7 +342,7 @@ class PickupInfoView(discord.ui.View):
 
     @discord.ui.button(
         label="UCSD off campus",
-        style=discord.ButtonStyle.secondary,
+        style=discord.ButtonStyle.primary,
         custom_id=ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
     )
     async def off_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -351,7 +351,7 @@ class PickupInfoView(discord.ui.View):
 
     @discord.ui.button(
         label="SDSU",
-        style=discord.ButtonStyle.secondary,
+        style=discord.ButtonStyle.primary,
         custom_id=ROSTER_PICKUP_SDSU_CUSTOM_ID,
     )
     async def sdsu(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:

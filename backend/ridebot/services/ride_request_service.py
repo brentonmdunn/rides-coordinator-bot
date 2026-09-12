@@ -64,7 +64,7 @@ class RideRequestService:
                 )
                 return False
             logger.info(f"Channel {channel_name} already exists; re-posting registration prompt.")
-            return await self._send_registration_prompt(existing_channel, user, pin=False)
+            return await self._send_registration_prompt(existing_channel, user)
 
         # Build permissions
         overwrites = self._build_channel_permissions(guild, user)
@@ -88,7 +88,7 @@ class RideRequestService:
             )
             return False
 
-        await self._send_registration_prompt(new_channel, user, pin=True)
+        await self._send_registration_prompt(new_channel, user)
 
         # The channel exists either way, so a failed prompt doesn't fail the flow.
         return True
@@ -122,22 +122,20 @@ class RideRequestService:
         return False
 
     async def _send_registration_prompt(
-        self, channel: discord.TextChannel, user: discord.Member, *, pin: bool
+        self, channel: discord.TextChannel, user: discord.Member
     ) -> bool:
         """
-        Post the welcome text and the Register button into a rider's channel.
+        Post the welcome text and the pickup-info buttons into a rider's channel.
 
         Args:
             channel: The rider's private new-rides channel.
             user: The rider to greet.
-            pin: Whether to pin the message. Only a freshly created channel pins it;
-                re-posts skip pinning so pins don't pile up.
 
         Returns:
             True if the prompt was posted.
         """
         try:
-            message = await channel.send(
+            await channel.send(
                 f"Hi {user.mention}! Thanks for signing up for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
                 "Glad you're coming! We just need to know where to pick you up, so tap the "
                 "button below that matches where you live. (You only need to do this once.)",
@@ -150,12 +148,6 @@ class RideRequestService:
                 f"**Unexpected Error** sending registration prompt to `{channel.name}`"
             )
             return False
-
-        if pin:
-            try:
-                await message.pin()
-            except (discord.Forbidden, discord.HTTPException):
-                logger.warning(f"Failed to pin welcome message in {channel.name}")
 
         return True
 

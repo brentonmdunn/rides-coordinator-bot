@@ -78,14 +78,11 @@ def _make_bot(user_id=1):
 
 
 @pytest.mark.asyncio
-async def test_welcome_message_attaches_view_and_pins():
+async def test_welcome_message_attaches_view():
     guild, _ = _make_guild_and_category()
     guild.create_text_channel = AsyncMock()
     new_channel = _make_new_channel()
     guild.create_text_channel.return_value = new_channel
-    sent_message = MagicMock()
-    sent_message.pin = AsyncMock()
-    new_channel.send.return_value = sent_message
 
     bot = MagicMock()
     bot.get_channel.return_value = None
@@ -97,7 +94,6 @@ async def test_welcome_message_attaches_view_and_pins():
     new_channel.send.assert_awaited_once()
     _, kwargs = new_channel.send.call_args
     assert isinstance(kwargs["view"], PickupInfoView)
-    sent_message.pin.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -162,19 +158,6 @@ async def test_reposts_when_history_cannot_be_read():
 
 
 @pytest.mark.asyncio
-async def test_repost_into_existing_channel_is_not_pinned():
-    """Re-posts skip the pin so pins don't pile up in a long-lived channel."""
-    existing = _make_existing_channel()
-    guild, _ = _make_guild_and_category(existing_channel=existing)
-    guild.create_text_channel = AsyncMock()
-
-    service = RideRequestService(MagicMock())
-    await service.handle_new_rider_reaction(_make_user(), guild)
-
-    existing.send.return_value.pin.assert_not_called()
-
-
-@pytest.mark.asyncio
 async def test_no_coordinator_announcement_on_channel_creation():
     guild, _ = _make_guild_and_category()
     guild.create_text_channel = AsyncMock()
@@ -191,23 +174,3 @@ async def test_no_coordinator_announcement_on_channel_creation():
 
     # The "new hooman!" notice is gone; coordinators hear about riders when they register.
     bot.get_channel.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_flow_continues_when_pin_fails():
-    guild, _ = _make_guild_and_category()
-    guild.create_text_channel = AsyncMock()
-    new_channel = _make_new_channel()
-    guild.create_text_channel.return_value = new_channel
-    sent_message = MagicMock()
-    sent_message.pin = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403), "no perms"))
-    new_channel.send.return_value = sent_message
-
-    bot = MagicMock()
-    bot.get_channel.return_value = None
-    service = RideRequestService(bot)
-
-    result = await service.handle_new_rider_reaction(_make_user(), guild)
-
-    assert result is True
-    sent_message.pin.assert_awaited_once()
