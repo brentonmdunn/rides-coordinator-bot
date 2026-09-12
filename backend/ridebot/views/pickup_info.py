@@ -38,6 +38,16 @@ _PICKUP_INFO_UNAVAILABLE_MESSAGE = (
 _NEEDS_FOLLOWUP_VALUE = "__needs_followup__"
 _NEEDS_FOLLOWUP_LABEL = "Other - ride coordinators will reach out"
 
+# SDSU riders think in class names, not UCSD's ordinal years, and SDSU has no 5th
+# year. Only the label differs: the stored value stays the ordinal so the roster and
+# ride grouping see one vocabulary.
+_SDSU_YEAR_LABELS: dict[str, str] = {
+    ClassYear.FIRST.value: "Freshman",
+    ClassYear.SECOND.value: "Sophomore",
+    ClassYear.THIRD.value: "Junior",
+    ClassYear.FOURTH.value: "Senior",
+}
+
 
 async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
     """
@@ -157,15 +167,26 @@ class _BasePickupModal(discord.ui.Modal):
 
         existing_year = existing.year if existing else None
         self.year_select = discord.ui.Select(
-            options=[
-                discord.SelectOption(
-                    label=year.value, value=year.value, default=year.value == existing_year
-                )
-                for year in ClassYear
-            ],
-            required=True,
+            options=self._year_options(existing_year), required=True
         )
         self.add_item(discord.ui.Label(text="Year", component=self.year_select))
+
+    def _year_options(self, existing_year: str | None) -> list[discord.SelectOption]:
+        """
+        Return the Year choices for this form.
+
+        Subclasses may relabel the choices for their own school, but the value stays
+        a ``ClassYear`` so everything downstream reads one vocabulary.
+
+        Args:
+            existing_year: The rider's stored year, pre-selected when it matches.
+        """
+        return [
+            discord.SelectOption(
+                label=year.value, value=year.value, default=year.value == existing_year
+            )
+            for year in ClassYear
+        ]
 
     def _resolve_location(self) -> str | None:
         """Return the submitted location, or None when a coordinator must follow up."""
@@ -290,6 +311,13 @@ class SdsuPickupModal(_BasePickupModal):
     def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
         """Ask only for name and year; the button already answered the location."""
         super().__init__(existing, user, title="SDSU pickup")
+
+    def _year_options(self, existing_year: str | None) -> list[discord.SelectOption]:
+        """Return SDSU's class names, each still carrying its ordinal value."""
+        return [
+            discord.SelectOption(label=label, value=value, default=value == existing_year)
+            for value, label in _SDSU_YEAR_LABELS.items()
+        ]
 
     def _resolve_location(self) -> str | None:
         """Return the SDSU living location."""

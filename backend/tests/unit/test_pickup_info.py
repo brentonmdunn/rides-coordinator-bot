@@ -14,7 +14,7 @@ from ridebot.views.pickup_info import (
     PickupInfoView,
     SdsuPickupModal,
 )
-from shared.core.enums import CampusLivingLocations, FeatureFlagNames
+from shared.core.enums import CampusLivingLocations, ClassYear, FeatureFlagNames
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 REGISTER = "ridebot.views.pickup_info.RosterService.register_from_discord"
@@ -178,6 +178,37 @@ async def test_off_campus_modal_has_no_address_default_for_campus_person():
     modal = OffCampusPickupModal(_make_person(location="Sixth"), _make_user())
 
     assert modal.address_input.default is None
+
+
+@pytest.mark.asyncio
+async def test_sdsu_modal_uses_class_names_mapped_to_ordinals():
+    """SDSU riders pick Freshman/Sophomore; the roster still stores 1st/2nd."""
+    modal = SdsuPickupModal(None, _make_user())
+    options = [(option.label, option.value) for option in modal.year_select.options]
+
+    assert options == [
+        ("Freshman", "1st"),
+        ("Sophomore", "2nd"),
+        ("Junior", "3rd"),
+        ("Senior", "4th"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_ucsd_modals_keep_ordinal_year_labels():
+    campus = CampusPickupModal(None, _make_user())
+    off_campus = OffCampusPickupModal(None, _make_user())
+
+    for modal in (campus, off_campus):
+        labels = [option.label for option in modal.year_select.options]
+        assert labels == [year.value for year in ClassYear]
+
+
+@pytest.mark.asyncio
+async def test_sdsu_modal_prefills_matching_class_name():
+    modal = SdsuPickupModal(_make_person(year="3rd"), _make_user())
+
+    assert next(o for o in modal.year_select.options if o.default).label == "Junior"
 
 
 @pytest.mark.asyncio
