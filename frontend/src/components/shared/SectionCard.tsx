@@ -38,8 +38,11 @@ function SectionCard({
     contentClassName,
     children,
 }: SectionCardProps) {
+    // flex-wrap lets the actions drop below the title on narrow screens instead of
+    // squeezing it: actions never shrink, so without wrapping the title absorbs all
+    // the lost width and breaks mid-word.
     const defaultHeaderClassName = actions
-        ? 'flex flex-row items-center justify-between space-y-0 pb-2'
+        ? 'flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2'
         : undefined
 
     return (
