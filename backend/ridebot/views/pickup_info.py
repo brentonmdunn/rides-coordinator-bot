@@ -80,9 +80,9 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
     """
     Build the ride-coordinator copy of a registration notice.
 
-    Unlike the rider's confirmation, this names the Discord account, flags an
-    off-campus location as needing a pickup spot, and links the channel it came
-    from so coordinators can follow up there.
+    Unlike the rider's confirmation, this names the Discord account, leads with
+    ACTION NEEDED when a rider still has no pickup spot, and links the channel it
+    came from so coordinators can follow up there.
 
     Args:
         interaction: The modal-submit interaction.
@@ -113,13 +113,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
         )
 
     headline = "📝 New hooman" if created else "📝 Updated"
-    campus_values = {location.value for location in CampusLivingLocations}
-    location = (
-        person.location
-        if person.location in campus_values
-        else f"{person.location} (off campus, needs a pickup spot)"
-    )
-    return f"{headline}: {who}, {location}, {year} · <#{interaction.channel_id}>"
+    return f"{headline}: {who}, {person.location}, {year} · <#{interaction.channel_id}>"
 
 
 async def _notify_ride_coordinators(interaction: discord.Interaction, message: str) -> None:
@@ -176,13 +170,9 @@ def _pickup_sentence(spots: list[PickupSpot]) -> str:
     Returns:
         A sentence naming each spot and pointing riders at the announcements channel.
     """
-    usual, *alternates = spots
-    parts = [f"The usual pickup spot is **{usual.name}** ([Google Maps]({usual.maps_url}))"]
-    parts.extend(
-        f"or sometimes **{spot.name}** ([Google Maps]({spot.maps_url}))" for spot in alternates
-    )
+    named_spots = " or ".join(f"**{spot.name}** ([Google Maps]({spot.maps_url}))" for spot in spots)
     return (
-        f"{', '.join(parts)}, although always make sure to check "
+        f"The usual pickup spot is {named_spots}, although always make sure to check "
         f"<#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}> for the latest updates."
     )
 

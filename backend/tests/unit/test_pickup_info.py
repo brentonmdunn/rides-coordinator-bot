@@ -312,9 +312,10 @@ async def test_marshall_rider_is_shown_both_pickup_spots():
 
     message = interaction.response.send_message.call_args.args[0]
     assert (
-        "The usual pickup spot is **Marshall uppers** ([Google Maps](https://maps.example/marshall)), "
-        "or sometimes **Geisel Loop** ([Google Maps](https://maps.example/geisel))"
+        "The usual pickup spot is **Marshall uppers** ([Google Maps](https://maps.example/marshall)) "
+        "or **Geisel Loop** ([Google Maps](https://maps.example/geisel)), although"
     ) in message
+    assert "sometimes" not in message
 
 
 @pytest.mark.asyncio
@@ -473,7 +474,7 @@ async def test_submit_notifies_ride_coordinators():
 
 
 @pytest.mark.asyncio
-async def test_coordinator_notice_flags_update_and_off_campus():
+async def test_off_campus_notice_is_plain_with_no_parenthetical():
     modal = _submit_off_campus()
     interaction = _make_interaction()
 
@@ -482,7 +483,8 @@ async def test_coordinator_notice_flags_update_and_off_campus():
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
     assert "Updated" in notice
-    assert "Costa Verde (off campus, needs a pickup spot)" in notice
+    assert "Costa Verde, 2nd year" in notice
+    assert "off campus" not in notice
 
 
 @pytest.mark.asyncio
