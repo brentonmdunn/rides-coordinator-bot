@@ -224,7 +224,7 @@ class CampusPickupModal(_BasePickupModal):
 
     def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
         """Add a campus-area dropdown, plus an option for anything not listed."""
-        super().__init__(existing, user, title="On campus pickup")
+        super().__init__(existing, user, title="UCSD on campus pickup")
 
         # SDSU is a living location, but it has its own button, so offering it here
         # too would be a second route to the same answer.
@@ -263,7 +263,7 @@ class OffCampusPickupModal(_BasePickupModal):
 
     def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
         """Add a free-text address box, pre-filled from an existing off-campus entry."""
-        super().__init__(existing, user, title="Off campus pickup")
+        super().__init__(existing, user, title="UCSD off campus pickup")
 
         campus_values = {location.value for location in CampusLivingLocations}
         existing_location = existing.location if existing else None
