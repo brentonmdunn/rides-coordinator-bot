@@ -33,7 +33,7 @@ class AskRidesOtherModal(discord.ui.Modal):
             message_type: Which announcement type the button belonged to.
             announcement: The announcement message the button was on.
         """
-        super().__init__(title="Something else")
+        super().__init__(title="Something else (notifies ride coordinators)")
         self.message_type = message_type
         self.announcement = announcement
 
