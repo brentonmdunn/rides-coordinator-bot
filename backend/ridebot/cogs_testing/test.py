@@ -8,7 +8,6 @@ from ridebot.jobs.ask_rides import (
     build_ask_rides_message,
     run_ask_rides_all,
 )
-from ridebot.services.ask_rides_other_service import AskRidesOtherService
 from ridebot.services.ride_request_service import RideRequestService
 from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import AskRidesMessageType
@@ -75,10 +74,10 @@ class TestCog(commands.Cog):
     async def test_ask_rides_other(
         self, interaction: discord.Interaction, message_type: AskRidesMessageType
     ):
-        """Post a test ask-rides announcement with the "Something else" button always attached."""
+        """Post a test ask-rides announcement; the "Something else" button follows its flag."""
         await interaction.response.defer(ephemeral=True)
 
-        built = await build_ask_rides_message(message_type, force_view=True)
+        built = await build_ask_rides_message(message_type)
         if built is None:
             await interaction.followup.send(
                 "That date is a wildcard date; nothing to post.", ephemeral=True
@@ -101,8 +100,8 @@ class TestCog(commands.Cog):
                 logger.exception("Failed to add reaction %r to test message %s", emoji, sent.id)
 
         reply = "Posted."
-        if not await AskRidesOtherService.is_enabled():
-            reply += " Heads up: ask_rides_other_button is OFF, so clicks will be refused."
+        if view is None:
+            reply += " Heads up: ask_rides_other_button is OFF, so no button was attached."
         await interaction.followup.send(reply, ephemeral=True)
 
 

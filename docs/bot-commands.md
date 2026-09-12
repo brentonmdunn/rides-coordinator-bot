@@ -232,7 +232,7 @@ Loaded from `ridebot/cogs_testing/` only when `APP_ENV=local`.
 
 ### `/test-ask-rides-other`
 
-Post an ask-rides embed with the Something else button and its reactions in the current channel. The button is attached even when `ask_rides_other_button` is off, so the refusal path can be tested too.
+Post an ask-rides embed and its reactions in the current channel, exactly as the scheduled job would. The Something else button is attached only when `ask_rides_other_button` is on; the ephemeral reply says so when it isn't.
 
 | Param | Required | Description |
 |-------|----------|-------------|

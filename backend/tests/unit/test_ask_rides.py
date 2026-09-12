@@ -300,41 +300,6 @@ class TestBuildAskRidesMessageSunday:
         assert isinstance(view, AskRidesOtherView)
         assert "tap **Something else** below" in (embed.description or "")
 
-    @pytest.mark.asyncio
-    @patch(
-        "ridebot.jobs.ask_rides.AskRidesOtherService.is_enabled",
-        new_callable=AsyncMock,
-        return_value=False,
-    )
-    @patch("ridebot.jobs.ask_rides._is_wildcard_date", return_value=False)
-    @patch("ridebot.jobs.ask_rides.get_next_date_str", return_value="4/26")
-    @patch(
-        "ridebot.jobs.ask_rides.RideCoordinatorService.resolve_ping_text",
-        new_callable=AsyncMock,
-        return_value=("@coordinator", True),
-    )
-    @patch(
-        "ridebot.jobs.ask_rides.AskRidesMessagesService.get_effective_template",
-        new_callable=AsyncMock,
-    )
-    async def test_force_view_attaches_view_when_disabled(
-        self, mock_get_template, mock_ping, mock_date, mock_wildcard, mock_enabled
-    ):
-        from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
-        from ridebot.views.ask_rides_other import AskRidesOtherView
-
-        template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_SERVICE]
-        mock_get_template.return_value = EffectiveTemplate(
-            title=template.title,
-            body=template.body,
-            color=template.color.value,
-            is_customized=False,
-        )
-        result = await build_ask_rides_message(AskRidesMessageType.SUNDAY_SERVICE, force_view=True)
-        assert result is not None
-        _embed, _reactions, view = result
-        assert isinstance(view, AskRidesOtherView)
-
 
 class TestBuildAskRidesMessageSundayClass:
     """Tests for build_ask_rides_message with SUNDAY_CLASS."""

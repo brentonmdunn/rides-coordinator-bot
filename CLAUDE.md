@@ -138,7 +138,7 @@ registered in the `Reactions` cog's `cog_load`). It opens a modal and forwards t
 text to `SERVING__RIDE_COORDINATORS` via `AskRidesOtherService`
 (`ridebot/services/ask_rides_other_service.py`). Gated by `FeatureFlagNames.ASK_RIDES_OTHER_BUTTON`
 plus RideBot's kill switch; clicks on past-week announcements are refused. Locally,
-`/test-ask-rides-other` posts an embed with the button in the current channel.
+`/test-ask-rides-other` posts the embed (with the button when the flag is on) in the current channel.
 
 ### Centralizing Shared Logic (No Duplication Between Cogs and API)
 

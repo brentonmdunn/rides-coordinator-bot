@@ -157,22 +157,19 @@ _MESSAGE_TYPE_DAY: dict[AskRidesMessageType, DaysOfWeekNumber] = {
 }
 
 # Built ask-rides announcement, ready to send: embed, reaction emojis, and an
-# optional "Something else" view (None when the flag is off and the view
-# isn't forced).
+# optional "Something else" view (None when the flag is off).
 BuiltAskRidesMessage = tuple[discord.Embed, tuple[str, ...], AskRidesOtherView | None]
 
 
 async def build_ask_rides_message(
-    message_type: AskRidesMessageType, *, force_view: bool = False
+    message_type: AskRidesMessageType,
 ) -> BuiltAskRidesMessage | None:
     """
     Build the embed, reactions, and optional view for an ask-rides announcement.
 
     Args:
-        message_type: Which announcement type to build.
-        force_view: Attach the "Something else" view even when the feature
-            flag is off. Used by the local `/test-ask-rides-other` command so
-            the flag-off refusal path can be exercised.
+        message_type: Which announcement type to build. The "Something else"
+            view is attached only when its feature flag is enabled.
 
     Returns:
         (embed, reactions, view), or None for a wildcard date (nothing to send).
@@ -197,7 +194,7 @@ async def build_ask_rides_message(
     )
 
     embed = discord.Embed(title=title, description=body, color=color)
-    view = AskRidesOtherView(message_type) if (enabled or force_view) else None
+    view = AskRidesOtherView(message_type) if enabled else None
     return embed, reactions, view
 
 
