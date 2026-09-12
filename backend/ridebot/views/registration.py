@@ -23,7 +23,8 @@ from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 logger = logging.getLogger(__name__)
 
 _REGISTRATION_UNAVAILABLE_MESSAGE = (
-    "Registration is unavailable right now. Please message a ride coordinator."
+    "Sorry, this isn't available right now. Message a ride coordinator "
+    "and they'll add your pickup info for you."
 )
 
 # Sentinel option value for riders who don't live in one of the campus areas.

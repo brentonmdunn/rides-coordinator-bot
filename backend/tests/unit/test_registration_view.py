@@ -91,7 +91,7 @@ async def test_register_refuses_ephemerally_when_kill_switch_disabled():
 
     interaction.response.send_message.assert_awaited_once()
     args, kwargs = interaction.response.send_message.call_args
-    assert "unavailable" in args[0].lower()
+    assert "ride coordinator" in args[0].lower()
     assert kwargs.get("ephemeral") is True
     interaction.response.send_modal.assert_not_called()
 
