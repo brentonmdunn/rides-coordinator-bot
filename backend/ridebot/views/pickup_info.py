@@ -5,13 +5,13 @@ from collections.abc import Callable
 
 import discord
 
-from ridebot.services.pickup_locations_service import PickupLocationsService, PickupSpot
 from ridebot.services.pickup_info_service import Person, PickupInfoService
+from ridebot.services.pickup_locations_service import PickupLocationsService, PickupSpot
 from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import (
-    PICKUP_INFO_PAGE_URL,
     PICKUP_INFO_OFF_CAMPUS_CUSTOM_ID,
     PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
+    PICKUP_INFO_PAGE_URL,
     PICKUP_INFO_SDSU_CUSTOM_ID,
 )
 from ridebot.utils.custom_exceptions import PickupInfoConflictError, PickupInfoValidationError

@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from ridebot.services.pickup_locations_service import PickupSpot
 from ridebot.services.pickup_info_service import Person
+from ridebot.services.pickup_locations_service import PickupSpot
 from ridebot.utils.custom_exceptions import PickupInfoConflictError, PickupInfoValidationError
 from ridebot.views.pickup_info import (
     _NEEDS_FOLLOWUP_VALUE,

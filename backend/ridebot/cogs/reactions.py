@@ -7,10 +7,10 @@ from discord.ext import commands
 
 from ridebot.cogs.locations import Locations
 from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
+from ridebot.services.pickup_info_service import PickupInfoService
 from ridebot.services.reaction_logging_service import ReactionLoggingService
 from ridebot.services.ride_reaction_log_service import RideReactionLogService
 from ridebot.services.ride_request_service import RideRequestService
-from ridebot.services.pickup_info_service import PickupInfoService
 from ridebot.utils.parsing import get_message_and_embed_content
 from ridebot.utils.time_helpers import is_during_late_reaction_window
 from ridebot.views.pickup_info import PickupInfoView
