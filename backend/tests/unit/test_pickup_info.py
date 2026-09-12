@@ -144,7 +144,9 @@ async def test_campus_modal_appends_followup_option_outside_the_enum():
 
     assert values[-1] == _NEEDS_FOLLOWUP_VALUE
     assert _NEEDS_FOLLOWUP_VALUE not in campus_values
-    assert set(values[:-1]) == campus_values
+    # SDSU has its own button, so it is not offered in the on-campus list.
+    assert CampusLivingLocations.SDSU.value not in values
+    assert set(values[:-1]) == campus_values - {CampusLivingLocations.SDSU.value}
 
 
 @pytest.mark.asyncio

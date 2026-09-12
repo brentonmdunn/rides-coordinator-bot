@@ -226,7 +226,14 @@ class CampusPickupModal(_BasePickupModal):
         """Add a campus-area dropdown, plus an option for anything not listed."""
         super().__init__(existing, user, title="On campus pickup")
 
-        campus_values = {location.value for location in CampusLivingLocations}
+        # SDSU is a living location, but it has its own button, so offering it here
+        # too would be a second route to the same answer.
+        campus_options = [
+            location
+            for location in CampusLivingLocations
+            if location is not CampusLivingLocations.SDSU
+        ]
+        campus_values = {location.value for location in campus_options}
         existing_location = existing.location if existing else None
         existing_is_campus = existing_location in campus_values
 
@@ -236,7 +243,7 @@ class CampusPickupModal(_BasePickupModal):
                 value=location.value,
                 default=existing_is_campus and location.value == existing_location,
             )
-            for location in CampusLivingLocations
+            for location in campus_options
         ]
         options.append(
             discord.SelectOption(label=_NEEDS_FOLLOWUP_LABEL, value=_NEEDS_FOLLOWUP_VALUE)
