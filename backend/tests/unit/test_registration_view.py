@@ -181,7 +181,7 @@ async def test_on_submit_success_created():
 
     interaction.response.send_message.assert_awaited_once()
     args, kwargs = interaction.response.send_message.call_args
-    assert args[0] == "✅ Registered **Alice**: Sixth, 2nd year"
+    assert args[0] == "✅ Thanks **Alice**! We've got you at Sixth."
     assert kwargs.get("ephemeral") is not True
 
 
@@ -198,7 +198,7 @@ async def test_on_submit_success_updated():
         await modal.on_submit(interaction)
 
     args, _ = interaction.response.send_message.call_args
-    assert args[0] == "Updated: ✅ Registered **Alice**: Sixth, 2nd year"
+    assert args[0] == "✅ Updated, **Alice**! We've got you at Sixth."
 
 
 @pytest.mark.asyncio
@@ -222,7 +222,7 @@ async def test_on_submit_also_notifies_ride_coordinators():
     assert "Sixth, 2nd year" in notice
     assert "<#555>" in notice
     # The coordinator copy is deliberately not the rider's confirmation.
-    assert notice != "✅ Registered **Alice**: Sixth, 2nd year"
+    assert notice != "✅ Thanks **Alice**! We've got you at Sixth."
 
 
 @pytest.mark.asyncio
@@ -289,7 +289,7 @@ async def test_on_submit_other_uses_typed_location():
 
     assert mock_register.call_args.kwargs["location"] == "Costa Verde"
     args, _ = interaction.response.send_message.call_args
-    assert args[0] == "✅ Registered **Alice**: Costa Verde, 2nd year"
+    assert args[0] == "✅ Thanks **Alice**! We've got you at Costa Verde."
 
 
 @pytest.mark.asyncio
@@ -320,7 +320,7 @@ async def test_on_submit_validation_error_is_ephemeral():
         await modal.on_submit(interaction)
 
     args, kwargs = interaction.response.send_message.call_args
-    assert "Couldn't register: bad name" in args[0]
+    assert "Couldn't save that: bad name" in args[0]
     assert kwargs.get("ephemeral") is True
 
 
@@ -336,7 +336,7 @@ async def test_on_submit_conflict_error_is_ephemeral():
         await modal.on_submit(interaction)
 
     args, kwargs = interaction.response.send_message.call_args
-    assert "Couldn't register: taken" in args[0]
+    assert "Couldn't save that: taken" in args[0]
     assert kwargs.get("ephemeral") is True
 
 

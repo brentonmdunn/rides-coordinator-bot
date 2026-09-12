@@ -251,7 +251,7 @@ class RegistrationModal(discord.ui.Modal, title="Ride registration"):
             )
         except (RosterValidationError, RosterConflictError) as e:
             await interaction.response.send_message(
-                f"Couldn't register: {e}. Please message a ride coordinator.",
+                f"Couldn't save that: {e}. Message a ride coordinator and they'll sort it out.",
                 ephemeral=True,
             )
             return
@@ -259,13 +259,14 @@ class RegistrationModal(discord.ui.Modal, title="Ride registration"):
             logger.exception("Unexpected error registering %s via roster modal", interaction.user)
             await send_error_to_discord("**Unexpected Error** in roster registration")
             await interaction.response.send_message(
-                "Something went wrong. Please message a ride coordinator.",
+                "Something went wrong on our end, sorry! Message a ride coordinator "
+                "and they'll add you.",
                 ephemeral=True,
             )
             return
 
-        base_message = f"✅ Registered **{person.name}**: {person.location}, {person.year} year"
-        message = base_message if created else f"Updated: {base_message}"
+        opener = f"✅ Thanks **{person.name}**!" if created else f"✅ Updated, **{person.name}**!"
+        message = f"{opener} We've got you at {person.location}."
         logger.info("Roster registration submitted for %s (created=%s)", interaction.user, created)
         await interaction.response.send_message(message)
         await _notify_ride_coordinators(
