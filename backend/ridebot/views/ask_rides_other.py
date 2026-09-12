@@ -59,7 +59,8 @@ class AskRidesOtherModal(discord.ui.Modal):
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         """Report an unexpected failure and tell the rider it didn't go through."""
-        logger.exception("Unexpected error in ask-rides Something else modal")
+        # Not inside an except block, so pass the error explicitly to keep the traceback.
+        logger.error("Unexpected error in ask-rides Something else modal", exc_info=error)
         await send_error_to_discord("**Unexpected Error** in ask-rides Something else modal")
         if interaction.response.is_done():
             await interaction.followup.send(_FAILED, ephemeral=True)

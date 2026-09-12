@@ -3,7 +3,7 @@ set -euo pipefail
 
 SERVICE="ride-bot"
 IMAGE="brentonmdunn/ride-bot"
-HEALTH_TIMEOUT=30
+HEALTH_TIMEOUT=45
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OVERRIDE_FILE="${SCRIPT_DIR}/.rollback-override.yml"
 
