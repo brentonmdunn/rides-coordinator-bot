@@ -226,7 +226,7 @@ async def test_delete_people_empty_does_not_invalidate(session_local):
 
 
 @pytest.mark.asyncio
-async def test_register_from_discord_requires_year_and_location(session_local):
+async def test_register_from_discord_requires_year(session_local):
     with pytest.raises(RosterValidationError):
         await RosterService.register_from_discord(
             discord_user_id=1,
@@ -235,6 +235,22 @@ async def test_register_from_discord_requires_year_and_location(session_local):
             year=None,
             location="Muir",
         )
+
+
+@pytest.mark.asyncio
+async def test_register_from_discord_allows_no_location(session_local):
+    """Riders who ask for coordinator follow-up are stored without a location."""
+    person, created = await RosterService.register_from_discord(
+        discord_user_id=1,
+        discord_username="alicew",
+        name="Alice",
+        year="2nd",
+        location=None,
+    )
+
+    assert created is True
+    assert person.location is None
+    assert person.year == "2nd"
 
 
 @pytest.mark.asyncio

@@ -6,7 +6,11 @@ import discord
 
 from ridebot.services.roster_service import Person, RosterService
 from ridebot.utils.channels import resolve_channel_id
-from ridebot.utils.constants import ROSTER_REGISTER_BUTTON_CUSTOM_ID
+from ridebot.utils.constants import (
+    ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
+    ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
+    ROSTER_PICKUP_SDSU_CUSTOM_ID,
+)
 from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
 from shared.core.bots import get_spec
 from shared.core.database import AsyncSessionLocal
@@ -27,9 +31,11 @@ _REGISTRATION_UNAVAILABLE_MESSAGE = (
     "and they'll add your pickup info for you."
 )
 
-# Sentinel option value for riders who don't live in one of the campus areas.
-_OTHER_LOCATION_VALUE = "__other__"
-_OTHER_LOCATION_LABEL = "Other (off campus)"
+# Appended to the on-campus dropdown when the modal is built. Deliberately not a
+# CampusLivingLocations member: it isn't a real place, so it must never reach ride
+# grouping or the pickup-location mappings. Picking it stores no location at all.
+_NEEDS_FOLLOWUP_VALUE = "__needs_followup__"
+_NEEDS_FOLLOWUP_LABEL = "Other - ride coordinators will reach out"
 
 
 async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
@@ -49,6 +55,14 @@ async def _is_flag_enabled(feature: FeatureFlagNames) -> bool:
     return bool(status)
 
 
+async def _registration_enabled() -> bool:
+    """Return whether RideBot's kill switch and NEW_RIDES_MSG are both enabled."""
+    kill_switch_flag = get_spec(BotName.RIDEBOT).kill_switch_flag
+    return await _is_flag_enabled(kill_switch_flag) and await _is_flag_enabled(
+        FeatureFlagNames.NEW_RIDES_MSG
+    )
+
+
 def _coordinator_message(interaction: discord.Interaction, person: Person, created: bool) -> str:
     """
     Build the ride-coordinator copy of a registration notice.
@@ -65,21 +79,26 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
     Returns:
         The message to post in the ride coordinators channel.
     """
-    headline = "📝 New rider registered" if created else "📝 Roster updated"
-
-    campus_values = {location.value for location in CampusLivingLocations}
-    if person.location is None:
-        location = "no location given"
-    elif person.location in campus_values:
-        location = person.location
-    else:
-        location = f"{person.location} (off campus, needs a pickup spot)"
-
     year = f"{person.year} year" if person.year else "year unknown"
-    return (
-        f"{headline}: **{person.name}** (`@{interaction.user.name}`), "
-        f"{location}, {year}. In <#{interaction.channel_id}>"
+    who = f"**{person.name}** (`@{interaction.user.name}`)"
+
+    # Picking the on-campus catch-all stores no location, so nobody knows where to
+    # collect this rider yet. Lead with that instead of burying it mid-sentence.
+    if person.location is None:
+        return (
+            f"🚨 **ACTION NEEDED, no pickup spot**: {who}, {year}, picked **Other** "
+            f"on the form. Someone needs to ask where they live and add it to the "
+            f"roster. In <#{interaction.channel_id}>"
+        )
+
+    headline = "📝 New rider registered" if created else "📝 Roster updated"
+    campus_values = {location.value for location in CampusLivingLocations}
+    location = (
+        person.location
+        if person.location in campus_values
+        else f"{person.location} (off campus, needs a pickup spot)"
     )
+    return f"{headline}: {who}, {location}, {year}. In <#{interaction.channel_id}>"
 
 
 async def _notify_ride_coordinators(interaction: discord.Interaction, message: str) -> None:
@@ -91,7 +110,7 @@ async def _notify_ride_coordinators(interaction: discord.Interaction, message: s
 
     Args:
         interaction: The modal-submit interaction, used for its bot client.
-        message: The same confirmation text the rider was shown.
+        message: The notice to post.
     """
     try:
         channel = interaction.client.get_channel(
@@ -108,63 +127,28 @@ async def _notify_ride_coordinators(interaction: discord.Interaction, message: s
         logger.exception("Failed to post roster registration notice to ride coordinators")
 
 
-async def _registration_enabled() -> bool:
-    """Return whether RideBot's kill switch and NEW_RIDES_MSG are both enabled."""
-    kill_switch_flag = get_spec(BotName.RIDEBOT).kill_switch_flag
-    return await _is_flag_enabled(kill_switch_flag) and await _is_flag_enabled(
-        FeatureFlagNames.NEW_RIDES_MSG
-    )
+class _BaseRegistrationModal(discord.ui.Modal):
+    """
+    Shared Name and Year fields for every registration modal.
 
+    Subclasses add whatever location input suits their button and implement
+    ``_resolve_location``. Splitting by button is what lets each form ask only
+    the questions that apply, since Discord modals can't hide fields.
+    """
 
-class RegistrationView(discord.ui.View):
-    """Persistent view with a single "Add my pickup info" button for self-service sign-up."""
-
-    def __init__(self) -> None:
-        """Initialize the view with no timeout so it survives bot restarts."""
-        super().__init__(timeout=None)
-
-    @discord.ui.button(
-        label="Add my pickup info",
-        emoji="📝",
-        style=discord.ButtonStyle.primary,
-        custom_id=ROSTER_REGISTER_BUTTON_CUSTOM_ID,
-    )
-    async def register(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+    def __init__(
+        self, existing: Person | None, user: discord.User | discord.Member, *, title: str
+    ) -> None:
         """
-        Open the registration modal, refusing ephemerally when registration is disabled.
-
-        Args:
-            interaction: The button-press interaction.
-            button: The button that was pressed.
-        """
-        if not await _registration_enabled():
-            logger.info(
-                "Roster registration is disabled; refusing button press from %s",
-                interaction.user,
-            )
-            await interaction.response.send_message(
-                _REGISTRATION_UNAVAILABLE_MESSAGE, ephemeral=True
-            )
-            return
-
-        existing = await RosterService.find_member(
-            discord_user_id=interaction.user.id, discord_username=interaction.user.name
-        )
-        await interaction.response.send_modal(RegistrationModal(existing, interaction.user))
-
-
-class RegistrationModal(discord.ui.Modal, title="Your pickup info"):
-    """Modal collecting a rider's name, class year, and living location."""
-
-    def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
-        """
-        Build the modal, pre-filled from an existing roster entry if there is one.
+        Build the shared fields, pre-filled from an existing roster entry.
 
         Args:
             existing: The rider's current roster entry, or None if unregistered.
             user: The Discord user filling out the form.
+            title: The modal's title bar text.
         """
-        super().__init__()
+        super().__init__(title=title)
+        self.existing = existing
 
         default_name = (existing.name if existing else None) or user.display_name
         self.name_input = discord.ui.TextInput(default=default_name, required=True, max_length=100)
@@ -182,43 +166,9 @@ class RegistrationModal(discord.ui.Modal, title="Your pickup info"):
         )
         self.add_item(discord.ui.Label(text="Year", component=self.year_select))
 
-        existing_location = existing.location if existing else None
-        campus_values = {location.value for location in CampusLivingLocations}
-        existing_is_off_campus = (
-            existing_location is not None and existing_location not in campus_values
-        )
-        self.location_select = discord.ui.Select(
-            options=[
-                *(
-                    discord.SelectOption(
-                        label=location.value,
-                        value=location.value,
-                        default=location.value == existing_location,
-                    )
-                    for location in CampusLivingLocations
-                ),
-                discord.SelectOption(
-                    label=_OTHER_LOCATION_LABEL,
-                    value=_OTHER_LOCATION_VALUE,
-                    default=existing_is_off_campus,
-                ),
-            ],
-            required=True,
-        )
-        self.add_item(discord.ui.Label(text="Where do you live?", component=self.location_select))
-
-        self.other_location_input = discord.ui.TextInput(
-            default=existing_location if existing_is_off_campus else None,
-            required=False,
-            max_length=100,
-            placeholder="Apartment name or street address",
-        )
-        self.add_item(
-            discord.ui.Label(
-                text="If you picked Other, where do you live?",
-                component=self.other_location_input,
-            )
-        )
+    def _resolve_location(self) -> str | None:
+        """Return the submitted location, or None when a coordinator must follow up."""
+        raise NotImplementedError
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         """
@@ -229,17 +179,7 @@ class RegistrationModal(discord.ui.Modal, title="Your pickup info"):
         """
         name = self.name_input.value
         year = self.year_select.values[0]
-        location = self.location_select.values[0]
-
-        if location == _OTHER_LOCATION_VALUE:
-            location = (self.other_location_input.value or "").strip()
-            if not location:
-                await interaction.response.send_message(
-                    f"Please tap **Add my pickup info** again and, with **{_OTHER_LOCATION_LABEL}** "
-                    "selected, type where you live in the last box.",
-                    ephemeral=True,
-                )
-                return
+        location = self._resolve_location()
 
         try:
             person, created = await RosterService.register_from_discord(
@@ -266,9 +206,146 @@ class RegistrationModal(discord.ui.Modal, title="Your pickup info"):
             return
 
         opener = f"✅ Thanks **{person.name}**!" if created else f"✅ Updated, **{person.name}**!"
-        message = f"{opener} We've got you at {person.location}."
+        if person.location is None:
+            message = f"{opener} A ride coordinator will reach out about where to pick you up."
+        else:
+            message = f"{opener} We've got you at {person.location}."
+
         logger.info("Roster registration submitted for %s (created=%s)", interaction.user, created)
         await interaction.response.send_message(message)
         await _notify_ride_coordinators(
             interaction, _coordinator_message(interaction, person, created)
         )
+
+
+class CampusRegistrationModal(_BaseRegistrationModal):
+    """Modal for riders living in a campus living area."""
+
+    def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
+        """Add a campus-area dropdown, plus an option for anything not listed."""
+        super().__init__(existing, user, title="On campus pickup")
+
+        campus_values = {location.value for location in CampusLivingLocations}
+        existing_location = existing.location if existing else None
+        existing_is_campus = existing_location in campus_values
+
+        options = [
+            discord.SelectOption(
+                label=location.value,
+                value=location.value,
+                default=existing_is_campus and location.value == existing_location,
+            )
+            for location in CampusLivingLocations
+        ]
+        options.append(
+            discord.SelectOption(label=_NEEDS_FOLLOWUP_LABEL, value=_NEEDS_FOLLOWUP_VALUE)
+        )
+
+        self.location_select = discord.ui.Select(options=options, required=True)
+        self.add_item(discord.ui.Label(text="Where do you live?", component=self.location_select))
+
+    def _resolve_location(self) -> str | None:
+        """Return the chosen campus area, or None when they picked the catch-all."""
+        value = self.location_select.values[0]
+        return None if value == _NEEDS_FOLLOWUP_VALUE else value
+
+
+class OffCampusRegistrationModal(_BaseRegistrationModal):
+    """Modal for riders living off campus, who type their own address."""
+
+    def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
+        """Add a free-text address box, pre-filled from an existing off-campus entry."""
+        super().__init__(existing, user, title="Off campus pickup")
+
+        campus_values = {location.value for location in CampusLivingLocations}
+        existing_location = existing.location if existing else None
+        existing_is_off_campus = (
+            existing_location is not None and existing_location not in campus_values
+        )
+
+        self.address_input = discord.ui.TextInput(
+            default=existing_location if existing_is_off_campus else None,
+            required=True,
+            max_length=100,
+            placeholder="Apartment name or street address",
+        )
+        self.add_item(discord.ui.Label(text="Where do you live?", component=self.address_input))
+
+    def _resolve_location(self) -> str | None:
+        """Return the typed address; Discord enforces that it isn't blank."""
+        return (self.address_input.value or "").strip()
+
+
+class SdsuRegistrationModal(_BaseRegistrationModal):
+    """Modal for SDSU riders, whose location is implied by the button."""
+
+    def __init__(self, existing: Person | None, user: discord.User | discord.Member) -> None:
+        """Ask only for name and year; the button already answered the location."""
+        super().__init__(existing, user, title="SDSU pickup")
+
+    def _resolve_location(self) -> str | None:
+        """Return the SDSU living location."""
+        return CampusLivingLocations.SDSU.value
+
+
+class RegistrationView(discord.ui.View):
+    """Persistent view whose buttons each open a registration form for one situation."""
+
+    def __init__(self) -> None:
+        """Initialize the view with no timeout so it survives bot restarts."""
+        super().__init__(timeout=None)
+
+    async def _open_modal(
+        self, interaction: discord.Interaction, modal_cls: type[_BaseRegistrationModal]
+    ) -> None:
+        """
+        Open one of the registration modals, refusing when registration is disabled.
+
+        Args:
+            interaction: The button-press interaction.
+            modal_cls: The modal class matching the button that was pressed.
+        """
+        if not await _registration_enabled():
+            logger.info(
+                "Roster registration is disabled; refusing button press from %s",
+                interaction.user,
+            )
+            await interaction.response.send_message(
+                _REGISTRATION_UNAVAILABLE_MESSAGE, ephemeral=True
+            )
+            return
+
+        existing = await RosterService.find_member(
+            discord_user_id=interaction.user.id, discord_username=interaction.user.name
+        )
+        await interaction.response.send_modal(modal_cls(existing, interaction.user))
+
+    @discord.ui.button(
+        label="On campus",
+        emoji="🏫",
+        style=discord.ButtonStyle.primary,
+        custom_id=ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
+    )
+    async def on_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        """Open the campus-area form."""
+        await self._open_modal(interaction, CampusRegistrationModal)
+
+    @discord.ui.button(
+        label="Off campus",
+        emoji="🏠",
+        style=discord.ButtonStyle.secondary,
+        custom_id=ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
+    )
+    async def off_campus(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        """Open the off-campus address form."""
+        await self._open_modal(interaction, OffCampusRegistrationModal)
+
+    @discord.ui.button(
+        label="SDSU",
+        emoji="🎓",
+        style=discord.ButtonStyle.secondary,
+        custom_id=ROSTER_PICKUP_SDSU_CUSTOM_ID,
+    )
+    async def sdsu(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        """Open the SDSU form."""
+        await self._open_modal(interaction, SdsuRegistrationModal)

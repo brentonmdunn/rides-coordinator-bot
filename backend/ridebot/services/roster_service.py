@@ -247,10 +247,18 @@ class RosterService:
 
     @staticmethod
     async def register_from_discord(
-        *, discord_user_id: int, discord_username: str, name: str, year: str, location: str
+        *,
+        discord_user_id: int,
+        discord_username: str,
+        name: str,
+        year: str,
+        location: str | None,
     ) -> tuple[Person, bool]:
         """
         Create or update the roster entry for a Discord member.
+
+        ``location`` may be None when the rider asked a coordinator to follow up;
+        the entry is stored without one and shows as missing on the roster.
 
         Returns:
             ``(person, created)``.
@@ -259,8 +267,8 @@ class RosterService:
             RosterValidationError: If a field is invalid.
             RosterConflictError: If the username belongs to a row linked to another account.
         """
-        if year is None or location is None:
-            raise RosterValidationError("year and location are required to register")
+        if year is None:
+            raise RosterValidationError("year is required to register")
 
         normalized_name = _normalize_name(name)
         normalized_username = _normalize_discord_username(discord_username)

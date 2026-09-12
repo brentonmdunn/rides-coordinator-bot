@@ -5,7 +5,7 @@ from typing import Any, cast
 
 import discord
 
-from ridebot.utils.constants import ROSTER_REGISTER_BUTTON_CUSTOM_ID
+from ridebot.utils.constants import ROSTER_PICKUP_BUTTON_CUSTOM_IDS
 from ridebot.views.registration import RegistrationView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
@@ -113,7 +113,7 @@ class RideRequestService:
                 if bot_user is not None and message.author.id != bot_user.id:
                     return False
                 return any(
-                    getattr(child, "custom_id", None) == ROSTER_REGISTER_BUTTON_CUSTOM_ID
+                    getattr(child, "custom_id", None) in ROSTER_PICKUP_BUTTON_CUSTOM_IDS
                     for row in message.components
                     for child in getattr(row, "children", ())
                 )
@@ -140,7 +140,7 @@ class RideRequestService:
             message = await channel.send(
                 f"Hi {user.mention}! Thanks for signing up for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
                 "Glad you're coming! We just need to know where to pick you up, so tap the "
-                "button below. (You only need to do this once.)",
+                "button below that matches where you live. (You only need to do this once.)",
                 allowed_mentions=discord.AllowedMentions(users=True),
                 view=RegistrationView(),
             )

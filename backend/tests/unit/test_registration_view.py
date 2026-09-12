@@ -8,12 +8,17 @@ import pytest
 from ridebot.services.roster_service import Person
 from ridebot.utils.custom_exceptions import RosterConflictError, RosterValidationError
 from ridebot.views.registration import (
-    _OTHER_LOCATION_VALUE,
-    RegistrationModal,
+    _NEEDS_FOLLOWUP_VALUE,
+    CampusRegistrationModal,
+    OffCampusRegistrationModal,
     RegistrationView,
+    SdsuRegistrationModal,
 )
-from shared.core.enums import FeatureFlagNames
+from shared.core.enums import CampusLivingLocations, FeatureFlagNames
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
+
+REGISTER = "ridebot.views.registration.RosterService.register_from_discord"
+FIND_MEMBER = "ridebot.views.registration.RosterService.find_member"
 
 
 @pytest.fixture(autouse=True)
@@ -40,6 +45,12 @@ def _make_person(**overrides) -> Person:
     return Person(**defaults)
 
 
+def _make_user(display_name="Bob"):
+    user = MagicMock()
+    user.display_name = display_name
+    return user
+
+
 def _make_interaction(user_id=123, username="alice", display_name="Alice"):
     interaction = MagicMock()
     interaction.user = MagicMock()
@@ -48,7 +59,7 @@ def _make_interaction(user_id=123, username="alice", display_name="Alice"):
     interaction.user.display_name = display_name
     interaction.response = AsyncMock()
     interaction.channel_id = 555
-    # Ride coordinators channel the confirmation is mirrored into.
+    # Ride coordinators channel the notice is mirrored into.
     coordinators_channel = MagicMock(spec=discord.TextChannel)
     coordinators_channel.send = AsyncMock()
     interaction.client = MagicMock()
@@ -62,34 +73,46 @@ def _coordinators_channel(interaction):
 
 
 # ---------------------------------------------------------------------------
-# RegistrationView.register button callback
+# Buttons
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    ("button_name", "expected_modal"),
+    [
+        ("on_campus", CampusRegistrationModal),
+        ("off_campus", OffCampusRegistrationModal),
+        ("sdsu", SdsuRegistrationModal),
+    ],
+)
 @pytest.mark.asyncio
-async def test_register_sends_modal_when_flags_enabled():
+async def test_each_button_opens_its_own_modal(button_name, expected_modal):
     interaction = _make_interaction()
     view = RegistrationView()
 
-    with patch(
-        "ridebot.views.registration.RosterService.find_member", new=AsyncMock(return_value=None)
-    ):
-        await view.register.callback(interaction)
+    with patch(FIND_MEMBER, new=AsyncMock(return_value=None)):
+        await getattr(view, button_name).callback(interaction)
 
     interaction.response.send_modal.assert_awaited_once()
-    sent_modal = interaction.response.send_modal.call_args.args[0]
-    assert isinstance(sent_modal, RegistrationModal)
+    assert isinstance(interaction.response.send_modal.call_args.args[0], expected_modal)
 
 
 @pytest.mark.asyncio
-async def test_register_refuses_ephemerally_when_kill_switch_disabled():
+async def test_buttons_have_distinct_custom_ids():
+    view = RegistrationView()
+    custom_ids = [child.custom_id for child in view.children]
+
+    assert len(custom_ids) == 3
+    assert len(set(custom_ids)) == 3
+
+
+@pytest.mark.asyncio
+async def test_refuses_ephemerally_when_kill_switch_disabled():
     FeatureFlagsRepository._cache[FeatureFlagNames.RIDEBOT] = False
     interaction = _make_interaction()
-    view = RegistrationView()
 
-    await view.register.callback(interaction)
+    await RegistrationView().on_campus.callback(interaction)
 
-    interaction.response.send_message.assert_awaited_once()
     args, kwargs = interaction.response.send_message.call_args
     assert "ride coordinator" in args[0].lower()
     assert kwargs.get("ephemeral") is True
@@ -97,104 +120,124 @@ async def test_register_refuses_ephemerally_when_kill_switch_disabled():
 
 
 @pytest.mark.asyncio
-async def test_register_refuses_ephemerally_when_new_rides_msg_disabled():
+async def test_refuses_ephemerally_when_new_rides_msg_disabled():
     FeatureFlagsRepository._cache[FeatureFlagNames.NEW_RIDES_MSG] = False
     interaction = _make_interaction()
-    view = RegistrationView()
 
-    await view.register.callback(interaction)
+    await RegistrationView().off_campus.callback(interaction)
 
     interaction.response.send_message.assert_awaited_once()
     interaction.response.send_modal.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
-# RegistrationModal pre-fill
+# Modal construction and pre-fill
 # ---------------------------------------------------------------------------
 
 
-def _make_user(display_name="Bob"):
-    user = MagicMock()
-    user.display_name = display_name
-    return user
+@pytest.mark.asyncio
+async def test_campus_modal_appends_followup_option_outside_the_enum():
+    """The catch-all is a UI affordance only; it must never be a living location."""
+    modal = CampusRegistrationModal(None, _make_user())
+    values = [option.value for option in modal.location_select.options]
+    campus_values = {location.value for location in CampusLivingLocations}
+
+    assert values[-1] == _NEEDS_FOLLOWUP_VALUE
+    assert _NEEDS_FOLLOWUP_VALUE not in campus_values
+    assert set(values[:-1]) == campus_values
 
 
 @pytest.mark.asyncio
-async def test_modal_prefills_from_existing_person():
-    existing = _make_person(name="Alice", year="3rd", location="Muir")
-    modal = RegistrationModal(existing, _make_user())
+async def test_campus_modal_prefills_existing_campus_area():
+    modal = CampusRegistrationModal(
+        _make_person(name="Alice", year="3rd", location="Muir"), _make_user()
+    )
 
     assert modal.name_input.default == "Alice"
-    year_default = next(o for o in modal.year_select.options if o.default)
-    assert year_default.value == "3rd"
-    location_default = next(o for o in modal.location_select.options if o.default)
-    assert location_default.value == "Muir"
+    assert next(o for o in modal.year_select.options if o.default).value == "3rd"
+    assert next(o for o in modal.location_select.options if o.default).value == "Muir"
 
 
 @pytest.mark.asyncio
-async def test_modal_prefills_display_name_when_unregistered():
-    modal = RegistrationModal(None, _make_user(display_name="Bob"))
+async def test_campus_modal_has_no_default_for_off_campus_person():
+    modal = CampusRegistrationModal(_make_person(location="Costa Verde"), _make_user())
 
-    assert modal.name_input.default == "Bob"
-    assert not any(o.default for o in modal.year_select.options)
     assert not any(o.default for o in modal.location_select.options)
 
 
 @pytest.mark.asyncio
-async def test_modal_prefills_off_campus_location_as_other():
-    existing = _make_person(location="Costa Verde")
-    modal = RegistrationModal(existing, _make_user())
+async def test_off_campus_modal_prefills_existing_address():
+    modal = OffCampusRegistrationModal(_make_person(location="Costa Verde"), _make_user())
 
-    location_default = next(o for o in modal.location_select.options if o.default)
-    assert location_default.value == _OTHER_LOCATION_VALUE
-    assert modal.other_location_input.default == "Costa Verde"
+    assert modal.address_input.default == "Costa Verde"
+    assert modal.address_input.required is True
+
+
+@pytest.mark.asyncio
+async def test_off_campus_modal_has_no_address_default_for_campus_person():
+    modal = OffCampusRegistrationModal(_make_person(location="Sixth"), _make_user())
+
+    assert modal.address_input.default is None
+
+
+@pytest.mark.asyncio
+async def test_sdsu_modal_asks_only_name_and_year():
+    modal = SdsuRegistrationModal(None, _make_user(display_name="Bob"))
+
+    assert modal.name_input.default == "Bob"
+    assert not hasattr(modal, "location_select")
+    assert not hasattr(modal, "address_input")
 
 
 # ---------------------------------------------------------------------------
-# RegistrationModal.on_submit
+# Submission
 # ---------------------------------------------------------------------------
 
 
-def _submitted_modal(
-    existing=None, name="Alice", year="2nd", location="Sixth", other_location=None
-):
-    modal = RegistrationModal(existing, _make_user())
+def _submit_campus(existing=None, name="Alice", year="2nd", location="Sixth"):
+    modal = CampusRegistrationModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
     modal.location_select._values = [location]
-    if other_location is not None:
-        modal.other_location_input._value = other_location
+    return modal
+
+
+def _submit_off_campus(existing=None, name="Alice", year="2nd", address="  Costa Verde  "):
+    modal = OffCampusRegistrationModal(existing, _make_user())
+    modal.name_input._value = name
+    modal.year_select._values = [year]
+    modal.address_input._value = address
+    return modal
+
+
+def _submit_sdsu(existing=None, name="Alice", year="2nd"):
+    modal = SdsuRegistrationModal(existing, _make_user())
+    modal.name_input._value = name
+    modal.year_select._values = [year]
     return modal
 
 
 @pytest.mark.asyncio
-async def test_on_submit_success_created():
-    modal = _submitted_modal()
+async def test_campus_submit_success_created():
+    modal = _submit_campus()
     interaction = _make_interaction()
-    person = _make_person(name="Alice", year="2nd", location="Sixth")
+    person = _make_person(location="Sixth")
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(return_value=(person, True)),
-    ):
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))) as mock_register:
         await modal.on_submit(interaction)
 
-    interaction.response.send_message.assert_awaited_once()
+    assert mock_register.call_args.kwargs["location"] == "Sixth"
     args, kwargs = interaction.response.send_message.call_args
     assert args[0] == "✅ Thanks **Alice**! We've got you at Sixth."
     assert kwargs.get("ephemeral") is not True
 
 
 @pytest.mark.asyncio
-async def test_on_submit_success_updated():
-    modal = _submitted_modal()
+async def test_campus_submit_success_updated():
+    modal = _submit_campus()
     interaction = _make_interaction()
-    person = _make_person(name="Alice", year="2nd", location="Sixth")
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(return_value=(person, False)),
-    ):
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(), False))):
         await modal.on_submit(interaction)
 
     args, _ = interaction.response.send_message.call_args
@@ -202,20 +245,78 @@ async def test_on_submit_success_updated():
 
 
 @pytest.mark.asyncio
-async def test_on_submit_also_notifies_ride_coordinators():
-    modal = _submitted_modal()
+async def test_campus_followup_option_stores_no_location():
+    modal = _submit_campus(location=_NEEDS_FOLLOWUP_VALUE)
     interaction = _make_interaction()
-    person = _make_person(name="Alice", year="2nd", location="Sixth")
+    person = _make_person(location=None)
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(return_value=(person, True)),
-    ):
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))) as mock_register:
         await modal.on_submit(interaction)
 
-    send = _coordinators_channel(interaction).send
-    send.assert_awaited_once()
-    notice = send.call_args.args[0]
+    assert mock_register.call_args.kwargs["location"] is None
+    args, _ = interaction.response.send_message.call_args
+    assert (
+        args[0]
+        == "✅ Thanks **Alice**! A ride coordinator will reach out about where to pick you up."
+    )
+
+
+@pytest.mark.asyncio
+async def test_followup_notice_leads_with_the_missing_pickup_spot():
+    """The no-location case is the one coordinators must act on, so it leads."""
+    modal = _submit_campus(location=_NEEDS_FOLLOWUP_VALUE)
+    interaction = _make_interaction()
+
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(location=None), True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert notice.startswith("🚨 **ACTION NEEDED, no pickup spot**")
+    assert "**Alice**" in notice
+    assert "ask where they live" in notice
+    assert "<#555>" in notice
+
+
+@pytest.mark.asyncio
+async def test_off_campus_submit_uses_trimmed_address():
+    modal = _submit_off_campus()
+    interaction = _make_interaction()
+    person = _make_person(location="Costa Verde")
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))) as mock_register:
+        await modal.on_submit(interaction)
+
+    assert mock_register.call_args.kwargs["location"] == "Costa Verde"
+    args, _ = interaction.response.send_message.call_args
+    assert args[0] == "✅ Thanks **Alice**! We've got you at Costa Verde."
+
+
+@pytest.mark.asyncio
+async def test_sdsu_submit_sends_sdsu_location():
+    modal = _submit_sdsu()
+    interaction = _make_interaction()
+    person = _make_person(location=CampusLivingLocations.SDSU.value)
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))) as mock_register:
+        await modal.on_submit(interaction)
+
+    assert mock_register.call_args.kwargs["location"] == CampusLivingLocations.SDSU.value
+
+
+# ---------------------------------------------------------------------------
+# Coordinator notice and error handling
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_submit_notifies_ride_coordinators():
+    modal = _submit_campus()
+    interaction = _make_interaction()
+
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(), True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
     assert "New rider registered" in notice
     assert "**Alice**" in notice
     assert "`@alice`" in notice
@@ -227,14 +328,10 @@ async def test_on_submit_also_notifies_ride_coordinators():
 
 @pytest.mark.asyncio
 async def test_coordinator_notice_flags_update_and_off_campus():
-    modal = _submitted_modal()
+    modal = _submit_off_campus()
     interaction = _make_interaction()
-    person = _make_person(name="Alice", year="2nd", location="Costa Verde")
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(return_value=(person, False)),
-    ):
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(location="Costa Verde"), False))):
         await modal.on_submit(interaction)
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
@@ -243,16 +340,12 @@ async def test_coordinator_notice_flags_update_and_off_campus():
 
 
 @pytest.mark.asyncio
-async def test_on_submit_coordinator_notice_failure_is_swallowed():
-    modal = _submitted_modal()
+async def test_coordinator_notice_failure_is_swallowed():
+    modal = _submit_campus()
     interaction = _make_interaction()
     _coordinators_channel(interaction).send = AsyncMock(side_effect=RuntimeError("boom"))
-    person = _make_person(name="Alice", year="2nd", location="Sixth")
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(return_value=(person, True)),
-    ):
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(), True))):
         await modal.on_submit(interaction)
 
     # The rider still gets their confirmation even though the notice failed.
@@ -260,63 +353,23 @@ async def test_on_submit_coordinator_notice_failure_is_swallowed():
 
 
 @pytest.mark.asyncio
-async def test_on_submit_skips_notice_when_channel_missing():
-    modal = _submitted_modal()
+async def test_skips_notice_when_channel_missing():
+    modal = _submit_campus()
     interaction = _make_interaction()
     interaction.client.get_channel = MagicMock(return_value=None)
-    person = _make_person(name="Alice", year="2nd", location="Sixth")
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(return_value=(person, True)),
-    ):
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(), True))):
         await modal.on_submit(interaction)
 
     interaction.response.send_message.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_on_submit_other_uses_typed_location():
-    modal = _submitted_modal(location=_OTHER_LOCATION_VALUE, other_location="  Costa Verde  ")
-    interaction = _make_interaction()
-    person = _make_person(name="Alice", year="2nd", location="Costa Verde")
-
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(return_value=(person, True)),
-    ) as mock_register:
-        await modal.on_submit(interaction)
-
-    assert mock_register.call_args.kwargs["location"] == "Costa Verde"
-    args, _ = interaction.response.send_message.call_args
-    assert args[0] == "✅ Thanks **Alice**! We've got you at Costa Verde."
-
-
-@pytest.mark.asyncio
-async def test_on_submit_other_without_text_asks_again():
-    modal = _submitted_modal(location=_OTHER_LOCATION_VALUE, other_location="   ")
+async def test_validation_error_is_ephemeral():
+    modal = _submit_campus()
     interaction = _make_interaction()
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord", new=AsyncMock()
-    ) as mock_register:
-        await modal.on_submit(interaction)
-
-    mock_register.assert_not_awaited()
-    args, kwargs = interaction.response.send_message.call_args
-    assert "type where you live" in args[0]
-    assert kwargs.get("ephemeral") is True
-
-
-@pytest.mark.asyncio
-async def test_on_submit_validation_error_is_ephemeral():
-    modal = _submitted_modal()
-    interaction = _make_interaction()
-
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(side_effect=RosterValidationError("bad name")),
-    ):
+    with patch(REGISTER, new=AsyncMock(side_effect=RosterValidationError("bad name"))):
         await modal.on_submit(interaction)
 
     args, kwargs = interaction.response.send_message.call_args
@@ -325,14 +378,11 @@ async def test_on_submit_validation_error_is_ephemeral():
 
 
 @pytest.mark.asyncio
-async def test_on_submit_conflict_error_is_ephemeral():
-    modal = _submitted_modal()
+async def test_conflict_error_is_ephemeral():
+    modal = _submit_off_campus()
     interaction = _make_interaction()
 
-    with patch(
-        "ridebot.views.registration.RosterService.register_from_discord",
-        new=AsyncMock(side_effect=RosterConflictError("taken")),
-    ):
+    with patch(REGISTER, new=AsyncMock(side_effect=RosterConflictError("taken"))):
         await modal.on_submit(interaction)
 
     args, kwargs = interaction.response.send_message.call_args
@@ -341,15 +391,12 @@ async def test_on_submit_conflict_error_is_ephemeral():
 
 
 @pytest.mark.asyncio
-async def test_on_submit_unexpected_error_reports_and_replies_ephemeral():
-    modal = _submitted_modal()
+async def test_unexpected_error_reports_and_replies_ephemeral():
+    modal = _submit_sdsu()
     interaction = _make_interaction()
 
     with (
-        patch(
-            "ridebot.views.registration.RosterService.register_from_discord",
-            new=AsyncMock(side_effect=RuntimeError("boom")),
-        ),
+        patch(REGISTER, new=AsyncMock(side_effect=RuntimeError("boom"))),
         patch(
             "ridebot.views.registration.send_error_to_discord", new=AsyncMock()
         ) as mock_send_error,

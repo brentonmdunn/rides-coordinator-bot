@@ -82,5 +82,17 @@ ACTIVE_HOURS_END = 1  # 1 AM next day
 # Default group rides capacity
 GROUP_RIDES_DEFAULT_CAPACITY = "44444"
 
-# Roster registration
-ROSTER_REGISTER_BUTTON_CUSTOM_ID = "ridebot:roster:register"
+# Pickup-info buttons. These ids are stored inside every posted message, so
+# changing a value orphans buttons already in Discord.
+ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID = "ridebot:roster:pickup:on-campus"
+ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID = "ridebot:roster:pickup:off-campus"
+ROSTER_PICKUP_SDSU_CUSTOM_ID = "ridebot:roster:pickup:sdsu"
+
+# Used to recognize one of our own prompts when deciding whether to re-post.
+ROSTER_PICKUP_BUTTON_CUSTOM_IDS = frozenset(
+    {
+        ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
+        ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
+        ROSTER_PICKUP_SDSU_CUSTOM_ID,
+    }
+)
