@@ -107,10 +107,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
     # SDSU saves cleanly but has no pickup spot mapped, so grouping can't place
     # these riders on its own.
     if person.location == CampusLivingLocations.SDSU.value:
-        return (
-            f"🚨 **ACTION NEEDED, SDSU rider**: {who}, {year}. SDSU has no pickup spot "
-            f"mapped, so they won't be grouped automatically · <#{interaction.channel_id}>"
-        )
+        return f"🚨 **ACTION NEEDED, SDSU**: {who}, {year} · <#{interaction.channel_id}>"
 
     headline = "📝 New hooman" if created else "📝 Updated"
     return f"{headline}: {who}, {person.location}, {year} · <#{interaction.channel_id}>"

@@ -448,9 +448,7 @@ async def test_sdsu_notice_is_an_action_needed_alert():
         await modal.on_submit(interaction)
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
-    assert notice.startswith("🚨 **ACTION NEEDED, SDSU rider**")
-    assert "no pickup spot" in notice
-    assert "<#555>" in notice
+    assert notice == "🚨 **ACTION NEEDED, SDSU**: **Alice** (`@alice`), 2nd year · <#555>"
 
 
 # ---------------------------------------------------------------------------
