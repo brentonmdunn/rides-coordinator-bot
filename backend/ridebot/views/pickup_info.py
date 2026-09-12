@@ -102,6 +102,14 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
             f"roster · <#{interaction.channel_id}>"
         )
 
+    # SDSU saves cleanly but has no pickup spot mapped, so grouping can't place
+    # these riders on its own.
+    if person.location == CampusLivingLocations.SDSU.value:
+        return (
+            f"🚨 **ACTION NEEDED, SDSU rider**: {who}, {year}. SDSU has no pickup spot "
+            f"mapped, so they won't be grouped automatically · <#{interaction.channel_id}>"
+        )
+
     headline = "📝 New rider registered" if created else "📝 Roster updated"
     campus_values = {location.value for location in CampusLivingLocations}
     location = (
@@ -228,8 +236,12 @@ class _BasePickupModal(discord.ui.Modal):
             return
 
         opener = f"✅ Thanks **{person.name}**!" if created else f"✅ Updated, **{person.name}**!"
+        reach_out = "A ride coordinator will reach out about where to pick you up."
         if person.location is None:
-            message = f"{opener} A ride coordinator will reach out about where to pick you up."
+            message = f"{opener} {reach_out}"
+        elif person.location == CampusLivingLocations.SDSU.value:
+            # Saved, but SDSU has no pickup spot, so promise the follow-up too.
+            message = f"{opener} We've got you at {person.location}. {reach_out}"
         else:
             message = f"{opener} We've got you at {person.location}."
 

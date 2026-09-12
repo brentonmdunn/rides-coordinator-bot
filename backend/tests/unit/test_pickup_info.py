@@ -334,6 +334,38 @@ async def test_sdsu_submit_sends_sdsu_location():
     assert mock_register.call_args.kwargs["location"] == CampusLivingLocations.SDSU.value
 
 
+@pytest.mark.asyncio
+async def test_sdsu_rider_is_promised_a_follow_up():
+    """SDSU saves a location, but there's no pickup spot behind it yet."""
+    modal = _submit_sdsu()
+    interaction = _make_interaction()
+    person = _make_person(location=CampusLivingLocations.SDSU.value)
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))):
+        await modal.on_submit(interaction)
+
+    args, _ = interaction.response.send_message.call_args
+    assert args[0] == (
+        "✅ Thanks **Alice**! We've got you at SDSU. "
+        "A ride coordinator will reach out about where to pick you up."
+    )
+
+
+@pytest.mark.asyncio
+async def test_sdsu_notice_is_an_action_needed_alert():
+    modal = _submit_sdsu()
+    interaction = _make_interaction()
+    person = _make_person(location=CampusLivingLocations.SDSU.value)
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert notice.startswith("🚨 **ACTION NEEDED, SDSU rider**")
+    assert "no pickup spot" in notice
+    assert "<#555>" in notice
+
+
 # ---------------------------------------------------------------------------
 # Coordinator notice and error handling
 # ---------------------------------------------------------------------------
