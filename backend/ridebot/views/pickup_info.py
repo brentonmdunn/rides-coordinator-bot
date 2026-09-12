@@ -332,7 +332,7 @@ class PickupInfoView(discord.ui.View):
         await interaction.response.send_modal(modal_cls(existing, interaction.user))
 
     @discord.ui.button(
-        label="On campus",
+        label="UCSD on campus",
         style=discord.ButtonStyle.secondary,
         custom_id=ROSTER_PICKUP_ON_CAMPUS_CUSTOM_ID,
     )
@@ -341,7 +341,7 @@ class PickupInfoView(discord.ui.View):
         await self._open_modal(interaction, CampusPickupModal)
 
     @discord.ui.button(
-        label="Off campus",
+        label="UCSD off campus",
         style=discord.ButtonStyle.secondary,
         custom_id=ROSTER_PICKUP_OFF_CAMPUS_CUSTOM_ID,
     )
