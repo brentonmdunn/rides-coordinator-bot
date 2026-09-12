@@ -12,7 +12,6 @@ from ridebot.jobs.ask_rides import (
     run_ask_rides_wed,
     run_periodic_cache_warming,
 )
-from ridebot.jobs.sync_rides_locations import sync_rides_locations
 from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
 from ridebot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
 from ridebot.utils.time_helpers import LA_TZ
@@ -102,12 +101,6 @@ class JobScheduler(commands.Cog):
         #     id="run_ask_rides_sun_class",
         #     args=[bot],
         # )
-
-        self.scheduler.add_job(
-            sync_rides_locations,
-            CronTrigger(hour=3, minute=0),
-            id="sync_rides_locations",
-        )
 
         # self.scheduler.add_job(
         #     delete_past_pickups,

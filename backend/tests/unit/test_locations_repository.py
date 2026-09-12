@@ -137,29 +137,6 @@ async def test_get_all_discord_usernames_returns_pairs():
 
 
 @pytest.mark.asyncio
-async def test_sync_locations_deletes_and_adds():
-    session = AsyncMock()
-    from shared.core.models import Locations as LocationsModel
-
-    loc = LocationsModel()
-    await LocationsRepository.sync_locations(session, [loc])
-
-    session.execute.assert_called_once()
-    session.add_all.assert_called_once_with([loc])
-    session.commit.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_sync_locations_empty_list():
-    session = AsyncMock()
-    await LocationsRepository.sync_locations(session, [])
-
-    session.execute.assert_called_once()
-    session.add_all.assert_not_called()
-    session.commit.assert_awaited_once()
-
-
-@pytest.mark.asyncio
 async def test_get_non_discord_pickups_exception_returns_empty():
     """DB exception should be swallowed and return an empty list."""
     session = AsyncMock()

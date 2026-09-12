@@ -10,7 +10,7 @@ Models are defined in `backend/shared/core/models.py`. All migrations are in `ba
 
 ### `discord_usernames`
 
-Maps Discord usernames to real names. Populated by the CSV/Google Sheets sync.
+Maps Discord usernames to real names.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -23,16 +23,19 @@ Maps Discord usernames to real names. Populated by the CSV/Google Sheets sync.
 
 ### `locations`
 
-Stores user location and ride preferences. Populated by the CSV sync.
+Pickup info: everyone the bot gives rides to. Owned by `PickupInfoService`,
+managed on the website (`/api/pickup-info`, `/pickup-info` page) and by riders through the
+Discord registration form.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | int PK | |
 | `name` | str | Full name |
-| `discord_username` | str? | |
-| `year` | str? | Class year |
-| `location` | str? | Pickup location label |
-| `driver` | str? | Driver availability (`Yes`, `If necessary`, `No`) |
+| `discord_username` | str? | Lowercase, no leading `@` |
+| `discord_user_id` | str? (unique) | Discord snowflake, as a string |
+| `year` | str? | `ClassYear` value |
+| `location` | str? | `CampusLivingLocations` value |
+| `updated_at` | datetime? | Set on every write |
 
 ---
 

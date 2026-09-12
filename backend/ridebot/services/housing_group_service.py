@@ -130,7 +130,7 @@ class HousingGroupService:
             embed.add_field(
                 name=f"❓ [{len(grouped_data['unknown_users'])}] Unknown Location",
                 value=", ".join(grouped_data["unknown_users"])
-                + "\n(Make sure their Discord username is correct in the sheet!)",
+                + "\n(Make sure they're added on the Pickup Info page!)",
                 inline=False,
             )
 

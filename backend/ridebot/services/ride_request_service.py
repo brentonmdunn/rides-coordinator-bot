@@ -5,7 +5,8 @@ from typing import Any, cast
 
 import discord
 
-from ridebot.utils.channels import resolve_channel_id
+from ridebot.utils.constants import PICKUP_INFO_BUTTON_CUSTOM_IDS
+from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
 
@@ -30,18 +31,18 @@ class RideRequestService:
         guild: discord.Guild,
     ) -> bool:
         """
-        Handle a new rider reaction by creating a private channel.
+        Prompt an unregistered rider to register, in their own private channel.
 
-        When a user without a registered location reacts to a ride announcement,
-        this creates a private channel where ride coordinators can collect their
-        location information.
+        The channel is created the first time and reused afterwards: reacting again
+        re-posts the registration prompt rather than doing nothing, so riders whose
+        channel predates the Register button still get one.
 
         Args:
             user: The user who reacted to the ride announcement.
             guild: The Discord guild where the reaction occurred.
 
         Returns:
-            True if channel was created successfully, False otherwise.
+            True if a registration prompt was posted, False otherwise.
         """
         channel_name = f"{user.name.lower()}"
         category = discord.utils.get(guild.categories, id=int(CategoryIds.NEW_RIDES))
@@ -50,11 +51,20 @@ class RideRequestService:
             logger.info(f"Category with ID {CategoryIds.NEW_RIDES} not found.")
             return False
 
-        # Check if channel already exists
+        # Reuse the rider's existing channel rather than creating a second one.
         existing_channel = discord.utils.get(category.channels, name=channel_name)
-        if existing_channel:
-            logger.info(f"Channel {channel_name} already exists.")
-            return False
+        if existing_channel is not None:
+            if not isinstance(existing_channel, discord.TextChannel):
+                logger.warning(f"Channel {channel_name} exists but is not a text channel.")
+                return False
+            if await self._latest_message_is_prompt(existing_channel):
+                logger.info(
+                    f"Registration prompt is already the latest message in {channel_name}; "
+                    "skipping re-post."
+                )
+                return False
+            logger.info(f"Channel {channel_name} already exists; re-posting registration prompt.")
+            return await self._send_registration_prompt(existing_channel, user)
 
         # Build permissions
         overwrites = self._build_channel_permissions(guild, user)
@@ -78,39 +88,66 @@ class RideRequestService:
             )
             return False
 
-        # Announce the new rider channel in the driver bot spam channel
+        await self._send_registration_prompt(new_channel, user)
+
+        # The channel exists either way, so a failed prompt doesn't fail the flow.
+        return True
+
+    async def _latest_message_is_prompt(self, channel: discord.TextChannel) -> bool:
+        """
+        Return whether the channel's newest message is already a registration prompt.
+
+        This keeps repeated reactions from stacking identical prompts, without
+        storing any state. It fails open: if the history can't be read, the caller
+        posts anyway, since prompting is the point.
+
+        Args:
+            channel: The rider's private new-rides channel.
+
+        Returns:
+            True if the newest message is one of our prompts.
+        """
+        bot_user = getattr(self.bot, "user", None)
         try:
-            spam_channel = self.bot.get_channel(
-                resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
-            )
-            if spam_channel:
-                await spam_channel.send(f"new hooman! {new_channel.mention}")
-            else:
-                logger.warning(
-                    f"Driver bot spam channel {ChannelIds.SERVING__RIDE_COORDINATORS} not found."
+            async for message in channel.history(limit=1):
+                if bot_user is not None and message.author.id != bot_user.id:
+                    return False
+                return any(
+                    getattr(child, "custom_id", None) in PICKUP_INFO_BUTTON_CUSTOM_IDS
+                    for row in message.components
+                    for child in getattr(row, "children", ())
                 )
         except Exception:
-            logger.exception(
-                f"Failed to announce new rider channel {new_channel.name} in driver bot spam"
-            )
-            # Channel was created, so don't fail the whole flow
+            logger.exception(f"Couldn't read history in {channel.name}; posting prompt anyway")
+        return False
 
-        # Send welcome message
+    async def _send_registration_prompt(
+        self, channel: discord.TextChannel, user: discord.Member
+    ) -> bool:
+        """
+        Post the welcome text and the pickup-info buttons into a rider's channel.
+
+        Args:
+            channel: The rider's private new-rides channel.
+            user: The rider to greet.
+
+        Returns:
+            True if the prompt was posted.
+        """
         try:
-            await new_channel.send(
-                f"Hi {user.mention}! Thanks for reacting for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
-                "We don't yet know where to pick you up. "
-                "If you live **on campus**, please share the college or neighborhood where you live (e.g., Sixth, Pepper Canyon West, Rita). "
-                "If you live **off campus**, please share your apartment complex or address. "
-                "One of our ride coordinators will check in with you shortly!",
+            await channel.send(
+                f"Hi {user.mention}! Thanks for signing up for rides in <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}>. "
+                "Glad you're coming! We just need to know where to pick you up, so tap the "
+                "button below that matches where you live. (You only need to do this once)",
                 allowed_mentions=discord.AllowedMentions(users=True),
+                view=PickupInfoView(),
             )
         except Exception:
-            logger.exception(f"Failed to send welcome message to {new_channel.name}")
+            logger.exception(f"Failed to send registration prompt to {channel.name}")
             await send_error_to_discord(
-                f"**Unexpected Error** sending welcome message to `{new_channel.name}`"
+                f"**Unexpected Error** sending registration prompt to `{channel.name}`"
             )
-            # Channel was created, so still return True
+            return False
 
         return True
 

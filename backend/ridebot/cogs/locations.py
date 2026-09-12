@@ -20,22 +20,6 @@ class Locations(commands.Cog):
         self.service = LocationsService(bot)
 
     @discord.app_commands.command(
-        name="sync-locations",
-        description="Sync Google Sheets with database.",
-    )
-    @bot_enabled
-    @log_cmd
-    async def sync_locations(self, interaction: discord.Interaction):
-        """
-        Syncs Google Sheets data with the database.
-
-        Args:
-            interaction: The Discord interaction.
-        """
-        await self.service.sync_locations()
-        await interaction.response.send_message("Sync complete")
-
-    @discord.app_commands.command(
         name="pickup-location",
         description="Pickup location for a person (name or Discord username).",
     )

@@ -43,3 +43,21 @@ class RoleNotFoundError(RoleServiceError):
     """Raised when a role cannot be found by name."""
 
     pass
+
+
+class PickupInfoValidationError(ValueError):
+    """Raised when pickup info input is invalid."""
+
+    pass
+
+
+class PickupInfoNotFoundError(LookupError):
+    """Raised when a pickup info entry does not exist."""
+
+    pass
+
+
+class PickupInfoConflictError(ValueError):
+    """Raised when a pickup info write would duplicate a Discord username or user ID."""
+
+    pass

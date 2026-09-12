@@ -41,6 +41,76 @@ async def _seed_minimal(factory):
         await session.commit()
 
 
+async def _seed_marshall(factory, *, marshall_active=True, geisel_active=True):
+    """Seed Marshall's usual spot and its Geisel Loop alternate."""
+    async with factory() as session:
+        session.add(
+            PickupLocation(
+                id=3,
+                name="Marshall uppers",
+                latitude=32.883187,
+                longitude=-117.241281,
+                is_active=marshall_active,
+                is_seeded=True,
+            )
+        )
+        session.add(
+            PickupLocation(
+                id=11,
+                name="Geisel Loop",
+                latitude=32.881598,
+                longitude=-117.238614,
+                is_active=geisel_active,
+                is_seeded=True,
+            )
+        )
+        session.add(LivingLocationPickup(living_location="Marshall", pickup_location_id=3))
+        await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_pickup_spots_returns_mapped_spot_with_maps_link(session_local):
+    await _seed_minimal(session_local)
+
+    spots = await PickupLocationsService.pickup_spots_for_living("Muir")
+
+    assert [spot.name for spot in spots] == ["Alpha"]
+    assert spots[0].maps_url == "https://www.google.com/maps?q=32.88,-117.24"
+
+
+@pytest.mark.asyncio
+async def test_pickup_spots_lists_marshall_alternate_after_usual(session_local):
+    await _seed_marshall(session_local)
+
+    spots = await PickupLocationsService.pickup_spots_for_living("Marshall")
+
+    assert [spot.name for spot in spots] == ["Marshall uppers", "Geisel Loop"]
+
+
+@pytest.mark.asyncio
+async def test_pickup_spots_skips_inactive_alternate(session_local):
+    await _seed_marshall(session_local, geisel_active=False)
+
+    spots = await PickupLocationsService.pickup_spots_for_living("Marshall")
+
+    assert [spot.name for spot in spots] == ["Marshall uppers"]
+
+
+@pytest.mark.asyncio
+async def test_pickup_spots_never_promotes_alternate_to_usual(session_local):
+    """With the mapped spot inactive, don't present Geisel Loop as the usual one."""
+    await _seed_marshall(session_local, marshall_active=False)
+
+    assert await PickupLocationsService.pickup_spots_for_living("Marshall") == []
+
+
+@pytest.mark.asyncio
+async def test_pickup_spots_empty_for_unmapped_area(session_local):
+    await _seed_minimal(session_local)
+
+    assert await PickupLocationsService.pickup_spots_for_living("SDSU") == []
+
+
 @pytest.mark.asyncio
 async def test_get_all_returns_full_payload(session_local):
     await _seed_minimal(session_local)

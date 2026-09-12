@@ -2,7 +2,7 @@
 
 import logging
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ridebot.utils.time_helpers import get_next_date_obj
@@ -182,17 +182,3 @@ class LocationsRepository:
         )
         result = await session.execute(stmt)
         return [(username, name) for username, name in result.all()]
-
-    @staticmethod
-    async def sync_locations(session: AsyncSession, locations_to_add: list[LocationsModel]):
-        """
-        Syncs the locations table with new data.
-
-        Args:
-            session: The database session.
-            locations_to_add: List of LocationsModel objects to add.
-        """
-        await session.execute(delete(LocationsModel))
-        if locations_to_add:
-            session.add_all(locations_to_add)
-        await session.commit()

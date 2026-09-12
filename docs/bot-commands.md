@@ -41,10 +41,6 @@ Look up the stored pickup location for a specific person.
 |-------|----------|-------------|
 | `name` | Yes | Name or Discord username |
 
-### `/sync-locations`
-
-Sync the Google Sheets location data into the database. Run after updating the sheet.
-
 ### `/map-links`
 
 Post Google Maps links for pickup locations. Optionally filter by location name.

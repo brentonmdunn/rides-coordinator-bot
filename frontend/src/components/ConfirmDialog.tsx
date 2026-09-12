@@ -18,6 +18,8 @@ interface ConfirmDialogProps {
     confirmText?: string;
     cancelText?: string;
     confirmVariant?: ButtonVariant;
+    /** Blocks confirmation — e.g. until a typed confirmation matches. */
+    confirmDisabled?: boolean;
     onConfirm: () => void;
     onCancel: () => void;
     children?: ReactNode;
@@ -30,6 +32,7 @@ export function ConfirmDialog({
     confirmText = 'Confirm',
     cancelText = 'Cancel',
     confirmVariant = 'default',
+    confirmDisabled = false,
     onConfirm,
     onCancel,
     children,
@@ -46,7 +49,7 @@ export function ConfirmDialog({
                     <Button variant="outline" onClick={onCancel}>
                         {cancelText}
                     </Button>
-                    <Button variant={confirmVariant} onClick={onConfirm}>
+                    <Button variant={confirmVariant} onClick={onConfirm} disabled={confirmDisabled}>
                         {confirmText}
                     </Button>
                 </DialogFooter>
