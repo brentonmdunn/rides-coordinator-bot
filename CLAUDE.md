@@ -103,7 +103,7 @@ The backend is split into two top-level packages, plus `api/`:
 
 - **`shared/`** — infrastructure every bot needs: DB engine/session (`shared/core/database.py`), models (`shared/core/models.py`), enums (`shared/core/enums.py`), logging (`shared/core/logger.py`), error reporting (`shared/core/error_reporter.py`), bot lifecycle (`shared/core/lifecycle.py`, `shared/core/lifespan.py`, `shared/core/bot_instance.py`), feature flags, auth, user accounts/preferences (`shared/services/`, `shared/repositories/`), and the `/help` cog (`shared/cogs/help.py`). **`shared/` must never import a bot package.**
 - **`ridebot/`** — everything ride-specific: cogs, services, repositories, jobs, and utils for ride coordination.
-- **`stonesbot/`** — event-thread cogs, services, and repositories (`stonesbot/cogs/`, `stonesbot/services/`, `stonesbot/repositories/`). The `EventThreads` model itself stays in `shared/core/models.py`.
+- **`stonesbot/`** — event-thread cogs, services, repositories, and jobs (`stonesbot/cogs/`, `stonesbot/services/`, `stonesbot/repositories/`, `stonesbot/jobs/`). It runs its own APScheduler instance in `stonesbot/cogs/job_scheduler.py` (`StonesJobScheduler`), separate from RideBot's. The `EventThreads` and `WeeklyEventsAnnouncement` models stay in `shared/core/models.py`.
 - **Rule for where new code goes:** code lives in `shared/` only if it's infrastructure or is actually used by at least two bots. Otherwise it lives in the owning bot package (`ridebot/` or `stonesbot/`) and is promoted to `shared/` later, when a second consumer appears.
 - **Import-boundary test** (`backend/tests/unit/test_import_boundaries.py`): a pure-AST check enforcing that `shared` imports no bot package, and that bot packages don't import each other or `api` — so `ridebot` and `stonesbot` can never import from one another.
 
@@ -118,7 +118,7 @@ API  ──┘
 - **Cogs** (`ridebot/cogs/`, `stonesbot/cogs/`, plus `shared/cogs/help.py`): Discord slash commands and event listeners; auto-loaded per bot. `ridebot/cogs_disabled/` are never loaded; `ridebot/cogs_testing/` load only when `APP_ENV=local` (StonesBot has no disabled/testing cog packages).
 - **Services** (`ridebot/services/`, `stonesbot/services/`, plus infra services in `shared/services/`): Business logic layer. Cogs call services, never repositories directly.
 - **Repositories** (`ridebot/repositories/`, `stonesbot/repositories/`, plus infra repositories in `shared/repositories/`): Data access layer. All SQL/database queries live here.
-- **Jobs** (`ridebot/jobs/`): Scheduled tasks run by APScheduler via the `JobScheduler` cog (`ridebot/cogs/job_scheduler.py`, LA timezone). Disabled jobs go in `ridebot/jobs_disabled/`.
+- **Jobs** (`ridebot/jobs/`, `stonesbot/jobs/`): Scheduled tasks run by APScheduler. Each bot owns its own scheduler cog (`ridebot/cogs/job_scheduler.py`, `stonesbot/cogs/job_scheduler.py`), both pinned to `LA_TZ` from `shared/utils/constants.py`. Disabled ride jobs go in `ridebot/jobs_disabled/`.
 - **API** (`api/`): FastAPI routes in `api/routes/`, auth in `api/auth.py` / `api/auth_session.py`, middleware in `api/middleware/`, rate limiting via slowapi in `api/rate_limit.py`.
 
 ### Pickup info
@@ -139,6 +139,23 @@ text to `SERVING__RIDE_COORDINATORS` via `AskRidesOtherService`
 (`ridebot/services/ask_rides_other_service.py`). Gated by `FeatureFlagNames.ASK_RIDES_OTHER_BUTTON`
 plus RideBot's kill switch; clicks on past-week announcements are refused. Locally,
 `/test-ask-rides-other` posts the embed (with the button when the flag is on) in the current channel.
+
+### Weekly events announcement (StonesBot)
+
+Every Sunday at 6PM LA time, StonesBot posts one embed to
+`ChannelIds.REFERENCES__CHURCH_ANNOUNCEMENTS` listing the coming week's calendar events
+(the Monday after the run through the following Sunday), one field per day, and then
+deletes the previous week's announcement. An empty week still posts, saying nothing is
+scheduled.
+
+- Schedule: `stonesbot/cogs/job_scheduler.py` (`StonesJobScheduler`, its own APScheduler instance).
+- Job: `stonesbot/jobs/weekly_events.py` — gated by `@bot_enabled` plus `FeatureFlagNames.WEEKLY_EVENTS_ANNOUNCEMENT_JOB`.
+- Logic: `stonesbot/services/weekly_events_service.py`.
+- Events come from the iCal feed (`ICAL_URL`) via `CalendarRepository.get_event_summaries_by_date()`
+  in `shared/repositories/calendar_repository.py`, which downloads the feed once and expands it per day.
+- The posted message id is stored in `weekly_events_announcements` (`stonesbot/repositories/weekly_events_announcement_repository.py`)
+  so deletion survives restarts. The new message is sent *before* the old one is deleted, so a failed
+  send never leaves the channel empty; a previous message that is already gone is logged and skipped.
 
 ### Centralizing Shared Logic (No Duplication Between Cogs and API)
 

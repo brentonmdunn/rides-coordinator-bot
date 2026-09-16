@@ -4,11 +4,11 @@ import logging
 
 import discord
 
-from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.format_message import message_link
 from ridebot.utils.parsing import get_message_and_embed_content
 from shared.core.enums import ChannelIds, JobName, ReactionAction
 from shared.core.error_reporter import send_error_to_discord
+from shared.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 

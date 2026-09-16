@@ -37,6 +37,7 @@ These flags independently gate each automated ride/driver announcement. In `APP_
 | `ask_wednesday_rides_job` | Send the Wednesday Bible study ride request message. |
 | `ask_friday_drivers_job` | Send the Friday driver availability message to the driver chat channel. |
 | `ask_sunday_drivers_job` | Send the Sunday driver availability message to the driver chat channel. |
+| `weekly_events_announcement_job` | Default `false`. StonesBot's Sunday 6PM announcement of the coming week's calendar events (Monday–Sunday) in the church announcements channel. Each run posts a new embed and deletes the previous week's message, which is tracked in the `weekly_events_announcements` table. |
 
 ---
 

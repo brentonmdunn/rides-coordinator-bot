@@ -19,6 +19,7 @@ class ChannelIds(IntEnum):
     SERVING__RIDE_COORDINATORS = 1297323073594458132
     BOT_STUFF__BOT_LOGS = 1208482668820570162
     SERVING__RETREAT_BOT_SPAM = 1366960392483377202
+    REFERENCES__CHURCH_ANNOUNCEMENTS = 916821161566941214
 
 
 class DaysOfWeek(StrEnum):
@@ -80,6 +81,7 @@ class FeatureFlagNames(StrEnum):
     USE_CACHE = "use_cache"
     AGENT = "agent"
     ASK_RIDES_OTHER_BUTTON = "ask_rides_other_button"
+    WEEKLY_EVENTS_ANNOUNCEMENT_JOB = "weekly_events_announcement_job"
 
 
 class JobName(StrEnum):

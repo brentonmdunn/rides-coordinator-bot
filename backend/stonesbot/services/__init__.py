@@ -2,4 +2,5 @@
 
 __all__ = [
     "ThreadService",
+    "WeeklyEventsService",
 ]
