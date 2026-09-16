@@ -157,6 +157,13 @@ scheduled.
   `ALLOWED_EVENT_SUMMARIES` holds exact names (currently `Regular Worship Service`) and
   `ALLOWED_EVENT_SUBSTRINGS` holds substrings (currently `Wildcard Sunday`); both match
   case-insensitively. Widen the announcement by adding to those tuples, not by editing the filter.
+- Recognized entries also get a **Discord scheduled event** via `stonesbot/services/discord_events_service.py`.
+  Today only `Regular Worship Service` maps to one: an external event, 10:30a–12p LA time on the calendar
+  date, located at `Jonas Salk Elementary School` (the feed's entries are all-day, so time and place are
+  pinned in the service). Duplicates are avoided by matching name + start time against
+  `guild.scheduled_events`, so re-running the job creates nothing new; past start times are skipped because
+  Discord rejects them. This runs last and is best-effort — a failure never costs the channel its
+  announcement. **StonesBot needs the Manage Events permission** for this.
 - The posted message id is stored in `weekly_events_announcements` (`stonesbot/repositories/weekly_events_announcement_repository.py`)
   so deletion survives restarts. The new message is sent *before* the old one is deleted, so a failed
   send never leaves the channel empty; a previous message that is already gone is logged and skipped.

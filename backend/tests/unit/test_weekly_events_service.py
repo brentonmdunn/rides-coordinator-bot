@@ -44,6 +44,13 @@ def test_get_announcement_week_is_always_seven_days():
         assert start > day
 
 
+@pytest.fixture(autouse=True)
+def mock_create_events():
+    """Keep announcement tests off the real scheduled-event path."""
+    with patch(f"{MODULE}.DiscordEventsService.create_events", AsyncMock(return_value=[])) as m:
+        yield m
+
+
 # ---------------------------------------------------------------------------
 # allowlist
 # ---------------------------------------------------------------------------
@@ -377,3 +384,60 @@ async def test_post_weekly_announcement_all_events_filtered_says_no_events():
     embed = channel.send.await_args.kwargs["embed"]
     assert embed.description == NO_EVENTS_TEXT
     assert len(embed.fields) == 0
+
+
+@pytest.mark.asyncio
+async def test_post_weekly_announcement_creates_scheduled_events(mock_create_events):
+    """Scheduled events are created from the filtered summaries, after posting."""
+    channel = _make_channel()
+    sent = MagicMock()
+    sent.id = 12345
+    channel.send.return_value = sent
+    bot = _make_bot(channel)
+
+    session_patch, _session = _patch_session()
+    summaries = {WEEK_END: ["Regular Worship Service"]}
+
+    with (
+        session_patch,
+        patch(f"{MODULE}.resolve_channel_id", side_effect=lambda cid: int(cid)),
+        patch(
+            f"{MODULE}.CalendarRepository.get_event_summaries_by_date",
+            AsyncMock(return_value=summaries),
+        ),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.get_all", AsyncMock(return_value=[])),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.create", AsyncMock()),
+    ):
+        await WeeklyEventsService.post_weekly_announcement(bot, 999, today=SUNDAY)
+
+    mock_create_events.assert_awaited_once()
+    assert mock_create_events.await_args.args[1] == summaries
+
+
+@pytest.mark.asyncio
+async def test_post_weekly_announcement_survives_event_creation_failure(mock_create_events):
+    """A scheduled-event failure is reported but the announcement still stands."""
+    channel = _make_channel()
+    sent = MagicMock()
+    sent.id = 12345
+    channel.send.return_value = sent
+    bot = _make_bot(channel)
+    mock_create_events.side_effect = RuntimeError("boom")
+
+    session_patch, _session = _patch_session()
+
+    with (
+        session_patch,
+        patch(f"{MODULE}.resolve_channel_id", side_effect=lambda cid: int(cid)),
+        patch(
+            f"{MODULE}.CalendarRepository.get_event_summaries_by_date",
+            AsyncMock(return_value={WEEK_END: ["Regular Worship Service"]}),
+        ),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.get_all", AsyncMock(return_value=[])),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.create", AsyncMock()),
+        patch(f"{MODULE}.send_error_to_discord", AsyncMock()) as mock_report,
+    ):
+        result = await WeeklyEventsService.post_weekly_announcement(bot, 999, today=SUNDAY)
+
+    assert result is sent
+    mock_report.assert_awaited_once()

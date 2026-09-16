@@ -22,6 +22,7 @@ from shared.utils.constants import LA_TZ
 from stonesbot.repositories.weekly_events_announcement_repository import (
     WeeklyEventsAnnouncementRepository,
 )
+from stonesbot.services.discord_events_service import DiscordEventsService
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +184,30 @@ class WeeklyEventsService:
                 )
 
     @staticmethod
+    async def _create_scheduled_events(
+        guild: discord.Guild | None, summaries_by_date: dict[datetime.date, list[str]]
+    ) -> None:
+        """
+        Create Discord scheduled events for the week's recognized entries.
+
+        Best-effort and deliberately last: the announcement has already been
+        posted by this point, so a failure here is logged and reported but never
+        costs the channel its message.
+        """
+        if guild is None:
+            logger.warning("Cannot create scheduled events: announcement channel has no guild")
+            return
+
+        try:
+            await DiscordEventsService.create_events(guild, summaries_by_date)
+        except Exception as e:
+            logger.exception("Failed to create Discord scheduled events")
+            await send_error_to_discord(
+                "**Error** creating Discord scheduled events for the weekly announcement",
+                error=e,
+            )
+
+    @staticmethod
     async def post_weekly_announcement(
         bot: Bot,
         channel_id: int = ChannelIds.REFERENCES__CHURCH_ANNOUNCEMENTS,
@@ -263,5 +288,6 @@ class WeeklyEventsService:
             )
 
         await WeeklyEventsService._delete_previous_messages(bot, previous)
+        await WeeklyEventsService._create_scheduled_events(channel.guild, summaries_by_date)
 
         return sent_message
