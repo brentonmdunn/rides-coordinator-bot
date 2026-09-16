@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ridebot.repositories.calendar_repository import CalendarRepository
+from shared.repositories.calendar_repository import CalendarRepository
 
 
 class _FakeEvent(dict):
@@ -24,7 +24,7 @@ def _make_event(summary: str) -> _FakeEvent:
 # ---------------------------------------------------------------------------
 
 
-@patch("ridebot.repositories.calendar_repository.ICAL_URL", None)
+@patch("shared.repositories.calendar_repository.ICAL_URL", None)
 @pytest.mark.asyncio
 async def test_get_events_on_date_no_url_returns_empty():
     """Should return [] and log an error when ICAL_URL is not set."""
@@ -32,9 +32,9 @@ async def test_get_events_on_date_no_url_returns_empty():
     assert result == []
 
 
-@patch("ridebot.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
-@patch("ridebot.repositories.calendar_repository.recurring_ical_events")
-@patch("ridebot.repositories.calendar_repository.Calendar")
+@patch("shared.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
+@patch("shared.repositories.calendar_repository.recurring_ical_events")
+@patch("shared.repositories.calendar_repository.Calendar")
 @pytest.mark.asyncio
 async def test_get_events_on_date_returns_events(mock_calendar_cls, mock_rie):
     """Should return events list when download and parsing succeed."""
@@ -55,7 +55,7 @@ async def test_get_events_on_date_returns_events(mock_calendar_cls, mock_rie):
     mock_rie.of.return_value.at.return_value = [fake_event]
 
     with patch(
-        "ridebot.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
+        "shared.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
     ):
         result = await CalendarRepository.get_events_on_date(target)
 
@@ -64,7 +64,7 @@ async def test_get_events_on_date_returns_events(mock_calendar_cls, mock_rie):
     assert result == [fake_event]
 
 
-@patch("ridebot.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
+@patch("shared.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
 @pytest.mark.asyncio
 async def test_get_events_on_date_request_exception_returns_empty():
     """Should return [] when a network error occurs."""
@@ -76,15 +76,15 @@ async def test_get_events_on_date_request_exception_returns_empty():
     mock_client.get = AsyncMock(side_effect=httpx.HTTPError("timeout"))
 
     with patch(
-        "ridebot.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
+        "shared.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
     ):
         result = await CalendarRepository.get_events_on_date(datetime.date(2026, 5, 10))
 
     assert result == []
 
 
-@patch("ridebot.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
-@patch("ridebot.repositories.calendar_repository.Calendar")
+@patch("shared.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
+@patch("shared.repositories.calendar_repository.Calendar")
 @pytest.mark.asyncio
 async def test_get_events_on_date_value_error_returns_empty(mock_calendar_cls):
     """Should return [] when iCal parsing raises ValueError."""
@@ -100,7 +100,7 @@ async def test_get_events_on_date_value_error_returns_empty(mock_calendar_cls):
     mock_calendar_cls.from_ical.side_effect = ValueError("bad ical")
 
     with patch(
-        "ridebot.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
+        "shared.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
     ):
         result = await CalendarRepository.get_events_on_date(datetime.date(2026, 5, 10))
 
