@@ -153,6 +153,10 @@ scheduled.
 - Logic: `stonesbot/services/weekly_events_service.py`.
 - Events come from the iCal feed (`ICAL_URL`) via `CalendarRepository.get_event_summaries_by_date()`
   in `shared/repositories/calendar_repository.py`, which downloads the feed once and expands it per day.
+- **Only allowlisted events are announced** — the feed carries much more than belongs in the post.
+  `ALLOWED_EVENT_SUMMARIES` holds exact names (currently `Regular Worship Service`) and
+  `ALLOWED_EVENT_SUBSTRINGS` holds substrings (currently `Wildcard Sunday`); both match
+  case-insensitively. Widen the announcement by adding to those tuples, not by editing the filter.
 - The posted message id is stored in `weekly_events_announcements` (`stonesbot/repositories/weekly_events_announcement_repository.py`)
   so deletion survives restarts. The new message is sent *before* the old one is deleted, so a failed
   send never leaves the channel empty; a previous message that is already gone is logged and skipped.

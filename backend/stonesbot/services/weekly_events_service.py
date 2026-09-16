@@ -31,6 +31,13 @@ EMBED_FIELD_VALUE_LIMIT = 1024
 NO_EVENTS_TEXT = "No events scheduled this week."
 NO_EVENTS_FOR_DAY = "—"
 
+# The calendar feed carries far more than what belongs in the announcement, so
+# only these events are announced. Matching is case-insensitive.
+# Exact matches: the summary must equal one of these after stripping whitespace.
+ALLOWED_EVENT_SUMMARIES = ("Regular Worship Service",)
+# Substring matches: the summary must contain one of these anywhere.
+ALLOWED_EVENT_SUBSTRINGS = ("Wildcard Sunday",)
+
 
 class WeeklyEventsService:
     """Posts the weekly events announcement and removes the previous one."""
@@ -56,6 +63,45 @@ class WeeklyEventsService:
         week_start = today + datetime.timedelta(days=days_until_monday)
         week_end = week_start + datetime.timedelta(days=DAYS_IN_WEEK - 1)
         return week_start, week_end
+
+    @staticmethod
+    def is_allowed_event(summary: str) -> bool:
+        """
+        Whether an event summary belongs in the announcement.
+
+        Args:
+            summary: The event's SUMMARY text from the calendar feed.
+
+        Returns:
+            True if the summary exactly matches an allowed event name, or
+            contains an allowed substring. Matching is case-insensitive and
+            ignores surrounding whitespace.
+        """
+        normalized = summary.strip().casefold()
+        if normalized in {allowed.casefold() for allowed in ALLOWED_EVENT_SUMMARIES}:
+            return True
+        return any(substring.casefold() in normalized for substring in ALLOWED_EVENT_SUBSTRINGS)
+
+    @staticmethod
+    def filter_allowed_events(
+        summaries_by_date: dict[datetime.date, list[str]],
+    ) -> dict[datetime.date, list[str]]:
+        """
+        Drop every event that is not on the allowlist, keeping the date keys.
+
+        Dates are preserved even when all of their events are filtered out, so
+        the embed still renders a field for every day of the week.
+
+        Args:
+            summaries_by_date: Event summaries keyed by date.
+
+        Returns:
+            A new dict with the same dates and only allowed summaries.
+        """
+        return {
+            day: [s for s in summaries if WeeklyEventsService.is_allowed_event(s)]
+            for day, summaries in summaries_by_date.items()
+        }
 
     @staticmethod
     def build_embed(
@@ -170,6 +216,7 @@ class WeeklyEventsService:
         summaries_by_date = await CalendarRepository.get_event_summaries_by_date(
             week_start, week_end
         )
+        summaries_by_date = WeeklyEventsService.filter_allowed_events(summaries_by_date)
         embed = WeeklyEventsService.build_embed(week_start, week_end, summaries_by_date)
 
         async with AsyncSessionLocal() as session:

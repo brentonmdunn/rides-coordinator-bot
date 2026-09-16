@@ -45,6 +45,59 @@ def test_get_announcement_week_is_always_seven_days():
 
 
 # ---------------------------------------------------------------------------
+# allowlist
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [
+        "Regular Worship Service",
+        "regular worship service",
+        "  Regular Worship Service  ",
+        "Wildcard Sunday",
+        "Wildcard Sunday - bring a friend!",
+        "Feb 8 Wildcard Sunday",
+        "wildcard sunday",
+    ],
+)
+def test_is_allowed_event_accepts_allowlisted(summary):
+    """Exact worship-service names and anything containing Wildcard Sunday pass."""
+    assert WeeklyEventsService.is_allowed_event(summary) is True
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [
+        "Prayer Night",
+        "Choir Practice",
+        "Regular Worship Service Setup",
+        "Wildcard",
+        "Sunday",
+        "",
+    ],
+)
+def test_is_allowed_event_rejects_everything_else(summary):
+    """Non-allowlisted events, including near-misses, are excluded."""
+    assert WeeklyEventsService.is_allowed_event(summary) is False
+
+
+def test_filter_allowed_events_keeps_dates_and_drops_events():
+    """Every date key survives, but non-allowlisted summaries are removed."""
+    summaries = {
+        WEEK_START: ["Prayer Night", "Choir Practice"],
+        WEEK_START + datetime.timedelta(days=1): ["Wildcard Sunday Kickoff"],
+        WEEK_END: ["Regular Worship Service", "Potluck"],
+    }
+    result = WeeklyEventsService.filter_allowed_events(summaries)
+
+    assert set(result) == set(summaries)
+    assert result[WEEK_START] == []
+    assert result[WEEK_START + datetime.timedelta(days=1)] == ["Wildcard Sunday Kickoff"]
+    assert result[WEEK_END] == ["Regular Worship Service"]
+
+
+# ---------------------------------------------------------------------------
 # build_embed
 # ---------------------------------------------------------------------------
 
@@ -263,3 +316,64 @@ async def test_post_weekly_announcement_keeps_previous_when_send_fails():
     assert result is None
     old_message.delete.assert_not_awaited()
     mock_report.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_post_weekly_announcement_filters_to_allowlist():
+    """Only allowlisted events reach the posted embed."""
+    channel = _make_channel()
+    sent = MagicMock()
+    sent.id = 12345
+    channel.send.return_value = sent
+    bot = _make_bot(channel)
+
+    session_patch, _session = _patch_session()
+
+    with (
+        session_patch,
+        patch(f"{MODULE}.resolve_channel_id", side_effect=lambda cid: int(cid)),
+        patch(
+            f"{MODULE}.CalendarRepository.get_event_summaries_by_date",
+            AsyncMock(
+                return_value={
+                    WEEK_START: ["Prayer Night", "Choir Practice"],
+                    WEEK_END: ["Regular Worship Service", "Wildcard Sunday brunch", "Potluck"],
+                }
+            ),
+        ),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.get_all", AsyncMock(return_value=[])),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.create", AsyncMock()),
+    ):
+        await WeeklyEventsService.post_weekly_announcement(bot, 999, today=SUNDAY)
+
+    embed = channel.send.await_args.kwargs["embed"]
+    assert embed.fields[0].value == "—"
+    assert embed.fields[6].value == "• Regular Worship Service\n• Wildcard Sunday brunch"
+
+
+@pytest.mark.asyncio
+async def test_post_weekly_announcement_all_events_filtered_says_no_events():
+    """A week whose events are all filtered out still posts the empty-week embed."""
+    channel = _make_channel()
+    sent = MagicMock()
+    sent.id = 12345
+    channel.send.return_value = sent
+    bot = _make_bot(channel)
+
+    session_patch, _session = _patch_session()
+
+    with (
+        session_patch,
+        patch(f"{MODULE}.resolve_channel_id", side_effect=lambda cid: int(cid)),
+        patch(
+            f"{MODULE}.CalendarRepository.get_event_summaries_by_date",
+            AsyncMock(return_value={WEEK_START: ["Prayer Night"], WEEK_END: ["Potluck"]}),
+        ),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.get_all", AsyncMock(return_value=[])),
+        patch(f"{MODULE}.WeeklyEventsAnnouncementRepository.create", AsyncMock()),
+    ):
+        await WeeklyEventsService.post_weekly_announcement(bot, 999, today=SUNDAY)
+
+    embed = channel.send.await_args.kwargs["embed"]
+    assert embed.description == NO_EVENTS_TEXT
+    assert len(embed.fields) == 0
