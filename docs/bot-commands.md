@@ -41,10 +41,6 @@ Look up the stored pickup location for a specific person.
 |-------|----------|-------------|
 | `name` | Yes | Name or Discord username |
 
-### `/sync-locations`
-
-Sync the Google Sheets location data into the database. Run after updating the sheet.
-
 ### `/map-links`
 
 Post Google Maps links for pickup locations. Optionally filter by location name.
@@ -219,6 +215,28 @@ Search for a user by name and get their Discord username.
 ### `/help`
 
 Shows all available slash commands as an ephemeral embed. Useful for discovering what the bot supports. Available on **both** RideBot and StonesBot (`shared/cogs/help.py`), showing that bot's own commands.
+
+---
+
+## Buttons on ride announcements
+
+### Something else
+
+Every ask-rides announcement (Wednesday/Friday fellowship, Sunday service, Sunday class) carries a **Something else** button when the `ask_rides_other_button` flag is on. It opens a modal asking "What do you need?", then posts the answer to the ride coordinators channel with the rider's mention, a link to the announcement, and their pickup info. Clicks are refused (ephemerally) on announcements from a past week, within 60 seconds of the same user's last submission, or when the flag is off. Code: `ridebot/views/ask_rides_other.py`, `ridebot/services/ask_rides_other_service.py`.
+
+---
+
+## Local-only test commands
+
+Loaded from `ridebot/cogs_testing/` only when `APP_ENV=local`.
+
+### `/test-ask-rides-other`
+
+Post an ask-rides embed and its reactions in the current channel, exactly as the scheduled job would. The Something else button is attached only when `ask_rides_other_button` is on; the ephemeral reply says so when it isn't.
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `message_type` | Yes | Which announcement to post (Wednesday fellowship, Friday fellowship, Sunday service, Sunday class) |
 
 ---
 

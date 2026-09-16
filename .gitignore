@@ -10,3 +10,5 @@ docs/review/
 frontend/test-results/
 
 .claude/*
+root-backup/
+NOTES.*.md

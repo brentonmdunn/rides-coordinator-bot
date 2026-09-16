@@ -355,3 +355,59 @@ class TestRender:
         )
         assert title == "Title"
         assert body == "Body 4/24"
+
+    def test_other_renders_dm_fallback_for_sunday_service_when_disabled(self):
+        template = EffectiveTemplate(
+            title="Title", body="✳️ = something else ({other})", color="blue", is_customized=False
+        )
+        _title, body = AskRidesMessagesService.render(
+            template,
+            AskRidesMessageType.SUNDAY_SERVICE,
+            date_str="4/26",
+            ping_text="@coordinator",
+            other_button_enabled=False,
+        )
+        assert body == "✳️ = something else (please DM @coordinator)"
+
+    def test_other_renders_button_wording_for_sunday_service_when_enabled(self):
+        template = EffectiveTemplate(
+            title="Title", body="✳️ = something else ({other})", color="blue", is_customized=False
+        )
+        _title, body = AskRidesMessagesService.render(
+            template,
+            AskRidesMessageType.SUNDAY_SERVICE,
+            date_str="4/26",
+            ping_text="@coordinator",
+            other_button_enabled=True,
+        )
+        assert body == "✳️ = something else (react ✳️ and tap **Something else** below)"
+
+    def test_default_sunday_service_body_off_matches_pre_button_text(self):
+        """Flag off must render byte-identical to the pre-button default text."""
+        from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+
+        template = DEFAULT_TEMPLATES[AskRidesMessageType.SUNDAY_SERVICE]
+        _title, body = AskRidesMessagesService.render(
+            template,
+            AskRidesMessageType.SUNDAY_SERVICE,
+            date_str="4/26",
+            ping_text="@coordinator",
+            other_button_enabled=False,
+        )
+        assert (
+            "🍔 = ride to church, lunch, and back to campus/apt (arrive back ~2:30pm)\n"
+            "🏠 = ride to church and back to campus/apt (arrive back ~1:00pm)\n"
+            "✳️ = something else (please DM @coordinator)"
+        ) in body
+
+    def test_other_token_stays_literal_for_non_sunday_types(self):
+        template = EffectiveTemplate(
+            title="Title", body="Body {other}", color="teal", is_customized=False
+        )
+        _title, body = AskRidesMessagesService.render(
+            template,
+            AskRidesMessageType.WEDNESDAY_FELLOWSHIP,
+            date_str="4/22",
+            other_button_enabled=True,
+        )
+        assert body == "Body {other}"

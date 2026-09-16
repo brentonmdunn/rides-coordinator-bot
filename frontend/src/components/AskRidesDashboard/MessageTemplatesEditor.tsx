@@ -106,9 +106,13 @@ function formatNextEventDate(isoDate: string): string {
     return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
-/** Renders a template string with `{date}` substituted and `{ping}` shown as a mention chip. */
+/**
+ * Renders a template string with `{date}` substituted, `{other}` shown as the
+ * flag-off "please DM {ping}" wording, and `{ping}` shown as a mention chip.
+ */
 function renderPreview(text: string, dateText: string): ReactNode[] {
-    const withDate = text.split('{date}').join(dateText)
+    const withOther = text.split('{other}').join('please DM {ping}')
+    const withDate = withOther.split('{date}').join(dateText)
     const segments = withDate.split('{ping}')
     const nodes: ReactNode[] = []
     segments.forEach((segment, i) => {

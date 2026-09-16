@@ -3,7 +3,6 @@
 __all__ = [
     "AdminService",
     "CommunityEventsService",
-    "CsvSyncService",
     "DriverService",
     "GroupRidesService",
     "HousingGroupService",

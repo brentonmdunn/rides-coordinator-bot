@@ -428,6 +428,21 @@ describe("MessageTemplatesEditor", () => {
     expect(within(friSunRow).queryByText("Inactive this season")).not.toBeInTheDocument()
   })
 
+  it("renders {other} in the preview as the flag-off DM wording with a ping chip", async () => {
+    serverTemplates.sunday_service = defaultTemplate({
+      title: "Sunday Service Rides",
+      body: "React below! ✳️ = something else ({other})",
+      color: "blue",
+    })
+    renderEditor()
+
+    const heading = await screen.findByRole("heading", { name: "Sunday Service" })
+    const card = heading.closest("div")!.parentElement as HTMLElement
+
+    expect(within(card).getByText(/please DM/)).toBeInTheDocument()
+    expect(within(card).getByText("@rides coordinator")).toBeInTheDocument()
+  })
+
   it("does not mark the Wednesday reminder inactive when Wednesday season is active", async () => {
     serverSeason = "wednesday"
     renderEditor()

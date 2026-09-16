@@ -147,36 +147,50 @@ function Home() {
                         actions={
                             <div className="flex flex-col items-center md:items-end gap-2">
                                 <div className="flex flex-wrap items-center justify-center md:justify-end gap-2">
-                                    {canManage && (
+                                    {/* Page links wrap among themselves on narrow screens. */}
+                                    <div className="flex flex-wrap items-center justify-center gap-2">
+                                        {canManage && (
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link to="/locations">
+                                                    <MapPin className="w-4 h-4" />
+                                                    Locations
+                                                </Link>
+                                            </Button>
+                                        )}
+                                        {canManage && (
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link to="/pickup-info">
+                                                    <Users className="w-4 h-4" />
+                                                    Pickup Info
+                                                </Link>
+                                            </Button>
+                                        )}
                                         <Button variant="outline" size="sm" asChild>
-                                            <Link to="/locations">
-                                                <MapPin className="w-4 h-4" />
-                                                Locations
+                                            <Link to="/reaction-log">
+                                                <History className="w-4 h-4" />
+                                                Reaction Log
                                             </Link>
                                         </Button>
-                                    )}
-                                    <Button variant="outline" size="sm" asChild>
-                                        <Link to="/reaction-log">
-                                            <History className="w-4 h-4" />
-                                            Reaction Log
-                                        </Link>
-                                    </Button>
-                                    <Button variant="outline" size="sm" asChild>
-                                        <Link to="/learn">
-                                            <BookOpen className="w-4 h-4" />
-                                            Learn
-                                        </Link>
-                                    </Button>
-                                    <ModeToggle />
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setShowSiteSettings(true)}
-                                        title="Site settings"
-                                    >
-                                        <Settings className="h-4 w-4" />
-                                        <span className="sr-only">Site settings</span>
-                                    </Button>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link to="/learn">
+                                                <BookOpen className="w-4 h-4" />
+                                                Learn
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                    {/* Theme and settings stay together: their own row on mobile, inline from md up. */}
+                                    <div className="flex basis-full md:basis-auto items-center justify-center gap-2">
+                                        <ModeToggle />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setShowSiteSettings(true)}
+                                            title="Site settings"
+                                        >
+                                            <Settings className="h-4 w-4" />
+                                            <span className="sr-only">Site settings</span>
+                                        </Button>
+                                    </div>
                                 </div>
                                 {!isLocal && (
                                     <Button

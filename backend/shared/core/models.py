@@ -45,9 +45,10 @@ class Locations(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     name: Mapped[str]
     discord_username: Mapped[str | None]
+    discord_user_id: Mapped[str | None] = mapped_column(unique=True, index=True)
     year: Mapped[str | None]
     location: Mapped[str | None]
-    driver: Mapped[str | None]
+    updated_at: Mapped[datetime | None]
 
 
 class EventThreads(Base):

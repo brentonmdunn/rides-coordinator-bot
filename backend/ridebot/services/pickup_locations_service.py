@@ -15,6 +15,7 @@ from rapidfuzz import fuzz, process, utils
 
 from ridebot.repositories.global_settings_repository import GlobalSettingsRepository
 from ridebot.repositories.pickup_locations_repository import PickupLocationsRepository
+from ridebot.utils.constants import ALTERNATE_PICKUP_SPOTS
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import CampusLivingLocations
 from shared.core.models import PickupLocation, PickupLocationEdge
@@ -54,6 +55,14 @@ class EdgeInfo:
     location_a_id: int
     location_b_id: int
     minutes: int
+
+
+@dataclass(frozen=True)
+class PickupSpot:
+    """A pickup location as shown to a rider: its name and a map link."""
+
+    name: str
+    maps_url: str
 
 
 @dataclass(frozen=True)
@@ -256,6 +265,41 @@ class PickupLocationsService:
         Must not be called from within a running event loop.
         """
         return asyncio.run(cls.get_routing_context())
+
+    @classmethod
+    async def pickup_spots_for_living(cls, living_location: str) -> list[PickupSpot]:
+        """
+        Return where riders from a living location are picked up, for display.
+
+        The mapped spot comes first, followed by any alternates from
+        ``ALTERNATE_PICKUP_SPOTS``. If the mapped spot is missing or inactive this
+        returns nothing, so an alternate is never presented as the usual spot.
+        Inactive or unknown alternates are skipped rather than linked.
+
+        Args:
+            living_location: A ``CampusLivingLocations`` value, e.g. ``"ERC"``.
+
+        Returns:
+            The spots in display order, or an empty list when there's no usable mapping.
+        """
+        ctx = await cls.get_routing_context()
+        active = set(ctx.active_names)
+
+        def spot(name: str) -> PickupSpot | None:
+            url = ctx.map_url(name)
+            return PickupSpot(name=name, maps_url=url) if name in active and url else None
+
+        usual_name = ctx.living_to_pickup.get(living_location)
+        usual = spot(usual_name) if usual_name else None
+        if usual is None:
+            return []
+
+        alternates = [
+            alternate
+            for name in ALTERNATE_PICKUP_SPOTS.get(living_location, ())
+            if (alternate := spot(name)) is not None
+        ]
+        return [usual, *alternates]
 
     @classmethod
     async def _load_snapshot(cls) -> RoutingContext:

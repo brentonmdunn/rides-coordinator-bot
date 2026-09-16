@@ -300,3 +300,36 @@ export interface LateReactionWindows {
     friday: LateReactionWindow
     sunday: LateReactionWindow
 }
+
+/**
+ * A pickup info entry from `GET /api/pickup-info`.
+ */
+export interface PickupInfoPerson {
+    id: number
+    name: string
+    discord_username: string | null
+    /** Discord snowflake, kept as a string to avoid JS number precision loss. */
+    discord_user_id: string | null
+    year: string | null
+    location: string | null
+    /** ISO 8601 timestamp. */
+    updated_at: string | null
+}
+
+/**
+ * Valid select values from `GET /api/pickup-info/options`.
+ */
+export interface PickupInfoOptions {
+    years: string[]
+    locations: string[]
+}
+
+/**
+ * Request body for `POST /api/pickup-info` (and, partially, `PATCH /api/pickup-info/{id}`).
+ */
+export interface PickupInfoPersonInput {
+    name: string
+    discord_username: string | null
+    year: string | null
+    location: string | null
+}
