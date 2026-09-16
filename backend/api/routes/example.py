@@ -10,9 +10,9 @@ import os
 import discord
 from fastapi import APIRouter, HTTPException, Request
 
-from ridebot.utils.channels import resolve_channel_id
 from shared.core.bot_instance import get_bot
 from shared.core.enums import BotName, ChannelIds
+from shared.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 

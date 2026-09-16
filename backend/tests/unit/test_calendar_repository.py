@@ -145,3 +145,105 @@ async def test_get_event_summaries_single_event(mock_get):
     """Should handle a single event correctly."""
     result = await CalendarRepository.get_event_summaries(datetime.date(2026, 5, 10))
     assert result == ["Single Event"]
+
+
+# ---------------------------------------------------------------------------
+# get_event_summaries_by_date
+# ---------------------------------------------------------------------------
+
+
+@patch("shared.repositories.calendar_repository.ICAL_URL", None)
+@pytest.mark.asyncio
+async def test_get_event_summaries_by_date_no_url_returns_empty_dict():
+    """Should return {} when ICAL_URL is not set."""
+    result = await CalendarRepository.get_event_summaries_by_date(
+        datetime.date(2026, 5, 11), datetime.date(2026, 5, 17)
+    )
+    assert result == {}
+
+
+@patch("shared.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
+@pytest.mark.asyncio
+async def test_get_event_summaries_by_date_rejects_inverted_range():
+    """Should return {} when end_date precedes start_date, without fetching."""
+    with patch("shared.repositories.calendar_repository.httpx.AsyncClient") as mock_client_cls:
+        result = await CalendarRepository.get_event_summaries_by_date(
+            datetime.date(2026, 5, 17), datetime.date(2026, 5, 11)
+        )
+    assert result == {}
+    mock_client_cls.assert_not_called()
+
+
+@patch("shared.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
+@patch("shared.repositories.calendar_repository.recurring_ical_events")
+@patch("shared.repositories.calendar_repository.Calendar")
+@pytest.mark.asyncio
+async def test_get_event_summaries_by_date_groups_by_day(mock_calendar_cls, mock_rie):
+    """Should return every date in the range, grouping summaries per day."""
+    mock_response = MagicMock()
+    mock_response.text = "BEGIN:VCALENDAR"
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client = MagicMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(return_value=mock_response)
+
+    events_by_day = {
+        datetime.date(2026, 5, 11): [_make_event("Prayer Night")],
+        datetime.date(2026, 5, 14): [_make_event("Bible Study"), _make_event("Choir")],
+    }
+    query = MagicMock()
+    query.at.side_effect = lambda day: events_by_day.get(day, [])
+    mock_rie.of.return_value = query
+
+    with patch(
+        "shared.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
+    ):
+        result = await CalendarRepository.get_event_summaries_by_date(
+            datetime.date(2026, 5, 11), datetime.date(2026, 5, 17)
+        )
+
+    assert len(result) == 7
+    assert result[datetime.date(2026, 5, 11)] == ["Prayer Night"]
+    assert result[datetime.date(2026, 5, 14)] == ["Bible Study", "Choir"]
+    assert result[datetime.date(2026, 5, 12)] == []
+    assert result[datetime.date(2026, 5, 17)] == []
+    # The feed is downloaded once for the whole range, not once per day.
+    assert mock_client.get.await_count == 1
+
+
+@patch("shared.repositories.calendar_repository.ICAL_URL", "http://example.com/cal.ics")
+@patch("shared.repositories.calendar_repository.recurring_ical_events")
+@patch("shared.repositories.calendar_repository.Calendar")
+@pytest.mark.asyncio
+async def test_get_event_summaries_by_date_survives_bad_day(mock_calendar_cls, mock_rie):
+    """A day that fails to expand should yield [] rather than aborting the range."""
+    mock_response = MagicMock()
+    mock_response.text = "BEGIN:VCALENDAR"
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client = MagicMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(return_value=mock_response)
+
+    def _at(day):
+        if day == datetime.date(2026, 5, 12):
+            raise ValueError("bad recurrence")
+        return [_make_event("Prayer Night")]
+
+    query = MagicMock()
+    query.at.side_effect = _at
+    mock_rie.of.return_value = query
+
+    with patch(
+        "shared.repositories.calendar_repository.httpx.AsyncClient", return_value=mock_client
+    ):
+        result = await CalendarRepository.get_event_summaries_by_date(
+            datetime.date(2026, 5, 11), datetime.date(2026, 5, 13)
+        )
+
+    assert result[datetime.date(2026, 5, 12)] == []
+    assert result[datetime.date(2026, 5, 11)] == ["Prayer Night"]
+    assert result[datetime.date(2026, 5, 13)] == ["Prayer Night"]

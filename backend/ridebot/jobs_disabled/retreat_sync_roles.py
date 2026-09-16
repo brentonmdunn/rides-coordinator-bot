@@ -9,10 +9,10 @@ import aiohttp
 import discord
 from cogs_disabled.retreat import Col
 
-from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import GUILD_ID
 from ridebot.utils.parsing import parse_discord_username
 from shared.core.enums import ChannelIds
+from shared.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,6 @@ import discord
 
 from ridebot.services.pickup_info_service import Person, PickupInfoService
 from ridebot.services.pickup_locations_service import PickupLocationsService, PickupSpot
-from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import (
     PICKUP_INFO_OFF_CAMPUS_CUSTOM_ID,
     PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
@@ -25,6 +24,7 @@ from shared.core.enums import (
     FeatureFlagNames,
 )
 from shared.core.error_reporter import send_error_to_discord
+from shared.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 

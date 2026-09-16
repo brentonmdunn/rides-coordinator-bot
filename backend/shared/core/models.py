@@ -59,6 +59,25 @@ class EventThreads(Base):
     message_id: Mapped[str] = mapped_column(primary_key=True)
 
 
+class WeeklyEventsAnnouncement(Base):
+    """
+    Model tracking the weekly events announcement posted by StonesBot.
+
+    One row per announcement. The job posts a new announcement every Sunday and
+    deletes the message recorded by the previous run, so the message id must
+    survive process restarts.
+    """
+
+    __tablename__ = "weekly_events_announcements"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    message_id: Mapped[str] = mapped_column(unique=True, index=True)
+    channel_id: Mapped[str]
+    week_start: Mapped[date]
+    week_end: Mapped[date]
+    posted_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class NonDiscordRides(Base):
     """Model representing a ride request from a non-Discord user."""
 

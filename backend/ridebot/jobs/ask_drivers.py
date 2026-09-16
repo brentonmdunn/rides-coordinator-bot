@@ -7,7 +7,6 @@ from ridebot.repositories.message_schedule_repository import MessageScheduleRepo
 from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService
 from ridebot.services.driver_service import DriverService
 from ridebot.services.fellowship_season_service import FellowshipSeasonService
-from ridebot.utils.channels import resolve_channel_id
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import (
     ChannelIds,
@@ -18,6 +17,7 @@ from shared.core.enums import (
 )
 from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import log_job
+from shared.utils.channels import resolve_channel_id
 from shared.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)

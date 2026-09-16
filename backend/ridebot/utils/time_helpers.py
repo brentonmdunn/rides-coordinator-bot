@@ -3,16 +3,13 @@
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-import pytz
-
 from ridebot.utils.constants import (
     ACTIVE_HOURS_END,
     ACTIVE_HOURS_START,
     DAYS_IN_WEEK,
 )
 from shared.core.enums import DaysOfWeek, DaysOfWeekNumber
-
-LA_TZ = pytz.timezone("America/Los_Angeles")
+from shared.utils.constants import LA_TZ
 
 days_of_week_to_number = {
     DaysOfWeek.MONDAY: DaysOfWeekNumber.MONDAY,

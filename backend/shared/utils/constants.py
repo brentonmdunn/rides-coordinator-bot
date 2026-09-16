@@ -1,5 +1,12 @@
 """Constants used by shared infrastructure."""
 
+import pytz
+
+# Timezone
+# Every bot schedules and formats against LA time, so this lives in shared rather
+# than in any one bot package.
+LA_TZ = pytz.timezone("America/Los_Angeles")
+
 # Lifecycle
 REDIS_CONNECTION_TIMEOUT = 5.0
 

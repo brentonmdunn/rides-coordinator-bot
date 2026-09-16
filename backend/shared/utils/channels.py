@@ -1,4 +1,4 @@
-"""utils/channels.py — environment-aware routing for outbound Discord messages."""
+"""shared/utils/channels.py — environment-aware routing for outbound Discord messages."""
 
 import os
 

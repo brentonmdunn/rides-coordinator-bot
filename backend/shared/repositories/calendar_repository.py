@@ -17,6 +17,31 @@ class CalendarRepository:
     """Repository for accessing calendar events."""
 
     @staticmethod
+    async def _fetch_calendar() -> Calendar | None:
+        """
+        Download and parse the iCal feed.
+
+        Returns:
+            The parsed Calendar, or None if the feed is unset, unreachable, or invalid.
+        """
+        if not ICAL_URL:
+            logger.error("ICAL_URL environment variable not set.")
+            return None
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(ICAL_URL)
+            response.raise_for_status()
+            return Calendar.from_ical(response.text)
+
+        except httpx.HTTPError as e:
+            logger.warning(f"Error downloading calendar: {e}")
+            return None
+        except ValueError as e:
+            logger.warning(f"Error parsing iCal data: {e}")
+            return None
+
+    @staticmethod
     async def get_events_on_date(target_date: datetime.date) -> list:
         """
         Downloads iCal data from a URL and extracts all events on a specific date.
@@ -27,25 +52,14 @@ class CalendarRepository:
         Returns:
             A list of recurring_ical_events objects.
         """
-        if not ICAL_URL:
-            logger.error("ICAL_URL environment variable not set.")
+        calendar = await CalendarRepository._fetch_calendar()
+        if calendar is None:
             return []
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(ICAL_URL)
-            response.raise_for_status()
-            ical_data = response.text
-
-            calendar = Calendar.from_ical(ical_data)
-            events = recurring_ical_events.of(calendar).at(target_date)
-            return events
-
-        except httpx.HTTPError as e:
-            logger.warning(f"Error downloading calendar: {e}")
-            return []
+            return recurring_ical_events.of(calendar).at(target_date)
         except ValueError as e:
-            logger.warning(f"Error parsing iCal data: {e}")
+            logger.warning(f"Error expanding recurring events: {e}")
             return []
 
     @staticmethod
@@ -70,3 +84,53 @@ class CalendarRepository:
             return event_summary
 
         return []
+
+    @staticmethod
+    async def get_event_summaries_by_date(
+        start_date: datetime.date, end_date: datetime.date
+    ) -> dict[datetime.date, list[str]]:
+        """
+        Get event summaries for every date in an inclusive range, grouped by date.
+
+        The feed is downloaded once and expanded per day, rather than once per
+        day, so announcing a whole week costs a single HTTP request.
+
+        Args:
+            start_date: First date in the range (inclusive).
+            end_date: Last date in the range (inclusive).
+
+        Returns:
+            A dict mapping each date in the range to its event summaries. Every
+            date in the range is present; dates with no events map to an empty
+            list. Returns an empty dict if the calendar could not be fetched.
+        """
+        if end_date < start_date:
+            logger.warning(
+                "get_event_summaries_by_date called with end_date %s before start_date %s",
+                end_date,
+                start_date,
+            )
+            return {}
+
+        calendar = await CalendarRepository._fetch_calendar()
+        if calendar is None:
+            return {}
+
+        try:
+            query = recurring_ical_events.of(calendar)
+        except ValueError as e:
+            logger.warning(f"Error expanding recurring events: {e}")
+            return {}
+
+        summaries_by_date: dict[datetime.date, list[str]] = {}
+        current = start_date
+        while current <= end_date:
+            try:
+                events = query.at(current)
+            except ValueError as e:
+                logger.warning(f"Error expanding recurring events for {current}: {e}")
+                events = []
+            summaries_by_date[current] = [str(event.get("SUMMARY")) for event in events]
+            current += datetime.timedelta(days=1)
+
+        return summaries_by_date

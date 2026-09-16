@@ -14,13 +14,13 @@ import discord
 
 from ridebot.services.pickup_info_service import Person, PickupInfoService
 from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
-from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import ASK_RIDES_OTHER_COOLDOWN_SECONDS
 from ridebot.utils.feature_flags import is_flag_enabled
 from ridebot.utils.time_helpers import LA_TZ
 from shared.core.bots import get_spec
 from shared.core.enums import AskRidesMessageType, BotName, ChannelIds, FeatureFlagNames
 from shared.core.error_reporter import send_error_to_discord
+from shared.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 

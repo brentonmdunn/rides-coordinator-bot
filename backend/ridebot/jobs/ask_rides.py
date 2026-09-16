@@ -27,7 +27,6 @@ from ridebot.utils.cache import (
     warm_ask_drivers_message_cache,
     warm_ask_rides_message_cache,
 )
-from ridebot.utils.channels import resolve_channel_id
 from ridebot.utils.constants import (
     ASK_RIDES_ACTIVE_CACHE_TTL,
     ASK_RIDES_HOURLY_CACHE_TTL,
@@ -62,6 +61,7 @@ from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import log_job
 from shared.repositories.calendar_repository import CalendarRepository
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.utils.channels import resolve_channel_id
 from shared.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
