@@ -12,7 +12,6 @@ import discord
 from discord.ext.commands import Bot
 
 from ridebot.jobs.ask_drivers import run_ask_drivers_fri, run_ask_drivers_sun, run_ask_drivers_wed
-from ridebot.repositories.calendar_repository import CalendarRepository
 from ridebot.repositories.message_schedule_repository import MessageScheduleRepository
 from ridebot.services.ask_rides_messages_service import AskRidesMessagesService
 from ridebot.services.ask_rides_other_service import AskRidesOtherService
@@ -61,6 +60,7 @@ from shared.core.enums import (
 )
 from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import log_job
+from shared.repositories.calendar_repository import CalendarRepository
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 from shared.utils.checks import feature_flag_enabled
 
