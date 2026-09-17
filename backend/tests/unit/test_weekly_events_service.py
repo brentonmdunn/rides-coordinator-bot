@@ -109,16 +109,28 @@ def test_filter_allowed_events_keeps_dates_and_drops_events():
 # ---------------------------------------------------------------------------
 
 
-def test_build_embed_groups_events_by_day():
-    """Should add one field per day of the week, with bulleted summaries."""
-    summaries = {WEEK_START: ["Prayer Night"], WEEK_END: ["Sunday Service", "Potluck"]}
+def test_build_embed_lists_only_days_with_events():
+    """Days with events get a bold heading and bullets; empty days are omitted."""
+    summaries = {
+        WEEK_END: ["Sunday Service", "Potluck"],
+        WEEK_START: ["Prayer Night"],
+        WEEK_START + datetime.timedelta(days=1): [],
+    }
     embed = WeeklyEventsService.build_embed(WEEK_START, WEEK_END, summaries)
 
-    assert len(embed.fields) == 7
-    assert embed.description is None
-    assert embed.fields[0].value == "• Prayer Night"
-    assert embed.fields[6].value == "• Sunday Service\n• Potluck"
-    assert "Monday" in str(embed.fields[0].name)
+    assert embed.title == "Events for Sep 21 – Sep 27"
+    assert embed.description == (
+        "**Monday, Sep 21**\n• Prayer Night\n\n**Sunday, Sep 27**\n• Sunday Service\n• Potluck"
+    )
+    assert len(embed.fields) == 0
+
+
+def test_build_embed_ignores_dates_outside_week():
+    """Stray dates outside the announced week are not listed."""
+    summaries = {WEEK_END + datetime.timedelta(days=1): ["Next Week Thing"]}
+    embed = WeeklyEventsService.build_embed(WEEK_START, WEEK_END, summaries)
+
+    assert embed.description == NO_EVENTS_TEXT
 
 
 def test_build_embed_with_no_events_says_so():
@@ -130,13 +142,13 @@ def test_build_embed_with_no_events_says_so():
     assert len(embed.fields) == 0
 
 
-def test_build_embed_truncates_overlong_day():
-    """A day with more text than Discord allows is truncated, not rejected."""
-    summaries = {WEEK_START: [f"Event {i} " + "x" * 50 for i in range(40)]}
+def test_build_embed_truncates_overlong_description():
+    """More text than Discord allows is truncated, not rejected."""
+    summaries = {WEEK_START: [f"Event {i} " + "x" * 50 for i in range(100)]}
     embed = WeeklyEventsService.build_embed(WEEK_START, WEEK_END, summaries)
 
-    assert len(str(embed.fields[0].value)) <= 1024
-    assert str(embed.fields[0].value).endswith("…")
+    assert len(str(embed.description)) <= 4096
+    assert str(embed.description).endswith("…")
 
 
 # ---------------------------------------------------------------------------
@@ -354,8 +366,9 @@ async def test_post_weekly_announcement_filters_to_allowlist():
         await WeeklyEventsService.post_weekly_announcement(bot, 999, today=SUNDAY)
 
     embed = channel.send.await_args.kwargs["embed"]
-    assert embed.fields[0].value == "—"
-    assert embed.fields[6].value == "• Regular Worship Service\n• Wildcard Sunday brunch"
+    assert embed.description == (
+        "**Sunday, Sep 27**\n• Regular Worship Service\n• Wildcard Sunday brunch"
+    )
 
 
 @pytest.mark.asyncio
