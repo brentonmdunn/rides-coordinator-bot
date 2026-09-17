@@ -28,9 +28,8 @@ logger = logging.getLogger(__name__)
 
 DAYS_IN_WEEK = 7
 EMBED_COLOR = discord.Color.blurple()
-EMBED_FIELD_VALUE_LIMIT = 1024
+EMBED_DESCRIPTION_LIMIT = 4096
 NO_EVENTS_TEXT = "No events scheduled this week."
-NO_EVENTS_FOR_DAY = "—"
 
 # The calendar feed carries far more than what belongs in the announcement, so
 # only these events are announced. Matching is case-insensitive.
@@ -90,8 +89,8 @@ class WeeklyEventsService:
         """
         Drop every event that is not on the allowlist, keeping the date keys.
 
-        Dates are preserved even when all of their events are filtered out, so
-        the embed still renders a field for every day of the week.
+        Dates are preserved even when all of their events are filtered out;
+        the embed skips days with no events.
 
         Args:
             summaries_by_date: Event summaries keyed by date.
@@ -113,41 +112,36 @@ class WeeklyEventsService:
         """
         Build the single embed covering the whole week.
 
+        Events are sparse, so only days that have events are listed, in date
+        order, as a compact block in the description: a bold day heading with
+        that day's events bulleted beneath it. Days with nothing on them are
+        omitted entirely rather than rendered as empty rows.
+
         Args:
             week_start: First date of the week (inclusive).
             week_end: Last date of the week (inclusive).
             summaries_by_date: Event summaries keyed by date. Missing dates are
-                treated as having no events.
+                treated as having no events; dates outside the week are ignored.
 
         Returns:
-            A discord.Embed with one field per day.
+            A discord.Embed whose description lists the week's events, or says
+            nothing is scheduled.
         """
-        title = f"Events for {week_start:%b %-d} – {week_end:%b %-d}"
-        has_any_events = any(summaries_by_date.get(d) for d in summaries_by_date)
+        day_blocks = [
+            f"**{day:%A, %b %-d}**\n" + "\n".join(f"• {summary}" for summary in summaries)
+            for day, summaries in sorted(summaries_by_date.items())
+            if summaries and week_start <= day <= week_end
+        ]
 
-        embed = discord.Embed(
-            title=title,
-            description=None if has_any_events else NO_EVENTS_TEXT,
+        description = "\n\n".join(day_blocks) if day_blocks else NO_EVENTS_TEXT
+        if len(description) > EMBED_DESCRIPTION_LIMIT:
+            description = description[: EMBED_DESCRIPTION_LIMIT - 1] + "…"
+
+        return discord.Embed(
+            title=f"Events for {week_start:%b %-d} – {week_end:%b %-d}",
+            description=description,
             color=EMBED_COLOR,
         )
-
-        if not has_any_events:
-            return embed
-
-        current = week_start
-        while current <= week_end:
-            summaries = summaries_by_date.get(current) or []
-            value = (
-                "\n".join(f"• {summary}" for summary in summaries)
-                if summaries
-                else NO_EVENTS_FOR_DAY
-            )
-            if len(value) > EMBED_FIELD_VALUE_LIMIT:
-                value = value[: EMBED_FIELD_VALUE_LIMIT - 1] + "…"
-            embed.add_field(name=f"{current:%A, %b %-d}", value=value, inline=False)
-            current += datetime.timedelta(days=1)
-
-        return embed
 
     @staticmethod
     async def _delete_previous_messages(bot: Bot, previous: list[WeeklyEventsAnnouncement]) -> None:
