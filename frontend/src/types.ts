@@ -333,3 +333,35 @@ export interface PickupInfoPersonInput {
     year: string | null
     location: string | null
 }
+
+/**
+ * Identifiers for the two independently-schedulable pickup summary jobs.
+ * Matches the backend `PickupSummarySlot` StrEnum values.
+ */
+export type PickupSummarySlot = 'friday' | 'sunday'
+
+/**
+ * The effective enabled/day/time for one pickup summary slot, as returned by
+ * `GET /api/ask-rides/pickup-summaries` and by the PUT/DELETE mutation responses.
+ * `day_of_week` is 0=Monday .. 6=Sunday.
+ */
+export interface PickupSummaryEntry {
+    enabled: boolean
+    day_of_week: number
+    hour: number
+    minute: number
+    is_customized: boolean
+    /** Only present on the GET response — the days this slot may be set to. */
+    allowed_days?: number[]
+    /** Only present on the GET response — the pristine hardcoded default. */
+    default?: { day_of_week: number; hour: number; minute: number }
+    warning?: string | null
+}
+
+/**
+ * Response envelope for `GET /api/ask-rides/pickup-summaries`.
+ */
+export interface PickupSummariesResponse {
+    summaries: Record<PickupSummarySlot, PickupSummaryEntry>
+    time_window: AskRidesScheduleTimeWindow
+}
