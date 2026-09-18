@@ -60,6 +60,3 @@ ASK_RIDES_DEFAULT_OFFSET = 0
 
 # Group rides defaults
 GROUP_RIDES_DEFAULT_CAPACITY = "44444"
-
-# Frontend URL (local dev default)
-FRONTEND_BASE_URL_LOCAL = "http://localhost:5173"
