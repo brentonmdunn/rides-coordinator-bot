@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Sparkles, Church, BookOpen, ClipboardList, ChevronDown } from 'lucide-react'
 import type React from 'react'
 import { getAutomaticDay } from '../lib/utils'
@@ -28,6 +29,13 @@ const MESSAGE_TYPES: MessageTypeOption[] = [
     { value: 'sunday_class', label: 'Sunday Class', icon: <BookOpen className="h-4 w-4" /> },
 ]
 
+const VALID_MESSAGE_TYPES: readonly MessageType[] = ['friday', 'sunday', 'sunday_class']
+
+/** Type guard for the `overview` deep-link search param (see NOTES.pickups-summary-contract.md). */
+function isMessageType(value: string | null): value is MessageType {
+    return value !== null && VALID_MESSAGE_TYPES.includes(value as MessageType)
+}
+
 /** Human-readable labels for ride-reaction emojis, shown in the overview. */
 const EMOJI_LABELS: Record<string, string> = {
     '🍔': 'Lunch',
@@ -41,7 +49,40 @@ const EMOJI_LABELS: Record<string, string> = {
 }
 
 function ReactionDetails() {
-    const [selectedType, setSelectedType] = useState<MessageType>(() => getAutomaticDay())
+    const [searchParams] = useSearchParams()
+    const location = useLocation()
+    const navigate = useNavigate()
+
+    // Consume-once deep link: `?overview=<friday|sunday|sunday_class>#reactions`.
+    // Initialize the tab from a valid `overview` param, otherwise fall back to
+    // the automatic day. Tab changes made after this never write to the URL.
+    const [selectedType, setSelectedType] = useState<MessageType>(() => {
+        const overview = searchParams.get('overview')
+        return isMessageType(overview) ? overview : getAutomaticDay()
+    })
+
+    const hasConsumedOverviewParam = useRef(false)
+
+    useEffect(() => {
+        if (hasConsumedOverviewParam.current) return
+        hasConsumedOverviewParam.current = true
+
+        if (!searchParams.has('overview')) return
+
+        // Strip only `overview`, keeping any other params and the hash intact,
+        // without pushing a new history entry.
+        // setSearchParams would drop the hash, which Home still needs to scroll to #reactions.
+        const next = new URLSearchParams(searchParams)
+        next.delete('overview')
+        const search = next.toString()
+        navigate(
+            { search: search ? `?${search}` : '', hash: location.hash },
+            { replace: true }
+        )
+        // Runs once on mount only — intentionally not reacting to later
+        // searchParams changes (e.g. from the strip itself).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const [showInfo, setShowInfo] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
