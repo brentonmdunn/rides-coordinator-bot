@@ -221,10 +221,17 @@ async def test_sdsu_modal_prefills_matching_class_name():
 
 
 @pytest.mark.asyncio
+async def test_modal_prefills_name_for_existing_rider():
+    modal = SdsuPickupModal(_make_person(name="Alice Existing"), _make_user(display_name="Bob"))
+
+    assert modal.name_input.default == "Alice Existing"
+
+
+@pytest.mark.asyncio
 async def test_sdsu_modal_asks_only_name_and_year():
     modal = SdsuPickupModal(None, _make_user(display_name="Bob"))
 
-    assert modal.name_input.default == "Bob"
+    assert modal.name_input.default is None
     assert not hasattr(modal, "location_select")
     assert not hasattr(modal, "address_input")
 
