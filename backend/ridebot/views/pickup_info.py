@@ -179,7 +179,9 @@ class _BasePickupModal(discord.ui.Modal):
         super().__init__(title=title)
         self.existing = existing
 
-        default_name = (existing.name if existing else None) or user.display_name
+        # Only pre-fill when updating; new riders start blank rather than getting
+        # their Discord display name.
+        default_name = existing.name if existing else None
         self.name_input = discord.ui.TextInput(default=default_name, required=True, max_length=100)
         self.add_item(discord.ui.Label(text="Name", component=self.name_input))
 
