@@ -6,7 +6,7 @@ import pytest
 
 from ridebot.services.locations_service import LocationsService
 from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError
-from shared.core.enums import JobName, RideOption
+from shared.core.enums import ChannelIds, JobName, RideOption
 
 
 @pytest.mark.asyncio
@@ -239,6 +239,151 @@ async def test_list_locations_wrapper_handles_unexpected_error():
 
     call_kwargs = interaction.response.send_message.call_args[1]
     assert call_kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_build_pickups_embeds_pickup_single_embed():
+    """A pickup option (not dropoff) always returns a single embed."""
+    svc = LocationsService(bot=None)
+
+    locations_people = defaultdict(list)
+    locations_people["Revelle"].append(("Alice", "alice"))
+    svc.list_locations = AsyncMock(return_value=(locations_people, {"alice"}, {"alice"}))
+
+    import discord
+
+    fake_embed = MagicMock(spec=discord.Embed)
+    svc._housing.build_embed = MagicMock(return_value=fake_embed)
+
+    with patch(
+        "ridebot.services.locations_service.LocationsRepository.get_non_discord_pickups",
+        new_callable=AsyncMock,
+    ) as mock_non_discord:
+        embeds = await svc.build_pickups_embeds(JobName.FRIDAY, RideOption.FRIDAY)
+
+    assert embeds == [fake_embed]
+    mock_non_discord.assert_not_called()
+    svc.list_locations.assert_awaited_once_with(
+        JobName.FRIDAY, None, ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS, RideOption.FRIDAY
+    )
+
+
+@pytest.mark.asyncio
+async def test_build_pickups_embeds_dropoff_with_non_discord_pickups():
+    """A dropoff option with non-Discord pickups returns two embeds."""
+    svc = LocationsService(bot=None)
+
+    locations_people = defaultdict(list)
+    locations_people["Revelle"].append(("Alice", "alice"))
+    svc.list_locations = AsyncMock(return_value=(locations_people, {"alice"}, {"alice"}))
+
+    import discord
+
+    main_embed = MagicMock(spec=discord.Embed)
+    extra_embed = MagicMock(spec=discord.Embed)
+    svc._housing.build_embed = MagicMock(side_effect=[main_embed, extra_embed])
+
+    non_discord_pickup = MagicMock(location="Off Campus", name="Charlie")
+
+    mock_session = AsyncMock()
+    mock_session_cm = MagicMock()
+    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
+        patch(
+            "ridebot.services.locations_service.LocationsRepository.get_non_discord_pickups",
+            new_callable=AsyncMock,
+            return_value=[non_discord_pickup],
+        ),
+    ):
+        embeds = await svc.build_pickups_embeds(JobName.SUNDAY, "dropoff")
+
+    assert embeds == [main_embed, extra_embed]
+    _, kwargs = svc._housing.build_embed.call_args_list[1]
+    assert kwargs["custom_title"] == "Non-Discord Dropoffs (unknown lunch)"
+
+
+@pytest.mark.asyncio
+async def test_build_pickups_embeds_dropoff_without_non_discord_pickups():
+    """A dropoff option with no non-Discord pickups returns a single embed."""
+    svc = LocationsService(bot=None)
+
+    locations_people = defaultdict(list)
+    locations_people["Revelle"].append(("Alice", "alice"))
+    svc.list_locations = AsyncMock(return_value=(locations_people, {"alice"}, {"alice"}))
+
+    import discord
+
+    fake_embed = MagicMock(spec=discord.Embed)
+    svc._housing.build_embed = MagicMock(return_value=fake_embed)
+
+    with patch(
+        "ridebot.services.locations_service.LocationsRepository.get_non_discord_pickups",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        embeds = await svc.build_pickups_embeds(JobName.SUNDAY, "dropoff")
+
+    assert embeds == [fake_embed]
+
+
+@pytest.mark.asyncio
+async def test_build_pickups_embeds_propagates_no_matching_message():
+    """NoMatchingMessageFoundError from list_locations propagates unhandled."""
+    svc = LocationsService(bot=None)
+    svc.list_locations = AsyncMock(side_effect=NoMatchingMessageFoundError())
+
+    with pytest.raises(NoMatchingMessageFoundError):
+        await svc.build_pickups_embeds(JobName.FRIDAY)
+
+
+@pytest.mark.asyncio
+async def test_list_locations_wrapper_delegates_to_build_pickups_embeds_single():
+    """The wrapper sends a single embed when build_pickups_embeds returns one."""
+    svc = LocationsService(bot=None)
+    interaction = AsyncMock()
+
+    import discord
+
+    fake_embed = MagicMock(spec=discord.Embed)
+    svc.build_pickups_embeds = AsyncMock(return_value=[fake_embed])
+
+    await svc.list_locations_wrapper(interaction, day=JobName.FRIDAY)
+
+    svc.build_pickups_embeds.assert_awaited_once_with(JobName.FRIDAY, None)
+    interaction.response.send_message.assert_awaited_once_with(embed=fake_embed)
+
+
+@pytest.mark.asyncio
+async def test_list_locations_wrapper_delegates_to_build_pickups_embeds_multi():
+    """The wrapper sends the embeds list when build_pickups_embeds returns two."""
+    svc = LocationsService(bot=None)
+    interaction = AsyncMock()
+
+    import discord
+
+    main_embed = MagicMock(spec=discord.Embed)
+    extra_embed = MagicMock(spec=discord.Embed)
+    svc.build_pickups_embeds = AsyncMock(return_value=[main_embed, extra_embed])
+
+    await svc.list_locations_wrapper(interaction, day=JobName.SUNDAY, option="dropoff")
+
+    interaction.response.send_message.assert_awaited_once_with(embeds=[main_embed, extra_embed])
+
+
+@pytest.mark.asyncio
+async def test_list_locations_wrapper_propagated_no_matching_message_still_replies():
+    """NoMatchingMessageFoundError raised inside build_pickups_embeds is still caught."""
+    svc = LocationsService(bot=None)
+    interaction = AsyncMock()
+    svc.build_pickups_embeds = AsyncMock(side_effect=NoMatchingMessageFoundError())
+
+    await svc.list_locations_wrapper(interaction, day=JobName.FRIDAY)
+
+    args = interaction.response.send_message.call_args[0]
+    assert "No matching message" in args[0]
 
 
 @pytest.mark.asyncio
