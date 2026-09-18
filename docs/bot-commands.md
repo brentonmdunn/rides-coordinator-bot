@@ -230,6 +230,10 @@ Every ask-rides announcement (Wednesday/Friday fellowship, Sunday service, Sunda
 
 Loaded from `ridebot/cogs_testing/` only when `APP_ENV=local`.
 
+### `/test-pickups-summary`
+
+Post the Friday or Sunday pickup summary (the `/list-pickups-*` embed plus the dashboard link) in the current channel, as the scheduled job would. Ignores the Site Settings on/off toggle but still skips when the job is paused, the fellowship season is Wednesday (Friday only), or no ask-rides message went out this week; the ephemeral reply says whether it sent.
+
 ### `/test-ask-rides-other`
 
 Post an ask-rides embed and its reactions in the current channel, exactly as the scheduled job would. The Something else button is attached only when `ask_rides_other_button` is on; the ephemeral reply says so when it isn't.
