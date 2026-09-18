@@ -82,6 +82,8 @@ class FeatureFlagNames(StrEnum):
     AGENT = "agent"
     ASK_RIDES_OTHER_BUTTON = "ask_rides_other_button"
     WEEKLY_EVENTS_ANNOUNCEMENT_JOB = "weekly_events_announcement_job"
+    FRIDAY_PICKUPS_SUMMARY_JOB = "friday_pickups_summary_job"
+    SUNDAY_PICKUPS_SUMMARY_JOB = "sunday_pickups_summary_job"
 
 
 class JobName(StrEnum):
@@ -242,6 +244,13 @@ class AskRidesScheduleSlot(StrEnum):
 
     WEDNESDAY_REMINDER = "wednesday_reminder"  # run_ask_rides_wed
     FRI_SUN_GROUP = "fri_sun_group"  # run_ask_rides_all
+
+
+class PickupSummarySlot(StrEnum):
+    """The scheduled pickup-list summaries posted to the ride coordinators channel."""
+
+    FRIDAY = "friday"  # run_friday_pickups_summary
+    SUNDAY = "sunday"  # run_sunday_pickups_summary
 
 
 class EmbedColorChoice(StrEnum):
