@@ -10,7 +10,7 @@ import {
     getDateInputBounds,
     isCustomDateValue,
     presetToDays,
-    resolveHelperDateLabel,
+    resolveHelperText,
     toDateInputValue,
 } from './tempDriver'
 
@@ -99,21 +99,22 @@ describe('formatExpiryBadge', () => {
     })
 })
 
-describe('resolveHelperDateLabel', () => {
-    const now = new Date(2026, 0, 1)
+describe('resolveHelperText', () => {
+    const now = new Date(2026, 0, 1, 14, 30)
 
-    it('resolves a preset relative to now', () => {
-        expect(resolveHelperDateLabel('3d', now)).toBe('Jan 4')
-        expect(resolveHelperDateLabel('1w', now)).toBe('Jan 8')
-        expect(resolveHelperDateLabel('2w', now)).toBe('Jan 15')
-        expect(resolveHelperDateLabel('30d', now)).toBe('Jan 31')
+    it('shows the exact removal time for a preset, measured from now', () => {
+        expect(resolveHelperText('3d', now)).toBe('Removed automatically on Jan 4 at 2:30 PM')
+        expect(resolveHelperText('1w', now)).toBe('Removed automatically on Jan 8 at 2:30 PM')
+        expect(resolveHelperText('30d', now)).toBe('Removed automatically on Jan 31 at 2:30 PM')
     })
 
-    it('resolves a custom date directly', () => {
-        expect(resolveHelperDateLabel('2026-12-25', now)).toBe('Dec 25')
+    it('shows end of day for a custom date', () => {
+        expect(resolveHelperText('2026-12-25', now)).toBe(
+            'Removed automatically at 11:59 PM on Dec 25',
+        )
     })
 
     it('returns null for garbage input', () => {
-        expect(resolveHelperDateLabel('nonsense', now)).toBeNull()
+        expect(resolveHelperText('nonsense', now)).toBeNull()
     })
 })

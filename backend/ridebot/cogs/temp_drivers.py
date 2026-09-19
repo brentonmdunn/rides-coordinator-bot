@@ -1,6 +1,7 @@
 """Cog for granting, revoking, and listing temporary Driver role grants."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 import discord
@@ -33,19 +34,56 @@ class TempDrivers(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def _respond(
-        self, interaction: discord.Interaction, result: TempDriverResult, in_channel: bool
+    @staticmethod
+    def _in_coordinators_channel(interaction: discord.Interaction) -> bool:
+        # Compares the invoking channel against the destination channel for the
+        # announcement, not against an "incoming event" channel — intentional.
+        return interaction.channel_id == resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
+
+    async def _run(
+        self,
+        interaction: discord.Interaction,
+        action: Callable[[], Awaitable[TempDriverResult]],
+        in_channel: bool,
+        verb: str,
     ) -> None:
-        """Route the response: announce in-channel, or confirm ephemerally elsewhere."""
+        """
+        Defer, run the grant/revoke, then respond.
+
+        Deferring first keeps the slow part (DB + Discord role change + announcement) from
+        running past Discord's 3-second response window. In the coordinators channel the
+        deferred response is public and becomes the announcement; elsewhere it's ephemeral.
+        """
+        await interaction.response.defer(ephemeral=not in_channel, thinking=True)
+        try:
+            result = await action()
+        except (ValueError, PermissionError) as e:
+            await self._send_error(interaction, in_channel, str(e))
+            return
+        except Exception:
+            logger.exception("Failed %s temporary driver", verb)
+            await send_error_to_discord(f"**Error** {verb} temporary driver")
+            await self._send_error(
+                interaction, in_channel, f"Something went wrong {verb} that temporary driver."
+            )
+            return
+
         if in_channel:
-            await interaction.response.send_message(
-                result.announcement, allowed_mentions=discord.AllowedMentions.none()
+            await interaction.edit_original_response(
+                content=result.announcement, allowed_mentions=discord.AllowedMentions.none()
             )
         else:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"✅ Done — announced in <#{resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)}>.",
                 ephemeral=True,
             )
+
+    @staticmethod
+    async def _send_error(interaction: discord.Interaction, in_channel: bool, text: str) -> None:
+        """Errors are always private: drop the public "thinking" placeholder first."""
+        if in_channel:
+            await interaction.delete_original_response()
+        await interaction.followup.send(text, ephemeral=True)
 
     @app_commands.command(
         name="add-temp-driver",
@@ -65,30 +103,15 @@ class TempDrivers(commands.Cog):
         duration: str | None = None,
     ) -> None:
         """Grant (or extend) a temporary Driver role."""
-        # Compares the invoking channel against the destination channel for the
-        # announcement, not against an "incoming event" channel — intentional.
-        in_channel = interaction.channel_id == resolve_channel_id(
-            ChannelIds.SERVING__RIDE_COORDINATORS
+        in_channel = self._in_coordinators_channel(interaction)
+        await self._run(
+            interaction,
+            lambda: TempDriverService(self.bot).grant(
+                user, duration, interaction.user.display_name, announce=not in_channel
+            ),
+            in_channel,
+            "adding",
         )
-        try:
-            result = await TempDriverService(self.bot).grant(
-                user,
-                duration,
-                interaction.user.display_name,
-                announce=not in_channel,
-            )
-        except (ValueError, PermissionError) as e:
-            await interaction.response.send_message(str(e), ephemeral=True)
-            return
-        except Exception:
-            logger.exception("Failed to add temporary driver")
-            await send_error_to_discord("**Error** adding temporary driver")
-            await interaction.response.send_message(
-                "Something went wrong adding that temporary driver.", ephemeral=True
-            )
-            return
-
-        await self._respond(interaction, result, in_channel)
 
     @app_commands.command(
         name="remove-temp-driver",
@@ -102,29 +125,15 @@ class TempDrivers(commands.Cog):
         self, interaction: discord.Interaction, user: discord.Member
     ) -> None:
         """Remove a temporary driver's role and grant early."""
-        # Compares the invoking channel against the destination channel for the
-        # announcement, not against an "incoming event" channel — intentional.
-        in_channel = interaction.channel_id == resolve_channel_id(
-            ChannelIds.SERVING__RIDE_COORDINATORS
+        in_channel = self._in_coordinators_channel(interaction)
+        await self._run(
+            interaction,
+            lambda: TempDriverService(self.bot).revoke(
+                str(user.id), interaction.user.display_name, announce=not in_channel
+            ),
+            in_channel,
+            "removing",
         )
-        try:
-            result = await TempDriverService(self.bot).revoke(
-                str(user.id),
-                interaction.user.display_name,
-                announce=not in_channel,
-            )
-        except (ValueError, PermissionError) as e:
-            await interaction.response.send_message(str(e), ephemeral=True)
-            return
-        except Exception:
-            logger.exception("Failed to remove temporary driver")
-            await send_error_to_discord("**Error** removing temporary driver")
-            await interaction.response.send_message(
-                "Something went wrong removing that temporary driver.", ephemeral=True
-            )
-            return
-
-        await self._respond(interaction, result, in_channel)
 
     @app_commands.command(
         name="list-temp-drivers",

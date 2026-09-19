@@ -101,15 +101,18 @@ export function formatExpiryBadge(isoString: string): string {
 }
 
 /**
- * Resolves what the add/edit control's `duration` value (a preset code or a
- * `YYYY-MM-DD` custom date) will expire on, for the "Removed automatically
- * at 11:59 PM on {date}" helper text. Returns null if `duration` is neither.
+ * The helper text under the add/edit control for a `duration` value (a preset
+ * code or a `YYYY-MM-DD` custom date), or null if `duration` is neither.
+ * A custom date lasts through 11:59 PM that day; a preset is measured from now,
+ * so it shows the actual time of day it will be removed.
  */
-export function resolveHelperDateLabel(duration: string, now: Date = new Date()): string | null {
+export function resolveHelperText(duration: string, now: Date = new Date()): string | null {
     if (isCustomDateValue(duration)) {
-        return formatMonthDay(duration)
+        return `Removed automatically at 11:59 PM on ${formatMonthDay(duration)}`
     }
     const days = presetToDays(duration)
     if (days === null) return null
-    return formatMonthDay(toDateInputValue(addDays(now, days)))
+    const expires = addDays(now, days)
+    const time = expires.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    return `Removed automatically on ${formatMonthDay(toDateInputValue(expires))} at ${time}`
 }

@@ -133,6 +133,21 @@ class TestLimits:
         with pytest.raises(ValueError, match="90 days"):
             parse_expiry("91d", NOW)
 
+    def test_date_90_days_out_accepted_through_end_of_day(self):
+        """today+90 is the date picker's max; 11:59 PM that day is past now+90d but allowed."""
+        result = parse_expiry("2026-04-01", NOW)  # NOW is Jan 1 in LA
+        assert result > NOW + TEMP_DRIVER_MAX_DURATION
+        assert result.astimezone(LA_TZ).date().isoformat() == "2026-04-01"
+
+    def test_date_91_days_out_rejected(self):
+        with pytest.raises(ValueError, match="90 days"):
+            parse_expiry("2026-04-02", NOW)
+
+    @pytest.mark.parametrize("text", ["99999999999w", "99999999999999d"])
+    def test_huge_duration_rejected_not_overflow(self, text):
+        with pytest.raises(ValueError, match="90 days"):
+            parse_expiry(text, NOW)
+
 
 class TestUnparseable:
     @pytest.mark.parametrize("text", ["xyz", "3zebras", "not a date", "13/45", "10-5-2026"])

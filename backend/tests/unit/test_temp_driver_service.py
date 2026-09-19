@@ -352,18 +352,42 @@ class TestAddPermanentDriver:
         _mock_session_local(mock_session_local)
         mock_get.return_value = _make_grant_row()
 
-        member = _make_member(user_id=111, name="alice", display_name="Alice")
-        guild = _make_guild(member_named=member)
+        role = _make_role()
+        member = _make_member(user_id=111, name="alice", display_name="Alice", roles=[role])
+        guild = _make_guild(member_named=member, role=role)
         service = TempDriverService(_make_bot(guild))
 
         result = await service.add_permanent_driver("alice")
 
         mock_clear_grant.assert_awaited_once_with("111")
+        member.add_roles.assert_not_called()
         assert result == {
             "discord_user_id": "111",
             "discord_username": "alice",
             "display_name": "Alice",
         }
+
+    @pytest.mark.asyncio
+    @patch(f"{MODULE}.TempDriverService.clear_grant", new_callable=AsyncMock)
+    @patch(f"{MODULE}.TempDriverGrantsRepository.get", new_callable=AsyncMock)
+    @patch(f"{MODULE}.AsyncSessionLocal")
+    async def test_readds_role_missing_from_temp_driver(
+        self, mock_session_local, mock_get, mock_clear_grant
+    ):
+        """Role removed while the bot was offline: grant exists but the role doesn't."""
+        _mock_session_local(mock_session_local)
+        mock_get.return_value = _make_grant_row()
+
+        role = _make_role()
+        member = _make_member(user_id=111, roles=[])
+        guild = _make_guild(member_named=member, role=role)
+        service = TempDriverService(_make_bot(guild))
+
+        await service.add_permanent_driver("alice")
+
+        member.add_roles.assert_awaited_once()
+        assert member.add_roles.call_args.args[0] is role
+        mock_clear_grant.assert_awaited_once_with("111")
 
     @pytest.mark.asyncio
     @patch(f"{MODULE}.RoleManagementService.add_member", new_callable=AsyncMock)

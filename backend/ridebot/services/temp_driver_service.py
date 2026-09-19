@@ -273,6 +273,16 @@ class TempDriverService:
             existing = await TempDriverGrantsRepository.get(session, str(member.id))
 
         if existing is not None:
+            # The role may have been removed by hand while the bot was offline (so
+            # role_monitor never cleared the grant); make sure they end up with it.
+            role = self._driver_role()
+            if role not in member.roles:
+                try:
+                    await member.add_roles(role, reason="Made permanent driver")
+                except discord.Forbidden:
+                    raise PermissionError("Bot lacks permission to assign roles")  # noqa: B904
+                except discord.HTTPException as e:
+                    raise ValueError(f"Discord error adding role: {e}")  # noqa: B904
             await TempDriverService.clear_grant(str(member.id))
             return {
                 "discord_user_id": str(member.id),

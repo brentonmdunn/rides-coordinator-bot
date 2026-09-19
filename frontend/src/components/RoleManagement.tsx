@@ -15,7 +15,7 @@ import {
     formatExpiryBadge,
     formatFullDateTime,
     getDateInputBounds,
-    resolveHelperDateLabel,
+    resolveHelperText,
 } from '../lib/tempDriver'
 
 interface Member {
@@ -61,7 +61,7 @@ function DurationPicker({
     disabled?: boolean
 }) {
     const { min, max } = getDateInputBounds()
-    const helperDate = resolveHelperDateLabel(duration)
+    const helperText = resolveHelperText(duration)
 
     return (
         <div className="flex flex-col gap-2">
@@ -92,11 +92,7 @@ function DurationPicker({
                     className="h-7 w-auto text-xs px-2"
                 />
             </div>
-            {helperDate && (
-                <p className="text-xs text-muted-foreground">
-                    Removed automatically at 11:59 PM on {helperDate}
-                </p>
-            )}
+            {helperText && <p className="text-xs text-muted-foreground">{helperText}</p>}
         </div>
     )
 }

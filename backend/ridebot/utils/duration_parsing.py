@@ -34,6 +34,10 @@ def _unparseable_error(text: str) -> ValueError:
     )
 
 
+def _too_long_error() -> ValueError:
+    return ValueError("Temporary driver roles can last at most 90 days.")
+
+
 def _next_occurrence(month: int, day: int, now: datetime) -> date:
     """The next occurrence of month/day in LA, this year if today or later, else next year."""
     today_la = now.astimezone(LA_TZ).date()
@@ -87,11 +91,20 @@ def parse_expiry(text: str | None, now: datetime) -> datetime:
             amount = int(relative_match.group(1))
             unit = relative_match.group(2).lower()
             kwarg = _UNIT_TO_TIMEDELTA_KWARGS[unit]
-            expires_at = now + timedelta(**{kwarg: amount})
+            try:
+                expires_at = now + timedelta(**{kwarg: amount})
+            except OverflowError:
+                raise _too_long_error() from None
         else:
             day = _parse_date(stripped, now)
             if day is None:
                 raise _unparseable_error(stripped)
+
+            # A date means "through that day", so cap it by calendar day in LA rather than
+            # by exact time — otherwise today+90 (which the date picker offers) would fail.
+            today_la = now.astimezone(LA_TZ).date()
+            if day - today_la > TEMP_DRIVER_MAX_DURATION:
+                raise _too_long_error()
 
             # LA_TZ is a pytz timezone; attaching it directly via tzinfo= would use
             # the zone's LMT offset instead of the correct DST-aware one, so the
@@ -99,11 +112,14 @@ def parse_expiry(text: str | None, now: datetime) -> datetime:
             naive_la_dt = datetime.combine(day, time(23, 59, 59))
             la_dt = LA_TZ.localize(naive_la_dt)
             expires_at = la_dt.astimezone(UTC)
+            if expires_at <= now:
+                raise ValueError("That time is in the past.")
+            return expires_at
 
     if expires_at <= now:
         raise ValueError("That time is in the past.")
 
     if expires_at > now + TEMP_DRIVER_MAX_DURATION:
-        raise ValueError("Temporary driver roles can last at most 90 days.")
+        raise _too_long_error()
 
     return expires_at

@@ -98,11 +98,13 @@ async def test_add_temp_driver_in_coordinators_channel_announces():
     mock_service_cls.return_value.grant.assert_awaited_once_with(
         member, "3d", "Coordinator", announce=False
     )
-    interaction.response.send_message.assert_awaited_once()
-    args, kwargs = interaction.response.send_message.call_args
-    assert args[0] == result.announcement
-    assert kwargs.get("ephemeral") is not True
+    # Deferred publicly first, so the slow work can't outrun Discord's 3s window.
+    interaction.response.defer.assert_awaited_once_with(ephemeral=False, thinking=True)
+    interaction.edit_original_response.assert_awaited_once()
+    kwargs = interaction.edit_original_response.call_args.kwargs
+    assert kwargs["content"] == result.announcement
     assert isinstance(kwargs.get("allowed_mentions"), discord.AllowedMentions)
+    interaction.followup.send.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -122,8 +124,9 @@ async def test_add_temp_driver_elsewhere_replies_ephemeral_and_announces():
     mock_service_cls.return_value.grant.assert_awaited_once_with(
         member, None, "Coordinator", announce=True
     )
-    interaction.response.send_message.assert_awaited_once()
-    args, kwargs = interaction.response.send_message.call_args
+    interaction.response.defer.assert_awaited_once_with(ephemeral=True, thinking=True)
+    interaction.followup.send.assert_awaited_once()
+    args, kwargs = interaction.followup.send.call_args
     assert "announced in" in args[0]
     assert kwargs.get("ephemeral") is True
 
@@ -141,9 +144,8 @@ async def test_add_temp_driver_value_error_is_ephemeral():
 
         await cog.add_temp_driver.callback(cog, interaction, member, "0d")
 
-    interaction.response.send_message.assert_awaited_once_with(
-        "That time is in the past.", ephemeral=True
-    )
+    interaction.followup.send.assert_awaited_once_with("That time is in the past.", ephemeral=True)
+    interaction.delete_original_response.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -159,7 +161,7 @@ async def test_add_temp_driver_permission_error_is_ephemeral():
 
         await cog.add_temp_driver.callback(cog, interaction, member, None)
 
-    interaction.response.send_message.assert_awaited_once_with(
+    interaction.followup.send.assert_awaited_once_with(
         "Bot lacks permission to assign roles", ephemeral=True
     )
 
@@ -181,10 +183,26 @@ async def test_add_temp_driver_unexpected_error_is_generic_and_reported():
         await cog.add_temp_driver.callback(cog, interaction, member, None)
 
     mock_send_error.assert_awaited_once()
-    interaction.response.send_message.assert_awaited_once()
-    args, kwargs = interaction.response.send_message.call_args
+    interaction.followup.send.assert_awaited_once()
+    args, kwargs = interaction.followup.send.call_args
     assert kwargs.get("ephemeral") is True
     assert "went wrong" in args[0]
+
+
+@pytest.mark.asyncio
+async def test_add_temp_driver_error_in_coordinators_channel_stays_private():
+    """The public "thinking" placeholder is deleted so the error is only shown privately."""
+    cog = TempDrivers(MagicMock())
+    interaction = _make_interaction(COORDINATORS_CHANNEL_ID)
+
+    with patch("ridebot.cogs.temp_drivers.TempDriverService", autospec=True) as mock_service_cls:
+        mock_service_cls.return_value.grant = AsyncMock(side_effect=ValueError("Nope."))
+
+        await cog.add_temp_driver.callback(cog, interaction, _make_member(), None)
+
+    interaction.delete_original_response.assert_awaited_once()
+    interaction.followup.send.assert_awaited_once_with("Nope.", ephemeral=True)
+    interaction.edit_original_response.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +225,8 @@ async def test_remove_temp_driver_in_coordinators_channel_announces():
     mock_service_cls.return_value.revoke.assert_awaited_once_with(
         str(member.id), "Coordinator", announce=False
     )
-    args, kwargs = interaction.response.send_message.call_args
-    assert args[0] == result.announcement
-    assert kwargs.get("ephemeral") is not True
+    interaction.response.defer.assert_awaited_once_with(ephemeral=False, thinking=True)
+    assert interaction.edit_original_response.call_args.kwargs["content"] == result.announcement
 
 
 @pytest.mark.asyncio
@@ -227,7 +244,7 @@ async def test_remove_temp_driver_elsewhere_is_ephemeral():
     mock_service_cls.return_value.revoke.assert_awaited_once_with(
         str(member.id), "Coordinator", announce=True
     )
-    _, kwargs = interaction.response.send_message.call_args
+    _, kwargs = interaction.followup.send.call_args
     assert kwargs.get("ephemeral") is True
 
 
@@ -244,7 +261,7 @@ async def test_remove_temp_driver_value_error_is_ephemeral():
 
         await cog.remove_temp_driver.callback(cog, interaction, member)
 
-    interaction.response.send_message.assert_awaited_once_with(
+    interaction.followup.send.assert_awaited_once_with(
         "@bob isn't a temporary driver.", ephemeral=True
     )
 
