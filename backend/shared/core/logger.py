@@ -11,6 +11,7 @@ import functools
 import logging
 import os
 import uuid
+from collections.abc import Iterable
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
@@ -219,3 +220,61 @@ def log_job(func):
             txn_id_var.reset(txn_token)
 
     return wrapper
+
+
+def log_job_quiet(func):
+    """
+    Same as `log_job`, but logs "started"/"completed" at DEBUG instead of INFO.
+
+    Use this for jobs that poll frequently and are almost always a no-op (e.g.
+    the temp-driver expiry sweep), so a quiet tick doesn't add noise to prod
+    logs. Exceptions are still logged with `logger.exception` and re-raised.
+
+    Args:
+        func: The job function to wrap.
+
+    Returns:
+        Callable: The decorated function.
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        txn_token = txn_id_var.set(generate_txn_id())
+        try:
+            logger.debug(f"job={func.__name__} started")
+            result = await func(*args, **kwargs)
+            logger.debug(f"job={func.__name__} completed")
+            return result
+        except Exception:
+            logger.exception(f"job={func.__name__} failed")
+            raise
+        finally:
+            txn_id_var.reset(txn_token)
+
+    return wrapper
+
+
+class QuietJobFilter(logging.Filter):
+    """
+    Drops APScheduler's own INFO-level "running/executed" lines for specific job IDs.
+
+    `shared` must not import a bot package, so the caller passes in whichever
+    job IDs should be quieted (e.g. `ridebot.utils.constants.TEMP_DRIVER_EXPIRY_JOB_ID`).
+    Warnings and errors from those jobs still come through.
+    """
+
+    def __init__(self, job_ids: Iterable[str]) -> None:
+        super().__init__()
+        self._job_ids = set(job_ids)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        Return False (drop the record) iff it's INFO-or-below and mentions a quieted job ID.
+
+        Returns:
+            True to keep the record, False to drop it.
+        """
+        if record.levelno > logging.INFO:
+            return True
+        message = record.getMessage()
+        return not any(job_id in message for job_id in self._job_ids)
