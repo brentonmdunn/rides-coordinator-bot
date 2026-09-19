@@ -5,6 +5,7 @@ import logging
 import discord
 from discord.ext import commands
 
+from ridebot.services.temp_driver_service import TempDriverService
 from shared.core.enums import RoleIds
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,15 @@ class RoleMonitor(commands.Cog):
                     after.name,
                     after.id,
                 )
+                if role_id == int(RoleIds.DRIVER):
+                    try:
+                        await TempDriverService.clear_grant(str(after.id))
+                    except Exception:
+                        logger.exception(
+                            "Failed to clear temp driver grant for @%s (%s)",
+                            after.name,
+                            after.id,
+                        )
 
 
 async def setup(bot: commands.Bot):
