@@ -478,6 +478,26 @@ class TestExpireDue:
     @patch(f"{MODULE}.TempDriverGrantsRepository.delete", new_callable=AsyncMock)
     @patch(f"{MODULE}.TempDriverGrantsRepository.list_expired", new_callable=AsyncMock)
     @patch(f"{MODULE}.AsyncSessionLocal")
+    async def test_guild_unavailable_skips_without_deleting(
+        self, mock_session_local, mock_list_expired, mock_delete
+    ):
+        _mock_session_local(mock_session_local)
+        mock_list_expired.return_value = [_make_grant_row(discord_user_id="111")]
+        bot = MagicMock()
+        bot.get_guild.return_value = None
+        service = TempDriverService(bot)
+        service.announce = AsyncMock()
+
+        result = await service.expire_due()
+
+        assert result == 0
+        mock_delete.assert_not_called()
+        service.announce.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch(f"{MODULE}.TempDriverGrantsRepository.delete", new_callable=AsyncMock)
+    @patch(f"{MODULE}.TempDriverGrantsRepository.list_expired", new_callable=AsyncMock)
+    @patch(f"{MODULE}.AsyncSessionLocal")
     async def test_member_left_guild_deletes_without_announce(
         self, mock_session_local, mock_list_expired, mock_delete
     ):

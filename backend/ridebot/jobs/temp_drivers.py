@@ -21,4 +21,7 @@ logger = logging.getLogger(__name__)
 @feature_flag_enabled(FeatureFlagNames.TEMP_DRIVER_EXPIRY_JOB, enable_logs=False)
 async def run_temp_driver_expiry(bot: Bot) -> None:
     """Runner for the temporary Driver role expiry sweep."""
+    # The scheduler starts before login, and the first sweep runs immediately. Until the
+    # guild and its members are cached, every grant would look like "member left".
+    await bot.wait_until_ready()
     await TempDriverService(bot).expire_due()

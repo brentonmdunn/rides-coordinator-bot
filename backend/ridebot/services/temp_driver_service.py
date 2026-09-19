@@ -309,10 +309,16 @@ class TempDriverService:
             logger.debug("Temp driver expiry sweep: nothing to do")
             return 0
 
+        guild = self.bot.get_guild(GUILD_ID)
+        if guild is None:
+            logger.warning(
+                "Guild not available; skipping temp driver expiry sweep (%d due)", len(expired)
+            )
+            return 0
+
         processed = 0
         for row in expired:
             try:
-                guild = self.guild
                 member = guild.get_member(int(row.discord_user_id))
                 role = guild.get_role(int(RoleIds.DRIVER))
 
