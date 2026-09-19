@@ -159,6 +159,26 @@ Both params are read once and stripped from the URL via `useConsumeSearchParam`
   message was found this week. `/send-pickups-summary <friday|sunday>` posts the same message in the
   current channel on demand (ignores the toggle and flags).
 
+### Temporary drivers
+
+Ride coordinators can give someone the Driver role for a limited time via `/add-temp-driver`
+(also `/remove-temp-driver`, `/list-temp-drivers`) or the "Temporary" option in the dashboard's
+Drivers tab (`POST /api/drivers/temp`). Both call `TempDriverService`
+(`ridebot/services/temp_driver_service.py`), backed by the `temp_driver_grants` table.
+
+- Durations: `ridebot/utils/duration_parsing.py` — relative (`12h`, `3d`, `2w`) or a date
+  (`10/5`, `2026-10-05`, meaning 11:59 PM LA that day). Default 1 week, max 90 days
+  (`ridebot/utils/constants.py`).
+- Expiry is **polling**: `ridebot/jobs/temp_drivers.py` runs every 5 minutes and once at startup,
+  gated by `@bot_enabled` + `FeatureFlagNames.TEMP_DRIVER_EXPIRY_JOB`. A sweep with nothing to do
+  logs nothing above DEBUG (`log_job_quiet` + `QuietJobFilter` in `shared/core/logger.py`).
+- Grants, extensions, early removals and expiries are announced in `SERVING__RIDE_COORDINATORS`
+  (via `resolve_channel_id`, never pinging the driver). A slash command run in that channel uses
+  its own reply as the announcement; anywhere else (or from the web) the bot posts separately.
+- Re-granting a temp driver replaces the expiry; permanent drivers are refused. Adding a temp
+  driver permanently from the Drivers tab clears the grant; removing a Driver role by hand in
+  Discord also clears it (`role_monitor.py`).
+
 ### Weekly events announcement (StonesBot)
 
 Every Sunday at 6PM LA time, StonesBot posts one embed to
