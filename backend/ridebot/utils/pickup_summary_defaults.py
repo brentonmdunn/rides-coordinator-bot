@@ -47,6 +47,9 @@ SUMMARY_ALLOWED_DAYS: dict[PickupSummarySlot, frozenset[int]] = {
     ),
 }
 
+# `?settings=` value the frontend uses to open Site Settings at the pickup summaries section.
+PICKUP_SUMMARIES_SETTINGS_SECTION = "pickup-summaries"
+
 # APScheduler job IDs.
 SUMMARY_SLOT_TO_JOB_ID: dict[PickupSummarySlot, str] = {
     PickupSummarySlot.FRIDAY: "run_friday_pickups_summary",

@@ -283,6 +283,21 @@ class TestBuildDashboardLink:
         assert result == "https://example.com/?overview=sunday#reactions"
 
 
+class TestBuildSettingsLink:
+    def test_returns_none_when_unset_outside_local(self, monkeypatch):
+        monkeypatch.delenv("FRONTEND_BASE_URL", raising=False)
+        monkeypatch.setenv("APP_ENV", "prod")
+
+        assert PickupSummaryService.build_settings_link() is None
+
+    def test_uses_env_var_and_strips_trailing_slash(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_BASE_URL", "https://example.com/")
+
+        result = PickupSummaryService.build_settings_link()
+
+        assert result == "https://example.com/?settings=pickup-summaries"
+
+
 def _make_channel():
     channel = MagicMock(spec=discord.TextChannel)
     channel.send = AsyncMock()
@@ -404,7 +419,8 @@ class TestSendSummary:
         assert result is True
         mock_invalidate.assert_awaited_once()
         channel.send.assert_awaited_once_with(
-            content="[Open in dashboard](<https://example.com/?overview=sunday#reactions>)",
+            content="[Open in dashboard](<https://example.com/?overview=sunday#reactions>) · "
+            "[Change when this sends](<https://example.com/?settings=pickup-summaries>)",
             embeds=fake_embeds,
         )
 

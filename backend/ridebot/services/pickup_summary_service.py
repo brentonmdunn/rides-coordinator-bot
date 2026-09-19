@@ -27,6 +27,7 @@ from ridebot.utils.cache import invalidate_namespace
 from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError
 from ridebot.utils.pickup_summary_defaults import (
     DEFAULT_SUMMARY_SCHEDULE,
+    PICKUP_SUMMARIES_SETTINGS_SECTION,
     SUMMARY_ALLOWED_DAYS,
     SUMMARY_MAX_HOUR,
     SUMMARY_MAX_MINUTE,
@@ -228,25 +229,43 @@ class PickupSummaryService:
         return _to_effective(default, enabled=True, is_customized=False), applied
 
     @staticmethod
-    def build_dashboard_link(slot: PickupSummarySlot) -> str | None:
+    def _frontend_base_url() -> str | None:
         """
-        Build the admin dashboard deep link for a slot, or None if unavailable.
+        Return the admin site's base URL without a trailing slash, or None if unavailable.
 
         Reads `FRONTEND_BASE_URL` at call time so it always reflects the
         current environment/config rather than a value captured at import time.
         """
         base = os.getenv("FRONTEND_BASE_URL", "").strip().rstrip("/")
-        if not base:
-            if os.getenv("APP_ENV", "local") == "local":
-                base = FRONTEND_BASE_URL_LOCAL.rstrip("/")
-            else:
-                logger.warning(
-                    "FRONTEND_BASE_URL is not set; sending pickup summary for %s without a link",
-                    slot,
-                )
-                return None
+        if base:
+            return base
+        if os.getenv("APP_ENV", "local") == "local":
+            return FRONTEND_BASE_URL_LOCAL.rstrip("/")
+        logger.warning("FRONTEND_BASE_URL is not set; sending pickup summary without links")
+        return None
 
-        return f"{base}/?overview={slot.value}#reactions"
+    @staticmethod
+    def build_dashboard_link(slot: PickupSummarySlot) -> str | None:
+        """Build the Ask Rides Overview deep link for a slot, or None if unavailable."""
+        base = PickupSummaryService._frontend_base_url()
+        return f"{base}/?overview={slot.value}#reactions" if base else None
+
+    @staticmethod
+    def build_settings_link() -> str | None:
+        """Build the deep link that opens Site Settings at the pickup summaries section."""
+        base = PickupSummaryService._frontend_base_url()
+        return f"{base}/?settings={PICKUP_SUMMARIES_SETTINGS_SECTION}" if base else None
+
+    @staticmethod
+    def build_message_content(slot: PickupSummarySlot) -> str | None:
+        """Build the message text (dashboard + settings links), or None when links are unavailable."""
+        dashboard_link = PickupSummaryService.build_dashboard_link(slot)
+        settings_link = PickupSummaryService.build_settings_link()
+        if not dashboard_link or not settings_link:
+            return None
+        return (
+            f"[Open in dashboard](<{dashboard_link}>) · [Change when this sends](<{settings_link}>)"
+        )
 
     async def send_summary(
         self,
@@ -309,8 +328,7 @@ class PickupSummaryService:
                 logger.warning("Channel not found with ID: %s", channel_id)
                 return False
 
-            link = PickupSummaryService.build_dashboard_link(slot)
-            content = f"[Open in dashboard](<{link}>)" if link else None
+            content = PickupSummaryService.build_message_content(slot)
             await raw_channel.send(content=content, embeds=embeds)
             return True
         except Exception:
