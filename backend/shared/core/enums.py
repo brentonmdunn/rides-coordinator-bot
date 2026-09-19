@@ -84,6 +84,7 @@ class FeatureFlagNames(StrEnum):
     WEEKLY_EVENTS_ANNOUNCEMENT_JOB = "weekly_events_announcement_job"
     FRIDAY_PICKUPS_SUMMARY_JOB = "friday_pickups_summary_job"
     SUNDAY_PICKUPS_SUMMARY_JOB = "sunday_pickups_summary_job"
+    TEMP_DRIVER_EXPIRY_JOB = "temp_driver_expiry_job"
 
 
 class JobName(StrEnum):

@@ -1,5 +1,7 @@
 """Contains constants"""
 
+from datetime import timedelta
+
 import discord
 
 from shared.core.enums import (
@@ -27,6 +29,12 @@ EMBED_COLOR_MAP: dict[EmbedColorChoice, discord.Color] = {
 }
 
 LSCC_DAYS = [DaysOfWeek.FRIDAY, DaysOfWeek.SUNDAY]
+
+# Temporary Driver role grants (/add-temp-driver, Drivers tab "Temporary").
+TEMP_DRIVER_DEFAULT_DURATION = timedelta(weeks=1)
+TEMP_DRIVER_MAX_DURATION = timedelta(days=90)
+TEMP_DRIVER_SWEEP_MINUTES = 5
+TEMP_DRIVER_EXPIRY_JOB_ID = "run_temp_driver_expiry"
 
 # Ride-reaction emojis that can be tagged on a non-Discord pickup, mapped to a
 # human-readable label. Keys double as the allowlist of valid emoji tags.

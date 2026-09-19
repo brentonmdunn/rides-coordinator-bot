@@ -242,6 +242,19 @@ class PickupSummarySetting(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
 
+class TempDriverGrant(Base):
+    """Model representing a temporary Driver role grant that the expiry sweep removes."""
+
+    __tablename__ = "temp_driver_grants"
+
+    discord_user_id: Mapped[str] = mapped_column(primary_key=True)
+    discord_username: Mapped[str]
+    expires_at: Mapped[datetime] = mapped_column(index=True)  # naive UTC
+    granted_by: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
 class PickupLocation(Base):
     """Model representing a ride pickup location with GPS coordinates."""
 
