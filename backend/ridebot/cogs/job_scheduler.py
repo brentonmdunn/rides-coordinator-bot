@@ -1,9 +1,11 @@
 """Cog for scheduling background jobs."""
 
 import logging
+from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from discord.ext import commands
 
 # from jobs_disabled.retreat_sync_roles import run_csv_job
@@ -13,17 +15,27 @@ from ridebot.jobs.ask_rides import (
     run_periodic_cache_warming,
 )
 from ridebot.jobs.pickups_summary import run_friday_pickups_summary, run_sunday_pickups_summary
+from ridebot.jobs.temp_drivers import run_temp_driver_expiry
 from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
 from ridebot.services.pickup_summary_service import (
     EffectivePickupSummarySetting,
     PickupSummaryService,
 )
 from ridebot.utils.ask_rides_schedule_defaults import DEFAULT_SCHEDULE
+from ridebot.utils.constants import TEMP_DRIVER_EXPIRY_JOB_ID, TEMP_DRIVER_SWEEP_MINUTES
 from ridebot.utils.pickup_summary_defaults import DEFAULT_SUMMARY_SCHEDULE, SUMMARY_SLOT_TO_JOB_ID
 from ridebot.utils.time_helpers import LA_TZ
 from shared.core.enums import AskRidesScheduleSlot, ChannelIds, PickupSummarySlot
+from shared.core.logger import QuietJobFilter
 
 logger = logging.getLogger(__name__)
+
+# APScheduler's own "running/executed" INFO lines for the temp-driver sweep are
+# noise (it ticks every few minutes and almost always finds nothing) — guard
+# against adding this filter twice if the cog is reloaded.
+_apscheduler_executor_logger = logging.getLogger("apscheduler.executors.default")
+if not any(isinstance(f, QuietJobFilter) for f in _apscheduler_executor_logger.filters):
+    _apscheduler_executor_logger.addFilter(QuietJobFilter({TEMP_DRIVER_EXPIRY_JOB_ID}))
 
 
 class JobScheduler(commands.Cog):
@@ -133,6 +145,14 @@ class JobScheduler(commands.Cog):
                 id=SUMMARY_SLOT_TO_JOB_ID[slot],
                 args=[bot],
             )
+
+        self.scheduler.add_job(
+            run_temp_driver_expiry,
+            IntervalTrigger(minutes=TEMP_DRIVER_SWEEP_MINUTES),
+            id=TEMP_DRIVER_EXPIRY_JOB_ID,
+            args=[bot],
+            next_run_time=datetime.now(LA_TZ),
+        )
 
         self.scheduler.start()
 
