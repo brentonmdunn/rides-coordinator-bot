@@ -26,7 +26,7 @@ List dropoff locations for users staying for lunch.
 
 ### `/send-pickups-summary`
 
-Post the Friday or Sunday pickup summary — the same message the scheduled job sends to the ride coordinators channel (the `/list-pickups-*` embed plus the dashboard link) — in the current channel. Ignores the Site Settings on/off toggle and the job feature flags, but still skips when no ask-rides message went out this week, the ask-rides job is paused, or (Friday only) it's Wednesday-fellowship season; the ephemeral reply says whether it sent. Allowed in the same channels as `/list-pickups-*`.
+Post the Friday or Sunday pickup summary — the same message the scheduled job sends to the ride coordinators channel (the `/list-pickups-*` embed plus the "Open in dashboard" and "Change when this sends" links) — in the current channel. Ignores the Site Settings on/off toggle and the job feature flags, but still skips when no ask-rides message went out this week, the ask-rides job is paused, or (Friday only) it's Wednesday-fellowship season; the ephemeral reply says whether it sent. Allowed in the same channels as `/list-pickups-*`.
 
 ### `/list-pickups-by-message-id`
 

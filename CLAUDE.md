@@ -143,9 +143,11 @@ plus RideBot's kill switch; clicks on past-week announcements are refused. Local
 ### Pickup summaries
 
 Two RideBot jobs post the `/list-pickups-friday` and `/list-pickups-sunday` embeds to
-`SERVING__RIDE_COORDINATORS` (defaults: Friday 11AM, Saturday 4PM LA), each with a markdown link to
-`<FRONTEND_BASE_URL>/?overview=<friday|sunday>#reactions`. The Ask Rides Overview reads `overview`
-once to pick its tab and then strips it from the URL.
+`SERVING__RIDE_COORDINATORS` (defaults: Friday 11AM, Saturday 4PM LA), each with two markdown links:
+`<FRONTEND_BASE_URL>/?overview=<friday|sunday>#reactions` (Ask Rides Overview on that tab) and
+`<FRONTEND_BASE_URL>/?settings=pickup-summaries` (opens Site Settings scrolled to Pickup summaries).
+Both params are read once and stripped from the URL via `useConsumeSearchParam`
+(`frontend/src/hooks/`), so they never appear when navigating there manually.
 
 - Gates, in order: `@bot_enabled`, `FeatureFlagNames.FRIDAY_/SUNDAY_PICKUPS_SUMMARY_JOB`, then the
   per-slot `enabled` toggle in `pickup_summary_settings` (checked at run time; the job stays scheduled).
