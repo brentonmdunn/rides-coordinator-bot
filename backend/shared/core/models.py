@@ -13,7 +13,13 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.core.base import Base
-from shared.core.enums import AccountRoles, AskRidesMessageType, AskRidesScheduleSlot, JobName
+from shared.core.enums import (
+    AccountRoles,
+    AskRidesMessageType,
+    AskRidesScheduleSlot,
+    JobName,
+    PickupSummarySlot,
+)
 
 
 class DiscordUsers(Base):
@@ -212,6 +218,23 @@ class AskRidesSchedule(Base):
         SQLEnum(AskRidesScheduleSlot, values_callable=lambda obj: [e.value for e in obj]),
         primary_key=True,
     )
+    day_of_week: Mapped[int]  # 0=Monday .. 6=Sunday, matches DaysOfWeekNumber
+    hour: Mapped[int]
+    minute: Mapped[int]
+    updated_by: Mapped[str]
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class PickupSummarySetting(Base):
+    """Model representing a customized enabled/day/time for a scheduled pickup summary slot."""
+
+    __tablename__ = "pickup_summary_settings"
+
+    slot: Mapped[PickupSummarySlot] = mapped_column(
+        SQLEnum(PickupSummarySlot, values_callable=lambda obj: [e.value for e in obj]),
+        primary_key=True,
+    )
+    enabled: Mapped[bool]
     day_of_week: Mapped[int]  # 0=Monday .. 6=Sunday, matches DaysOfWeekNumber
     hour: Mapped[int]
     minute: Mapped[int]

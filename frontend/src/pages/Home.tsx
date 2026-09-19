@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { Link } from 'react-router-dom'
 import { BookOpen, Car, History, MapPin, Users, Map, Shield, CalendarDays, ClipboardList, Target, Navigation, UserCheck, UserPlus, Settings } from 'lucide-react'
@@ -25,6 +25,7 @@ import { Button } from '../components/ui/button'
 import { CollapsibleSection } from '../components/ui/collapsible'
 import { logout } from '../lib/auth'
 import { useActiveSection } from '../hooks/useActiveSection'
+import { useConsumeSearchParam } from '../hooks/useConsumeSearchParam'
 import { cn } from '../lib/utils'
 
 const FeatureFlagsManager = lazy(() => import('../components/FeatureFlagsManager'))
@@ -102,6 +103,47 @@ function SectionNav({ isAdmin, canManage }: { isAdmin: boolean; canManage: boole
     )
 }
 
+const SCROLL_TO_HASH_MAX_ATTEMPTS = 20
+
+/**
+ * Scrolls to the section named by `location.hash` (e.g. from a
+ * `?overview=friday#reactions` deep link) exactly once, after mount.
+ *
+ * The target section may not be in the DOM on the very first frame (lazy
+ * sections, role-gated content), so this retries on a bounded number of
+ * animation frames rather than polling forever. It intentionally reads
+ * `window.location.hash` once on mount and never re-runs on later
+ * navigation/re-renders.
+ */
+function useScrollToHashOnce() {
+    const hasRunRef = useRef(false)
+
+    useEffect(() => {
+        if (hasRunRef.current) return
+        hasRunRef.current = true
+
+        const hash = window.location.hash.slice(1)
+        if (!hash) return
+
+        let attempts = 0
+        let frameId = 0
+
+        const tryScroll = () => {
+            const el = document.getElementById(hash)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                return
+            }
+            attempts += 1
+            if (attempts >= SCROLL_TO_HASH_MAX_ATTEMPTS) return
+            frameId = requestAnimationFrame(tryScroll)
+        }
+
+        frameId = requestAnimationFrame(tryScroll)
+        return () => cancelAnimationFrame(frameId)
+    }, [])
+}
+
 /**
  * Invisible subscriber that refreshes reaction-derived queries when a live
  * reaction event arrives. Mounted only for roles allowed to open the stream;
@@ -131,7 +173,12 @@ function Home() {
     const isAdmin = role === 'admin'
     const canManage = role === 'admin' || role === 'ride_coordinator'
 
-    const [showSiteSettings, setShowSiteSettings] = useState(false)
+    // `?settings=<section>` (e.g. from the pickup summary's "Change when this sends" link)
+    // opens Site Settings at that section; the param is stripped so it never lingers.
+    const settingsParam = useConsumeSearchParam('settings')
+    const [showSiteSettings, setShowSiteSettings] = useState(settingsParam !== null)
+
+    useScrollToHashOnce()
 
     return (
         <>
@@ -286,6 +333,7 @@ function Home() {
                 open={showSiteSettings}
                 onOpenChange={setShowSiteSettings}
                 canManage={canManage}
+                initialSection={settingsParam}
             />
         </>
     )

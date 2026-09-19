@@ -5,8 +5,9 @@ from discord.ext import commands
 
 from ridebot.services.locations_service import LocationsService
 from ridebot.services.pickup_locations_service import PickupLocationsService
+from ridebot.services.pickup_summary_service import PickupSummaryService
 from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
-from shared.core.enums import ChannelIds, JobName, RideOption
+from shared.core.enums import ChannelIds, JobName, PickupSummarySlot, RideOption
 from shared.core.logger import log_cmd
 from shared.utils.checks import bot_enabled
 
@@ -121,6 +122,44 @@ class Locations(commands.Cog):
         ):
             return
         await self.service.list_locations_wrapper(interaction, day=JobName.FRIDAY)
+
+    @discord.app_commands.command(
+        name="send-pickups-summary",
+        description="Post the scheduled pickup summary (with dashboard link) in this channel.",
+    )
+    @bot_enabled
+    @log_cmd
+    async def send_pickups_summary(self, interaction: discord.Interaction, day: PickupSummarySlot):
+        """
+        Posts the same message the scheduled pickup-summary job sends, in the current channel.
+
+        Ignores the Site Settings on/off toggle, but still skips when there's nothing to post.
+
+        Args:
+            interaction: The Discord interaction.
+            day: Which summary to send (friday or sunday).
+        """
+        if not await cmd_is_allowed(
+            interaction, interaction.channel_id, LOCATIONS_CHANNELS_WHITELIST
+        ):
+            return
+        if interaction.channel_id is None:
+            await interaction.response.send_message(
+                "This channel can't receive messages.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        sent = await PickupSummaryService(self.bot).send_summary(
+            day, channel_id=interaction.channel_id, respect_toggle=False
+        )
+        await interaction.followup.send(
+            "Sent."
+            if sent
+            else "Nothing sent: no ask-rides message went out this week, the ask-rides job is "
+            "paused, or (Friday only) it's Wednesday-fellowship season.",
+            ephemeral=True,
+        )
 
     @discord.app_commands.command(
         name="list-pickups-by-message-id",

@@ -22,6 +22,10 @@ from ridebot.services.late_reaction_windows_service import LateReactionWindowsSe
 from ridebot.services.locations_service import LocationsService
 from ridebot.services.message_schedule_service import MessageScheduleService
 from ridebot.services.non_discord_rides_service import NonDiscordRidesService
+from ridebot.services.pickup_summary_service import (
+    EffectivePickupSummarySetting,
+    PickupSummaryService,
+)
 from ridebot.utils.ask_rides_defaults import ALLOWED_PLACEHOLDERS, DEFAULT_TEMPLATES, MAX_REACTIONS
 from ridebot.utils.ask_rides_schedule_defaults import (
     ALLOWED_DAYS,
@@ -31,6 +35,14 @@ from ridebot.utils.ask_rides_schedule_defaults import (
     SCHEDULE_MIN_MINUTE,
 )
 from ridebot.utils.cache import invalidate_namespace
+from ridebot.utils.pickup_summary_defaults import (
+    DEFAULT_SUMMARY_SCHEDULE,
+    SUMMARY_ALLOWED_DAYS,
+    SUMMARY_MAX_HOUR,
+    SUMMARY_MAX_MINUTE,
+    SUMMARY_MIN_HOUR,
+    SUMMARY_MIN_MINUTE,
+)
 from ridebot.utils.time_helpers import get_next_date_obj, get_send_wednesday
 from shared.core.enums import (
     AskRidesMessage,
@@ -42,6 +54,7 @@ from shared.core.enums import (
     EmbedColorChoice,
     FellowshipSeason,
     JobName,
+    PickupSummarySlot,
 )
 
 logger = logging.getLogger(__name__)
@@ -706,6 +719,125 @@ async def reset_schedule(slot: str) -> dict:
     updated, applied = await AskRidesScheduleService.reset_schedule(schedule_slot)
 
     result = _serialize_schedule(updated, schedule_slot)
+    result["warning"] = (
+        None if applied else "Saved, but will not take effect until the bot reconnects."
+    )
+    return result
+
+
+# ============================================================================
+# Editable pickup-list summaries
+# ============================================================================
+
+
+def _serialize_pickup_summary(
+    setting: EffectivePickupSummarySetting, slot: PickupSummarySlot
+) -> dict:
+    """Serialize an EffectivePickupSummarySetting plus its slot's allowed days and default."""
+    default = DEFAULT_SUMMARY_SCHEDULE[slot]
+    return {
+        "enabled": setting.enabled,
+        "day_of_week": setting.day_of_week,
+        "hour": setting.hour,
+        "minute": setting.minute,
+        "is_customized": setting.is_customized,
+        "allowed_days": sorted(SUMMARY_ALLOWED_DAYS[slot]),
+        "default": {
+            "day_of_week": default.day_of_week,
+            "hour": default.hour,
+            "minute": default.minute,
+        },
+    }
+
+
+@router.get(
+    "/pickup-summaries",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Get Pickup Summary Schedules",
+    description="Get the effective (customized or default) schedule for both pickup-summary slots.",
+)
+async def get_pickup_summaries() -> dict:
+    """Return both slots' effective settings plus allowed days and the time window."""
+    effective = await PickupSummaryService.get_effective_settings()
+    return {
+        "summaries": {
+            slot.value: _serialize_pickup_summary(setting, slot)
+            for slot, setting in effective.items()
+        },
+        "time_window": {
+            "min_hour": SUMMARY_MIN_HOUR,
+            "min_minute": SUMMARY_MIN_MINUTE,
+            "max_hour": SUMMARY_MAX_HOUR,
+            "max_minute": SUMMARY_MAX_MINUTE,
+        },
+    }
+
+
+class UpdatePickupSummaryRequest(BaseModel):
+    """Request body for updating a pickup-summary slot."""
+
+    enabled: bool = Field(description="Whether the summary job should send")
+    day_of_week: int = Field(description="0=Monday .. 6=Sunday")
+    hour: int = Field(description="Hour of day, 0-23")
+    minute: int = Field(description="Minute of hour, 0-59")
+
+
+@router.put(
+    "/pickup-summaries/{slot}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Update Pickup Summary Schedule",
+    description="Save a customized enabled/day/time for one pickup-summary slot.",
+)
+async def update_pickup_summary(
+    slot: str, body: UpdatePickupSummaryRequest, request: Request
+) -> dict:
+    """Validate and persist a customized pickup-summary setting, apply it live."""
+    try:
+        summary_slot = PickupSummarySlot(slot)
+    except ValueError as e:
+        valid_slots = [s.value for s in PickupSummarySlot]
+        raise HTTPException(
+            status_code=400,
+            detail=f"slot must be one of: {', '.join(valid_slots)}",
+        ) from e
+
+    user = getattr(request.state, "user", None) or {}
+    updated_by = user.get("email", "")
+
+    try:
+        updated, applied = await PickupSummaryService.update_setting(
+            summary_slot, body.enabled, body.day_of_week, body.hour, body.minute, updated_by
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    result = _serialize_pickup_summary(updated, summary_slot)
+    result["warning"] = (
+        None if applied else "Saved, but will not take effect until the bot reconnects."
+    )
+    return result
+
+
+@router.delete(
+    "/pickup-summaries/{slot}",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Reset Pickup Summary Schedule",
+    description="Reset a customized pickup-summary slot back to its default.",
+)
+async def reset_pickup_summary(slot: str) -> dict:
+    """Delete the saved customization for a pickup-summary slot, reverting to the default."""
+    try:
+        summary_slot = PickupSummarySlot(slot)
+    except ValueError as e:
+        valid_slots = [s.value for s in PickupSummarySlot]
+        raise HTTPException(
+            status_code=400,
+            detail=f"slot must be one of: {', '.join(valid_slots)}",
+        ) from e
+
+    updated, applied = await PickupSummaryService.reset_setting(summary_slot)
+
+    result = _serialize_pickup_summary(updated, summary_slot)
     result["warning"] = (
         None if applied else "Saved, but will not take effect until the bot reconnects."
     )

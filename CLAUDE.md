@@ -140,6 +140,25 @@ text to `SERVING__RIDE_COORDINATORS` via `AskRidesOtherService`
 plus RideBot's kill switch; clicks on past-week announcements are refused. Locally,
 `/test-ask-rides-other` posts the embed (with the button when the flag is on) in the current channel.
 
+### Pickup summaries
+
+Two RideBot jobs post the `/list-pickups-friday` and `/list-pickups-sunday` embeds to
+`SERVING__RIDE_COORDINATORS` (defaults: Friday 11AM, Saturday 4PM LA), each with two markdown links:
+`<FRONTEND_BASE_URL>/?overview=<friday|sunday>#reactions` (Ask Rides Overview on that tab) and
+`<FRONTEND_BASE_URL>/?settings=pickup-summaries` (opens Site Settings scrolled to Pickup summaries).
+Both params are read once and stripped from the URL via `useConsumeSearchParam`
+(`frontend/src/hooks/`), so they never appear when navigating there manually.
+
+- Gates, in order: `@bot_enabled`, `FeatureFlagNames.FRIDAY_/SUNDAY_PICKUPS_SUMMARY_JOB`, then the
+  per-slot `enabled` toggle in `pickup_summary_settings` (checked at run time; the job stays scheduled).
+- Day/time are editable in Site Settings (`/api/ask-rides/pickup-summaries`) and applied live via
+  `reschedule_job`. Defaults and allowed days: `ridebot/utils/pickup_summary_defaults.py`.
+- Logic: `ridebot/services/pickup_summary_service.py`; embeds come from
+  `LocationsService.build_pickups_embeds`, shared with the slash commands. Skips silently in
+  Wednesday-fellowship season (Friday), when the ask-rides job is paused, or when no ask-rides
+  message was found this week. `/send-pickups-summary <friday|sunday>` posts the same message in the
+  current channel on demand (ignores the toggle and flags).
+
 ### Weekly events announcement (StonesBot)
 
 Every Sunday at 6PM LA time, StonesBot posts one embed to

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Sparkles, Church, BookOpen, ClipboardList, ChevronDown } from 'lucide-react'
 import type React from 'react'
 import { getAutomaticDay } from '../lib/utils'
+import { useConsumeSearchParam } from '../hooks/useConsumeSearchParam'
 import { apiFetch, ApiError } from '../lib/api'
 import { QUERY_STALE_1_MIN } from '../lib/constants'
 import { Button } from './ui/button'
@@ -28,6 +29,13 @@ const MESSAGE_TYPES: MessageTypeOption[] = [
     { value: 'sunday_class', label: 'Sunday Class', icon: <BookOpen className="h-4 w-4" /> },
 ]
 
+const VALID_MESSAGE_TYPES: readonly MessageType[] = ['friday', 'sunday', 'sunday_class']
+
+/** Type guard for the `overview` deep-link search param (see NOTES.pickups-summary-contract.md). */
+function isMessageType(value: string | null): value is MessageType {
+    return value !== null && VALID_MESSAGE_TYPES.includes(value as MessageType)
+}
+
 /** Human-readable labels for ride-reaction emojis, shown in the overview. */
 const EMOJI_LABELS: Record<string, string> = {
     '🍔': 'Lunch',
@@ -41,7 +49,13 @@ const EMOJI_LABELS: Record<string, string> = {
 }
 
 function ReactionDetails() {
-    const [selectedType, setSelectedType] = useState<MessageType>(() => getAutomaticDay())
+    // Consume-once deep link: `?overview=<friday|sunday|sunday_class>#reactions`.
+    // Initialize the tab from a valid `overview` param, otherwise fall back to
+    // the automatic day. Tab changes made after this never write to the URL.
+    const overviewParam = useConsumeSearchParam('overview')
+    const [selectedType, setSelectedType] = useState<MessageType>(() =>
+        isMessageType(overviewParam) ? overviewParam : getAutomaticDay()
+    )
 
     const [showInfo, setShowInfo] = useState(false)
     const [showDetail, setShowDetail] = useState(false)

@@ -21,13 +21,13 @@ from api.constants import (
     DISCORD_OAUTH_AUTH_URL,
     DISCORD_OAUTH_TOKEN_URL,
     DISCORD_USER_INFO_URL,
-    FRONTEND_BASE_URL_LOCAL,
     OAUTH_STATE_COOKIE_MAX_AGE,
     SESSION_COOKIE_NAME,
     SESSION_TTL_SECONDS,
 )
 from shared.core.database import AsyncSessionLocal
 from shared.services.auth_service import AuthService
+from shared.utils.constants import FRONTEND_BASE_URL_LOCAL
 
 logger = logging.getLogger(__name__)
 

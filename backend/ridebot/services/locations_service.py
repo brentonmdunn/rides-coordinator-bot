@@ -131,27 +131,16 @@ class LocationsService:
                 f"list_locations_wrapper: user action - day={day}, "
                 f"message_id={message_id}, option={option}"
             )
+            if day:
+                embeds = await self.build_pickups_embeds(day, option)
+                if len(embeds) > 1:
+                    await interaction.response.send_message(embeds=embeds)
+                else:
+                    await interaction.response.send_message(embed=embeds[0])
+                return
+
             args = await self.list_locations(day, message_id, channel_id, option)
             embed = self._housing.build_embed(*args, option=option)
-            if day and option and "dropoff" in option.lower():
-                async with AsyncSessionLocal() as session:
-                    non_discord = await LocationsRepository.get_non_discord_pickups(session, day)
-                if non_discord:
-                    non_discord_locations_people = defaultdict(list)
-                    for pickup in non_discord:
-                        non_discord_locations_people[pickup.location].append((pickup.name, None))
-                    await interaction.response.send_message(
-                        embeds=[
-                            embed,
-                            self._housing.build_embed(
-                                non_discord_locations_people,
-                                set(),
-                                set(),
-                                custom_title="Non-Discord Dropoffs (unknown lunch)",
-                            ),
-                        ]
-                    )
-                    return
             await interaction.response.send_message(embed=embed)
         except NotAllowedInChannelError:
             await interaction.response.send_message("Command not allowed in channel.")
@@ -163,6 +152,50 @@ class LocationsService:
             await interaction.response.send_message(
                 "An unexpected error occurred. Please try again later.", ephemeral=True
             )
+
+    async def build_pickups_embeds(
+        self, day: JobName, option: RideOption | None = None
+    ) -> list[discord.Embed]:
+        """
+        Builds the pickup location embeds for a given ask-rides day.
+
+        Contains exactly the embed-building logic previously inlined in
+        ``list_locations_wrapper``: the main housing-group embed, plus an extra
+        "Non-Discord Dropoffs (unknown lunch)" embed for dropoff options when there
+        are non-Discord pickups.
+
+        Args:
+            day: The ask-rides day to build embeds for.
+            option: Additional filtering options (e.g. a dropoff ride option).
+
+        Returns:
+            A list of one or two embeds, depending on whether non-Discord dropoffs
+            exist for a dropoff option.
+
+        Raises:
+            NoMatchingMessageFoundError: If no matching ask-rides message is found.
+            NotAllowedInChannelError: If the day/channel combination isn't allowed.
+        """
+        channel_id = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+        args = await self.list_locations(day, None, channel_id, option)
+        embed = self._housing.build_embed(*args, option=option)
+        embeds = [embed]
+        if option and "dropoff" in option.lower():
+            async with AsyncSessionLocal() as session:
+                non_discord = await LocationsRepository.get_non_discord_pickups(session, day)
+            if non_discord:
+                non_discord_locations_people = defaultdict(list)
+                for pickup in non_discord:
+                    non_discord_locations_people[pickup.location].append((pickup.name, None))
+                embeds.append(
+                    self._housing.build_embed(
+                        non_discord_locations_people,
+                        set(),
+                        set(),
+                        custom_title="Non-Discord Dropoffs (unknown lunch)",
+                    )
+                )
+        return embeds
 
     async def list_locations(
         self,
