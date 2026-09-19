@@ -5,7 +5,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from ridebot.cogs.locations import Locations
-from shared.core.enums import ChannelIds, PickupSummarySlot
+from shared.core.enums import ChannelIds, FeatureFlagNames, PickupSummarySlot
+
+
+@pytest.fixture(autouse=True)
+def _ridebot_enabled():
+    """@bot_enabled reads RideBot's kill switch; seed it so the test doesn't depend on the DB."""
+    with patch(
+        "shared.repositories.feature_flags_repository.FeatureFlagsRepository._cache",
+        {FeatureFlagNames.RIDEBOT: True},
+    ):
+        yield
 
 
 @pytest.fixture

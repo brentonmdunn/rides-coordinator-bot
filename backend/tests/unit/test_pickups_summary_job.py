@@ -61,7 +61,7 @@ class TestFeatureFlagAllows:
         with (
             patch(
                 "shared.repositories.feature_flags_repository.FeatureFlagsRepository._cache",
-                {FeatureFlagNames.FRIDAY_PICKUPS_SUMMARY_JOB: True},
+                {FeatureFlagNames.RIDEBOT: True, FeatureFlagNames.FRIDAY_PICKUPS_SUMMARY_JOB: True},
             ),
             patch(
                 "ridebot.jobs.pickups_summary.PickupSummaryService.send_summary", new=AsyncMock()
@@ -78,7 +78,7 @@ class TestFeatureFlagAllows:
         with (
             patch(
                 "shared.repositories.feature_flags_repository.FeatureFlagsRepository._cache",
-                {FeatureFlagNames.SUNDAY_PICKUPS_SUMMARY_JOB: True},
+                {FeatureFlagNames.RIDEBOT: True, FeatureFlagNames.SUNDAY_PICKUPS_SUMMARY_JOB: True},
             ),
             patch(
                 "ridebot.jobs.pickups_summary.PickupSummaryService.send_summary", new=AsyncMock()
