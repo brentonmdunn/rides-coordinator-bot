@@ -31,6 +31,7 @@ from shared.core.enums import BotName
 from shared.core.error_reporter import send_error_to_discord
 from shared.core.models import FeatureFlags
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
+from shared.utils.checks import UserFacingCheckFailure
 from shared.utils.constants import REDIS_CONNECTION_TIMEOUT
 
 logger = logging.getLogger(__name__)
@@ -187,10 +188,12 @@ def attach_event_handlers(bot: Bot, spec: BotSpec, send_error_fn: _SendErrorFn) 
     @bot.tree.error
     async def on_app_command_error(interaction: Interaction, error: AppCommandError) -> None:
         if isinstance(error, CheckFailure):
-            await interaction.response.send_message(
-                "❌ You must be a server admin to use this command.",
-                ephemeral=True,
+            message = (
+                str(error)
+                if isinstance(error, UserFacingCheckFailure)
+                else "❌ You must be a server admin to use this command."
             )
+            await interaction.response.send_message(message, ephemeral=True)
             return
 
         logger.error(f"[{spec.name}] App command error: {error}", exc_info=error)

@@ -30,19 +30,19 @@ def is_ride_coordinator():
     """
 
     async def predicate(interaction: discord.Interaction) -> bool:
-        if not interaction.guild or not interaction.user:
-            return False
-
         member = interaction.user
-        if not isinstance(member, discord.Member):
-            return False
-
-        if member.guild_permissions.administrator:
-            return True
-
-        return any(role.id == RoleIds.RIDE_COORDINATOR for role in member.roles)
+        if interaction.guild and isinstance(member, discord.Member):
+            if member.guild_permissions.administrator:
+                return True
+            if any(role.id == RoleIds.RIDE_COORDINATOR for role in member.roles):
+                return True
+        raise UserFacingCheckFailure("❌ Only ride coordinators can use this command.")
 
     return app_commands.check(predicate)
+
+
+class UserFacingCheckFailure(app_commands.CheckFailure):
+    """A check failure whose message is shown to the user as-is by the global handler."""
 
 
 def is_admin():

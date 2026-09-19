@@ -7,22 +7,24 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ridebot.services.temp_driver_service import TempDriverResult, TempDriverService
+from ridebot.services.temp_driver_service import (
+    TempDriverResult,
+    TempDriverService,
+    format_expiry,
+)
 from shared.core.enums import ChannelIds
 from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import log_cmd
 from shared.utils.channels import resolve_channel_id
 from shared.utils.checks import bot_enabled, is_ride_coordinator
-from shared.utils.constants import LA_TZ
 
 logger = logging.getLogger(__name__)
 
 
-def _format_la_when(expires_at: datetime) -> str:
-    """Format an aware UTC datetime as e.g. 'Sat, Oct 5, 11:59 PM' in LA time."""
-    la = expires_at.astimezone(LA_TZ)
-    # %I zero-pads the hour (e.g. "09:00 PM"); strip that leading zero.
-    return la.strftime("%a, %b %-d, %I:%M %p").replace(", 0", ", ")
+def _when(expires_at: datetime) -> str:
+    """'Sat, Oct 5, 11:59 PM (<t:…:R>)', matching the announcement format."""
+    when, rel = format_expiry(expires_at)
+    return f"{when} ({rel})"
 
 
 class TempDrivers(commands.Cog):
@@ -148,8 +150,7 @@ class TempDrivers(commands.Cog):
             embed.description = "No temporary drivers."
         else:
             embed.description = "\n".join(
-                f"**{grant.display_name}** — {_format_la_when(grant.expires_at)} "
-                f"(<t:{int(grant.expires_at.timestamp())}:R>) · by {grant.granted_by}"
+                f"**{grant.display_name}** — {_when(grant.expires_at)} · by {grant.granted_by}"
                 for grant in grants
             )
 

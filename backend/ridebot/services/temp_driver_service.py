@@ -58,7 +58,7 @@ def _as_aware_utc(dt: datetime) -> datetime:
     return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
 
 
-def _format_expiry(expires_at: datetime) -> tuple[str, str]:
+def format_expiry(expires_at: datetime) -> tuple[str, str]:
     """Return (LA-formatted absolute time, Discord relative-time markdown)."""
     la_dt = expires_at.astimezone(LA_TZ)
     when = la_dt.strftime("%a, %b %-d, %-I:%M %p")
@@ -75,12 +75,12 @@ def build_announcement(
 ) -> str:
     """Build the coordinators-channel message for a grant event. Pure function."""
     name = f"**@{display_name}**"
-    when, rel = _format_expiry(expires_at)
+    when, rel = format_expiry(expires_at)
 
     if event == TempDriverEvent.GRANTED:
         return f"🚗 {name} is a temporary driver until **{when}** ({rel}) — added by {actor}"
     if event == TempDriverEvent.EXTENDED:
-        prev_when = _format_expiry(previous_expires_at)[0] if previous_expires_at else "unknown"
+        prev_when = format_expiry(previous_expires_at)[0] if previous_expires_at else "unknown"
         return (
             f"🚗 {name}'s temporary driver role now ends **{when}** ({rel}), "
             f"was {prev_when} — updated by {actor}"
@@ -145,7 +145,7 @@ class TempDriverService:
         if not has_role:
             try:
                 await member.add_roles(
-                    role, reason=f"Temporary driver until {_format_expiry(expires_at)[0]}"
+                    role, reason=f"Temporary driver until {format_expiry(expires_at)[0]}"
                 )
                 role_added = True
             except discord.Forbidden:

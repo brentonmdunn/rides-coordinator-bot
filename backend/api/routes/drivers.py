@@ -2,6 +2,8 @@
 
 import logging
 
+import discord
+from discord.ext.commands import Bot
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
@@ -17,28 +19,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/drivers", tags=["drivers"])
 
 
-def _get_guild():
+def _get_bot_and_guild() -> tuple[Bot, discord.Guild]:
     bot = get_bot(BotName.RIDEBOT)
     if bot is None:
         raise HTTPException(status_code=503, detail="Bot is not ready")
     guild = bot.get_guild(GUILD_ID)
     if guild is None:
         raise HTTPException(status_code=503, detail="Guild not found")
-    return guild
+    return bot, guild
+
+
+def _get_guild() -> discord.Guild:
+    return _get_bot_and_guild()[1]
 
 
 def _get_temp_driver_service() -> TempDriverService:
     """
-    Build a TempDriverService, checking bot/guild readiness first.
+    Build a TempDriverService for a ready bot and guild (503 otherwise).
 
-    Calls ``_get_guild()`` so a missing bot or guild raises 503 before the service is ever
-    touched — ``TempDriverService`` methods can then treat any ``ValueError`` they raise as
-    a plain 400, since guild unavailability is already ruled out here.
+    Ruling out guild unavailability here lets every ValueError from the service map to 400.
     """
-    _get_guild()
-    bot = get_bot(BotName.RIDEBOT)
-    assert bot is not None  # _get_guild() above already confirmed the bot is ready
-    return TempDriverService(bot)
+    return TempDriverService(_get_bot_and_guild()[0])
 
 
 def _get_actor(request: Request) -> str:

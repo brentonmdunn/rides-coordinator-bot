@@ -17,7 +17,7 @@ from ridebot.services.temp_driver_service import (
 )
 from shared.core.enums import ChannelIds, FeatureFlagNames, RoleIds
 from shared.utils.channels import resolve_channel_id
-from shared.utils.checks import is_ride_coordinator
+from shared.utils.checks import UserFacingCheckFailure, is_ride_coordinator
 
 # `resolve_channel_id` reroutes to BOT_STUFF__BOTS when APP_ENV=local (the test
 # default), so "in the coordinators channel" must be computed the same way the
@@ -366,7 +366,8 @@ async def test_is_ride_coordinator_passes_for_admin():
 async def test_is_ride_coordinator_fails_for_plain_member():
     interaction = _make_check_interaction()
     predicate = _extract_predicate(is_ride_coordinator())
-    assert await predicate(interaction) is False
+    with pytest.raises(UserFacingCheckFailure, match="Only ride coordinators"):
+        await predicate(interaction)
 
 
 @pytest.mark.asyncio
@@ -375,14 +376,16 @@ async def test_is_ride_coordinator_fails_in_dm():
     interaction.guild = None
     interaction.user = MagicMock()
     predicate = _extract_predicate(is_ride_coordinator())
-    assert await predicate(interaction) is False
+    with pytest.raises(UserFacingCheckFailure, match="Only ride coordinators"):
+        await predicate(interaction)
 
 
 @pytest.mark.asyncio
 async def test_is_ride_coordinator_fails_without_user():
     interaction = _make_check_interaction(no_user=True)
     predicate = _extract_predicate(is_ride_coordinator())
-    assert await predicate(interaction) is False
+    with pytest.raises(UserFacingCheckFailure, match="Only ride coordinators"):
+        await predicate(interaction)
 
 
 @pytest.mark.asyncio
@@ -391,7 +394,8 @@ async def test_is_ride_coordinator_fails_for_non_member_user():
     interaction.guild = MagicMock()
     interaction.user = MagicMock(spec=discord.User)
     predicate = _extract_predicate(is_ride_coordinator())
-    assert await predicate(interaction) is False
+    with pytest.raises(UserFacingCheckFailure, match="Only ride coordinators"):
+        await predicate(interaction)
 
 
 # ---------------------------------------------------------------------------
