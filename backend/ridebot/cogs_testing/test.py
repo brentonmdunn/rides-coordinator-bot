@@ -8,10 +8,9 @@ from ridebot.jobs.ask_rides import (
     build_ask_rides_message,
     run_ask_rides_all,
 )
-from ridebot.services.pickup_summary_service import PickupSummaryService
 from ridebot.services.ride_request_service import RideRequestService
 from ridebot.views.pickup_info import PickupInfoView
-from shared.core.enums import AskRidesMessageType, PickupSummarySlot
+from shared.core.enums import AskRidesMessageType
 from shared.utils.checks import bot_enabled
 
 logger = logging.getLogger(__name__)
@@ -104,24 +103,6 @@ class TestCog(commands.Cog):
         if view is None:
             reply += " Heads up: ask_rides_other_button is OFF, so no button was attached."
         await interaction.followup.send(reply, ephemeral=True)
-
-    @app_commands.command(
-        name="test-pickups-summary",
-        description="Post the pickup-list summary embed here, ignoring the toggle (local only).",
-    )
-    @bot_enabled
-    async def test_pickups_summary(self, interaction: discord.Interaction, day: PickupSummarySlot):
-        """Send a pickup summary to the current channel, bypassing the enabled toggle."""
-        await interaction.response.defer(ephemeral=True)
-
-        if interaction.channel_id is None:
-            await interaction.followup.send("This channel can't receive messages.", ephemeral=True)
-            return
-
-        sent = await PickupSummaryService(self.bot).send_summary(
-            day, channel_id=interaction.channel_id, respect_toggle=False
-        )
-        await interaction.followup.send("Sent." if sent else "Skipped.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
