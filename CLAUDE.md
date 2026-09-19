@@ -154,7 +154,8 @@ once to pick its tab and then strips it from the URL.
 - Logic: `ridebot/services/pickup_summary_service.py`; embeds come from
   `LocationsService.build_pickups_embeds`, shared with the slash commands. Skips silently in
   Wednesday-fellowship season (Friday), when the ask-rides job is paused, or when no ask-rides
-  message was found this week. Locally, `/test-pickups-summary` posts in the current channel.
+  message was found this week. `/send-pickups-summary <friday|sunday>` posts the same message in the
+  current channel on demand (ignores the toggle and flags).
 
 ### Weekly events announcement (StonesBot)
 

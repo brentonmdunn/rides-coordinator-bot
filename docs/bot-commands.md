@@ -24,6 +24,10 @@ List dropoff locations for users returning straight home after Sunday service (n
 
 List dropoff locations for users staying for lunch.
 
+### `/send-pickups-summary`
+
+Post the Friday or Sunday pickup summary — the same message the scheduled job sends to the ride coordinators channel (the `/list-pickups-*` embed plus the dashboard link) — in the current channel. Ignores the Site Settings on/off toggle and the job feature flags, but still skips when no ask-rides message went out this week, the ask-rides job is paused, or (Friday only) it's Wednesday-fellowship season; the ephemeral reply says whether it sent. Allowed in the same channels as `/list-pickups-*`.
+
 ### `/list-pickups-by-message-id`
 
 List pickups from a specific Discord message ID.
@@ -229,10 +233,6 @@ Every ask-rides announcement (Wednesday/Friday fellowship, Sunday service, Sunda
 ## Local-only test commands
 
 Loaded from `ridebot/cogs_testing/` only when `APP_ENV=local`.
-
-### `/test-pickups-summary`
-
-Post the Friday or Sunday pickup summary (the `/list-pickups-*` embed plus the dashboard link) in the current channel, as the scheduled job would. Ignores the Site Settings on/off toggle but still skips when the job is paused, the fellowship season is Wednesday (Friday only), or no ask-rides message went out this week; the ephemeral reply says whether it sent.
 
 ### `/test-ask-rides-other`
 
