@@ -11,11 +11,38 @@ from discord import app_commands
 from shared.core.bot_context import get_current_bot_name
 from shared.core.bots import get_spec
 from shared.core.database import AsyncSessionLocal
-from shared.core.enums import FeatureFlagNames
+from shared.core.enums import FeatureFlagNames, RoleIds
 from shared.core.error_reporter import send_error_to_discord
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 logger = logging.getLogger(__name__)
+
+
+def is_ride_coordinator():
+    """
+    A decorator that checks if the user is a ride coordinator or a server admin.
+
+    Passes if the invoker is a `discord.Member` with `RoleIds.RIDE_COORDINATOR`
+    or `guild_permissions.administrator`.
+
+    Returns:
+        Callable: The decorated command.
+    """
+
+    async def predicate(interaction: discord.Interaction) -> bool:
+        member = interaction.user
+        if interaction.guild and isinstance(member, discord.Member):
+            if member.guild_permissions.administrator:
+                return True
+            if any(role.id == RoleIds.RIDE_COORDINATOR for role in member.roles):
+                return True
+        raise UserFacingCheckFailure("❌ Only ride coordinators can use this command.")
+
+    return app_commands.check(predicate)
+
+
+class UserFacingCheckFailure(app_commands.CheckFailure):
+    """A check failure whose message is shown to the user as-is by the global handler."""
 
 
 def is_admin():

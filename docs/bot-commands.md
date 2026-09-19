@@ -183,6 +183,38 @@ Display all feature flags and their current state as an embed.
 
 ---
 
+## Temporary Drivers
+
+Give someone the Driver role for a limited time. These commands are restricted to ride coordinators (members with the Ride Coordinator role, or administrators). Every add, extension and early removal is announced in the ride coordinators channel:
+
+- **Run in that channel:** the command's reply is the announcement.
+- **Run anywhere else, or from the Drivers tab on the dashboard:** the bot posts the announcement there as a standalone message, and the invoker gets a private confirmation.
+
+Drivers are never pinged. Expired roles are removed by the `temp_driver_expiry_job` sweep (every 5 minutes, plus once at startup), which also posts a short "expired" notice in the channel.
+
+### `/add-temp-driver`
+
+Give a member the Driver role temporarily. Running it on someone who is already a temporary driver replaces their expiry. It's refused for permanent drivers.
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `user` | Yes | The member to make a temporary driver |
+| `duration` | No | Relative (`12h`, `3d`, `2w`, `10 days`) or a date (`10/5`, `10/5/26`, `2026-10-05`). Default 1 week, max 90 days. A date means through 11:59 PM LA that day. |
+
+### `/remove-temp-driver`
+
+Remove a temporary driver's role before it expires. Use the Drivers tab to remove a permanent driver.
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `user` | Yes | The temporary driver to remove |
+
+### `/list-temp-drivers`
+
+List every temporary driver with their expiry and who added them, soonest first (private reply).
+
+---
+
 ## Admin
 
 These commands require the `Manage Roles` or `Manage Channels` permission.
@@ -241,6 +273,10 @@ Post an ask-rides embed and its reactions in the current channel, exactly as the
 | Param | Required | Description |
 |-------|----------|-------------|
 | `message_type` | Yes | Which announcement to post (Wednesday fellowship, Friday fellowship, Sunday service, Sunday class) |
+
+### `/test-expire-temp-drivers`
+
+Run the temporary-driver expiry sweep immediately, ignoring the `temp_driver_expiry_job` flag, and reply with how many grants were processed. Grant someone a short duration (e.g. `1h`) first, or edit `expires_at` in the `temp_driver_grants` table to a past time.
 
 ---
 
