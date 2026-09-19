@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Settings } from 'lucide-react'
 import { toast } from 'sonner'
@@ -24,6 +24,11 @@ interface SiteSettingsDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     canManage: boolean
+    /**
+     * Section to scroll to the first time the dialog opens with data loaded (from the
+     * `?settings=` deep link). Matches a section's `settings-<name>` element id.
+     */
+    initialSection?: string | null
 }
 
 const DAYS_OF_WEEK: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -235,7 +240,7 @@ function PickupSummaryRow({ config, entry, canManage }: PickupSummaryRowProps) {
     )
 }
 
-function SiteSettingsDialog({ open, onOpenChange, canManage }: SiteSettingsDialogProps) {
+function SiteSettingsDialog({ open, onOpenChange, canManage, initialSection }: SiteSettingsDialogProps) {
     const queryClient = useQueryClient()
 
     const { data: seasonData } = useQuery<{ season: FellowshipSeason }>({
@@ -336,9 +341,24 @@ function SiteSettingsDialog({ open, onOpenChange, canManage }: SiteSettingsDialo
         enabled: open,
     })
 
+    // Scroll to the deep-linked section once. Pickup summaries is the only linkable section,
+    // so wait for its data so the rows (and the layout above them) have rendered first.
+    // The ref is set inside the frame so a StrictMode effect re-run can't cancel the scroll.
+    const hasScrolledToSection = useRef(false)
+    useEffect(() => {
+        if (!open || !initialSection || !pickupSummariesData || hasScrolledToSection.current) return
+        const frameId = requestAnimationFrame(() => {
+            hasScrolledToSection.current = true
+            document
+                .getElementById(`settings-${initialSection}`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })
+        return () => cancelAnimationFrame(frameId)
+    }, [open, initialSection, pickupSummariesData])
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
@@ -493,7 +513,7 @@ function SiteSettingsDialog({ open, onOpenChange, canManage }: SiteSettingsDialo
                         )}
                     </div>
 
-                    <div>
+                    <div id="settings-pickup-summaries" className="scroll-mt-4">
                         <p className="text-base font-semibold text-foreground mb-1">Pickup summaries</p>
                         <p className="text-xs text-muted-foreground mb-1">
                             Posts the pickup list to the ride coordinators channel <strong>before</strong> the

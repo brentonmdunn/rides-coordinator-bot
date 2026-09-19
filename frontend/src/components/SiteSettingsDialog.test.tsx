@@ -111,11 +111,16 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllMocks())
 
-function renderDialog(canManage = true) {
+function renderDialog(canManage = true, initialSection: string | null = null) {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     return render(
         <QueryClientProvider client={queryClient}>
-            <SiteSettingsDialog open={true} onOpenChange={() => {}} canManage={canManage} />
+            <SiteSettingsDialog
+                open={true}
+                onOpenChange={() => {}}
+                canManage={canManage}
+                initialSection={initialSection}
+            />
         </QueryClientProvider>,
     )
 }
@@ -306,5 +311,30 @@ describe('SiteSettingsDialog - Pickup summaries', () => {
         const fridayRow = screen.getByText('Friday fellowship pickups').closest('div')!.parentElement as HTMLElement
         expect(within(fridayRow).getByLabelText('Day')).toBeDisabled()
         expect(within(fridayRow).getByLabelText('Time')).toBeDisabled()
+    })
+})
+
+describe('SiteSettingsDialog - deep-linked section', () => {
+    // jsdom doesn't implement scrollIntoView.
+    const scrollIntoView = vi.fn()
+    beforeEach(() => {
+        Element.prototype.scrollIntoView = scrollIntoView
+    })
+    afterEach(() => scrollIntoView.mockReset())
+
+    it('scrolls to the pickup summaries section once its data has loaded', async () => {
+        renderDialog(true, 'pickup-summaries')
+
+        await screen.findByText('Friday fellowship pickups')
+        await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1))
+        expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById('settings-pickup-summaries'))
+    })
+
+    it('does not scroll when opened without a section', async () => {
+        renderDialog()
+
+        await screen.findByText('Friday fellowship pickups')
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        expect(scrollIntoView).not.toHaveBeenCalled()
     })
 })

@@ -25,6 +25,7 @@ import { Button } from '../components/ui/button'
 import { CollapsibleSection } from '../components/ui/collapsible'
 import { logout } from '../lib/auth'
 import { useActiveSection } from '../hooks/useActiveSection'
+import { useConsumeSearchParam } from '../hooks/useConsumeSearchParam'
 import { cn } from '../lib/utils'
 
 const FeatureFlagsManager = lazy(() => import('../components/FeatureFlagsManager'))
@@ -172,7 +173,10 @@ function Home() {
     const isAdmin = role === 'admin'
     const canManage = role === 'admin' || role === 'ride_coordinator'
 
-    const [showSiteSettings, setShowSiteSettings] = useState(false)
+    // `?settings=<section>` (e.g. from the pickup summary's "Change when this sends" link)
+    // opens Site Settings at that section; the param is stripped so it never lingers.
+    const settingsParam = useConsumeSearchParam('settings')
+    const [showSiteSettings, setShowSiteSettings] = useState(settingsParam !== null)
 
     useScrollToHashOnce()
 
@@ -329,6 +333,7 @@ function Home() {
                 open={showSiteSettings}
                 onOpenChange={setShowSiteSettings}
                 canManage={canManage}
+                initialSection={settingsParam}
             />
         </>
     )
