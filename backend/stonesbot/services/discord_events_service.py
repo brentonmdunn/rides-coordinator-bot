@@ -24,6 +24,10 @@ WORSHIP_SERVICE_START = datetime.time(10, 30)
 WORSHIP_SERVICE_END = datetime.time(12, 0)
 WORSHIP_SERVICE_LOCATION = "Jonas Salk Elementary School"
 
+# Lead-in for the day's extra (non-announced) calendar entries, folded into the
+# scheduled event's description.
+EXTRAS_PREFIX = "Also today: "
+
 
 @dataclass(frozen=True)
 class ScheduledEventSpec:
@@ -33,6 +37,7 @@ class ScheduledEventSpec:
     start: datetime.datetime
     end: datetime.datetime
     location: str
+    description: str | None = None
 
 
 class DiscordEventsService:
@@ -41,6 +46,7 @@ class DiscordEventsService:
     @staticmethod
     def build_specs(
         summaries_by_date: dict[datetime.date, list[str]],
+        extras_by_date: dict[datetime.date, list[str]] | None = None,
     ) -> list[ScheduledEventSpec]:
         """
         Turn calendar summaries into scheduled-event specs.
@@ -51,15 +57,22 @@ class DiscordEventsService:
 
         Args:
             summaries_by_date: Event summaries keyed by date.
+            extras_by_date: Other summaries on that date that get no event of
+                their own (e.g. "Child Dedication"). They become the event's
+                description instead; extras on a date with no recognized event
+                are dropped.
 
         Returns:
             Specs sorted by start time. Duplicate summaries on the same date
             collapse into a single spec.
         """
+        extras_by_date = extras_by_date or {}
         specs: list[ScheduledEventSpec] = []
         seen: set[tuple[str, datetime.datetime]] = set()
 
         for day in sorted(summaries_by_date):
+            extras = extras_by_date.get(day) or []
+            description = EXTRAS_PREFIX + ", ".join(extras) if extras else None
             for summary in summaries_by_date[day]:
                 if summary.strip().casefold() != WORSHIP_SERVICE_SUMMARY.casefold():
                     continue
@@ -75,6 +88,7 @@ class DiscordEventsService:
                         start=start,
                         end=end,
                         location=WORSHIP_SERVICE_LOCATION,
+                        description=description,
                     )
                 )
 
@@ -100,6 +114,7 @@ class DiscordEventsService:
     async def create_events(
         guild: discord.Guild,
         summaries_by_date: dict[datetime.date, list[str]],
+        extras_by_date: dict[datetime.date, list[str]] | None = None,
         now: datetime.datetime | None = None,
     ) -> list[discord.ScheduledEvent]:
         """
@@ -107,11 +122,14 @@ class DiscordEventsService:
 
         Best-effort: each event is created independently, so a permission error
         or an API failure on one does not stop the rest. Events whose start time
-        has already passed are skipped, since Discord rejects them.
+        has already passed are skipped, since Discord rejects them. An event
+        that already exists is left untouched, description included.
 
         Args:
             guild: The guild to create events in.
             summaries_by_date: Event summaries keyed by date.
+            extras_by_date: Other summaries on that date, used as the event's
+                description.
             now: Override for the current time, for testing.
 
         Returns:
@@ -120,7 +138,7 @@ class DiscordEventsService:
         now = now or datetime.datetime.now(tz=LA_TZ)
         created: list[discord.ScheduledEvent] = []
 
-        for spec in DiscordEventsService.build_specs(summaries_by_date):
+        for spec in DiscordEventsService.build_specs(summaries_by_date, extras_by_date):
             if spec.start <= now:
                 logger.info(
                     "Skipping scheduled event '%s' at %s: start time is in the past",
@@ -145,6 +163,7 @@ class DiscordEventsService:
                     entity_type=discord.EntityType.external,
                     privacy_level=discord.PrivacyLevel.guild_only,
                     location=spec.location,
+                    description=spec.description or discord.utils.MISSING,
                     reason="Weekly events announcement",
                 )
             except discord.Forbidden:
