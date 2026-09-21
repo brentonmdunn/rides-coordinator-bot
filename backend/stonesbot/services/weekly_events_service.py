@@ -8,6 +8,7 @@ point (slash command, API route) so the logic lives in exactly one place.
 
 import datetime
 import logging
+from dataclasses import dataclass
 
 import discord
 from discord.ext.commands import Bot
@@ -30,6 +31,9 @@ DAYS_IN_WEEK = 7
 EMBED_COLOR = discord.Color.blurple()
 EMBED_DESCRIPTION_LIMIT = 4096
 NO_EVENTS_TEXT = "No events scheduled this week."
+# Prefix for an extra event's sub-bullet. Leading non-breaking spaces because
+# Discord collapses ordinary leading whitespace in embed descriptions.
+EXTRA_BULLET_PREFIX = "  ↳ "
 
 # The calendar feed carries far more than what belongs in the announcement, so
 # only these events are announced. Matching is case-insensitive.
@@ -37,6 +41,17 @@ NO_EVENTS_TEXT = "No events scheduled this week."
 ALLOWED_EVENT_SUMMARIES = ("Regular Worship Service",)
 # Substring matches: the summary must contain one of these anywhere.
 ALLOWED_EVENT_SUBSTRINGS = ("Wildcard Sunday",)
+
+
+@dataclass(frozen=True)
+class WeeklyAnnouncement:
+    """A built weekly events announcement, ready to post."""
+
+    week_start: datetime.date
+    week_end: datetime.date
+    summaries_by_date: dict[datetime.date, list[str]]
+    extras_by_date: dict[datetime.date, list[str]]
+    embed: discord.Embed
 
 
 class WeeklyEventsService:
@@ -104,10 +119,45 @@ class WeeklyEventsService:
         }
 
     @staticmethod
+    def extra_events(
+        summaries_by_date: dict[datetime.date, list[str]],
+    ) -> dict[datetime.date, list[str]]:
+        """
+        Collect the events that are *not* on the allowlist, keeping the date keys.
+
+        These never get an announcement line or a Discord event of their own, but
+        they do ride along with the day's allowed events — a Child Dedication on
+        a worship-service Sunday is part of that service, not a separate event.
+        Days whose only entries are allowed ones map to an empty list.
+
+        Args:
+            summaries_by_date: Unfiltered event summaries keyed by date.
+
+        Returns:
+            A new dict with the same dates and only non-allowed summaries, in
+            feed order and de-duplicated.
+        """
+        extras_by_date: dict[datetime.date, list[str]] = {}
+        for day, summaries in summaries_by_date.items():
+            seen: set[str] = set()
+            extras: list[str] = []
+            for summary in summaries:
+                if WeeklyEventsService.is_allowed_event(summary):
+                    continue
+                name = summary.strip()
+                if name.casefold() in seen:
+                    continue
+                seen.add(name.casefold())
+                extras.append(name)
+            extras_by_date[day] = extras
+        return extras_by_date
+
+    @staticmethod
     def build_embed(
         week_start: datetime.date,
         week_end: datetime.date,
         summaries_by_date: dict[datetime.date, list[str]],
+        extras_by_date: dict[datetime.date, list[str]] | None = None,
     ) -> discord.Embed:
         """
         Build the single embed covering the whole week.
@@ -117,21 +167,33 @@ class WeeklyEventsService:
         that day's events bulleted beneath it. Days with nothing on them are
         omitted entirely rather than rendered as empty rows.
 
+        A day's extra (non-allowlisted) events hang off its first bullet as
+        indented sub-bullets rather than getting bullets of their own, so a
+        Child Dedication reads as part of that Sunday's worship service.
+
         Args:
             week_start: First date of the week (inclusive).
             week_end: Last date of the week (inclusive).
-            summaries_by_date: Event summaries keyed by date. Missing dates are
-                treated as having no events; dates outside the week are ignored.
+            summaries_by_date: Allowed event summaries keyed by date. Missing
+                dates are treated as having no events; dates outside the week
+                are ignored.
+            extras_by_date: Non-allowed summaries keyed by date. Extras on a day
+                with no allowed events are dropped, since there is no bullet to
+                attach them to.
 
         Returns:
             A discord.Embed whose description lists the week's events, or says
             nothing is scheduled.
         """
-        day_blocks = [
-            f"**{day:%A, %b %-d}**\n" + "\n".join(f"• {summary}" for summary in summaries)
-            for day, summaries in sorted(summaries_by_date.items())
-            if summaries and week_start <= day <= week_end
-        ]
+        extras_by_date = extras_by_date or {}
+        day_blocks = []
+        for day, summaries in sorted(summaries_by_date.items()):
+            if not summaries or not (week_start <= day <= week_end):
+                continue
+            lines = [f"• {summary}" for summary in summaries]
+            extras = extras_by_date.get(day) or []
+            lines[1:1] = [f"{EXTRA_BULLET_PREFIX}{extra}" for extra in extras]
+            day_blocks.append(f"**{day:%A, %b %-d}**\n" + "\n".join(lines))
 
         description = "\n\n".join(day_blocks) if day_blocks else NO_EVENTS_TEXT
         if len(description) > EMBED_DESCRIPTION_LIMIT:
@@ -142,6 +204,63 @@ class WeeklyEventsService:
             description=description,
             color=EMBED_COLOR,
         )
+
+    @staticmethod
+    async def build_announcement(today: datetime.date | None = None) -> WeeklyAnnouncement:
+        """
+        Fetch the coming week's allowed events and build the announcement embed.
+
+        Args:
+            today: Override for the current date, for testing.
+
+        Returns:
+            The week covered, its allowed event summaries, the day's extra
+            (non-allowed) summaries, and the embed.
+        """
+        today = today or datetime.datetime.now(tz=LA_TZ).date()
+        week_start, week_end = WeeklyEventsService.get_announcement_week(today)
+        raw_summaries_by_date = await CalendarRepository.get_event_summaries_by_date(
+            week_start, week_end
+        )
+        summaries_by_date = WeeklyEventsService.filter_allowed_events(raw_summaries_by_date)
+        extras_by_date = WeeklyEventsService.extra_events(raw_summaries_by_date)
+        embed = WeeklyEventsService.build_embed(
+            week_start, week_end, summaries_by_date, extras_by_date
+        )
+        return WeeklyAnnouncement(week_start, week_end, summaries_by_date, extras_by_date, embed)
+
+    @staticmethod
+    async def post_test_announcement(
+        channel: discord.TextChannel,
+    ) -> tuple[discord.Message, list[discord.ScheduledEvent]]:
+        """
+        Post the coming week's announcement to *channel* and create its Discord events.
+
+        For local testing: unlike `post_weekly_announcement`, nothing is recorded
+        and no previous announcement is deleted, so the real one is untouched.
+        Scheduled events are created in the channel's guild (duplicates are
+        skipped, so re-running is safe).
+
+        Args:
+            channel: The channel to post in.
+
+        Returns:
+            The sent message and the scheduled events that were created.
+        """
+        announcement = await WeeklyEventsService.build_announcement()
+        sent_message = await channel.send(
+            embed=announcement.embed, allowed_mentions=discord.AllowedMentions.none()
+        )
+        logger.info(
+            "Posted test weekly events announcement %s for %s-%s",
+            sent_message.id,
+            announcement.week_start,
+            announcement.week_end,
+        )
+        created = await DiscordEventsService.create_events(
+            channel.guild, announcement.summaries_by_date, announcement.extras_by_date
+        )
+        return sent_message, created
 
     @staticmethod
     async def _delete_previous_messages(bot: Bot, previous: list[WeeklyEventsAnnouncement]) -> None:
@@ -179,7 +298,9 @@ class WeeklyEventsService:
 
     @staticmethod
     async def _create_scheduled_events(
-        guild: discord.Guild | None, summaries_by_date: dict[datetime.date, list[str]]
+        guild: discord.Guild | None,
+        summaries_by_date: dict[datetime.date, list[str]],
+        extras_by_date: dict[datetime.date, list[str]] | None = None,
     ) -> None:
         """
         Create Discord scheduled events for the week's recognized entries.
@@ -193,7 +314,7 @@ class WeeklyEventsService:
             return
 
         try:
-            await DiscordEventsService.create_events(guild, summaries_by_date)
+            await DiscordEventsService.create_events(guild, summaries_by_date, extras_by_date)
         except Exception as e:
             logger.exception("Failed to create Discord scheduled events")
             await send_error_to_discord(
@@ -222,9 +343,6 @@ class WeeklyEventsService:
         Returns:
             The sent message, or None if it could not be sent.
         """
-        today = today or datetime.datetime.now(tz=LA_TZ).date()
-        week_start, week_end = WeeklyEventsService.get_announcement_week(today)
-
         resolved_channel_id = resolve_channel_id(channel_id)
         raw_channel = bot.get_channel(resolved_channel_id)
         if not isinstance(raw_channel, discord.TextChannel):
@@ -232,11 +350,10 @@ class WeeklyEventsService:
             return None
         channel: discord.TextChannel = raw_channel
 
-        summaries_by_date = await CalendarRepository.get_event_summaries_by_date(
-            week_start, week_end
-        )
-        summaries_by_date = WeeklyEventsService.filter_allowed_events(summaries_by_date)
-        embed = WeeklyEventsService.build_embed(week_start, week_end, summaries_by_date)
+        announcement = await WeeklyEventsService.build_announcement(today)
+        week_start, week_end = announcement.week_start, announcement.week_end
+        summaries_by_date = announcement.summaries_by_date
+        extras_by_date = announcement.extras_by_date
 
         async with AsyncSessionLocal() as session:
             previous = await WeeklyEventsAnnouncementRepository.get_all(session)
@@ -244,7 +361,7 @@ class WeeklyEventsService:
 
         try:
             sent_message = await channel.send(
-                embed=embed, allowed_mentions=discord.AllowedMentions.none()
+                embed=announcement.embed, allowed_mentions=discord.AllowedMentions.none()
             )
         except discord.HTTPException as e:
             logger.exception(f"Failed to send weekly events announcement to {resolved_channel_id}")
@@ -282,6 +399,8 @@ class WeeklyEventsService:
             )
 
         await WeeklyEventsService._delete_previous_messages(bot, previous)
-        await WeeklyEventsService._create_scheduled_events(channel.guild, summaries_by_date)
+        await WeeklyEventsService._create_scheduled_events(
+            channel.guild, summaries_by_date, extras_by_date
+        )
 
         return sent_message
