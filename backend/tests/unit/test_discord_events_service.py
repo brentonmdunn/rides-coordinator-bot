@@ -46,6 +46,34 @@ def test_build_specs_uses_fixed_time_and_location():
     ]
 
 
+def test_build_specs_puts_extras_in_the_description():
+    """A day's other calendar entries become the event's description."""
+    specs = DiscordEventsService.build_specs(
+        {SERVICE_DATE: [WORSHIP_SERVICE_SUMMARY]},
+        {SERVICE_DATE: ["Child Dedication", "Potluck"]},
+    )
+
+    assert specs[0].description == "Also today: Child Dedication, Potluck"
+
+
+def test_build_specs_without_extras_has_no_description():
+    """A plain service day gets no description rather than an empty one."""
+    specs = DiscordEventsService.build_specs(
+        {SERVICE_DATE: [WORSHIP_SERVICE_SUMMARY]}, {SERVICE_DATE: []}
+    )
+
+    assert specs[0].description is None
+
+
+def test_build_specs_ignores_extras_without_a_recognized_event():
+    """Extras on a day with no worship service produce no event of their own."""
+    specs = DiscordEventsService.build_specs(
+        {SERVICE_DATE: []}, {SERVICE_DATE: ["Child Dedication"]}
+    )
+
+    assert specs == []
+
+
 def test_build_specs_ignores_other_events():
     """Events that are not worship services produce no Discord event."""
     specs = DiscordEventsService.build_specs(
@@ -108,6 +136,56 @@ async def test_create_events_passes_external_event_details():
     assert kwargs["location"] == WORSHIP_SERVICE_LOCATION
     assert kwargs["entity_type"] == discord.EntityType.external
     assert kwargs["privacy_level"] == discord.PrivacyLevel.guild_only
+
+
+@pytest.mark.asyncio
+async def test_create_events_passes_extras_as_description():
+    """The day's other entries reach Discord as the event description."""
+    guild = _make_guild()
+
+    await DiscordEventsService.create_events(
+        guild,
+        {SERVICE_DATE: [WORSHIP_SERVICE_SUMMARY]},
+        {SERVICE_DATE: ["Child Dedication"]},
+        now=BEFORE,
+    )
+
+    kwargs = guild.create_scheduled_event.await_args.kwargs
+    assert kwargs["description"] == "Also today: Child Dedication"
+
+
+@pytest.mark.asyncio
+async def test_create_events_omits_description_without_extras():
+    """No extras means no description field is sent at all."""
+    guild = _make_guild()
+
+    await DiscordEventsService.create_events(
+        guild, {SERVICE_DATE: [WORSHIP_SERVICE_SUMMARY]}, now=BEFORE
+    )
+
+    kwargs = guild.create_scheduled_event.await_args.kwargs
+    assert kwargs["description"] is discord.utils.MISSING
+
+
+@pytest.mark.asyncio
+async def test_create_events_leaves_existing_event_description_alone():
+    """An already-created event is not edited, even when extras were added since."""
+    existing = MagicMock()
+    existing.name = WORSHIP_SERVICE_SUMMARY
+    existing.start_time = _expected_start()
+    existing.edit = AsyncMock()
+    guild = _make_guild([existing])
+
+    created = await DiscordEventsService.create_events(
+        guild,
+        {SERVICE_DATE: [WORSHIP_SERVICE_SUMMARY]},
+        {SERVICE_DATE: ["Child Dedication"]},
+        now=BEFORE,
+    )
+
+    assert created == []
+    existing.edit.assert_not_awaited()
+    guild.create_scheduled_event.assert_not_awaited()
 
 
 @pytest.mark.asyncio
