@@ -13,7 +13,7 @@ from stonesbot.jobs.weekly_events import run_weekly_events_announcement
 logger = logging.getLogger(__name__)
 
 WEEKLY_EVENTS_DAY_OF_WEEK = "sun"
-WEEKLY_EVENTS_HOUR = 18
+WEEKLY_EVENTS_HOUR = 12
 WEEKLY_EVENTS_MINUTE = 0
 
 
