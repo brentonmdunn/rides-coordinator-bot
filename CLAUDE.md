@@ -196,6 +196,13 @@ scheduled.
   `ALLOWED_EVENT_SUMMARIES` holds exact names (currently `Regular Worship Service`) and
   `ALLOWED_EVENT_SUBSTRINGS` holds substrings (currently `Wildcard Sunday`); both match
   case-insensitively. Widen the announcement by adding to those tuples, not by editing the filter.
+- **Everything else on a day that has an allowed event rides along as an "extra"**
+  (`WeeklyEventsService.extra_events`). Extras get no line and no event of their own: they are
+  hung off that day's first embed bullet as indented `↳` sub-bullets (`EXTRA_BULLET_PREFIX`,
+  which uses non-breaking spaces because Discord collapses ordinary leading whitespace) and
+  folded into the Discord scheduled event's description as `Also today: Child Dedication`.
+  Extras on a day with no allowed event are dropped, and an already-created scheduled event is
+  never edited to pick up new ones.
 - Recognized entries also get a **Discord scheduled event** via `stonesbot/services/discord_events_service.py`.
   Today only `Regular Worship Service` maps to one: an external event, 10:30a–12p LA time on the calendar
   date, located at `Jonas Salk Elementary School` (the feed's entries are all-day, so time and place are

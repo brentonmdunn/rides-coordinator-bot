@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 import pytest
 
-from stonesbot.services.weekly_events_service import NO_EVENTS_TEXT, WeeklyEventsService
+from stonesbot.services.weekly_events_service import (
+    EXTRA_BULLET_PREFIX,
+    NO_EVENTS_TEXT,
+    WeeklyEventsService,
+)
 
 MODULE = "stonesbot.services.weekly_events_service"
 
@@ -105,6 +109,32 @@ def test_filter_allowed_events_keeps_dates_and_drops_events():
 
 
 # ---------------------------------------------------------------------------
+# extra_events
+# ---------------------------------------------------------------------------
+
+
+def test_extra_events_keeps_only_non_allowlisted_summaries():
+    """Allowed events drop out; everything else on the day is kept, in feed order."""
+    summaries = {
+        WEEK_START: ["Prayer Night", "Choir Practice"],
+        WEEK_END: ["Child Dedication", "Regular Worship Service"],
+    }
+    result = WeeklyEventsService.extra_events(summaries)
+
+    assert set(result) == set(summaries)
+    assert result[WEEK_START] == ["Prayer Night", "Choir Practice"]
+    assert result[WEEK_END] == ["Child Dedication"]
+
+
+def test_extra_events_strips_and_deduplicates():
+    """A summary repeated by the feed (or padded with whitespace) is listed once."""
+    summaries = {WEEK_END: ["  Child Dedication ", "child dedication", "Potluck"]}
+    result = WeeklyEventsService.extra_events(summaries)
+
+    assert result[WEEK_END] == ["Child Dedication", "Potluck"]
+
+
+# ---------------------------------------------------------------------------
 # build_embed
 # ---------------------------------------------------------------------------
 
@@ -140,6 +170,30 @@ def test_build_embed_with_no_events_says_so():
 
     assert embed.description == NO_EVENTS_TEXT
     assert len(embed.fields) == 0
+
+
+def test_build_embed_hangs_extras_off_first_bullet():
+    """A day's extra events become indented sub-bullets under its first bullet."""
+    summaries = {WEEK_END: ["Regular Worship Service", "Wildcard Sunday"]}
+    extras = {WEEK_END: ["Child Dedication", "Potluck"]}
+    embed = WeeklyEventsService.build_embed(WEEK_START, WEEK_END, summaries, extras)
+
+    assert embed.description == (
+        "**Sunday, Sep 27**\n"
+        "• Regular Worship Service\n"
+        f"{EXTRA_BULLET_PREFIX}Child Dedication\n"
+        f"{EXTRA_BULLET_PREFIX}Potluck\n"
+        "• Wildcard Sunday"
+    )
+
+
+def test_build_embed_drops_extras_on_days_with_no_allowed_events():
+    """Extras have no bullet to attach to when nothing on that day is announced."""
+    summaries = {WEEK_END: []}
+    extras = {WEEK_END: ["Child Dedication"]}
+    embed = WeeklyEventsService.build_embed(WEEK_START, WEEK_END, summaries, extras)
+
+    assert embed.description == NO_EVENTS_TEXT
 
 
 def test_build_embed_truncates_overlong_description():
@@ -367,7 +421,10 @@ async def test_post_weekly_announcement_filters_to_allowlist():
 
     embed = channel.send.await_args.kwargs["embed"]
     assert embed.description == (
-        "**Sunday, Sep 27**\n• Regular Worship Service\n• Wildcard Sunday brunch"
+        "**Sunday, Sep 27**\n"
+        "• Regular Worship Service\n"
+        f"{EXTRA_BULLET_PREFIX}Potluck\n"
+        "• Wildcard Sunday brunch"
     )
 
 
@@ -454,3 +511,33 @@ async def test_post_weekly_announcement_survives_event_creation_failure(mock_cre
 
     assert result is sent
     mock_report.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_post_test_announcement_sends_and_creates_events_without_recording():
+    """The test post sends the embed and creates events, but touches no DB rows."""
+    channel = _make_channel()
+    sent = MagicMock()
+    channel.send.return_value = sent
+    event = MagicMock()
+    summaries = {WEEK_END: ["Regular Worship Service"]}
+
+    with (
+        patch(
+            f"{MODULE}.CalendarRepository.get_event_summaries_by_date",
+            AsyncMock(return_value=summaries),
+        ),
+        patch(
+            f"{MODULE}.DiscordEventsService.create_events", AsyncMock(return_value=[event])
+        ) as mock_events,
+        patch(f"{MODULE}.AsyncSessionLocal") as mock_session,
+        patch(f"{MODULE}.datetime") as mock_datetime,
+    ):
+        mock_datetime.datetime.now.return_value.date.return_value = SUNDAY
+        mock_datetime.timedelta = datetime.timedelta
+        result = await WeeklyEventsService.post_test_announcement(channel)
+
+    assert result == (sent, [event])
+    assert channel.send.await_args.kwargs["embed"].title.startswith("Events for")
+    mock_events.assert_awaited_once_with(channel.guild, summaries, {WEEK_END: []})
+    mock_session.assert_not_called()
