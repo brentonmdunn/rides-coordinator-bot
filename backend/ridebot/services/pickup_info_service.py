@@ -13,11 +13,13 @@ from datetime import UTC, datetime
 
 from ridebot.repositories.pickup_info_repository import PickupInfoRepository
 from ridebot.utils.cache import invalidate_namespace
+from ridebot.utils.constants import MAX_PHONE_INPUT_LENGTH
 from ridebot.utils.custom_exceptions import (
     PickupInfoConflictError,
     PickupInfoNotFoundError,
     PickupInfoValidationError,
 )
+from ridebot.utils.phone import normalize_phone
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import CacheNamespace, CampusLivingLocations, ClassYear
 from shared.core.models import Locations
@@ -40,6 +42,7 @@ class Person:
     discord_user_id: str | None
     year: str | None
     location: str | None
+    phone: str | None
     updated_at: datetime | None
 
 
@@ -51,9 +54,12 @@ class PersonInput:
     discord_username: str | None = None
     year: str | None = None
     location: str | None = None
+    phone: str | None = None
 
 
-UPDATABLE_FIELDS: frozenset[str] = frozenset({"name", "discord_username", "year", "location"})
+UPDATABLE_FIELDS: frozenset[str] = frozenset(
+    {"name", "discord_username", "year", "location", "phone"}
+)
 
 
 def _to_person(row: Locations) -> Person:
@@ -65,6 +71,7 @@ def _to_person(row: Locations) -> Person:
         discord_user_id=row.discord_user_id,
         year=row.year,
         location=row.location,
+        phone=row.phone,
         updated_at=row.updated_at,
     )
 
@@ -122,6 +129,47 @@ def _normalize_location(location: str | None) -> str | None:
     return cleaned
 
 
+def _normalize_phone_strict(phone: str | None) -> str | None:
+    """
+    Validate a phone number for the web path.
+
+    Blank/None becomes None; a valid number is stored as its 10 bare digits.
+
+    Raises:
+        PickupInfoValidationError: If ``phone`` is non-blank and not a valid US number.
+    """
+    if phone is None:
+        return None
+    cleaned = phone.strip()
+    if cleaned == "":
+        return None
+    digits = normalize_phone(cleaned)
+    if digits is None:
+        raise PickupInfoValidationError(
+            f"Invalid phone number: {phone!r}. Use a 10-digit US number, e.g. (858) 555-1234"
+        )
+    return digits
+
+
+def _normalize_phone_lenient(phone: str | None) -> str | None:
+    """
+    Normalize a phone number for the Discord registration path.
+
+    A valid number is stored as its 10 bare digits. An invalid or blank number is
+    stored stripped, exactly as typed, truncated to ``MAX_PHONE_INPUT_LENGTH``
+    (blank becomes None) so it can be flagged to coordinators rather than rejected.
+    """
+    if phone is None:
+        return None
+    cleaned = phone.strip()
+    if cleaned == "":
+        return None
+    digits = normalize_phone(cleaned)
+    if digits is not None:
+        return digits
+    return cleaned[:MAX_PHONE_INPUT_LENGTH]
+
+
 async def _check_username_conflict(
     session, username: str | None, *, exclude_id: int | None = None
 ) -> None:
@@ -176,6 +224,7 @@ class PickupInfoService:
         discord_username = _normalize_discord_username(data.discord_username)
         year = _normalize_year(data.year)
         location = _normalize_location(data.location)
+        phone = _normalize_phone_strict(data.phone)
 
         async with AsyncSessionLocal() as session:
             await _check_username_conflict(session, discord_username)
@@ -186,6 +235,7 @@ class PickupInfoService:
                 discord_user_id=None,
                 year=year,
                 location=location,
+                phone=phone,
                 updated_at=datetime.now(UTC),
             )
             await session.commit()
@@ -227,6 +277,15 @@ class PickupInfoService:
                 row.year = _normalize_year(changes["year"])
             if "location" in changes:
                 row.location = _normalize_location(changes["location"])
+            if "phone" in changes:
+                incoming = changes["phone"]
+                stripped_incoming = incoming.strip() if incoming is not None else None
+                if stripped_incoming == row.phone:
+                    # Re-saving a row that already has this exact value (which may be a
+                    # legacy invalid phone) shouldn't fail strict validation.
+                    row.phone = stripped_incoming
+                else:
+                    row.phone = _normalize_phone_strict(incoming)
 
             row.updated_at = datetime.now(UTC)
             await session.commit()
@@ -255,12 +314,17 @@ class PickupInfoService:
         name: str,
         year: str,
         location: str | None,
+        phone: str,
     ) -> tuple[Person, bool]:
         """
         Create or update the pickup info entry for a Discord member.
 
         ``location`` may be None when the rider asked a coordinator to follow up;
         the entry is stored without one and shows as missing on the Pickup Info page.
+
+        ``phone`` is validated leniently: an invalid or blank number is stored as
+        typed (truncated) rather than rejected, so it can be flagged to coordinators
+        instead of blocking registration.
 
         Returns:
             ``(person, created)``.
@@ -276,6 +340,7 @@ class PickupInfoService:
         normalized_username = _normalize_discord_username(discord_username)
         normalized_year = _normalize_year(year)
         normalized_location = _normalize_location(location)
+        normalized_phone = _normalize_phone_lenient(phone)
         str_discord_user_id = str(discord_user_id)
 
         async with AsyncSessionLocal() as session:
@@ -285,6 +350,7 @@ class PickupInfoService:
                 row.name = normalized_name
                 row.year = normalized_year
                 row.location = normalized_location
+                row.phone = normalized_phone
                 row.discord_username = normalized_username
                 row.updated_at = datetime.now(UTC)
                 await session.commit()
@@ -308,6 +374,7 @@ class PickupInfoService:
                 existing.name = normalized_name
                 existing.year = normalized_year
                 existing.location = normalized_location
+                existing.phone = normalized_phone
                 existing.discord_username = normalized_username
                 existing.updated_at = datetime.now(UTC)
                 await session.commit()
@@ -325,6 +392,7 @@ class PickupInfoService:
                 discord_user_id=str_discord_user_id,
                 year=normalized_year,
                 location=normalized_location,
+                phone=normalized_phone,
                 updated_at=datetime.now(UTC),
             )
             await session.commit()
