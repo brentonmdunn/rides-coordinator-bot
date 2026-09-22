@@ -44,6 +44,7 @@ def _person(**overrides) -> Person:
         "discord_user_id": "123456789",
         "year": "Freshman",
         "location": "Pepper Canyon West",
+        "phone": "8585551234",
         "updated_at": datetime(2024, 1, 1, tzinfo=UTC),
     }
     return Person(**(base | overrides))
@@ -70,6 +71,37 @@ class TestListPickupInfo:
         assert body["people"][0]["name"] == "Alice"
         assert body["people"][0]["discord_user_id"] == "123456789"
         assert body["people"][0]["updated_at"] == "2024-01-01T00:00:00+00:00"
+        assert body["people"][0]["phone"] == "8585551234"
+        assert body["people"][0]["phone_display"] == "(858) 555-1234"
+        assert body["people"][0]["phone_status"] == "ok"
+
+    def test_invalid_phone_status(self):
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.list_people",
+            new=AsyncMock(return_value=[_person(phone="123")]),
+        ):
+            resp = client.get("/api/pickup-info")
+
+        assert resp.status_code == 200
+        body = resp.json()["people"][0]
+        assert body["phone"] == "123"
+        assert body["phone_display"] == "123"
+        assert body["phone_status"] == "invalid"
+
+    def test_missing_phone_status(self):
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.list_people",
+            new=AsyncMock(return_value=[_person(phone=None)]),
+        ):
+            resp = client.get("/api/pickup-info")
+
+        assert resp.status_code == 200
+        body = resp.json()["people"][0]
+        assert body["phone"] is None
+        assert body["phone_display"] is None
+        assert body["phone_status"] == "missing"
 
     def test_null_updated_at(self):
         client = _build_client()
@@ -130,6 +162,19 @@ class TestCreatePerson:
         assert resp.status_code == 201
         assert resp.json()["name"] == "Alice"
 
+    def test_create_passes_phone_through(self):
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.create_person", new=AsyncMock(return_value=_person())
+        ) as mock_create:
+            resp = client.post(
+                "/api/pickup-info",
+                json={"name": "Alice", "phone": "858-555-1234"},
+            )
+
+        assert resp.status_code == 201
+        assert mock_create.call_args.args[0].phone == "858-555-1234"
+
     def test_validation_error_400(self):
         client = _build_client()
         with patch(
@@ -139,6 +184,20 @@ class TestCreatePerson:
             resp = client.post("/api/pickup-info", json={"name": ""})
         assert resp.status_code == 400
         assert resp.json()["detail"] == "name is required"
+
+    def test_invalid_phone_400(self):
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.create_person",
+            new=AsyncMock(
+                side_effect=PickupInfoValidationError(
+                    "Invalid phone number: 123. Use a 10-digit US number, e.g. (858) 555-1234"
+                )
+            ),
+        ):
+            resp = client.post("/api/pickup-info", json={"name": "Alice", "phone": "123"})
+        assert resp.status_code == 400
+        assert "Invalid phone number" in resp.json()["detail"]
 
     def test_conflict_409(self):
         client = _build_client()
@@ -173,6 +232,45 @@ class TestUpdatePerson:
         assert resp.status_code == 200
         assert resp.json()["name"] == "Bob"
         assert mock_update.call_args.args == (1, {"name": "Bob"})
+
+    def test_update_phone_passes_through(self):
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.update_person",
+            new=AsyncMock(return_value=_person(phone="8585551234")),
+        ) as mock_update:
+            resp = client.patch("/api/pickup-info/1", json={"phone": "(858) 555-1234"})
+
+        assert resp.status_code == 200
+        assert mock_update.call_args.args == (1, {"phone": "(858) 555-1234"})
+        assert resp.json()["phone_display"] == "(858) 555-1234"
+
+    def test_update_blank_phone_clears(self):
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.update_person",
+            new=AsyncMock(return_value=_person(phone=None)),
+        ) as mock_update:
+            resp = client.patch("/api/pickup-info/1", json={"phone": ""})
+
+        assert resp.status_code == 200
+        assert mock_update.call_args.args == (1, {"phone": ""})
+        assert resp.json()["phone"] is None
+        assert resp.json()["phone_status"] == "missing"
+
+    def test_invalid_phone_400(self):
+        client = _build_client()
+        with patch(
+            f"{SERVICE}.update_person",
+            new=AsyncMock(
+                side_effect=PickupInfoValidationError(
+                    "Invalid phone number: 123. Use a 10-digit US number, e.g. (858) 555-1234"
+                )
+            ),
+        ):
+            resp = client.patch("/api/pickup-info/1", json={"phone": "123"})
+        assert resp.status_code == 400
+        assert "Invalid phone number" in resp.json()["detail"]
 
     def test_not_found_404(self):
         client = _build_client()
