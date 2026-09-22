@@ -130,6 +130,14 @@ API (`api/routes/pickup_info.py`, `/api/pickup-info`) and the admin UI's `/picku
 New riders register themselves via a Discord button/modal (the registration view
 in `ridebot/views/pickup_info.py`) posted in their new-rides channel.
 
+Every rider has a **phone number** (`locations.phone`; helpers in `ridebot/utils/phone.py`).
+Only US 10-digit numbers (optional `+1`, any common separators) count as valid; they're
+stored as bare digits and shown as `(858) 555-1234`. The Discord form requires the field
+but **accepts invalid numbers** (Discord modals can't validate a regex), storing them as
+typed and flagging them in the ride-coordinator notice. Web edits are strict (400 on invalid,
+except re-saving an unchanged value). The admin Pickup Info page highlights rows whose phone
+is invalid or missing (`phone_status` on the API response).
+
 ### Ask-rides "Something else" button
 
 Ask-rides announcement embeds carry a persistent **Something else** button
