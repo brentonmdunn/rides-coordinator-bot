@@ -26,6 +26,7 @@ import {
     SelectValue,
 } from '../ui/select'
 import type { PickupInfoOptions, PickupInfoPerson, PickupInfoPersonInput } from '../../types'
+import { isValidPhoneInput } from './phone'
 
 const NONE_VALUE = '__none__'
 /** Sentinel select value for a location outside the campus living areas. */
@@ -49,6 +50,7 @@ interface FieldErrors {
     name?: string
     discord_username?: string
     location?: string
+    phone?: string
 }
 
 function PickupInfoFormBody({
@@ -71,6 +73,7 @@ function PickupInfoFormBody({
         state.person?.discord_username ?? ''
     )
     const [year, setYear] = useState<string>(state.person?.year ?? NONE_VALUE)
+    const [phone, setPhone] = useState(state.person?.phone_display ?? state.person?.phone ?? '')
 
     // An existing location that isn't a campus area (off-campus, or legacy sheet
     // data) opens as "Other" with the value in the free-text field.
@@ -87,6 +90,11 @@ function PickupInfoFormBody({
     const [errors, setErrors] = useState<FieldErrors>({})
 
     const isEdit = state.person != null
+    // Mirror the backend's exception: don't re-validate a phone the user didn't
+    // touch, so re-saving a row with a legacy invalid phone doesn't error out.
+    const initialPhone = state.person?.phone_display ?? state.person?.phone ?? ''
+    const phoneUnchanged = phone.trim() === initialPhone.trim()
+    const phoneInvalid = !phoneUnchanged && !isValidPhoneInput(phone)
 
     const handleSubmit = () => {
         const nextErrors: FieldErrors = {}
@@ -99,6 +107,10 @@ function PickupInfoFormBody({
             nextErrors.location = 'Enter where they live, or pick a campus area'
         }
 
+        if (phoneInvalid) {
+            nextErrors.phone = 'Enter a valid 10-digit US number, e.g. (858) 555-1234'
+        }
+
         setErrors(nextErrors)
         if (Object.keys(nextErrors).length > 0) return
 
@@ -106,11 +118,14 @@ function PickupInfoFormBody({
         if (location === OTHER_VALUE) submittedLocation = trimmedCustomLocation
         else if (location !== NONE_VALUE) submittedLocation = location
 
+        const trimmedPhone = phone.trim()
+
         onSubmit({
             name: trimmedName,
             discord_username: discordUsername.trim() === '' ? null : discordUsername.trim(),
             year: year === NONE_VALUE ? null : year,
             location: submittedLocation,
+            phone: trimmedPhone === '' ? null : trimmedPhone,
         })
     }
 
@@ -190,6 +205,21 @@ function PickupInfoFormBody({
                     </div>
                 </div>
 
+                <div className="space-y-1.5">
+                    <label htmlFor="pickup-info-phone" className="text-sm font-medium text-foreground">
+                        Phone number
+                    </label>
+                    <Input
+                        id="pickup-info-phone"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="e.g. (858) 555-1234"
+                    />
+                    {errors.phone && (
+                        <p className="text-sm text-destructive-text">{errors.phone}</p>
+                    )}
+                </div>
+
                 {location === OTHER_VALUE && (
                     <div className="space-y-1.5">
                         <label
@@ -217,7 +247,7 @@ function PickupInfoFormBody({
                 <Button variant="outline" onClick={onClose}>
                     Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={submitting}>
+                <Button onClick={handleSubmit} disabled={submitting || phoneInvalid}>
                     {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Add person'}
                 </Button>
             </DialogFooter>

@@ -28,7 +28,14 @@ interface PickupInfoTableProps {
     onAdd: () => void
 }
 
-type SortKey = 'name' | 'discord_username' | 'year' | 'location' | 'linked' | 'updated_at'
+type SortKey =
+    | 'name'
+    | 'discord_username'
+    | 'year'
+    | 'location'
+    | 'phone'
+    | 'linked'
+    | 'updated_at'
 type SortDir = 'asc' | 'desc'
 
 const COLUMNS: { key: SortKey; label: string }[] = [
@@ -36,6 +43,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
     { key: 'discord_username', label: 'Discord username' },
     { key: 'year', label: 'Year' },
     { key: 'location', label: 'Location' },
+    { key: 'phone', label: 'Phone' },
     { key: 'linked', label: 'Linked' },
     { key: 'updated_at', label: 'Updated' },
 ]
@@ -62,6 +70,13 @@ function needsFix(person: PickupInfoPerson, options: PickupInfoOptions | undefin
     if (!options) return false
     // Locations outside the campus list are valid off-campus addresses, not errors.
     return person.year != null && !options.years.includes(person.year)
+}
+
+/** Row highlight tied to the phone status: destructive for invalid, warning for missing. */
+function rowHighlightClass(person: PickupInfoPerson): string {
+    if (person.phone_status === 'invalid') return 'bg-destructive/10'
+    if (person.phone_status === 'missing') return 'bg-warning/10'
+    return ''
 }
 
 function compareValues(a: PickupInfoPerson, b: PickupInfoPerson, key: SortKey): number {
@@ -99,7 +114,8 @@ export function PickupInfoTable({
             ? people.filter(
                   (person) =>
                       person.name.toLowerCase().includes(term) ||
-                      (person.discord_username ?? '').toLowerCase().includes(term)
+                      (person.discord_username ?? '').toLowerCase().includes(term) ||
+                      (person.phone_display ?? '').toLowerCase().includes(term)
               )
             : people
 
@@ -158,7 +174,7 @@ export function PickupInfoTable({
     if (isLoading) {
         return (
             <SectionCard icon={<Users className="h-4 w-4" />} title="Pickup Info">
-                <TableSkeleton rows={6} cols={6} />
+                <TableSkeleton rows={6} cols={7} />
             </SectionCard>
         )
     }
@@ -247,7 +263,7 @@ export function PickupInfoTable({
                             {filtered.map((person) => (
                                 <tr
                                     key={person.id}
-                                    className="border-b border-border last:border-0 hover:bg-muted/50"
+                                    className={`border-b border-border last:border-0 hover:bg-muted/50 ${rowHighlightClass(person)}`}
                                 >
                                     <td className="px-3 py-2">
                                         <Checkbox
@@ -264,6 +280,16 @@ export function PickupInfoTable({
                                                     Needs fix
                                                 </span>
                                             )}
+                                            {person.phone_status === 'invalid' && (
+                                                <span className="inline-flex items-center rounded-full border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive-text">
+                                                    Invalid phone
+                                                </span>
+                                            )}
+                                            {person.phone_status === 'missing' && (
+                                                <span className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning-text">
+                                                    No phone
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
@@ -274,6 +300,9 @@ export function PickupInfoTable({
                                     </td>
                                     <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                                         {person.location ?? '—'}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                                        {person.phone_display ?? '—'}
                                     </td>
                                     <td className="px-3 py-2 whitespace-nowrap">
                                         {person.discord_user_id != null ? (

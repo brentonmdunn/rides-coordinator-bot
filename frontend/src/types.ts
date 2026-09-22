@@ -312,6 +312,11 @@ export interface PickupInfoPerson {
     discord_user_id: string | null
     year: string | null
     location: string | null
+    /** Raw stored value — 10 bare digits when valid, or the as-typed value when invalid. */
+    phone: string | null
+    /** Formatted as `(858) 555-1234`, or null when there's nothing to show. */
+    phone_display: string | null
+    phone_status: 'ok' | 'invalid' | 'missing'
     /** ISO 8601 timestamp. */
     updated_at: string | null
 }
@@ -332,6 +337,7 @@ export interface PickupInfoPersonInput {
     discord_username: string | null
     year: string | null
     location: string | null
+    phone?: string | null
 }
 
 /**
