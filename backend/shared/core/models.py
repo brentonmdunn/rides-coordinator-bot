@@ -54,6 +54,7 @@ class Locations(Base):
     discord_user_id: Mapped[str | None] = mapped_column(unique=True, index=True)
     year: Mapped[str | None]
     location: Mapped[str | None]
+    phone: Mapped[str | None]
     updated_at: Mapped[datetime | None]
 
 

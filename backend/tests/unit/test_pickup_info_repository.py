@@ -100,11 +100,29 @@ async def test_create_flushes_without_committing(session_local):
             updated_at=now,
         )
         assert row.id is not None
+        assert row.phone is None
         await session.rollback()
 
     async with session_local() as session:
         rows = await PickupInfoRepository.get_all(session)
     assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_create_with_phone(session_local):
+    now = datetime.now(UTC)
+    async with session_local() as session:
+        row = await PickupInfoRepository.create(
+            session,
+            name="Alice",
+            discord_username="alicew",
+            discord_user_id="123",
+            year="1st",
+            location="Muir",
+            phone="8585551234",
+            updated_at=now,
+        )
+        assert row.phone == "8585551234"
 
 
 @pytest.mark.asyncio

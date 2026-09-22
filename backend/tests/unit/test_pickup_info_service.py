@@ -139,6 +139,87 @@ async def test_create_person_duplicate_username_conflict(session_local):
         await PickupInfoService.create_person(PersonInput(name="Alice", discord_username="AliceW"))
 
 
+# --- create/update phone (strict, web path) --------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_person_valid_phone_stored_as_digits(session_local):
+    person = await PickupInfoService.create_person(
+        PersonInput(name="Alice", phone="(858) 555-1234")
+    )
+    assert person.phone == "8585551234"
+
+
+@pytest.mark.asyncio
+async def test_create_person_blank_phone_becomes_none(session_local):
+    person = await PickupInfoService.create_person(PersonInput(name="Alice", phone="   "))
+    assert person.phone is None
+
+
+@pytest.mark.asyncio
+async def test_create_person_none_phone_stays_none(session_local):
+    person = await PickupInfoService.create_person(PersonInput(name="Alice", phone=None))
+    assert person.phone is None
+
+
+@pytest.mark.asyncio
+async def test_create_person_invalid_phone_raises(session_local):
+    with pytest.raises(PickupInfoValidationError):
+        await PickupInfoService.create_person(PersonInput(name="Alice", phone="12345"))
+
+
+@pytest.mark.asyncio
+async def test_update_person_valid_phone_stored_as_digits(session_local):
+    factory, _ = session_local
+    await _seed(factory, Locations(id=1, name="Alice"))
+    updated = await PickupInfoService.update_person(1, {"phone": "858.555.1234"})
+    assert updated.phone == "8585551234"
+
+
+@pytest.mark.asyncio
+async def test_update_person_invalid_phone_raises(session_local):
+    factory, _ = session_local
+    await _seed(factory, Locations(id=1, name="Alice"))
+    with pytest.raises(PickupInfoValidationError):
+        await PickupInfoService.update_person(1, {"phone": "not-a-phone"})
+
+
+@pytest.mark.asyncio
+async def test_update_person_clears_phone(session_local):
+    factory, _ = session_local
+    await _seed(factory, Locations(id=1, name="Alice", phone="8585551234"))
+    updated = await PickupInfoService.update_person(1, {"phone": None})
+    assert updated.phone is None
+
+
+@pytest.mark.asyncio
+async def test_update_person_unchanged_invalid_phone_skips_validation(session_local):
+    """Re-saving a row with a pre-existing (legacy) invalid phone must not 400."""
+    factory, _ = session_local
+    await _seed(factory, Locations(id=1, name="Alice", phone="call-me-maybe"))
+    updated = await PickupInfoService.update_person(1, {"phone": "call-me-maybe"})
+    assert updated.phone == "call-me-maybe"
+
+
+@pytest.mark.asyncio
+async def test_update_person_unchanged_invalid_phone_with_whitespace_skips_validation(
+    session_local,
+):
+    """The comparison strips the incoming value before matching the stored value."""
+    factory, _ = session_local
+    await _seed(factory, Locations(id=1, name="Alice", phone="call-me-maybe"))
+    updated = await PickupInfoService.update_person(1, {"phone": "  call-me-maybe  "})
+    assert updated.phone == "call-me-maybe"
+
+
+@pytest.mark.asyncio
+async def test_update_person_changed_invalid_phone_still_raises(session_local):
+    factory, _ = session_local
+    await _seed(factory, Locations(id=1, name="Alice", phone="call-me-maybe"))
+    with pytest.raises(PickupInfoValidationError):
+        await PickupInfoService.update_person(1, {"phone": "still-invalid"})
+
+
 # --- update ------------------------------------------------------------
 
 
@@ -234,6 +315,7 @@ async def test_register_from_discord_requires_year(session_local):
             name="Alice",
             year=None,
             location="Muir",
+            phone="8585551234",
         )
 
 
@@ -246,6 +328,7 @@ async def test_register_from_discord_allows_no_location(session_local):
         name="Alice",
         year="2nd",
         location=None,
+        phone="8585551234",
     )
 
     assert created is True
@@ -262,11 +345,13 @@ async def test_register_from_discord_creates_new_row(session_local):
         name="Alice",
         year="1st",
         location="muir",
+        phone="858-555-1234",
     )
     assert created is True
     assert person.discord_user_id == "42"
     assert person.discord_username == "alicew"
     assert person.location == "Muir"
+    assert person.phone == "8585551234"
     mock_invalidate.assert_awaited()
 
 
@@ -283,6 +368,7 @@ async def test_register_from_discord_updates_by_id(session_local):
         name="Alice Updated",
         year="2nd",
         location="Sixth",
+        phone="8585551234",
     )
     assert created is False
     assert person.id == 1
@@ -304,6 +390,7 @@ async def test_register_from_discord_claims_by_username(session_local):
         name="Alice",
         year="1st",
         location="Muir",
+        phone="8585551234",
     )
     assert created is False
     assert person.id == 1
@@ -324,7 +411,104 @@ async def test_register_from_discord_username_conflict(session_local):
             name="Someone",
             year="1st",
             location="Muir",
+            phone="8585551234",
         )
+
+
+# --- register_from_discord phone (lenient) ---------------------------------
+
+
+@pytest.mark.asyncio
+async def test_register_from_discord_valid_phone_stored_as_digits(session_local):
+    person, _ = await PickupInfoService.register_from_discord(
+        discord_user_id=1,
+        discord_username="alicew",
+        name="Alice",
+        year="1st",
+        location="Muir",
+        phone="+1 858 555 1234",
+    )
+    assert person.phone == "8585551234"
+
+
+@pytest.mark.asyncio
+async def test_register_from_discord_invalid_phone_stored_as_typed(session_local):
+    """Invalid Discord submissions are accepted as typed, not rejected."""
+    person, _ = await PickupInfoService.register_from_discord(
+        discord_user_id=1,
+        discord_username="alicew",
+        name="Alice",
+        year="1st",
+        location="Muir",
+        phone="call me maybe",
+    )
+    assert person.phone == "call me maybe"
+
+
+@pytest.mark.asyncio
+async def test_register_from_discord_invalid_phone_truncated(session_local):
+    from ridebot.utils.constants import MAX_PHONE_INPUT_LENGTH
+
+    overlong = "x" * (MAX_PHONE_INPUT_LENGTH + 10)
+    person, _ = await PickupInfoService.register_from_discord(
+        discord_user_id=1,
+        discord_username="alicew",
+        name="Alice",
+        year="1st",
+        location="Muir",
+        phone=overlong,
+    )
+    assert person.phone == overlong[:MAX_PHONE_INPUT_LENGTH]
+    assert len(person.phone) == MAX_PHONE_INPUT_LENGTH
+
+
+@pytest.mark.asyncio
+async def test_register_from_discord_blank_phone_becomes_none(session_local):
+    person, _ = await PickupInfoService.register_from_discord(
+        discord_user_id=1,
+        discord_username="alicew",
+        name="Alice",
+        year="1st",
+        location="Muir",
+        phone="   ",
+    )
+    assert person.phone is None
+
+
+@pytest.mark.asyncio
+async def test_register_from_discord_sets_phone_on_update_by_id(session_local):
+    factory, _ = session_local
+    await _seed(
+        factory,
+        Locations(id=1, name="Alice", discord_user_id="42", discord_username="old"),
+    )
+    person, _ = await PickupInfoService.register_from_discord(
+        discord_user_id=42,
+        discord_username="newname",
+        name="Alice",
+        year="2nd",
+        location="Sixth",
+        phone="858-555-1234",
+    )
+    assert person.phone == "8585551234"
+
+
+@pytest.mark.asyncio
+async def test_register_from_discord_sets_phone_on_claim_by_username(session_local):
+    factory, _ = session_local
+    await _seed(
+        factory,
+        Locations(id=1, name="Alice", discord_username="alicew", discord_user_id=None),
+    )
+    person, _ = await PickupInfoService.register_from_discord(
+        discord_user_id=42,
+        discord_username="AliceW",
+        name="Alice",
+        year="1st",
+        location="Muir",
+        phone="858-555-1234",
+    )
+    assert person.phone == "8585551234"
 
 
 # --- find_member -----------------------------------------------------------

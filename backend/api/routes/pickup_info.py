@@ -6,7 +6,7 @@ location). All endpoints require the ride coordinator role.
 """
 
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -18,6 +18,7 @@ from ridebot.utils.custom_exceptions import (
     PickupInfoNotFoundError,
     PickupInfoValidationError,
 )
+from ridebot.utils.phone import format_phone, phone_status
 from shared.utils.datetimes import to_iso_utc
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,9 @@ class PersonOut(BaseModel):
     discord_user_id: str | None
     year: str | None
     location: str | None
+    phone: str | None
+    phone_display: str | None
+    phone_status: Literal["ok", "invalid", "missing"]
     updated_at: str | None
 
     @classmethod
@@ -52,6 +56,9 @@ class PersonOut(BaseModel):
             discord_user_id=person.discord_user_id,
             year=person.year,
             location=person.location,
+            phone=person.phone,
+            phone_display=format_phone(person.phone),
+            phone_status=phone_status(person.phone),
             updated_at=to_iso_utc(person.updated_at),
         )
 
@@ -76,6 +83,7 @@ class CreatePersonRequest(BaseModel):
     discord_username: str | None = None
     year: str | None = None
     location: str | None = None
+    phone: str | None = None
 
 
 class UpdatePersonRequest(BaseModel):
@@ -85,6 +93,7 @@ class UpdatePersonRequest(BaseModel):
     discord_username: str | None = None
     year: str | None = None
     location: str | None = None
+    phone: str | None = None
 
 
 class BulkDeleteRequest(BaseModel):
@@ -123,6 +132,7 @@ async def create_person(request: CreatePersonRequest):
                 discord_username=request.discord_username,
                 year=request.year,
                 location=request.location,
+                phone=request.phone,
             )
         )
     except PickupInfoValidationError as e:

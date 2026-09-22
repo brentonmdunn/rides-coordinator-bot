@@ -37,6 +37,7 @@ def _make_person(**overrides) -> Person:
         "discord_user_id": "123",
         "year": "2nd",
         "location": "Sixth",
+        "phone": None,
         "updated_at": None,
     }
     defaults.update(overrides)

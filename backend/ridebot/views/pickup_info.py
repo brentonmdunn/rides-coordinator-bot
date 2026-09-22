@@ -8,6 +8,7 @@ import discord
 from ridebot.services.pickup_info_service import Person, PickupInfoService
 from ridebot.services.pickup_locations_service import PickupLocationsService, PickupSpot
 from ridebot.utils.constants import (
+    MAX_PHONE_INPUT_LENGTH,
     PICKUP_INFO_OFF_CAMPUS_CUSTOM_ID,
     PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
     PICKUP_INFO_PAGE_URL,
@@ -15,6 +16,7 @@ from ridebot.utils.constants import (
 )
 from ridebot.utils.custom_exceptions import PickupInfoConflictError, PickupInfoValidationError
 from ridebot.utils.feature_flags import is_flag_enabled
+from ridebot.utils.phone import format_phone, phone_status
 from shared.core.bots import get_spec
 from shared.core.enums import (
     BotName,
@@ -80,19 +82,29 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
     # Picking the on-campus catch-all stores no location, so nobody knows where to
     # collect this rider yet. Lead with that instead of burying it mid-sentence.
     if person.location is None:
-        return (
+        message = (
             f"🚨 **ACTION NEEDED, no pickup spot**: {who}, {year}, picked **Other** "
             f"on the form. Someone needs to ask where they live and add it on the "
             f"Pickup Info page ([link]({PICKUP_INFO_PAGE_URL})) · <#{interaction.channel_id}>"
         )
-
     # SDSU saves cleanly but has no pickup spot mapped, so grouping can't place
     # these riders on its own.
-    if person.location == CampusLivingLocations.SDSU.value:
-        return f"🚨 **ACTION NEEDED, SDSU**: {who}, {year} · <#{interaction.channel_id}>"
+    elif person.location == CampusLivingLocations.SDSU.value:
+        message = f"🚨 **ACTION NEEDED, SDSU**: {who}, {year} · <#{interaction.channel_id}>"
+    else:
+        headline = "📝 New hooman" if created else "📝 Updated"
+        message = f"{headline}: {who}, {person.location}, {year} · <#{interaction.channel_id}>"
 
-    headline = "📝 New hooman" if created else "📝 Updated"
-    return f"{headline}: {who}, {person.location}, {year} · <#{interaction.channel_id}>"
+    # Discord accepts invalid numbers as typed, so flag them here for coordinators
+    # to fix rather than silently losing the rider's contact info.
+    if phone_status(person.phone) == "invalid":
+        message = (
+            f"{message}\n"
+            f"⚠️ Phone looks invalid: `{person.phone}` — fix it on the Pickup Info "
+            f"page ([link]({PICKUP_INFO_PAGE_URL}))"
+        )
+
+    return message
 
 
 async def _notify_ride_coordinators(interaction: discord.Interaction, message: str) -> None:
@@ -191,6 +203,15 @@ class _BasePickupModal(discord.ui.Modal):
         )
         self.add_item(discord.ui.Label(text="Year", component=self.year_select))
 
+        default_phone = format_phone(existing.phone) if existing else None
+        self.phone_input = discord.ui.TextInput(
+            default=default_phone,
+            required=True,
+            max_length=MAX_PHONE_INPUT_LENGTH,
+            placeholder="(858) 555-1234",
+        )
+        self.add_item(discord.ui.Label(text="Phone number", component=self.phone_input))
+
     def _year_options(self, existing_year: str | None) -> list[discord.SelectOption]:
         """
         Return the Year choices for this form.
@@ -230,6 +251,7 @@ class _BasePickupModal(discord.ui.Modal):
                 name=name,
                 year=year,
                 location=location,
+                phone=self.phone_input.value,
             )
         except (PickupInfoValidationError, PickupInfoConflictError) as e:
             await interaction.response.send_message(

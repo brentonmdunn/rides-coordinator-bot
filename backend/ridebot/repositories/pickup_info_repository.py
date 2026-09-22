@@ -62,6 +62,7 @@ class PickupInfoRepository:
         discord_user_id: str | None,
         year: str | None,
         location: str | None,
+        phone: str | None = None,
         updated_at: datetime,
     ) -> Locations:
         """Create and flush a new pickup info entry."""
@@ -71,6 +72,7 @@ class PickupInfoRepository:
             discord_user_id=discord_user_id,
             year=year,
             location=location,
+            phone=phone,
             updated_at=updated_at,
         )
         session.add(person)

@@ -36,6 +36,9 @@ TEMP_DRIVER_MAX_DURATION = timedelta(days=90)
 TEMP_DRIVER_SWEEP_MINUTES = 5
 TEMP_DRIVER_EXPIRY_JOB_ID = "run_temp_driver_expiry"
 
+# Max length for the raw phone number input field on the Discord registration modal.
+MAX_PHONE_INPUT_LENGTH = 30
+
 # Ride-reaction emojis that can be tagged on a non-Discord pickup, mapped to a
 # human-readable label. Keys double as the allowlist of valid emoji tags.
 RIDE_REACTION_LABELS: dict[str, str] = {

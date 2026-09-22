@@ -20,6 +20,9 @@ function person(overrides: Partial<PickupInfoPerson> = {}): PickupInfoPerson {
         discord_user_id: '123456789',
         year: 'Sophomore',
         location: 'Pepper Canyon West',
+        phone: '8585551234',
+        phone_display: '(858) 555-1234',
+        phone_status: 'ok',
         updated_at: '2026-09-10T12:00:00Z',
         ...overrides,
     }
@@ -122,6 +125,81 @@ describe('PickupInfoTable', () => {
         const row = screen.getByText('Off Campus').closest('tr')
         expect(row?.textContent).toContain('Costa Verde')
         expect(row?.textContent).not.toContain('Needs fix')
+    })
+
+    it('shows the formatted phone number', () => {
+        renderTable([person()])
+
+        expect(screen.getByText('(858) 555-1234')).toBeInTheDocument()
+    })
+
+    it('shows a dash when there is no phone', () => {
+        renderTable([
+            person({ phone: null, phone_display: null, phone_status: 'missing' }),
+        ])
+
+        const cells = screen.getAllByText('—')
+        expect(cells.length).toBeGreaterThan(0)
+    })
+
+    it('highlights and badges a row with an invalid phone', () => {
+        renderTable([
+            person({
+                id: 2,
+                name: 'Bad Phone',
+                phone: '12345',
+                phone_display: '12345',
+                phone_status: 'invalid',
+            }),
+        ])
+
+        const row = screen.getByText('Bad Phone').closest('tr')
+        expect(row).not.toBeNull()
+        expect(row?.className).toContain('bg-destructive/10')
+        expect(row && screen.getByText('Invalid phone').closest('tr')).toBe(row)
+    })
+
+    it('highlights and badges a row with a missing phone', () => {
+        renderTable([
+            person({
+                id: 3,
+                name: 'No Phone',
+                phone: null,
+                phone_display: null,
+                phone_status: 'missing',
+            }),
+        ])
+
+        const row = screen.getByText('No Phone').closest('tr')
+        expect(row).not.toBeNull()
+        expect(row?.className).toContain('bg-warning/10')
+        expect(row && screen.getByText('No phone').closest('tr')).toBe(row)
+    })
+
+    it('does not badge a row with a valid phone', () => {
+        renderTable([person()])
+
+        const row = screen.getByText('Jane Doe').closest('tr')
+        expect(row?.textContent).not.toContain('Invalid phone')
+        expect(row?.textContent).not.toContain('No phone')
+    })
+
+    it('filters by phone number', async () => {
+        const user = userEvent.setup()
+        renderTable([
+            person(),
+            person({
+                id: 2,
+                name: 'John Smith',
+                discord_username: 'jsmith',
+                phone: '8585559999',
+                phone_display: '(858) 555-9999',
+            }),
+        ])
+
+        await user.type(screen.getByPlaceholderText('Search by name or username…'), '555-9999')
+        expect(screen.queryByText('Jane Doe')).not.toBeInTheDocument()
+        expect(screen.getByText('John Smith')).toBeInTheDocument()
     })
 
     it('tracks selection count and shows the bulk delete button', async () => {
