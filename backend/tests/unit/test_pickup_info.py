@@ -48,6 +48,7 @@ def _make_person(**overrides) -> Person:
         "discord_user_id": "123",
         "year": "2nd",
         "location": "Sixth",
+        "phone": "8585551234",
         "updated_at": None,
     }
     defaults.update(overrides)
@@ -236,31 +237,82 @@ async def test_sdsu_modal_asks_only_name_and_year():
     assert not hasattr(modal, "address_input")
 
 
+@pytest.mark.asyncio
+async def test_all_three_modals_have_a_required_phone_field():
+    campus = CampusPickupModal(None, _make_user())
+    off_campus = OffCampusPickupModal(None, _make_user())
+    sdsu = SdsuPickupModal(None, _make_user())
+
+    for modal in (campus, off_campus, sdsu):
+        assert modal.phone_input.required is True
+        assert modal.phone_input.placeholder == "(858) 555-1234"
+        assert modal.phone_input.default is None
+
+
+@pytest.mark.asyncio
+async def test_phone_field_prefills_formatted_existing_number():
+    person = _make_person(phone="8585551234")
+
+    campus = CampusPickupModal(person, _make_user())
+    off_campus = OffCampusPickupModal(person, _make_user())
+    sdsu = SdsuPickupModal(person, _make_user())
+
+    for modal in (campus, off_campus, sdsu):
+        assert modal.phone_input.default == "(858) 555-1234"
+
+
+@pytest.mark.asyncio
+async def test_phone_field_prefills_invalid_number_as_typed():
+    person = _make_person(phone="not a number")
+
+    modal = SdsuPickupModal(person, _make_user())
+
+    assert modal.phone_input.default == "not a number"
+
+
+@pytest.mark.asyncio
+async def test_phone_field_has_no_default_for_new_rider():
+    modal = SdsuPickupModal(None, _make_user())
+
+    assert modal.phone_input.default is None
+
+
 # ---------------------------------------------------------------------------
 # Submission
 # ---------------------------------------------------------------------------
 
 
-def _submit_campus(existing=None, name="Alice", year="2nd", location="Sixth"):
+def _submit_campus(
+    existing=None, name="Alice", year="2nd", location="Sixth", phone="(858) 555-1234"
+):
     modal = CampusPickupModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
     modal.location_select._values = [location]
+    modal.phone_input._value = phone
     return modal
 
 
-def _submit_off_campus(existing=None, name="Alice", year="2nd", address="  Costa Verde  "):
+def _submit_off_campus(
+    existing=None,
+    name="Alice",
+    year="2nd",
+    address="  Costa Verde  ",
+    phone="(858) 555-1234",
+):
     modal = OffCampusPickupModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
     modal.address_input._value = address
+    modal.phone_input._value = phone
     return modal
 
 
-def _submit_sdsu(existing=None, name="Alice", year="2nd"):
+def _submit_sdsu(existing=None, name="Alice", year="2nd", phone="(858) 555-1234"):
     modal = SdsuPickupModal(existing, _make_user())
     modal.name_input._value = name
     modal.year_select._values = [year]
+    modal.phone_input._value = phone
     return modal
 
 
@@ -429,6 +481,17 @@ async def test_sdsu_submit_sends_sdsu_location():
 
 
 @pytest.mark.asyncio
+async def test_phone_input_is_passed_to_register_from_discord():
+    modal = _submit_campus(phone="858-555-1234")
+    interaction = _make_interaction()
+
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(), True))) as mock_register:
+        await modal.on_submit(interaction)
+
+    assert mock_register.call_args.kwargs["phone"] == "858-555-1234"
+
+
+@pytest.mark.asyncio
 async def test_sdsu_rider_is_promised_a_follow_up():
     """SDSU saves a location, but there's no pickup spot behind it yet."""
     modal = _submit_sdsu()
@@ -493,6 +556,75 @@ async def test_off_campus_notice_is_plain_with_no_parenthetical():
     assert "Updated" in notice
     assert "Costa Verde, 2nd year" in notice
     assert "off campus" not in notice
+
+
+@pytest.mark.asyncio
+async def test_normal_notice_flags_invalid_phone():
+    modal = _submit_campus()
+    interaction = _make_interaction()
+    person = _make_person(location="Sixth", phone="call me maybe")
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert "⚠️ Phone looks invalid: `call me maybe`" in notice
+    assert "Pickup Info page ([link](https://ridebot.springroll.app/pickup-info))" in notice
+
+
+@pytest.mark.asyncio
+async def test_sdsu_notice_flags_invalid_phone():
+    modal = _submit_sdsu()
+    interaction = _make_interaction()
+    person = _make_person(location=CampusLivingLocations.SDSU.value, phone="123")
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert "🚨 **ACTION NEEDED, SDSU**" in notice
+    assert "⚠️ Phone looks invalid: `123`" in notice
+
+
+@pytest.mark.asyncio
+async def test_no_pickup_spot_notice_flags_invalid_phone():
+    modal = _submit_campus(location=_NEEDS_FOLLOWUP_VALUE)
+    interaction = _make_interaction()
+    person = _make_person(location=None, phone="555")
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert "🚨 **ACTION NEEDED, no pickup spot**" in notice
+    assert "⚠️ Phone looks invalid: `555`" in notice
+
+
+@pytest.mark.asyncio
+async def test_notice_does_not_flag_valid_phone():
+    modal = _submit_campus()
+    interaction = _make_interaction()
+    person = _make_person(location="Sixth", phone="8585551234")
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert "⚠️" not in notice
+    assert "Phone" not in notice
+
+
+@pytest.mark.asyncio
+async def test_notice_does_not_flag_missing_phone():
+    modal = _submit_campus()
+    interaction = _make_interaction()
+    person = _make_person(location="Sixth", phone=None)
+
+    with patch(REGISTER, new=AsyncMock(return_value=(person, True))):
+        await modal.on_submit(interaction)
+
+    notice = _coordinators_channel(interaction).send.call_args.args[0]
+    assert "⚠️" not in notice
 
 
 @pytest.mark.asyncio
