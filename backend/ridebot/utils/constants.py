@@ -124,6 +124,10 @@ PICKUP_INFO_BUTTON_CUSTOM_IDS = frozenset(
     }
 )
 
+# How long a just-created new-rider channel is remembered, covering the gap before
+# Discord's CHANNEL_CREATE event lands in the guild cache.
+NEW_RIDER_CHANNEL_MEMORY_SECONDS = 60
+
 # "Something else" button on ask-rides announcements. Like the pickup-info ids,
 # changing the prefix orphans buttons already posted in Discord.
 ASK_RIDES_OTHER_CUSTOM_ID_PREFIX = "ridebot:ask-rides-other"
