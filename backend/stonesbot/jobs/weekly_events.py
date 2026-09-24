@@ -24,7 +24,7 @@ async def run_weekly_events_announcement(
     """
     Announce next week's events and delete the previous week's announcement.
 
-    Scheduled for Sundays at 6PM LA time. Gated by StonesBot's kill switch and
+    Scheduled for Sundays at 12PM LA time. Gated by StonesBot's kill switch and
     the `weekly_events_announcement_job` flag.
 
     Args:

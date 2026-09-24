@@ -189,7 +189,7 @@ Drivers tab (`POST /api/drivers/temp`). Both call `TempDriverService`
 
 ### Weekly events announcement (StonesBot)
 
-Every Sunday at 6PM LA time, StonesBot posts one embed to
+Every Sunday at 12PM LA time, StonesBot posts one embed to
 `ChannelIds.REFERENCES__CHURCH_ANNOUNCEMENTS` listing the coming week's calendar events
 (the Monday after the run through the following Sunday) — only days that have events, each as a bold heading with its events bulleted underneath — and then
 deletes the previous week's announcement. An empty week still posts, saying nothing is
