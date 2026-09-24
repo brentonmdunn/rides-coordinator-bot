@@ -164,7 +164,8 @@ def _pickup_sentence(spots: list[PickupSpot]) -> str:
     named_spots = " or ".join(f"**{spot.name}** ([Google Maps]({spot.maps_url}))" for spot in spots)
     return (
         f"The usual pickup spot is {named_spots}, although always make sure to check "
-        f"<#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}> for the latest updates."
+        f"<#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}> for the latest updates. If you have any "
+        "questions, feel free to ask here and a ride coordinator will respond shortly!"
     )
 
 

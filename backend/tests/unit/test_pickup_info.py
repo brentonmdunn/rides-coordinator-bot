@@ -348,7 +348,8 @@ async def test_campus_rider_is_told_their_usual_pickup_spot():
         "✅ Thanks **Alice**! We've got you at ERC. The usual pickup spot is "
         "**ERC across from bamboo** ([Google Maps](https://maps.example/erc)), although "
         f"always make sure to check <#{ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS}> "
-        "for the latest updates."
+        "for the latest updates. If you have any questions, feel free to ask here and a "
+        "ride coordinator will respond shortly!"
     )
     # Maps links must not unfurl into previews under the confirmation.
     assert kwargs.get("suppress_embeds") is True
