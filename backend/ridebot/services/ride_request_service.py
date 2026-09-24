@@ -1,16 +1,31 @@
 """Service for handling ride requests."""
 
+import asyncio
 import logging
+import time
+from collections import defaultdict
 from typing import Any, cast
 
 import discord
 
-from ridebot.utils.constants import PICKUP_INFO_BUTTON_CUSTOM_IDS
+from ridebot.utils.constants import (
+    NEW_RIDER_CHANNEL_MEMORY_SECONDS,
+    PICKUP_INFO_BUTTON_CUSTOM_IDS,
+)
 from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import CategoryIds, ChannelIds, RoleIds
 from shared.core.error_reporter import send_error_to_discord
 
 logger = logging.getLogger(__name__)
+
+# Module-level so every RideRequestService instance shares them. Reactions arrive as
+# independent tasks, so without the per-rider lock two of them can both miss the
+# channel and each create one.
+_rider_locks: defaultdict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
+# Channels this process just created, by rider id, with their creation time. The
+# guild cache only learns about a new channel from the gateway, which can lag
+# behind create_text_channel returning.
+_recently_created_channels: dict[int, tuple[discord.TextChannel, float]] = {}
 
 
 class RideRequestService:
@@ -51,8 +66,34 @@ class RideRequestService:
             logger.info(f"Category with ID {CategoryIds.NEW_RIDES} not found.")
             return False
 
+        async with _rider_locks[user.id]:
+            return await self._prompt_in_rider_channel(user, guild, category, channel_name)
+
+    async def _prompt_in_rider_channel(
+        self,
+        user: discord.Member,
+        guild: discord.Guild,
+        category: discord.CategoryChannel,
+        channel_name: str,
+    ) -> bool:
+        """
+        Find or create the rider's channel and post the registration prompt there.
+
+        Must run under the rider's lock, so the lookup and the creation are atomic.
+
+        Args:
+            user: The user who reacted to the ride announcement.
+            guild: The Discord guild where the reaction occurred.
+            category: The new-rides category.
+            channel_name: The rider's channel name.
+
+        Returns:
+            True if a registration prompt was posted, False otherwise.
+        """
         # Reuse the rider's existing channel rather than creating a second one.
-        existing_channel = discord.utils.get(category.channels, name=channel_name)
+        existing_channel = discord.utils.get(
+            category.channels, name=channel_name
+        ) or _get_recently_created_channel(user.id)
         if existing_channel is not None:
             if not isinstance(existing_channel, discord.TextChannel):
                 logger.warning(f"Channel {channel_name} exists but is not a text channel.")
@@ -78,6 +119,7 @@ class RideRequestService:
                 reason=f"{user.name} reacted for rides.",
             )
             logger.info(f"Created ride channel: {new_channel}")
+            _recently_created_channels[user.id] = (new_channel, time.monotonic())
         except discord.Forbidden:
             logger.error(f"Missing permissions to create channel for {user.name}")
             return False
@@ -192,3 +234,23 @@ class RideRequestService:
                 )
 
         return overwrites
+
+
+def _get_recently_created_channel(user_id: int) -> discord.TextChannel | None:
+    """
+    Return the channel this process created for a rider moments ago, if any.
+
+    Args:
+        user_id: The rider's Discord user id.
+
+    Returns:
+        The channel, or None if none was created within the memory window.
+    """
+    entry = _recently_created_channels.get(user_id)
+    if entry is None:
+        return None
+    channel, created_at = entry
+    if time.monotonic() - created_at > NEW_RIDER_CHANNEL_MEMORY_SECONDS:
+        del _recently_created_channels[user_id]
+        return None
+    return channel

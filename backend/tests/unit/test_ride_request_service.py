@@ -1,14 +1,29 @@
 """Unit tests for ridebot/services/ride_request_service.py."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
 
+from ridebot.services import ride_request_service
 from ridebot.services.ride_request_service import RideRequestService
-from ridebot.utils.constants import PICKUP_INFO_ON_CAMPUS_CUSTOM_ID
+from ridebot.utils.constants import (
+    NEW_RIDER_CHANNEL_MEMORY_SECONDS,
+    PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
+)
 from ridebot.views.pickup_info import PickupInfoView
 from shared.core.enums import CategoryIds
+
+
+@pytest.fixture(autouse=True)
+def _reset_rider_state():
+    """Riders' locks and remembered channels are module-level; isolate each test."""
+    ride_request_service._rider_locks.clear()
+    ride_request_service._recently_created_channels.clear()
+    yield
+    ride_request_service._rider_locks.clear()
+    ride_request_service._recently_created_channels.clear()
 
 
 def _make_guild_and_category(existing_channel=None):
@@ -24,8 +39,9 @@ def _make_guild_and_category(existing_channel=None):
     return guild, category
 
 
-def _make_user(name="alice"):
+def _make_user(name="alice", user_id=42):
     user = MagicMock(spec=discord.Member)
+    user.id = user_id
     user.name = name
     user.mention = f"<@{name}>"
     return user
@@ -174,3 +190,70 @@ async def test_no_coordinator_announcement_on_channel_creation():
 
     # The "new hooman!" notice is gone; coordinators hear about riders when they register.
     bot.get_channel.assert_not_called()
+
+
+def _slow_create(channel):
+    """A create_text_channel that yields to the event loop before returning."""
+
+    async def _create(*args, **kwargs):
+        for _ in range(5):
+            await asyncio.sleep(0)
+        return channel
+
+    return AsyncMock(side_effect=_create)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_reactions_create_only_one_channel():
+    """Two reactions at once must not each create a channel for the same rider.
+
+    The guild cache never learns about the new channel here, mimicking the gap
+    before Discord's CHANNEL_CREATE event arrives.
+    """
+    prompt = _make_message(author_id=1, custom_ids=(PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,))
+    new_channel = _make_existing_channel(history=[prompt])
+    guild, _ = _make_guild_and_category()
+    guild.create_text_channel = _slow_create(new_channel)
+
+    service = RideRequestService(_make_bot(user_id=1))
+    user = _make_user()
+    results = await asyncio.gather(
+        service.handle_new_rider_reaction(user, guild),
+        RideRequestService(_make_bot(user_id=1)).handle_new_rider_reaction(user, guild),
+    )
+
+    assert sorted(results) == [False, True]
+    guild.create_text_channel.assert_awaited_once()
+    new_channel.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_different_riders_are_not_serialized_together():
+    guild, _ = _make_guild_and_category()
+    guild.create_text_channel = _slow_create(_make_new_channel())
+
+    service = RideRequestService(_make_bot())
+    await asyncio.gather(
+        service.handle_new_rider_reaction(_make_user("alice", user_id=1), guild),
+        service.handle_new_rider_reaction(_make_user("bob", user_id=2), guild),
+    )
+
+    assert guild.create_text_channel.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_remembered_channel_expires(monkeypatch):
+    """After the memory window, a missing channel (e.g. deleted) is created again."""
+    now = 1000.0
+    monkeypatch.setattr(ride_request_service.time, "monotonic", lambda: now)
+    guild, _ = _make_guild_and_category()
+    guild.create_text_channel = AsyncMock(return_value=_make_new_channel())
+
+    service = RideRequestService(_make_bot())
+    user = _make_user()
+    await service.handle_new_rider_reaction(user, guild)
+
+    now += NEW_RIDER_CHANNEL_MEMORY_SECONDS + 1
+    await service.handle_new_rider_reaction(user, guild)
+
+    assert guild.create_text_channel.await_count == 2
