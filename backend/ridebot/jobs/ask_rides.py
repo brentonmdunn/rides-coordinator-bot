@@ -22,6 +22,7 @@ from ridebot.services.ask_rides_schedule_service import (
 )
 from ridebot.services.fellowship_season_service import FellowshipSeasonService
 from ridebot.services.ride_coordinator_service import RideCoordinatorService
+from ridebot.utils.ask_rides_defaults import PING_MESSAGE_TYPES
 from ridebot.utils.cache import (
     alru_cache,
     warm_ask_drivers_message_cache,
@@ -183,7 +184,7 @@ async def build_ask_rides_message(
         return None
 
     ping_text = ""
-    if message_type == AskRidesMessageType.SUNDAY_SERVICE:
+    if message_type in PING_MESSAGE_TYPES:
         ping_text, _configured = await RideCoordinatorService.resolve_ping_text()
 
     title, body, color, reactions = await _render_effective_template(
