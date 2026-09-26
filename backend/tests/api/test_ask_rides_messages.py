@@ -51,7 +51,8 @@ class TestGetMessageTemplates:
         assert "default" in body["templates"]["sunday_service"]
         assert "allowed_colors" in body
         assert "ping" in body["allowed_placeholders"]["sunday_service"]
-        assert "ping" not in body["allowed_placeholders"]["friday_fellowship"]
+        assert "ping" in body["allowed_placeholders"]["friday_fellowship"]
+        assert "ping" not in body["allowed_placeholders"]["wednesday_fellowship"]
 
 
 class TestUpdateMessageTemplate:
