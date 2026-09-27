@@ -7,7 +7,7 @@ from sqlalchemy.exc import OperationalError
 
 from ridebot.services.ask_rides_messages_service import AskRidesMessagesService, EffectiveTemplate
 from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
-from shared.core.enums import AskRidesMessageType
+from shared.core.enums import AskRidesMessageType, Emoji
 
 
 def _mock_session_local(mock_session_local):
@@ -399,6 +399,23 @@ class TestRender:
             "🏠 = ride to church and back to campus/apt (arrive back ~1:00pm)\n"
             "✳️ = something else (please DM @coordinator)"
         ) in body
+
+    def test_default_friday_fellowship_body_has_legend(self):
+        from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
+
+        template = DEFAULT_TEMPLATES[AskRidesMessageType.FRIDAY_FELLOWSHIP]
+        _title, body = AskRidesMessagesService.render(
+            template,
+            AskRidesMessageType.FRIDAY_FELLOWSHIP,
+            date_str="4/24",
+            ping_text="@coordinator",
+            other_button_enabled=False,
+        )
+        assert (
+            "🪨 = ride to fellowship and back to campus/apt\n"
+            "✳️ = something else (please DM @coordinator)"
+        ) in body
+        assert template.reactions == (Emoji.FRIDAY_FELLOWSHIP, Emoji.SOMETHING_ELSE)
 
     def test_other_token_stays_literal_for_non_sunday_types(self):
         template = EffectiveTemplate(

@@ -21,6 +21,7 @@ from ridebot.utils.ask_rides_defaults import (
     MAX_REACTIONS,
     OTHER_BUTTON_OFF_TEXT,
     OTHER_BUTTON_ON_TEXT,
+    PING_MESSAGE_TYPES,
     MessageTemplate,
 )
 from shared.core.database import AsyncSessionLocal
@@ -276,9 +277,10 @@ class AskRidesMessagesService:
         other_button_enabled: bool = False,
     ) -> tuple[str, str]:
         """
-        Fill `{date}` (and `{ping}`/`{other}` for Sunday service) into title/body.
+        Fill `{date}` (and `{ping}`/`{other}` for Friday fellowship and Sunday
+        service) into title/body.
 
-        For Sunday service, `{other}` renders as the "tap the button" wording
+        For those types, `{other}` renders as the "tap the button" wording
         when `other_button_enabled` is True, or falls back to "please DM
         {ping}" when it's False — keeping the flag-off text unchanged from
         before the button existed. Other message types don't get `{other}`,
@@ -288,7 +290,7 @@ class AskRidesMessagesService:
         placeholder never raises.
         """
         values = _SafeFormatDict(date=date_str)
-        if message_type == AskRidesMessageType.SUNDAY_SERVICE:
+        if message_type in PING_MESSAGE_TYPES:
             values["ping"] = ping_text
             values["other"] = (
                 OTHER_BUTTON_ON_TEXT

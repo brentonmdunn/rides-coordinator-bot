@@ -9,10 +9,15 @@ from dataclasses import dataclass
 
 from shared.core.enums import AskRidesMessageType, EmbedColorChoice, Emoji
 
-# Sunday service's `{other}` placeholder renders one of these depending on
+# Friday fellowship's and Sunday service's `{other}` placeholder renders one of these depending on
 # whether the "Something else" button feature flag is currently on.
 OTHER_BUTTON_ON_TEXT = "react ✳️ and tap **Something else** below"
 OTHER_BUTTON_OFF_TEXT = "please DM {ping}"
+
+# Message types whose templates get the `{ping}`/`{other}` placeholders.
+PING_MESSAGE_TYPES = frozenset(
+    {AskRidesMessageType.FRIDAY_FELLOWSHIP, AskRidesMessageType.SUNDAY_SERVICE}
+)
 
 
 @dataclass(frozen=True)
@@ -39,10 +44,12 @@ DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
         title="Rides to Friday Fellowship",
         body=(
             "React to this message if you need a ride for Friday night fellowship "
-            "{date} (leave between 7 and 7:10pm)!"
+            "{date} (leave between 7 and 7:10pm)!\n\n"
+            "🪨 = ride to fellowship and back to campus/apt\n"
+            "✳️ = something else ({other})"
         ),
         color=EmbedColorChoice.PINK,
-        reactions=(Emoji.FRIDAY_FELLOWSHIP,),
+        reactions=(Emoji.FRIDAY_FELLOWSHIP, Emoji.SOMETHING_ELSE),
     ),
     AskRidesMessageType.SUNDAY_SERVICE: MessageTemplate(
         title="Rides to Sunday Service",
@@ -76,7 +83,7 @@ MAX_REACTIONS = 10
 # saved templates so an unsupported token is rejected at save time.
 ALLOWED_PLACEHOLDERS: dict[AskRidesMessageType, set[str]] = {
     AskRidesMessageType.WEDNESDAY_FELLOWSHIP: {"date"},
-    AskRidesMessageType.FRIDAY_FELLOWSHIP: {"date"},
+    AskRidesMessageType.FRIDAY_FELLOWSHIP: {"date", "ping", "other"},
     AskRidesMessageType.SUNDAY_SERVICE: {"date", "ping", "other"},
     AskRidesMessageType.SUNDAY_CLASS: {"date"},
 }
