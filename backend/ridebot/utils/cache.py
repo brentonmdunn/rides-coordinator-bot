@@ -46,8 +46,6 @@ def _get_reaction_cache_ttl() -> int:
     Returns:
         TTL in seconds.
     """
-    from ridebot.utils.time_helpers import is_active_hours
-
     from ridebot.utils.time_helpers import is_active_hours, seconds_until_next_cycle_start
 
     ttl = REACTION_CACHE_ACTIVE_TTL if is_active_hours() else REACTION_CACHE_OFF_HOURS_TTL
