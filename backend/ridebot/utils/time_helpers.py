@@ -316,6 +316,22 @@ def get_current_cycle_start() -> datetime:
     return week_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def seconds_until_next_cycle_start() -> int:
+    """
+    Return the number of seconds until the next ask-rides cycle begins (Monday 00:00 LA).
+
+    Used to cap cache TTLs so last week's ask-rides data expires at midnight
+    Sunday instead of lingering into the new week.
+
+    Returns:
+        Seconds until next Monday 00:00 LA time (at least 1).
+    """
+    now = datetime.now(tz=LA_TZ)
+    next_monday = (now + timedelta(days=DAYS_IN_WEEK - now.weekday())).date()
+    next_start = LA_TZ.localize(datetime(next_monday.year, next_monday.month, next_monday.day))
+    return max(1, int((next_start - now).total_seconds()))
+
+
 def get_send_wednesday(event_date: date) -> date:
     """
     Calculate the Wednesday send-day before an event date.

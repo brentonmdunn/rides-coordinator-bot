@@ -16,6 +16,7 @@ from typing import Any, TypeVar, cast
 
 from ridebot.utils.constants import (
     CACHE_DEFAULT_MAX_SIZE,
+    MESSAGE_ID_CACHE_MAX_TTL,
     REACTION_CACHE_ACTIVE_TTL,
     REACTION_CACHE_OFF_HOURS_TTL,
 )
@@ -40,14 +41,30 @@ def _get_reaction_cache_ttl() -> int:
     Active hours (7 AM - 1 AM PT): 65 minutes
     Off-hours (1 AM - 7 AM PT): 7 hours
 
+    Capped at the start of the next ride cycle (Monday 00:00 LA).
+
     Returns:
         TTL in seconds.
     """
-    from ridebot.utils.time_helpers import is_active_hours
+    from ridebot.utils.time_helpers import is_active_hours, seconds_until_next_cycle_start
 
-    if is_active_hours():
-        return REACTION_CACHE_ACTIVE_TTL
-    return REACTION_CACHE_OFF_HOURS_TTL
+    ttl = REACTION_CACHE_ACTIVE_TTL if is_active_hours() else REACTION_CACHE_OFF_HOURS_TTL
+    return min(ttl, seconds_until_next_cycle_start())
+
+
+def _get_message_id_cache_ttl() -> int:
+    """
+    Return the TTL for ask-rides/ask-drivers message ID caches.
+
+    Capped at the start of the next ride cycle (Monday 00:00 LA) so last
+    week's message IDs never survive into the new week.
+
+    Returns:
+        TTL in seconds.
+    """
+    from ridebot.utils.time_helpers import seconds_until_next_cycle_start
+
+    return min(MESSAGE_ID_CACHE_MAX_TTL, seconds_until_next_cycle_start())
 
 
 def _is_cache_enabled() -> bool:

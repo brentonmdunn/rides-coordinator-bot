@@ -18,6 +18,7 @@ from ridebot.utils.time_helpers import (
     is_during_late_reaction_window,
     is_in_late_reaction_window,
     is_in_ride_day_window,
+    seconds_until_next_cycle_start,
 )
 from shared.core.enums import DaysOfWeek, DaysOfWeekNumber
 
@@ -469,3 +470,29 @@ class TestLATZ:
 
     def test_la_tz_is_pytz_timezone(self):
         assert pytz.timezone("America/Los_Angeles") == LA_TZ
+
+
+# ---------------------------------------------------------------------------
+# seconds_until_next_cycle_start
+# ---------------------------------------------------------------------------
+class TestSecondsUntilNextCycleStart:
+    """Tests for seconds_until_next_cycle_start (next Monday 00:00 LA)."""
+
+    @patch("ridebot.utils.time_helpers.datetime")
+    def test_late_sunday_expires_at_midnight(self, mock_dt):
+        mock_dt.now.return_value = _la(2026, 4, 26, 23, 30)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert seconds_until_next_cycle_start() == 30 * 60
+
+    @patch("ridebot.utils.time_helpers.datetime")
+    def test_monday_midnight_is_full_week(self, mock_dt):
+        mock_dt.now.return_value = _la(2026, 4, 20, 0, 0)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert seconds_until_next_cycle_start() == 7 * 24 * 60 * 60
+
+    @patch("ridebot.utils.time_helpers.datetime")
+    def test_across_dst_fall_back(self, mock_dt):
+        # Sunday Nov 1, 2026 is the fall-back day (25 hours long)
+        mock_dt.now.return_value = _la(2026, 10, 31, 12, 0)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert seconds_until_next_cycle_start() == (12 + 25) * 60 * 60

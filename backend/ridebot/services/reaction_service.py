@@ -6,9 +6,9 @@ from collections import defaultdict
 import discord
 
 from ridebot.repositories.locations_repository import LocationsRepository
-from ridebot.utils.cache import _get_reaction_cache_ttl, alru_cache
+from ridebot.utils.cache import _get_message_id_cache_ttl, _get_reaction_cache_ttl, alru_cache
 from ridebot.utils.parsing import get_message_and_embed_content
-from ridebot.utils.time_helpers import get_last_sunday
+from ridebot.utils.time_helpers import get_current_cycle_start
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import (
     AskRidesMessage,
@@ -194,7 +194,11 @@ class ReactionService:
                         usernames.add(user.name)
         return usernames
 
-    @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID)
+    @alru_cache(
+        ttl=_get_message_id_cache_ttl,
+        ignore_self=True,
+        namespace=CacheNamespace.ASK_RIDES_MESSAGE_ID,
+    )
     async def find_correct_message(self, ask_rides_message: AskRidesMessage, channel_id):
         """
         Finds the most recent message matching the criteria.
@@ -219,7 +223,7 @@ class ReactionService:
         Returns:
             Dictionary mapping each AskRidesMessage to its message ID (or None).
         """
-        last_sunday = get_last_sunday()
+        cycle_start = get_current_cycle_start()
         channel = self.bot.get_channel(channel_id)
         results: dict[AskRidesMessage, int | None] = dict.fromkeys(AskRidesMessage)
 
@@ -227,7 +231,7 @@ class ReactionService:
             return results
 
         most_recent: dict[AskRidesMessage, discord.Message] = {}
-        async for message in channel.history(after=last_sunday):
+        async for message in channel.history(after=cycle_start):
             combined_text = get_message_and_embed_content(message, message_content=False).lower()
             for msg_type in AskRidesMessage:
                 if msg_type.lower() in combined_text:
@@ -241,7 +245,11 @@ class ReactionService:
 
         return results
 
-    @alru_cache(ttl=864000, ignore_self=True, namespace=CacheNamespace.ASK_DRIVERS_MESSAGE_ID)
+    @alru_cache(
+        ttl=_get_message_id_cache_ttl,
+        ignore_self=True,
+        namespace=CacheNamespace.ASK_DRIVERS_MESSAGE_ID,
+    )
     async def find_driver_message(
         self, event: AskRidesMessage, channel_id: int = ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
     ):
@@ -280,7 +288,7 @@ class ReactionService:
             AskRidesMessage.SUNDAY_CLASS: ["sunday", "class"],
         }
 
-        last_sunday = get_last_sunday()
+        cycle_start = get_current_cycle_start()
         channel = self.bot.get_channel(channel_id)
         results: dict[AskRidesMessage, int | None] = dict.fromkeys(driver_keywords)
 
@@ -290,7 +298,7 @@ class ReactionService:
         driver_role_mention = f"<@&{RoleIds.DRIVER}>"
 
         most_recent: dict[AskRidesMessage, discord.Message] = {}
-        async for message in channel.history(after=last_sunday):
+        async for message in channel.history(after=cycle_start):
             if driver_role_mention not in message.content:
                 continue
             combined_text = get_message_and_embed_content(message).lower()
