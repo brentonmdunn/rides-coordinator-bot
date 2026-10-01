@@ -29,6 +29,7 @@ from shared.core.database import (
 )
 from shared.core.enums import BotName
 from shared.core.error_reporter import send_error_to_discord
+from shared.core.logger import txn_id_var
 from shared.core.models import FeatureFlags
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 from shared.utils.checks import UserFacingCheckFailure
@@ -37,6 +38,54 @@ from shared.utils.constants import REDIS_CONNECTION_TIMEOUT
 logger = logging.getLogger(__name__)
 
 APP_ENV: str = os.getenv("APP_ENV", "local")
+
+_MAX_ARG_REPR = 200
+_MAX_DESCRIPTION = 600
+
+
+def _describe_one_arg(arg: object) -> str:
+    """Render a single positional arg as a short, safe, identifier-only summary line."""
+    if isinstance(arg, discord.RawReactionActionEvent):
+        return (
+            f"RawReactionActionEvent(guild_id={arg.guild_id} channel_id={arg.channel_id} "
+            f"message_id={arg.message_id} user_id={arg.user_id} emoji={arg.emoji} "
+            f"event_type={arg.event_type})"
+        )
+    if isinstance(arg, discord.Message):
+        return (
+            f"Message(id={arg.id} channel_id={getattr(arg.channel, 'id', None)} "
+            f"author_id={getattr(arg.author, 'id', None)})"
+        )
+    if isinstance(arg, (discord.Member, discord.User)):
+        return f"{type(arg).__name__}(id={arg.id} name={arg.name})"
+    if isinstance(arg, discord.Interaction):
+        cmd_name = arg.command.name if arg.command else None
+        return (
+            f"Interaction(id={arg.id} guild_id={arg.guild_id} channel_id={arg.channel_id} "
+            f"user_id={getattr(arg.user, 'id', None)} command={cmd_name})"
+        )
+    return f"{type(arg).__name__}: {repr(arg)[:_MAX_ARG_REPR]}"
+
+
+def _describe_event_args(args: tuple) -> str:
+    """
+    Build a short, safe one-line-per-arg summary of a Discord event's positional args.
+
+    Only identifiers (IDs, usernames, emoji) are included — never message or embed
+    content, since the error channel is more widely visible than the source channel.
+    Never raises; returns a placeholder if description fails.
+    """
+    try:
+        if not args:
+            return "<no args>"
+        lines = [_describe_one_arg(arg) for arg in args]
+        description = "\n".join(lines)
+        if len(description) > _MAX_DESCRIPTION:
+            description = description[: _MAX_DESCRIPTION - 1] + "…"
+        return description
+    except Exception:
+        return f"<{len(args)} arg(s); description failed>"
+
 
 _failed_extensions: dict[BotName, set[str]] = {}
 _enabled_bots: set[BotName] = set()
@@ -174,16 +223,36 @@ def attach_event_handlers(bot: Bot, spec: BotSpec, send_error_fn: _SendErrorFn) 
 
     @bot.event
     async def on_error(event: str, *args, **kwargs) -> None:
+        arg_description = _describe_event_args(args)
+        txn_id = txn_id_var.get()
         exc_info = sys.exc_info()
         if exc_info[0] is not None:
             tb_lines = traceback.format_exception(*exc_info)
             tb_text = "".join(tb_lines)
-            logger.exception(f"[{spec.name}] Uncaught exception in {event}")
+            logger.exception(
+                "[%s] Uncaught exception in %s [txn:%s]\n%s",
+                spec.name,
+                event,
+                txn_id,
+                arg_description,
+            )
             await send_error_fn(
-                f"**[{spec.name}] Uncaught Exception in Event: `{event}`**", tb_text=tb_text
+                f"**[{spec.name}] Uncaught Exception in Event: `{event}`** "
+                f"[txn:`{txn_id}`]\n{arg_description}",
+                tb_text=tb_text,
             )
         else:
-            logger.error(f"[{spec.name}] Unknown error in event {event}")
+            logger.error(
+                "[%s] Unknown error in event %s [txn:%s]\n%s",
+                spec.name,
+                event,
+                txn_id,
+                arg_description,
+            )
+            await send_error_fn(
+                f"**[{spec.name}] Unknown error in event `{event}`** "
+                f"[txn:`{txn_id}`]\n{arg_description}"
+            )
 
     @bot.tree.error
     async def on_app_command_error(interaction: Interaction, error: AppCommandError) -> None:

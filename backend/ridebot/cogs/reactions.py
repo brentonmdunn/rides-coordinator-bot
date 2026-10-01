@@ -22,8 +22,10 @@ from shared.core.enums import (
     FeatureFlagNames,
     ReactionAction,
 )
+from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import generate_txn_id, txn_id_var
 from shared.utils.checks import feature_flag_enabled
+from shared.utils.discord_retry import fetch_message_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,19 @@ class Reactions(commands.Cog):
         txn_token = txn_id_var.set(generate_txn_id())
         try:
             await self._handle_reaction_add(payload)
+        except Exception:
+            # Log while the txn id is still set (the finally resets it before the
+            # exception reaches on_error), so the alert and log line can be matched.
+            logger.exception(
+                "on_raw_reaction_add failed: guild_id=%s channel_id=%s message_id=%s "
+                "user_id=%s emoji=%s",
+                payload.guild_id,
+                payload.channel_id,
+                payload.message_id,
+                payload.user_id,
+                payload.emoji,
+            )
+            raise
         finally:
             txn_id_var.reset(txn_token)
 
@@ -110,7 +125,9 @@ class Reactions(commands.Cog):
             )
             return  # Ensure it's a text channel
 
-        message = await channel.fetch_message(payload.message_id)
+        message = await self._resolve_message(payload, channel)
+        if message is None:
+            return
         user = guild.get_member(payload.user_id)
         logger.debug(
             "_handle_reaction_add: user=%s bot=%s",
@@ -157,6 +174,18 @@ class Reactions(commands.Cog):
         txn_token = txn_id_var.set(generate_txn_id())
         try:
             await self._handle_reaction_remove(payload)
+        except Exception:
+            # Log while the txn id is still set (see on_raw_reaction_add).
+            logger.exception(
+                "on_raw_reaction_remove failed: guild_id=%s channel_id=%s message_id=%s "
+                "user_id=%s emoji=%s",
+                payload.guild_id,
+                payload.channel_id,
+                payload.message_id,
+                payload.user_id,
+                payload.emoji,
+            )
+            raise
         finally:
             txn_id_var.reset(txn_token)
 
@@ -191,7 +220,9 @@ class Reactions(commands.Cog):
             )
             return
 
-        message = await channel.fetch_message(payload.message_id)
+        message = await self._resolve_message(payload, channel)
+        if message is None:
+            return
         user = guild.get_member(payload.user_id)
         logger.debug(
             "_handle_reaction_remove: user=%s bot=%s",
@@ -226,6 +257,46 @@ class Reactions(commands.Cog):
             await self._record_ask_rides_reaction(user, payload, message, ReactionAction.REMOVE)
         except Exception:
             logger.exception("_handle_reaction_remove: error in _record_ask_rides_reaction")
+
+    async def _resolve_message(
+        self,
+        payload: discord.RawReactionActionEvent,
+        channel: discord.TextChannel,
+    ) -> discord.Message | None:
+        """
+        Resolve the reacted-to message, tolerating transient Discord 5xx.
+
+        Prefers the already-cached message (no HTTP call needed), otherwise fetches
+        it with retries on transient 5xx / connection failures. On permanent failure
+        the degradation is logged and reported as handled, and None is returned so the
+        caller returns early rather than crashing the whole handler.
+
+        Note: ``RawReactionActionEvent.cached_message`` does not exist in discord.py
+        2.6.3, so the message cache is consulted via the public ``bot.cached_messages``.
+        """
+        cached = discord.utils.get(self.bot.cached_messages, id=payload.message_id)
+        if cached is not None:
+            return cached
+
+        try:
+            return await fetch_message_with_retry(channel, payload.message_id)
+        except Exception:
+            logger.exception(
+                "Failed to fetch message after retries: guild_id=%s channel_id=%s "
+                "message_id=%s user_id=%s emoji=%s",
+                payload.guild_id,
+                payload.channel_id,
+                payload.message_id,
+                payload.user_id,
+                payload.emoji,
+            )
+            await send_error_to_discord(
+                f"**Reaction handler degraded: could not fetch message** "
+                f"[txn:`{txn_id_var.get()}`]\n"
+                f"channel_id={payload.channel_id} message_id={payload.message_id} "
+                f"user_id={payload.user_id} emoji={payload.emoji}"
+            )
+            return None
 
     async def _record_ask_rides_reaction(
         self,

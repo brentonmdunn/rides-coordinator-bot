@@ -4,8 +4,9 @@ import contextlib
 import importlib
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
+import discord
 import pytest
 
 import shared.core.lifecycle as lifecycle
@@ -198,6 +199,112 @@ class TestCloseBot:
             assert BotName.RIDEBOT not in get_registered_bots()
         finally:
             set_bot_instance(BotName.RIDEBOT, None)
+
+
+class CapturingBot:
+    """Fake bot that stores event handlers so on_error can be invoked directly."""
+
+    def __init__(self):
+        self.tree = FakeTree()
+        self.events: dict = {}
+
+    def event(self, func):
+        self.events[func.__name__] = func
+        return func
+
+
+def _reaction_payload() -> Mock:
+    payload = Mock(spec=discord.RawReactionActionEvent)
+    payload.guild_id = 916817752918982716
+    payload.channel_id = 939950319721406464
+    payload.message_id = 1554930864163397674
+    payload.user_id = 42
+    payload.emoji = "🍔"
+    payload.event_type = "REACTION_ADD"
+    return payload
+
+
+class TestOnError:
+    """Tests for the on_error handler's payload description (item A)."""
+
+    @pytest.mark.asyncio
+    async def test_reaction_payload_ids_in_alert(self):
+        send_error_fn = AsyncMock()
+        bot = CapturingBot()
+        lifecycle.attach_event_handlers(bot, _spec(), send_error_fn)
+        on_error = bot.events["on_error"]
+
+        try:
+            raise RuntimeError("boom")
+        except RuntimeError:
+            await on_error("on_raw_reaction_add", _reaction_payload())
+
+        send_error_fn.assert_awaited_once()
+        header = send_error_fn.await_args.args[0]
+        assert "916817752918982716" in header  # guild_id
+        assert "939950319721406464" in header  # channel_id
+        assert "1554930864163397674" in header  # message_id
+        assert "42" in header  # user_id
+        assert "🍔" in header  # emoji
+
+    @pytest.mark.asyncio
+    async def test_arg_description_failure_still_sends_traceback(self):
+        send_error_fn = AsyncMock()
+        bot = CapturingBot()
+        lifecycle.attach_event_handlers(bot, _spec(), send_error_fn)
+        on_error = bot.events["on_error"]
+
+        class Exploding:
+            def __repr__(self):
+                raise ValueError("no repr for you")
+
+        try:
+            raise RuntimeError("boom")
+        except RuntimeError:
+            # Must not raise even though describing the arg fails.
+            await on_error("on_raw_reaction_add", Exploding())
+
+        send_error_fn.assert_awaited_once()
+        tb_text = send_error_fn.await_args.kwargs["tb_text"]
+        assert "RuntimeError" in tb_text
+
+    @pytest.mark.asyncio
+    async def test_no_message_content_in_description(self):
+        send_error_fn = AsyncMock()
+        bot = CapturingBot()
+        lifecycle.attach_event_handlers(bot, _spec(), send_error_fn)
+        on_error = bot.events["on_error"]
+
+        message = Mock(spec=discord.Message)
+        message.id = 123
+        message.channel = Mock()
+        message.channel.id = 456
+        message.author = Mock()
+        message.author.id = 789
+        message.content = "SECRET_CONTENT"
+
+        try:
+            raise RuntimeError("boom")
+        except RuntimeError:
+            await on_error("on_message", message)
+
+        header = send_error_fn.await_args.args[0]
+        assert "SECRET_CONTENT" not in header
+        assert "123" in header  # the message id is present
+
+
+class TestDescribeEventArgs:
+    """Direct tests for _describe_event_args (item A)."""
+
+    def test_empty_args(self):
+        assert lifecycle._describe_event_args(()) == "<no args>"
+
+    def test_truncates_long_output(self):
+        # Many args so the joined description exceeds the overall cap.
+        args = tuple("value" for _ in range(200))
+        out = lifecycle._describe_event_args(args)
+        assert len(out) <= lifecycle._MAX_DESCRIPTION
+        assert out.endswith("…")
 
 
 class TestBotLifespanReadiness:
