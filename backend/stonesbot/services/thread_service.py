@@ -6,6 +6,7 @@ import logging
 import discord
 
 from shared.core.database import AsyncSessionLocal
+from shared.utils.discord_retry import fetch_message_with_retry
 from stonesbot.repositories.thread_repository import EventThreadRepository
 
 logger = logging.getLogger(__name__)
@@ -166,7 +167,7 @@ class ThreadService:
         if not isinstance(parent, discord.TextChannel):
             raise StarterMessageError("This thread's parent channel is not a text channel.")
         try:
-            starter_message = await parent.fetch_message(thread.id)
+            starter_message = await fetch_message_with_retry(parent, thread.id)
         except discord.NotFound:
             raise StarterMessageError(  # noqa
                 "Could not find the message that started this thread. Has it been deleted?"
@@ -283,7 +284,7 @@ class ThreadService:
             return False
 
         try:
-            message = await channel.fetch_message(payload.message_id)
+            message = await fetch_message_with_retry(channel, payload.message_id)
         except discord.NotFound:
             logger.error(f"Could not find message with ID {payload.message_id}")
             return False
