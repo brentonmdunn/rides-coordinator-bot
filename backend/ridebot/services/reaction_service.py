@@ -18,6 +18,7 @@ from shared.core.enums import (
     RideOption,
     RoleIds,
 )
+from shared.utils.discord_retry import fetch_message_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class ReactionService:
         """
         usernames_reacted = set()
         channel = self.bot.get_channel(channel_id)
-        message = await channel.fetch_message(message_id)
+        message = await fetch_message_with_retry(channel, message_id)
         for reaction in message.reactions:
             if (
                 option
@@ -88,7 +89,7 @@ class ReactionService:
 
         channel = self.bot.get_channel(channel_id)
         try:
-            message = await channel.fetch_message(message_id)
+            message = await fetch_message_with_retry(channel, message_id)
         except discord.NotFound:
             logger.warning(
                 f"Message {message_id} for {event} not found (deleted?); clearing stale cache"
@@ -146,7 +147,7 @@ class ReactionService:
 
         channel = self.bot.get_channel(channel_id)
         try:
-            message = await channel.fetch_message(message_id)
+            message = await fetch_message_with_retry(channel, message_id)
         except discord.NotFound:
             logger.warning(
                 f"Message {message_id} for {event} not found (deleted?); clearing stale cache"
@@ -185,7 +186,7 @@ class ReactionService:
             A set of usernames who reacted with ⬅️.
         """
         channel = self.bot.get_channel(channel_id)
-        message = await channel.fetch_message(message_id)
+        message = await fetch_message_with_retry(channel, message_id)
         usernames: set[str] = set()
         for reaction in message.reactions:
             if str(reaction.emoji) == Emoji.DRIVE_BACK:
