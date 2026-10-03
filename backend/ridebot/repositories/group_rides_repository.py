@@ -5,6 +5,8 @@ import logging
 import discord
 from discord.ext import commands
 
+from shared.utils.discord_retry import fetch_message_with_retry
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +42,7 @@ class GroupRidesRepository:
             return None
 
         try:
-            return await channel.fetch_message(message_id)
+            return await fetch_message_with_retry(channel, message_id)
         except discord.NotFound:
             logger.warning(f"fetch_message: message {message_id} not found in channel {channel_id}")
             return None
