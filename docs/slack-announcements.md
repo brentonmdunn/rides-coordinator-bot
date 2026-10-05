@@ -21,8 +21,12 @@ Slack #announcements ──(Socket Mode websocket, outbound)──▶ StonesBot
   to get past Cloudflare Access or the session middleware.
 - **Link back.** Every forwarded post ends with a subtext `View in Slack` link to the original
   message (the church Slack is open to everyone, so anyone can follow it).
-- **No pings.** `@channel`, `@here` and `@everyone` come through as plain text and are sent
-  with mentions disabled.
+- **Pings are opt-in.** By default `@channel`, `@here` and `@everyone` come through as plain
+  text and ping no one. With the `slack_announcements_pings` flag on, Slack's
+  `@channel`/`@everyone` pings Discord's `@everyone` and `@here` pings `@here`. That happens
+  only when a post is first forwarded, never on edits. `@Name` mentions never ping. Since
+  anyone who can post in Slack #announcements can then ping the whole Discord server, only
+  turn it on if posting there is restricted.
 - **Target channel.** `ChannelIds.REFERENCES__CHURCH_ANNOUNCEMENTS`, resolved through
   `resolve_channel_id`. With `APP_ENV=local` that's `#bots`.
 
@@ -104,6 +108,10 @@ rest of the app runs normally.
 Enable the `slack_announcements_forwarding` feature flag in the admin UI. Events received while
 it's off are dropped, not queued.
 
+Optionally, enable `slack_announcements_pings` so Slack's `@channel`/`@here` ping in Discord.
+This also needs StonesBot to have **Mention Everyone** in the announcements channel; without
+it the post still goes out but doesn't ping. Test it in `#bots` first.
+
 ---
 
 ## Behavior
@@ -117,7 +125,8 @@ it's off are dropped, not queued.
 | Discord moderator deletes the forwarded copy | Stays deleted; later Slack edits to it are ignored |
 | Joins, topic changes, bot/workflow posts | Ignored |
 | `*bold*`, `~strike~`, `<url\|text>` | `**bold**`, `~~strike~~`, `[text](url)` |
-| `<@U123>`, `<#C123\|general>`, `@channel` | `@Name`, `#general`, `@channel` as plain text (no ping) |
+| `<@U123>`, `<#C123\|general>` | `@Name`, `#general` as plain text (no ping) |
+| `@channel`, `@everyone`, `@here` | Plain text by default; with `slack_announcements_pings` on, `@everyone`/`@here` that ping (first forward only) |
 | Files | Downloaded and re-uploaded, up to 10 per message and the server's upload limit. Anything else becomes a `📎 name (too large to attach here, see Slack)` line; externally hosted files (Google Drive, etc.) become a link. |
 | Message over 2000 characters | Split at line breaks into several Discord messages; attachments go on the last |
 

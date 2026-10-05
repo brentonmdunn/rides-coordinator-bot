@@ -152,7 +152,9 @@ break the listener.
    permalink call fails, the line is just left off. Edits re-render the same way, so the link
    survives them.
 7. **Send:** `_send` splits the text with `split_message` and sends each chunk with
-   `webhook.send(username="<name> (via Slack)", avatar_url=..., allowed_mentions=none(), wait=True)`.
+   `webhook.send(username="<name> (via Slack)", avatar_url=..., allowed_mentions=..., wait=True)`.
+   `allowed_mentions` is `none()`, or `everyone=True` with users/roles off when the post may
+   ping (see [Mass-mention pings](#mass-mention-pings)).
    Attachments go on the **last** chunk. With files but no text, one message holding just the link is
    sent. If a later chunk fails, the chunks already sent are deleted before re-raising, so no
    half-posted announcement is left behind.
@@ -260,7 +262,7 @@ always present and accurate enough, so it's the only input.
      | `<mailto:a@b\|a@b>` | `a@b` |
      | `<@U123>` / `<@U123\|bob>` | `@<resolved name>` → `@bob` → `@unknown` |
      | `<#C123\|general>` | `#general` |
-     | `<!channel>` `<!here>` `<!everyone>` | `@channel` `@here` `@everyone` (plain text) |
+     | `<!channel>` `<!here>` `<!everyone>` | `@channel` `@here` `@everyone`, or with `pings=True`: `@everyone` `@here` `@everyone` |
      | `<!subteam^S1\|@team>`, `<!date^…\|fallback>`, other `<!…>` | the label |
 2. **Convert markers** on what's left: `*x*` → `**x**`, `~x~` → `~~x~~`. The regexes need a
    non-space right inside each marker and no word character or doubled marker right outside,
@@ -269,8 +271,16 @@ always present and accurate enough, so it's the only input.
 3. **Restore** the placeholders. Because they stood in during step 2, a `*` inside a URL or
    code span is never touched. Bold that wraps a link (`*see <url|here>*`) still works, because
    the placeholder counts as a non-space character.
-4. **Unescape** `&amp;`, `&lt;`, `&gt;` (`html.unescape`). This comes last because Slack escapes
-   these in user text and uses real `<>` only for entities.
+4. **Unescape** `&amp;`, `&lt;`, `&gt;` (`html.unescape`), both in the text and in each saved
+   token. Slack escapes these in user text and uses real `<>` only for entities.
+5. **Defuse** literal `@everyone`/`@here` by putting a zero-width space after the `@`. This
+   applies everywhere except the output of a real Slack mass mention: plain text, code, link
+   labels, and anything that only became `@` after unescaping. So only an actual `@channel`,
+   `@here` or `@everyone` in Slack can ever ping. This happens whether pings are on or off.
+
+Steps 3–5 really run as unescape → defuse → restore on the main text, with each token
+unescaped and defused when it's saved, so a real mass mention restored in step 3 is never
+defused.
 
 `extract_user_ids(text)` lists the `<@U…>`/`<@W…>` ids so the service can resolve names before
 calling the formatter, which keeps the formatter free of I/O.
@@ -279,6 +289,28 @@ calling the formatter, which keeps the formatter free of I/O.
 and hard-cut any single word over the limit; then pack the pieces back together greedily,
 joined by `\n`. Whitespace-only chunks are dropped. A code block that crosses a chunk boundary
 will render oddly. That's accepted, since announcements rarely run past 2000 characters.
+
+---
+
+## Mass-mention pings
+
+Gated by its own flag, `slack_announcements_pings` (seeded **off**), separate from forwarding
+so pings can be turned off without stopping it.
+
+- `SlackForwardService._pings_enabled()` reads the flag once per new or edited message. It
+  **fails closed**: if the flag can't be read, nothing pings.
+- **Display:** with the flag on, `slack_to_discord(..., pings=True)` writes Slack's
+  `@channel`/`@everyone` as Discord's `@everyone` and `@here` as `@here`.
+- **Pinging** is controlled separately, through `allowed_mentions`:
+  - **first forward of a new post** → `EVERYONE_PINGS` (`everyone=True`, users/roles off);
+  - **edit in place** → `NO_PINGS`. Discord never pings on edits anyway;
+  - **repost** (an edit that changed the part count or files) → `NO_PINGS`. Everyone was already
+    notified when the post first went out, so a repost must not ping again.
+- `@Name` user mentions are always plain text and never ping.
+- **Permission:** a webhook's `@everyone` only pings if it's allowed to mention everyone in the
+  channel, so StonesBot (which owns the webhook) should have **Mention Everyone** there. Check
+  with a test post in `#bots` first. Locally, `resolve_channel_id` sends everything to
+  `#bots`, so turning the flag on in a local DB pings `#bots`.
 
 ---
 
@@ -351,6 +383,8 @@ error channel with the ids needed to fix it by hand.
 | Websocket drops later | `slack-sdk` reconnects by itself; events sent during the gap are lost |
 | Slack rate limit | Web API calls retried twice; then treated like any other failure of that call |
 | Flag or kill switch off | Requests still acked; events dropped silently |
+| Pings flag can't be read | Fails closed: posts forward without pinging |
+| Webhook not allowed to mention everyone | Post goes out; `@everyone` shows but doesn't ping |
 | StonesBot lacks Manage Webhooks | Error-channel report naming the permission; event dropped |
 | `users.info` fails (any error) | Posted as `Slack (via Slack)`, no avatar; mentions keep their label or show `@unknown` |
 | `chat.getPermalink` fails | Posted without the View in Slack line |
@@ -368,28 +402,13 @@ error channel with the ids needed to fix it by hand.
 | Process down / restarting | Events sent meanwhile are lost (Socket Mode doesn't replay); no backfill |
 | Webhook username rejected by Discord (rare names) | Send fails; error reported |
 
----|---|
-| Slack env var missing | One startup warning; cog idles; rest of the app unaffected |
-| Bad Slack token / Slack unreachable at startup | `connect()` raises → logged + error-channel report; no retry until the next process start |
-| Websocket drops later | `slack-sdk` reconnects automatically; events sent during the gap are lost |
-| Flag or kill switch off | Requests still acked; events dropped silently |
-| StonesBot lacks Manage Webhooks | Error-channel report naming the permission; event dropped |
-| `users.info` fails | Posted as `Slack (via Slack)` with no avatar |
-| `chat.getPermalink` fails | Posted without the View in Slack line |
-| File download fails / missing `files:read` | Whole event fails → logged + reported; nothing posted |
-| Discord 413 on attachments | Reposted without files, with notes |
-| Discord error mid-split | Already-sent parts deleted; error reported |
-| Discord message already deleted by a mod | Edit/delete logs it and continues |
-| Two environments share the Slack app token | Slack splits events between them; each sees only some (avoid; see setup doc) |
-| Webhook deleted in Discord | New one created on next post; older messages can't be edited/deleted anymore |
-
 ---
 
 ## Tests
 
 | File | Covers |
 |---|---|
-| `tests/unit/test_slack_format.py` | Every conversion, protection of code/URLs, mention fallbacks, splitting bounds |
+| `tests/unit/test_slack_format.py` | Every conversion, protection of code/URLs, mention fallbacks, mass-mention rendering and defusing, splitting bounds |
 | `tests/unit/test_slack_forward_service.py` | Dispatch, thread/subtype filtering, dedupe, splitting, mentions, file plan + notes, 413 retry, partial-send cleanup, webhook reuse/creation/Forbidden, in-place edit vs repost, tombstones, deletes, sign-in-page detection |
 | `tests/unit/test_slack_forwarded_message_repository.py` | Real in-memory SQLite: ordering, channel scoping, delete scope, unique constraint |
 | `tests/unit/test_slack_announcements_cog.py` | Env handling, local channel routing, connect-once, connect-failure reporting, ack-then-forward, flag gating |

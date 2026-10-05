@@ -237,7 +237,10 @@ StonesBot mirrors the church Slack's #announcements into
   Every Socket Mode request is acked first, whatever the gates say.
 - Logic: `stonesbot/services/slack_forward_service.py`. Posts go through a webhook named
   `Slack Announcements` that StonesBot finds or creates (needs **Manage Webhooks**), under the
-  Slack author's name + avatar, with `AllowedMentions.none()` so `@channel`/`@everyone` never ping.
+  Slack author's name + avatar. Nothing pings unless `FeatureFlagNames.SLACK_ANNOUNCEMENTS_PINGS`
+  is on; then Slack's `@channel`/`@everyone`/`@here` ping `@everyone`/`@here` on the **first
+  forward only** (edits and reposts use `AllowedMentions.none()`). Literal `@everyone`/`@here`
+  text is always defused with a zero-width space.
   Thread replies, joins, `bot_message` and other subtypes are ignored; `thread_broadcast` is forwarded.
 - Formatting: `stonesbot/utils/slack_format.py` (pure; Slack mrkdwn → Discord markdown, 2000-char splits).
   Every post ends with a `-# [View in Slack](<permalink>)` subtext line (`chat.getPermalink`).
