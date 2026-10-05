@@ -15,15 +15,16 @@ import {
 } from './tempDriver'
 
 describe('DURATION_PRESETS', () => {
-    it('has the four presets in order, with 1 week as the default', () => {
-        expect(DURATION_PRESETS.map((p) => p.value)).toEqual(['3d', '1w', '2w', '30d'])
+    it('has the five presets in order, with 1 day as the default', () => {
+        expect(DURATION_PRESETS.map((p) => p.value)).toEqual(['1d', '3d', '1w', '2w', '30d'])
         expect(DURATION_PRESETS.map((p) => p.label)).toEqual([
+            '1 day',
             '3 days',
             '1 week',
             '2 weeks',
             '1 month',
         ])
-        expect(DEFAULT_DURATION_PRESET).toBe('1w')
+        expect(DEFAULT_DURATION_PRESET).toBe('1d')
     })
 })
 
@@ -38,6 +39,7 @@ describe('isCustomDateValue', () => {
 
 describe('presetToDays', () => {
     it('converts each preset to days', () => {
+        expect(presetToDays('1d')).toBe(1)
         expect(presetToDays('3d')).toBe(3)
         expect(presetToDays('1w')).toBe(7)
         expect(presetToDays('2w')).toBe(14)

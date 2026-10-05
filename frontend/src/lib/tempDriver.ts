@@ -17,13 +17,14 @@ export interface DurationPreset {
 
 /** Order matters — this is the order the chips render in. */
 export const DURATION_PRESETS: DurationPreset[] = [
+    { label: '1 day', value: '1d' },
     { label: '3 days', value: '3d' },
     { label: '1 week', value: '1w' },
     { label: '2 weeks', value: '2w' },
     { label: '1 month', value: '30d' },
 ]
 
-export const DEFAULT_DURATION_PRESET = '1w'
+export const DEFAULT_DURATION_PRESET = '1d'
 
 export const TEMP_DRIVER_MAX_DAYS = 90
 
