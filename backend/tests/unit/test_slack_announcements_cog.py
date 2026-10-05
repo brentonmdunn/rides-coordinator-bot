@@ -48,30 +48,122 @@ async def test_cog_load_with_env_builds_clients_for_resolved_channel(monkeypatch
     assert cog.service.discord_channel_id == ChannelIds.BOT_STUFF__BOTS
 
 
-@pytest.mark.asyncio
-async def test_on_ready_connects_once():
+def _slack_error(code: str):
+    from slack_sdk.errors import SlackApiError
+
+    return SlackApiError(code, {"ok": False, "error": code})
+
+
+def _connectable_cog():
     cog = SlackAnnouncements(MagicMock())
     cog.socket_client = MagicMock()
-    cog.socket_client.is_connected = AsyncMock(side_effect=[False, True])
+    cog.socket_client.issue_new_wss_url = AsyncMock(return_value="wss://slack")
     cog.socket_client.connect = AsyncMock()
+    cog.service = MagicMock()
+    cog.service.slack.auth_test = AsyncMock(return_value={"ok": True})
+    return cog
+
+
+@pytest.fixture
+def send_error():
+    with patch(f"{MODULE}.send_error_to_discord", AsyncMock()) as mock:
+        yield mock
+
+
+@pytest.fixture
+def no_sleep():
+    with patch(f"{MODULE}.asyncio.sleep", AsyncMock()) as mock:
+        yield mock
+
+
+@pytest.mark.asyncio
+async def test_on_ready_starts_connecting_once():
+    cog = _connectable_cog()
 
     await cog.on_ready()
     await cog.on_ready()
+    assert cog._connect_task is not None
+    await cog._connect_task
 
+    cog.socket_client.connect.assert_awaited_once()
+    assert cog.socket_client.wss_uri == "wss://slack"
+
+
+@pytest.mark.asyncio
+async def test_bad_app_token_is_reported_once_and_not_retried(send_error, no_sleep):
+    cog = _connectable_cog()
+    cog.socket_client.issue_new_wss_url.side_effect = _slack_error("invalid_auth")
+
+    await cog._connect()
+
+    cog.socket_client.issue_new_wss_url.assert_awaited_once()
+    cog.socket_client.connect.assert_not_awaited()
+    send_error.assert_awaited_once()
+    assert "SLACK_APP_TOKEN" in send_error.await_args.args[0]
+    no_sleep.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_transient_failures_back_off_and_report_once(send_error, no_sleep):
+    cog = _connectable_cog()
+    cog.socket_client.issue_new_wss_url.side_effect = [
+        ConnectionError(),
+        TimeoutError(),
+        _slack_error("internal_error"),
+        "wss://slack",
+    ]
+
+    await cog._connect()
+
+    cog.socket_client.connect.assert_awaited_once()
+    send_error.assert_awaited_once()
+    assert [c.args[0] for c in no_sleep.await_args_list] == [30, 60, 120]
+
+
+@pytest.mark.asyncio
+async def test_backoff_is_capped(no_sleep, send_error):
+    cog = _connectable_cog()
+    cog.socket_client.issue_new_wss_url.side_effect = [ConnectionError()] * 8 + ["wss://slack"]
+
+    await cog._connect()
+
+    assert max(c.args[0] for c in no_sleep.await_args_list) == 15 * 60
+
+
+@pytest.mark.asyncio
+async def test_bad_bot_token_is_reported_but_still_connects(send_error):
+    cog = _connectable_cog()
+    cog.service.slack.auth_test.side_effect = _slack_error("token_revoked")
+
+    await cog._connect()
+
+    send_error.assert_awaited_once()
+    assert "SLACK_BOT_TOKEN" in send_error.await_args.args[0]
     cog.socket_client.connect.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_on_ready_reports_connect_failure():
-    cog = SlackAnnouncements(MagicMock())
-    cog.socket_client = MagicMock()
-    cog.socket_client.is_connected = AsyncMock(return_value=False)
-    cog.socket_client.connect = AsyncMock(side_effect=RuntimeError("bad token"))
+async def test_unverifiable_bot_token_is_not_reported(send_error):
+    cog = _connectable_cog()
+    cog.service.slack.auth_test.side_effect = TimeoutError()
 
-    with patch(f"{MODULE}.send_error_to_discord", AsyncMock()) as send_error:
-        await cog.on_ready()
+    await cog._connect()
 
-    send_error.assert_awaited_once()
+    send_error.assert_not_awaited()
+    cog.socket_client.connect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_cog_unload_cancels_pending_connect():
+    cog = _connectable_cog()
+    cog.socket_client.close = AsyncMock()
+    task = MagicMock()
+    cog._connect_task = task
+
+    await cog.cog_unload()
+
+    task.cancel.assert_called_once()
+    cog.socket_client.close.assert_awaited_once()
 
 
 def _request(type_="events_api", event=None):
