@@ -71,7 +71,7 @@ def parse_expiry(text: str | None, now: datetime) -> datetime:
     Turn a user-supplied duration or date into an expiry time.
 
     Args:
-        text: Relative duration or date, or None/blank for the default (1 week).
+        text: Relative duration or date, or None/blank for the default (1 day).
         now: The current time, timezone-aware UTC.
 
     Returns:

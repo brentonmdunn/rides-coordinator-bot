@@ -31,7 +31,7 @@ EMBED_COLOR_MAP: dict[EmbedColorChoice, discord.Color] = {
 LSCC_DAYS = [DaysOfWeek.FRIDAY, DaysOfWeek.SUNDAY]
 
 # Temporary Driver role grants (/add-temp-driver, Drivers tab "Temporary").
-TEMP_DRIVER_DEFAULT_DURATION = timedelta(weeks=1)
+TEMP_DRIVER_DEFAULT_DURATION = timedelta(days=1)
 TEMP_DRIVER_MAX_DURATION = timedelta(days=90)
 TEMP_DRIVER_SWEEP_MINUTES = 5
 TEMP_DRIVER_EXPIRY_JOB_ID = "run_temp_driver_expiry"
