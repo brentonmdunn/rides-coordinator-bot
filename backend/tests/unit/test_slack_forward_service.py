@@ -6,6 +6,7 @@ import discord
 import pytest
 
 from stonesbot.services.slack_forward_service import (
+    UNKNOWN_WEBHOOK,
     WEBHOOK_NAME,
     SlackAuthor,
     SlackForwardService,
@@ -35,10 +36,13 @@ def _row(message_id: int, part: int = 0) -> MagicMock:
     return row
 
 
-def _http_error(cls=discord.HTTPException, status: int = 500):
+def _http_error(cls=discord.HTTPException, status: int = 500, code: int = 0):
     response = MagicMock()
     response.status = status
-    return cls(response, "error")
+    return cls(response, {"code": code, "message": "error"})
+
+
+UNKNOWN_MESSAGE = 10008
 
 
 def _make_webhook() -> MagicMock:
@@ -116,6 +120,11 @@ def _message(text="hello", ts="1.0", **extra):
         "ts": ts,
         **extra,
     }
+
+
+def _downloads(files, attachments, error=None):
+    """Mock return value for _download_files: (downloaded files, discord.Files, error)."""
+    return AsyncMock(return_value=(files, attachments, error))
 
 
 def _saved_parts(repo) -> list[tuple[int, str]]:
@@ -310,7 +319,7 @@ async def test_attachments_go_on_last_part_with_notes_for_skipped(repo):
         {"id": "F2", "name": "video.mov", "size": SIZE_LIMIT + 1},
     ]
 
-    with patch.object(service, "_download_files", AsyncMock(return_value=[attachment])) as dl:
+    with patch.object(service, "_download_files", _downloads(files[:1], [attachment])) as dl:
         await service.handle_event(_message("See flyer", subtype="file_share", files=files))
 
     assert [f["id"] for f in dl.await_args.args[0]] == ["F1"]
@@ -327,7 +336,7 @@ async def test_file_only_post_sends_just_the_link(repo):
     attachment = MagicMock(spec=discord.File)
     files = [{"id": "F1", "name": "a.png", "size": 1, "url_private_download": "https://f/1"}]
 
-    with patch.object(service, "_download_files", AsyncMock(return_value=[attachment])):
+    with patch.object(service, "_download_files", _downloads(files, [attachment])):
         await service.handle_event(_message("", subtype="file_share", files=files))
 
     kwargs = webhook.send.await_args.kwargs
@@ -342,7 +351,7 @@ async def test_rejected_attachments_are_retried_as_notes(repo):
     sent = MagicMock(id=7)
     webhook.send.side_effect = [_http_error(status=413), sent]
 
-    with patch.object(service, "_download_files", AsyncMock(return_value=[MagicMock()])):
+    with patch.object(service, "_download_files", _downloads(files, [MagicMock()])):
         await service.handle_event(_message("Info", subtype="file_share", files=files))
 
     retry = webhook.send.await_args_list[1].kwargs
@@ -473,7 +482,7 @@ async def test_edit_that_changes_files_reposts(repo):
     files = [{"id": "F1", "name": "a.png", "size": 1}]
     previous_files = [*files, {"id": "F2", "name": "b.png", "size": 1}]
 
-    with patch.object(service, "_download_files", AsyncMock(return_value=[MagicMock()])):
+    with patch.object(service, "_download_files", _downloads(files, [MagicMock()])):
         await service.handle_event(_edit("t", "t", files=files, previous_files=previous_files))
 
     webhook.send.assert_awaited_once()
@@ -519,9 +528,12 @@ async def test_delete_removes_every_part(repo):
 
 @pytest.mark.asyncio
 async def test_delete_tolerates_already_deleted_discord_message(repo, send_error):
-    service, webhook, _ = _make_service()
+    service, webhook, channel = _make_service()
     repo.get_parts.return_value = [_row(55, 0), _row(56, 1)]
     webhook.delete_message.side_effect = [_http_error(discord.NotFound, 404), None]
+    channel.get_partial_message.return_value.delete = AsyncMock(
+        side_effect=_http_error(discord.NotFound, 404)
+    )
 
     await service.handle_event(_delete())
 
@@ -556,12 +568,177 @@ async def test_download_rejects_slack_sign_in_page():
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=False)
 
-    with (
-        patch(f"{MODULE}.httpx.AsyncClient", return_value=client),
-        pytest.raises(RuntimeError, match="files:read"),
-    ):
-        await service._download_files(
+    with patch(f"{MODULE}.httpx.AsyncClient", return_value=client):
+        downloaded, attachments, error = await service._download_files(
             [{"id": "F1", "name": "a.png", "filetype": "png", "url_private_download": "u"}]
         )
 
+    assert downloaded == []
+    assert attachments == []
+    assert "files:read" in str(error)
     assert client.get.await_args.kwargs["headers"] == {"Authorization": "Bearer xoxb-token"}
+
+
+# ---------------------------------------------------------------------------
+# Failure handling
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_deleted_webhook_is_replaced_and_post_retried(repo, send_error):
+    service, webhook, channel = _make_service()
+    fresh = _make_webhook()
+    channel.webhooks.side_effect = [[webhook], []]
+    channel.create_webhook.return_value = fresh
+    webhook.send.side_effect = _http_error(discord.NotFound, 404, UNKNOWN_WEBHOOK)
+
+    await service.handle_event(_message())
+
+    fresh.send.assert_awaited_once()
+    assert _saved_parts(repo) == [(0, "1000")]
+    send_error.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_failed_download_still_posts_with_note_and_reports(repo, send_error):
+    service, webhook, _ = _make_service()
+    files = [
+        {"id": "F1", "name": "ok.png", "size": 1, "url_private_download": "u1"},
+        {"id": "F2", "name": "broken.png", "size": 1, "url_private_download": "u2"},
+    ]
+    attachment = MagicMock(spec=discord.File)
+    downloads = _downloads(files[:1], [attachment], RuntimeError("timeout"))
+
+    with patch.object(service, "_download_files", downloads):
+        await service.handle_event(_message("Flyers", subtype="file_share", files=files))
+
+    kwargs = webhook.send.await_args.kwargs
+    assert kwargs["files"] == [attachment]
+    assert "📎 broken.png (couldn't be attached here, see Slack)" in kwargs["content"]
+    send_error.assert_awaited_once()
+    assert _saved_parts(repo) == [(0, "1000")]
+
+
+@pytest.mark.asyncio
+async def test_file_info_failure_degrades_to_note(repo, send_error):
+    service, webhook, _ = _make_service()
+    service.slack.files_info.side_effect = TimeoutError()
+    files = [{"id": "F1", "name": "a.png", "file_access": "check_file_info"}]
+
+    await service.handle_event(_message("Hi", subtype="file_share", files=files))
+
+    assert "📎 a.png (couldn't be attached here" in webhook.send.await_args.kwargs["content"]
+    send_error.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_network_errors_on_lookups_do_not_block_the_post(repo, send_error):
+    service, webhook, _ = _make_service()
+    service.slack.users_info.side_effect = TimeoutError()
+    service.slack.chat_getPermalink.side_effect = ConnectionError()
+
+    await service.handle_event(_message("hello <@U2>"))
+
+    kwargs = webhook.send.await_args.kwargs
+    assert kwargs["content"] == "hello @unknown"
+    assert kwargs["username"] == "Slack (via Slack)"
+    send_error.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_save_failure_after_post_is_reported_with_message_ids(repo, send_error):
+    service, webhook, _ = _make_service()
+    repo.add.side_effect = RuntimeError("database is locked")
+
+    await service.handle_event(_message())
+
+    webhook.send.assert_awaited_once()
+    webhook.delete_message.assert_not_awaited()
+    send_error.assert_awaited_once()
+    assert "1000" in send_error.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_edit_skips_parts_deleted_in_discord(repo, send_error):
+    service, webhook, _ = _make_service()
+    repo.get_parts.return_value = [_row(55)]
+    webhook.edit_message.side_effect = _http_error(discord.NotFound, 404, UNKNOWN_MESSAGE)
+
+    await service.handle_event(_edit("new"))
+
+    webhook.send.assert_not_awaited()
+    send_error.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_edit_of_post_removed_by_moderator_is_ignored(repo, send_error):
+    service, webhook, _ = _make_service()
+    repo.get_parts.return_value = [_row(55, 0), _row(56, 1)]
+    webhook.fetch_message.side_effect = _http_error(discord.NotFound, 404, UNKNOWN_MESSAGE)
+
+    await service.handle_event(_edit(("a" * 1500 + "\n") * 3))
+
+    webhook.send.assert_not_awaited()
+    webhook.edit_message.assert_not_awaited()
+    repo.delete_parts.assert_awaited_once()
+    send_error.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_existence_check_errors_count_as_still_posted(repo):
+    service, webhook, _ = _make_service()
+    repo.get_parts.return_value = [_row(55)]
+    webhook.fetch_message.side_effect = _http_error(status=503)
+
+    await service.handle_event(_edit("new"))
+
+    webhook.edit_message.assert_awaited_once()
+    repo.delete_parts.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_edit_with_deleted_webhook_reposts(repo):
+    service, webhook, channel = _make_service()
+    fresh = _make_webhook()
+    channel.webhooks.side_effect = [[webhook], []]
+    channel.create_webhook.return_value = fresh
+    channel.get_partial_message.return_value.delete = AsyncMock()
+    repo.get_parts.return_value = [_row(55)]
+    webhook.edit_message.side_effect = _http_error(discord.NotFound, 404, UNKNOWN_WEBHOOK)
+
+    await service.handle_event(_edit("new"))
+
+    fresh.send.assert_awaited_once()
+    assert _saved_parts(repo) == [(0, "1000")]
+    # The old message is removed through the new webhook or, failing that, by the bot.
+    fresh.delete_message.assert_awaited_once_with(55)
+
+
+@pytest.mark.asyncio
+async def test_repost_save_failure_withdraws_new_version(repo, send_error):
+    service, webhook, _ = _make_service()
+    repo.get_parts.return_value = [_row(55)]
+    repo.add.side_effect = RuntimeError("database is locked")
+
+    await service.handle_event(_edit(("a" * 1500 + "\n") * 2))
+
+    # Both new parts are withdrawn and the old message is left alone.
+    assert [c.args[0] for c in webhook.delete_message.await_args_list] == [1000, 1001]
+    send_error.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_undeletable_message_keeps_mapping_and_reports(repo, send_error):
+    service, webhook, channel = _make_service()
+    repo.get_parts.return_value = [_row(55)]
+    webhook.delete_message.side_effect = _http_error(discord.NotFound, 404, UNKNOWN_WEBHOOK)
+    channel.get_partial_message.return_value.delete = AsyncMock(
+        side_effect=_http_error(discord.Forbidden, 403)
+    )
+    channel.webhooks.side_effect = [[webhook], [webhook]]
+
+    await service.handle_event(_delete())
+
+    repo.delete_parts.assert_not_awaited()
+    send_error.assert_awaited_once()
+    assert "55" in send_error.await_args.args[0]
