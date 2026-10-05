@@ -56,6 +56,7 @@ These flags independently gate each automated ride/driver announcement. In `APP_
 | `use_cache` | Enable in-memory (or Redis) caching of Discord message lookups and reaction data. When disabled, every request hits the Discord API directly. |
 | `agent` | Enable the conversational AI agent feature. |
 | `ask_rides_other_button` | Default `false`. Attach a persistent **Something else** button to ask-rides announcements; riders describe what they need in a modal and it's posted to the ride coordinators channel. When off, no button is attached, clicks on existing buttons get an ephemeral "not available" reply, and the Sunday service `{other}` placeholder renders as "please DM {ping}" instead of pointing at the button. |
+| `slack_announcements_forwarding` | Default `false`. Mirror Slack #announcements into the church announcements channel through StonesBot's webhook (new posts, edits, deletes, attachments). Events that arrive while it's off are dropped, not queued. Has no effect unless the `SLACK_*` env vars are set; see [slack-announcements.md](slack-announcements.md). |
 
 ---
 
