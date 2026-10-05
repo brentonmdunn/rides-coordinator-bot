@@ -25,8 +25,8 @@ Slack ◀══ WSS ══════▶ │ SocketModeClient ──▶ SlackAn
                       │                         │    @bot_enabled, @feature_flag_enabled)  │
                       │                         ▼                                          │
 Slack Web API ◀─HTTPS─│ AsyncWebClient ◀── SlackForwardService.handle_event (asyncio.Lock) │
- users.info,          │   httpx (files)         │                                          │
- files.info, files    │                         ├─▶ slack_format (pure)                    │
+ users.info, chat.   │   httpx (files)         │                                          │
+ getPermalink, files │                         ├─▶ slack_format (pure)                    │
                       │                         ├─▶ discord.Webhook ─────HTTPS────────────▶│──▶ Discord channel
                       │                         └─▶ SlackForwardedMessageRepository ──▶ SQLite
                       └─────────────────────────────────────────────────────────────────────┘
@@ -128,10 +128,16 @@ break the listener.
 5. **Files:** each file stub with `file_access == "check_file_info"` is expanded with
    `files.info`. Then `plan_files` sorts them (see [Files](#files)).
 6. **Text:** `_render_text` resolves every `<@U…>` id to a display name (same author cache),
-   runs `slack_to_discord`, and appends the file notes as extra lines.
+   runs `slack_to_discord`, appends the file notes as extra lines, then appends
+   `-# [View in Slack](<permalink>)` from `chat.getPermalink` (no scope needed). `-#` is
+   Discord's subtext markdown, and the angle brackets suppress the link preview. Because it's
+   the final line, splitting always leaves it on the last part. A message with no text, notes
+   or attachments renders as empty and isn't forwarded, so a bare link is never posted. If the
+   permalink call fails, the line is just left off. Edits re-render the same way, so the link
+   survives them.
 7. **Send:** `_send` splits the text with `split_message` and sends each chunk with
    `webhook.send(username="<name> (via Slack)", avatar_url=..., allowed_mentions=none(), wait=True)`.
-   Attachments go on the **last** chunk. With files but no text, one content-less message is
+   Attachments go on the **last** chunk. With files but no text, one message holding just the link is
    sent. If a later chunk fails, the chunks already sent are deleted before re-raising, so no
    half-posted announcement is left behind.
 8. **413 fallback:** if Discord rejects the request as too large (`HTTPException.status == 413`)
@@ -299,6 +305,7 @@ their session, and `_save_parts` does delete + insert + commit in one session.
 | Flag or kill switch off | Requests still acked; events dropped silently |
 | StonesBot lacks Manage Webhooks | Error-channel report naming the permission; event dropped |
 | `users.info` fails | Posted as `Slack (via Slack)` with no avatar |
+| `chat.getPermalink` fails | Posted without the View in Slack line |
 | File download fails / missing `files:read` | Whole event fails → logged + reported; nothing posted |
 | Discord 413 on attachments | Reposted without files, with notes |
 | Discord error mid-split | Already-sent parts deleted; error reported |

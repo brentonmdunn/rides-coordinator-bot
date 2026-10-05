@@ -19,6 +19,8 @@ Slack #announcements ──(Socket Mode websocket, outbound)──▶ StonesBot
   (`Jane Doe (via Slack)`).
 - **No public endpoint.** Socket Mode is an outbound websocket from our server, so nothing has
   to get past Cloudflare Access or the session middleware.
+- **Link back.** Every forwarded post ends with a subtext `View in Slack` link to the original
+  message (the church Slack is open to everyone, so anyone can follow it).
 - **No pings.** `@channel`, `@here` and `@everyone` come through as plain text and are sent
   with mentions disabled.
 - **Target channel.** `ChannelIds.REFERENCES__CHURCH_ANNOUNCEMENTS`, resolved through
@@ -107,7 +109,7 @@ it's off are dropped, not queued.
 
 | Slack | Discord |
 |---|---|
-| New top-level post | Posted via the webhook as `<name> (via Slack)` |
+| New top-level post | Posted via the webhook as `<name> (via Slack)`, ending with a small grey **View in Slack** link to the original (no link preview) |
 | Reply in a thread | Ignored, unless sent with "Also send to #announcements" |
 | Edit | Edited in place. If the edit changes the number of 2000-char parts or the attached files, the new version is posted and the old one deleted. |
 | Delete | Deleted (a message that's already gone in Discord is skipped) |

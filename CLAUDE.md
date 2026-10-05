@@ -240,6 +240,7 @@ StonesBot mirrors the church Slack's #announcements into
   Slack author's name + avatar, with `AllowedMentions.none()` so `@channel`/`@everyone` never ping.
   Thread replies, joins, `bot_message` and other subtypes are ignored; `thread_broadcast` is forwarded.
 - Formatting: `stonesbot/utils/slack_format.py` (pure; Slack mrkdwn → Discord markdown, 2000-char splits).
+  Every post ends with a `-# [View in Slack](<permalink>)` subtext line (`chat.getPermalink`).
 - Edits/deletes: `slack_forwarded_messages` maps Slack `ts` → Discord message id, one row per
   part. Edits apply in place; if the part count or the files change, the new version is posted
   first and the old one deleted. Messages forwarded before the bot existed are never touched.
