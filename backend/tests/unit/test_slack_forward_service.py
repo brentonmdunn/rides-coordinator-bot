@@ -19,6 +19,8 @@ SLACK_CHANNEL = "C_ANNOUNCE"
 DISCORD_CHANNEL = 999
 BOT_USER_ID = 42
 SIZE_LIMIT = 10 * 1024 * 1024
+PERMALINK = "https://church.slack.com/archives/C_ANNOUNCE/p1000000"
+FOOTER = f"-# [View in Slack](<{PERMALINK}>)"
 
 
 # ---------------------------------------------------------------------------
@@ -75,6 +77,7 @@ def _make_service(webhook=None, existing_hooks=None):
         }
     )
     slack.files_info = AsyncMock()
+    slack.chat_getPermalink = AsyncMock(return_value={"permalink": PERMALINK})
 
     service = SlackForwardService(bot, slack, "xoxb-token", SLACK_CHANNEL, DISCORD_CHANNEL)
     return service, webhook, channel
@@ -172,7 +175,7 @@ async def test_new_post_is_sent_as_author_and_recorded(repo):
 
     webhook.send.assert_awaited_once()
     kwargs = webhook.send.await_args.kwargs
-    assert kwargs["content"] == "**Service** moved @channel"
+    assert kwargs["content"] == f"**Service** moved @channel\n{FOOTER}"
     assert kwargs["username"] == "Jane (via Slack)"
     assert kwargs["avatar_url"] == "https://img/jane.png"
     assert kwargs["allowed_mentions"].everyone is False
@@ -240,12 +243,49 @@ async def test_long_post_is_split_into_parts(repo):
 
 
 @pytest.mark.asyncio
+async def test_link_goes_on_last_part_only(repo):
+    service, webhook, _ = _make_service()
+
+    await service.handle_event(_message(("a" * 1500 + "\n") * 2))
+
+    contents = [c.kwargs["content"] for c in webhook.send.await_args_list]
+    assert FOOTER not in contents[0]
+    assert contents[1].endswith(FOOTER)
+    service.slack.chat_getPermalink.assert_awaited_once_with(
+        channel=SLACK_CHANNEL, message_ts="1.0"
+    )
+
+
+@pytest.mark.asyncio
+async def test_permalink_failure_posts_without_link(repo, send_error):
+    from slack_sdk.errors import SlackApiError
+
+    service, webhook, _ = _make_service()
+    service.slack.chat_getPermalink.side_effect = SlackApiError("nope", MagicMock())
+
+    await service.handle_event(_message("hello"))
+
+    assert webhook.send.await_args.kwargs["content"] == "hello"
+    send_error.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_empty_post_is_not_forwarded_as_bare_link(repo):
+    service, webhook, _ = _make_service()
+
+    await service.handle_event(_message("", subtype="file_share", files=[{"mode": "tombstone"}]))
+
+    webhook.send.assert_not_awaited()
+    repo.add.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_mentions_are_resolved_to_names(repo):
     service, webhook, _ = _make_service()
 
     await service.handle_event(_message("thanks <@U9>!"))
 
-    assert webhook.send.await_args.kwargs["content"] == "thanks @Jane!"
+    assert webhook.send.await_args.kwargs["content"] == f"thanks @Jane!\n{FOOTER}"
     service.slack.users_info.assert_any_await(user="U9")
 
 
@@ -276,11 +316,13 @@ async def test_attachments_go_on_last_part_with_notes_for_skipped(repo):
     assert [f["id"] for f in dl.await_args.args[0]] == ["F1"]
     kwargs = webhook.send.await_args.kwargs
     assert kwargs["files"] == [attachment]
-    assert kwargs["content"] == "See flyer\n📎 video.mov (too large to attach here, see Slack)"
+    assert kwargs["content"] == (
+        f"See flyer\n📎 video.mov (too large to attach here, see Slack)\n{FOOTER}"
+    )
 
 
 @pytest.mark.asyncio
-async def test_file_only_post_sends_without_content(repo):
+async def test_file_only_post_sends_just_the_link(repo):
     service, webhook, _ = _make_service()
     attachment = MagicMock(spec=discord.File)
     files = [{"id": "F1", "name": "a.png", "size": 1, "url_private_download": "https://f/1"}]
@@ -289,7 +331,7 @@ async def test_file_only_post_sends_without_content(repo):
         await service.handle_event(_message("", subtype="file_share", files=files))
 
     kwargs = webhook.send.await_args.kwargs
-    assert "content" not in kwargs
+    assert kwargs["content"] == FOOTER
     assert kwargs["files"] == [attachment]
 
 
@@ -305,7 +347,7 @@ async def test_rejected_attachments_are_retried_as_notes(repo):
 
     retry = webhook.send.await_args_list[1].kwargs
     assert "files" not in retry
-    assert retry["content"] == "Info\n📎 big.pdf (too large to attach here, see Slack)"
+    assert retry["content"] == f"Info\n📎 big.pdf (too large to attach here, see Slack)\n{FOOTER}"
     assert _saved_parts(repo) == [(0, "7")]
 
 
@@ -387,7 +429,7 @@ async def test_edit_updates_message_in_place(repo):
 
     webhook.edit_message.assert_awaited_once()
     assert webhook.edit_message.await_args.args == (55,)
-    assert webhook.edit_message.await_args.kwargs["content"] == "**new** text"
+    assert webhook.edit_message.await_args.kwargs["content"] == f"**new** text\n{FOOTER}"
     webhook.send.assert_not_awaited()
 
 

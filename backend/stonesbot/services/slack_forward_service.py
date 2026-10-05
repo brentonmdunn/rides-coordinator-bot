@@ -106,6 +106,16 @@ def too_large_note(file: dict[str, Any]) -> str:
     return f"📎 {file.get('name') or 'attachment'} (too large to attach here, see Slack)"
 
 
+def permalink_line(permalink: str) -> str:
+    """
+    Small grey "View in Slack" line linking to the original message.
+
+    ``-#`` is Discord's subtext markdown; the angle brackets around the URL stop
+    Discord from adding a link preview.
+    """
+    return f"-# [View in Slack](<{permalink}>)"
+
+
 def plan_files(files: list[dict[str, Any]], size_limit: int) -> FilePlan:
     """
     Decide which Slack files to attach and which only get a note.
@@ -255,7 +265,7 @@ class SlackForwardService:
             return
 
         plan = plan_files(message.get("files") or [], await self._size_limit())
-        text = await self._render_text(message.get("text") or "", plan.notes)
+        text = await self._render_text(message, plan.notes, bool(plan.attach))
         chunks = split_message(text) or ([""] if plan.attach else [])
 
         if files_changed or len(chunks) != len(parts):
@@ -367,11 +377,10 @@ class SlackForwardService:
             message had nothing to forward).
         """
         author = await self._get_author(message.get("user"))
-        raw_text = message.get("text") or ""
         files = [await self._resolve_file(f) for f in message.get("files") or []]
         plan = plan_files(files, await self._size_limit())
 
-        text = await self._render_text(raw_text, plan.notes)
+        text = await self._render_text(message, plan.notes, bool(plan.attach))
         attachments = await self._download_files(plan.attach)
         try:
             return await self._send(webhook, text, attachments, author)
@@ -380,7 +389,8 @@ class SlackForwardService:
                 raise
             logger.warning("Discord rejected attachments as too large; posting without them")
             notes = plan.notes + [too_large_note(f) for f in plan.attach]
-            return await self._send(webhook, await self._render_text(raw_text, notes), [], author)
+            text = await self._render_text(message, notes, has_attachments=False)
+            return await self._send(webhook, text, [], author)
 
     async def _send(
         self,
@@ -453,13 +463,39 @@ class SlackForwardService:
         self._authors[user_id] = (time.monotonic(), author)
         return author
 
-    async def _render_text(self, raw_text: str, notes: list[str]) -> str:
-        """Convert Slack text to Discord markdown and append attachment notes."""
+    async def _render_text(
+        self, message: dict[str, Any], notes: list[str], has_attachments: bool
+    ) -> str:
+        """
+        Build the Discord text for a Slack message.
+
+        Slack text converted to Discord markdown, then the attachment notes,
+        then a small "View in Slack" link. A message with no text, notes or
+        attachments renders as empty so it isn't forwarded as a bare link.
+        """
+        raw_text = message.get("text") or ""
         names = {}
         for user_id in extract_user_ids(raw_text):
             names[user_id] = (await self._get_author(user_id)).name
-        body = slack_to_discord(raw_text, names)
-        return "\n".join(line for line in (body, *notes) if line).strip()
+        lines = [line for line in (slack_to_discord(raw_text, names).strip(), *notes) if line]
+        if not lines and not has_attachments:
+            return ""
+
+        permalink = await self._get_permalink(message["ts"])
+        if permalink:
+            lines.append(permalink_line(permalink))
+        return "\n".join(lines)
+
+    async def _get_permalink(self, ts: str) -> str | None:
+        """Link to the original Slack message, or None if Slack can't provide one."""
+        try:
+            response = await self.slack.chat_getPermalink(
+                channel=self.slack_channel_id, message_ts=ts
+            )
+        except SlackApiError:
+            logger.exception("Failed to get permalink for Slack message %s", ts)
+            return None
+        return response.get("permalink")
 
     async def _resolve_file(self, file: dict[str, Any]) -> dict[str, Any]:
         """Fetch a file's full metadata when the event only carries a stub."""
