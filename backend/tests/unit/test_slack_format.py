@@ -76,6 +76,41 @@ def test_special_mentions_become_plain_text(slack, discord):
     assert slack_to_discord(slack) == discord
 
 
+@pytest.mark.parametrize(
+    ("slack", "discord"),
+    [
+        ("<!channel>", "@everyone"),
+        ("<!everyone>", "@everyone"),
+        ("<!here>", "@here"),
+        ("<!here|@here>", "@here"),
+    ],
+)
+def test_special_mentions_with_pings(slack, discord):
+    assert slack_to_discord(slack, pings=True) == discord
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "say @everyone",
+        "`@here`",
+        "```\n@everyone\n```",
+        "<https://a.co|@everyone>",
+        "&#64;everyone",
+    ],
+)
+@pytest.mark.parametrize("pings", [False, True])
+def test_literal_mass_mentions_are_defused(text, pings):
+    result = slack_to_discord(text, pings=pings)
+    assert "@everyone" not in result
+    assert "@here" not in result
+
+
+def test_real_and_literal_mentions_together():
+    result = slack_to_discord("<!channel> not @everyone", pings=True)
+    assert result == "@everyone not @\u200beveryone"
+
+
 def test_user_group_and_date_use_label():
     text = "<!subteam^S1|@leaders> on <!date^1700000000^{date}|Nov 14>"
     assert slack_to_discord(text) == "@leaders on Nov 14"

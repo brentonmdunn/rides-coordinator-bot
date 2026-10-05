@@ -21,7 +21,9 @@ from discord.ext.commands import Bot
 from slack_sdk.web.async_client import AsyncWebClient
 
 from shared.core.database import AsyncSessionLocal
+from shared.core.enums import FeatureFlagNames
 from shared.core.error_reporter import send_error_to_discord
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 from stonesbot.repositories.slack_forwarded_message_repository import (
     SlackForwardedMessageRepository,
 )
@@ -44,6 +46,13 @@ UNKNOWN_WEBHOOK = 10015
 # Message subtypes that are a new post worth forwarding. Everything else that
 # isn't an edit or delete (joins, topic changes, bot_message, ...) is ignored.
 NEW_POST_SUBTYPES = frozenset({None, "file_share", "thread_broadcast"})
+
+# What a forwarded post may ping. Only @everyone/@here, and only on the first
+# forward of a new post: never users or roles, and never on edits or reposts.
+NO_PINGS = discord.AllowedMentions.none()
+EVERYONE_PINGS = discord.AllowedMentions(
+    everyone=True, users=False, roles=False, replied_user=False
+)
 
 
 @dataclass(frozen=True)
@@ -204,9 +213,9 @@ class SlackForwardService:
         try:
             async with self._lock:
                 if subtype in NEW_POST_SUBTYPES:
-                    await self._forward_new(event)
+                    await self._forward_new(event, await self._pings_enabled())
                 elif subtype == "message_changed":
-                    await self._forward_edit(event)
+                    await self._forward_edit(event, await self._pings_enabled())
                 elif subtype == "message_deleted":
                     await self._forward_delete(event["deleted_ts"])
                 else:
@@ -222,8 +231,14 @@ class SlackForwardService:
     # Event handlers
     # ------------------------------------------------------------------
 
-    async def _forward_new(self, message: dict[str, Any]) -> None:
-        """Post a new Slack message to Discord and record where it went."""
+    async def _forward_new(self, message: dict[str, Any], pings: bool) -> None:
+        """
+        Post a new Slack message to Discord and record where it went.
+
+        Args:
+            message: The Slack message event.
+            pings: Whether Slack's @channel/@here/@everyone ping in Discord.
+        """
         ts = message["ts"]
         if is_thread_reply(message):
             logger.debug("Ignoring Slack thread reply %s", ts)
@@ -232,7 +247,7 @@ class SlackForwardService:
             logger.info("Slack message %s was already forwarded; skipping", ts)
             return
 
-        message_ids = await self._post_with_webhook(message)
+        message_ids = await self._post_with_webhook(message, pings=pings, notify=pings)
         if not message_ids:
             return
 
@@ -250,8 +265,13 @@ class SlackForwardService:
             return
         logger.info("Forwarded Slack message %s as %d Discord message(s)", ts, len(message_ids))
 
-    async def _forward_edit(self, event: dict[str, Any]) -> None:
-        """Apply a Slack edit to the Discord messages posted for it."""
+    async def _forward_edit(self, event: dict[str, Any], pings: bool) -> None:
+        """
+        Apply a Slack edit to the Discord messages posted for it.
+
+        Edits never ping, even when they add a mass mention or turn into a
+        repost; *pings* only decides how mass mentions are written.
+        """
         message = event["message"]
         ts = message["ts"]
         if message.get("subtype") == "tombstone":
@@ -290,13 +310,13 @@ class SlackForwardService:
             return
 
         plan = plan_files(message.get("files") or [], await self._size_limit())
-        text = await self._render_text(message, plan.notes, bool(plan.attach))
+        text = await self._render_text(message, plan.notes, bool(plan.attach), pings)
         chunks = split_message(text) or ([""] if plan.attach else [])
 
         if files_changed or len(chunks) != len(parts):
             # Attachments can't be swapped cleanly in place and parts can't be
             # inserted mid-channel, so post the new version and drop the old one.
-            await self._repost(message, parts)
+            await self._repost(message, parts, pings)
             return
 
         for row, chunk in zip(parts, chunks, strict=True):
@@ -304,7 +324,7 @@ class SlackForwardService:
                 await webhook.edit_message(
                     int(row.discord_message_id),
                     content=chunk or None,
-                    allowed_mentions=discord.AllowedMentions.none(),
+                    allowed_mentions=NO_PINGS,
                 )
             except discord.NotFound as e:
                 if e.code != UNKNOWN_WEBHOOK:
@@ -317,7 +337,7 @@ class SlackForwardService:
                 # messages, so post the edited version fresh instead.
                 logger.warning("Slack forwarding webhook is gone; reposting %s", ts)
                 self._webhook = None
-                await self._repost(message, parts)
+                await self._repost(message, parts, pings)
                 return
         logger.info("Applied edit to forwarded Slack message %s", ts)
 
@@ -341,17 +361,18 @@ class SlackForwardService:
             await session.commit()
         logger.info("Deleted forwarded Slack message %s", ts)
 
-    async def _repost(self, message: dict[str, Any], parts: list) -> None:
+    async def _repost(self, message: dict[str, Any], parts: list, pings: bool) -> None:
         """
         Replace a forwarded message by posting the new version, then deleting the old.
 
         Ordered so a failure at any step leaves exactly one version visible and
         mapped: the new version goes out first, the mapping is switched to it
         (or the new version is withdrawn if that fails), and only then is the
-        old version deleted.
+        old version deleted. The new version never pings: everyone was already
+        notified when the post first went out.
         """
         ts = message["ts"]
-        message_ids = await self._post_with_webhook(message)
+        message_ids = await self._post_with_webhook(message, pings=pings, notify=False)
         if message_ids is None:
             return
 
@@ -415,12 +436,19 @@ class SlackForwardService:
             )
             return None
 
-    async def _post_with_webhook(self, message: dict[str, Any]) -> list[int] | None:
+    async def _post_with_webhook(
+        self, message: dict[str, Any], pings: bool, notify: bool
+    ) -> list[int] | None:
         """
         Post a Slack message through the forwarding webhook.
 
         If the cached webhook was deleted in Discord, a new one is found or
         created and the post is retried once.
+
+        Args:
+            message: The Slack message.
+            pings: Write mass mentions as Discord's @everyone/@here.
+            notify: Let those mentions actually ping.
 
         Returns:
             The posted Discord message ids (empty if there was nothing to
@@ -431,7 +459,7 @@ class SlackForwardService:
             if webhook is None:
                 return None
             try:
-                message_ids = await self._post(webhook, message)
+                message_ids = await self._post(webhook, message, pings, notify)
             except discord.NotFound as e:
                 if e.code != UNKNOWN_WEBHOOK or attempt:
                     raise
@@ -450,7 +478,9 @@ class SlackForwardService:
             return channel.guild.filesize_limit
         return discord.utils.DEFAULT_FILE_SIZE_LIMIT_BYTES
 
-    async def _post(self, webhook: discord.Webhook, message: dict[str, Any]) -> list[int]:
+    async def _post(
+        self, webhook: discord.Webhook, message: dict[str, Any], pings: bool, notify: bool
+    ) -> list[int]:
         """
         Post a Slack message through the webhook.
 
@@ -477,16 +507,16 @@ class SlackForwardService:
                 error=download_error,
             )
 
-        text = await self._render_text(message, notes, bool(attachments))
+        text = await self._render_text(message, notes, bool(attachments), pings)
         try:
-            return await self._send(webhook, text, attachments, author)
+            return await self._send(webhook, text, attachments, author, notify)
         except discord.HTTPException as e:
             if e.status != HTTP_PAYLOAD_TOO_LARGE or not attachments:
                 raise
             logger.warning("Discord rejected attachments as too large; posting without them")
             notes += [too_large_note(f) for f in attached_files]
-            text = await self._render_text(message, notes, has_attachments=False)
-            return await self._send(webhook, text, [], author)
+            text = await self._render_text(message, notes, False, pings)
+            return await self._send(webhook, text, [], author, notify)
 
     async def _send(
         self,
@@ -494,6 +524,7 @@ class SlackForwardService:
         text: str,
         attachments: list[discord.File],
         author: SlackAuthor,
+        notify: bool = False,
     ) -> list[int]:
         """Send text (split as needed) and attachments, deleting partial sends on failure."""
         chunks = split_message(text) or ([""] if attachments else [])
@@ -508,7 +539,7 @@ class SlackForwardService:
                 sent_message = await webhook.send(
                     username=webhook_username(author),
                     avatar_url=author.avatar_url,
-                    allowed_mentions=discord.AllowedMentions.none(),
+                    allowed_mentions=EVERYONE_PINGS if notify else NO_PINGS,
                     wait=True,
                     **kwargs,
                 )
@@ -648,7 +679,7 @@ class SlackForwardService:
         return author
 
     async def _render_text(
-        self, message: dict[str, Any], notes: list[str], has_attachments: bool
+        self, message: dict[str, Any], notes: list[str], has_attachments: bool, pings: bool
     ) -> str:
         """
         Build the Discord text for a Slack message.
@@ -663,7 +694,11 @@ class SlackForwardService:
             user = await self._lookup_user(user_id)
             if user is not None:
                 names[user_id] = user.name
-        lines = [line for line in (slack_to_discord(raw_text, names).strip(), *notes) if line]
+        lines = [
+            line
+            for line in (slack_to_discord(raw_text, names, pings=pings).strip(), *notes)
+            if line
+        ]
         if not lines and not has_attachments:
             return ""
 
@@ -671,6 +706,22 @@ class SlackForwardService:
         if permalink:
             lines.append(permalink_line(permalink))
         return "\n".join(lines)
+
+    async def _pings_enabled(self) -> bool:
+        """
+        Whether Slack's mass mentions should ping in Discord.
+
+        Fails closed: if the flag can't be read, nothing pings.
+        """
+        try:
+            async with AsyncSessionLocal() as session:
+                enabled = await FeatureFlagsRepository.get_feature_flag_status(
+                    session, FeatureFlagNames.SLACK_ANNOUNCEMENTS_PINGS
+                )
+        except Exception:
+            logger.exception("Failed to read the Slack announcements pings flag")
+            return False
+        return bool(enabled)
 
     async def _get_permalink(self, ts: str) -> str | None:
         """Link to the original Slack message, or None if Slack can't provide one."""

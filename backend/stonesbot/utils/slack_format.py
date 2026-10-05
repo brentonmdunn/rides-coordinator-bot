@@ -26,7 +26,12 @@ _USER_MENTION_PATTERN = re.compile(r"<@([UW][A-Z0-9]+)(?:\|[^<>]*)?>")
 _BOLD_PATTERN = re.compile(r"(?<![\w*])\*(?=\S)([^*\n]*?\S)\*(?![\w*])")
 _STRIKE_PATTERN = re.compile(r"(?<![\w~])~(?=\S)([^~\n]*?\S)~(?![\w~])")
 
-_SPECIAL_MENTIONS = {"channel": "@channel", "here": "@here", "everyone": "@everyone"}
+# Slack's mass mentions: @channel, @here, @everyone (the label after | is optional).
+_SPECIAL_MENTION_PATTERN = re.compile(r"<!(channel|here|everyone)(?:\|[^<>]*)?>")
+# Literal "@everyone"/"@here" text. A zero-width space after the @ keeps Discord
+# from treating it as a mention, so only Slack's real mass mentions can ping.
+_MASS_MENTION_PATTERN = re.compile(r"@(everyone|here)\b")
+_ZERO_WIDTH_SPACE = "\u200b"
 
 
 def extract_user_ids(text: str) -> set[str]:
@@ -52,9 +57,6 @@ def _convert_entity(body: str, user_names: dict[str, str]) -> str:
     if target.startswith("#"):
         return f"#{label or 'channel'}"
     if target.startswith("!"):
-        special = target[1:]
-        if special in _SPECIAL_MENTIONS:
-            return _SPECIAL_MENTIONS[special]
         # User groups (<!subteam^S123|@team>), dates (<!date^...|fallback>) and
         # anything else Slack adds later all carry a readable label.
         return label or ""
@@ -65,21 +67,49 @@ def _convert_entity(body: str, user_names: dict[str, str]) -> str:
     return target
 
 
-def slack_to_discord(text: str, user_names: dict[str, str] | None = None) -> str:
+def _special_mention(token: str, pings: bool) -> str | None:
+    """
+    Render a Slack mass mention, or None if *token* isn't one.
+
+    With *pings*, ``@channel``/``@everyone`` become Discord's ``@everyone`` and
+    ``@here`` stays ``@here``; otherwise each keeps its Slack name.
+    """
+    match = _SPECIAL_MENTION_PATTERN.fullmatch(token)
+    if match is None:
+        return None
+    kind = match.group(1)
+    if not pings:
+        return f"@{kind}"
+    return "@here" if kind == "here" else "@everyone"
+
+
+def _defuse_mass_mentions(text: str) -> str:
+    """Break up literal ``@everyone``/``@here`` so Discord never pings for them."""
+    return _MASS_MENTION_PATTERN.sub(f"@{_ZERO_WIDTH_SPACE}\\1", text)
+
+
+def slack_to_discord(
+    text: str, user_names: dict[str, str] | None = None, pings: bool = False
+) -> str:
     """
     Convert Slack mrkdwn to Discord markdown.
 
-    Links become ``[label](url)``, mentions become plain ``@Name``/``#channel``
-    text (``@channel``/``@here``/``@everyone`` included — the caller must send
-    with mentions disabled so these never ping), ``*bold*`` becomes ``**bold**``
-    and ``~strike~`` becomes ``~~strike~~``. Italic, quotes and code already use
-    the same syntax and are left as-is, except that bold/strike conversion is
-    skipped inside code.
+    Links become ``[label](url)``, user and channel mentions become plain
+    ``@Name``/``#channel`` text, ``*bold*`` becomes ``**bold**`` and ``~strike~``
+    becomes ``~~strike~~``. Italic, quotes and code already use the same syntax
+    and are left as-is, except that bold/strike conversion is skipped inside code.
+
+    Slack's mass mentions render as ``@channel``/``@here``/``@everyone``, or with
+    *pings* as Discord's ``@everyone``/``@here``. Whether they actually ping is
+    up to the caller's ``allowed_mentions``. Any other ``@everyone``/``@here`` in
+    the text (typed literally, in code, in a link label) is always defused with
+    a zero-width space, so only a real Slack mass mention can ever ping.
 
     Args:
         text: Raw Slack message text.
         user_names: Display names keyed by Slack user id, for ``<@U123>`` mentions.
             Unknown ids fall back to the mention's own label, then ``@unknown``.
+        pings: Render mass mentions as Discord's ``@everyone``/``@here``.
 
     Returns:
         The Discord-formatted text.
@@ -90,17 +120,23 @@ def slack_to_discord(text: str, user_names: dict[str, str] | None = None) -> str
 
     def protect(match: re.Match[str]) -> str:
         token = match.group(0)
-        if token.startswith("<"):
-            token = _convert_entity(token[1:-1], names)
+        special = _special_mention(token, pings)
+        if special is not None:
+            token = special
+        else:
+            if token.startswith("<"):
+                token = _convert_entity(token[1:-1], names)
+            token = _defuse_mass_mentions(html.unescape(token))
         protected.append(token)
         return _PLACEHOLDER.format(len(protected) - 1)
 
     converted = _PROTECTED_PATTERN.sub(protect, text)
     converted = _BOLD_PATTERN.sub(r"**\1**", converted)
     converted = _STRIKE_PATTERN.sub(r"~~\1~~", converted)
-    converted = _PLACEHOLDER_PATTERN.sub(lambda m: protected[int(m.group(1))], converted)
-    # Slack only uses real <> for entities, so the rest is HTML-escaped.
-    return html.unescape(converted)
+    # Slack only uses real <> for entities, so the rest is HTML-escaped. Unescape
+    # before defusing so an escaped "@" can't sneak a mention past it.
+    converted = _defuse_mass_mentions(html.unescape(converted))
+    return _PLACEHOLDER_PATTERN.sub(lambda m: protected[int(m.group(1))], converted)
 
 
 def split_message(text: str, limit: int = DISCORD_MESSAGE_LIMIT) -> list[str]:

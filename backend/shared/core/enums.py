@@ -86,6 +86,7 @@ class FeatureFlagNames(StrEnum):
     SUNDAY_PICKUPS_SUMMARY_JOB = "sunday_pickups_summary_job"
     TEMP_DRIVER_EXPIRY_JOB = "temp_driver_expiry_job"
     SLACK_ANNOUNCEMENTS_FORWARDING = "slack_announcements_forwarding"
+    SLACK_ANNOUNCEMENTS_PINGS = "slack_announcements_pings"
 
 
 class JobName(StrEnum):

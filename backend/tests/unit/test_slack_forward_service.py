@@ -106,6 +106,15 @@ def repo():
 
 
 @pytest.fixture(autouse=True)
+def pings_flag():
+    """The pings flag, off unless a test turns it on."""
+    with patch(
+        f"{MODULE}.FeatureFlagsRepository.get_feature_flag_status", AsyncMock(return_value=False)
+    ) as mock:
+        yield mock
+
+
+@pytest.fixture(autouse=True)
 def send_error():
     with patch(f"{MODULE}.send_error_to_discord", AsyncMock()) as mock:
         yield mock
@@ -742,3 +751,92 @@ async def test_undeletable_message_keeps_mapping_and_reports(repo, send_error):
     repo.delete_parts.assert_not_awaited()
     send_error.assert_awaited_once()
     assert "55" in send_error.await_args.args[0]
+
+
+# ---------------------------------------------------------------------------
+# Mass-mention pings
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_pings_flag_off_never_pings(repo):
+    service, webhook, _ = _make_service()
+
+    await service.handle_event(_message("<!channel> service moved"))
+
+    kwargs = webhook.send.await_args.kwargs
+    assert kwargs["content"].startswith("@channel service moved")
+    assert kwargs["allowed_mentions"].everyone is False
+
+
+@pytest.mark.asyncio
+async def test_pings_flag_on_pings_everyone_on_new_post(repo, pings_flag):
+    service, webhook, _ = _make_service()
+    pings_flag.return_value = True
+
+    await service.handle_event(_message("<!channel> service moved, ask <@U1>"))
+
+    kwargs = webhook.send.await_args.kwargs
+    assert kwargs["content"].startswith("@everyone service moved, ask @Jane")
+    mentions = kwargs["allowed_mentions"]
+    assert mentions.everyone is True
+    assert mentions.users is False
+    assert mentions.roles is False
+
+
+@pytest.mark.asyncio
+async def test_here_maps_to_here(repo, pings_flag):
+    service, webhook, _ = _make_service()
+    pings_flag.return_value = True
+
+    await service.handle_event(_message("<!here> doors open"))
+
+    assert webhook.send.await_args.kwargs["content"].startswith("@here doors open")
+
+
+@pytest.mark.asyncio
+async def test_literal_everyone_never_pings(repo, pings_flag):
+    service, webhook, _ = _make_service()
+    pings_flag.return_value = True
+
+    await service.handle_event(_message("type @everyone to annoy people"))
+
+    assert webhook.send.await_args.kwargs["content"].startswith("type @\u200beveryone to")
+
+
+@pytest.mark.asyncio
+async def test_edits_never_ping(repo, pings_flag):
+    service, webhook, _ = _make_service()
+    pings_flag.return_value = True
+    repo.get_parts.return_value = [_row(55)]
+
+    await service.handle_event(_edit("<!channel> updated"))
+
+    kwargs = webhook.edit_message.await_args.kwargs
+    assert kwargs["content"].startswith("@everyone updated")
+    assert kwargs["allowed_mentions"].everyone is False
+
+
+@pytest.mark.asyncio
+async def test_reposts_never_ping(repo, pings_flag):
+    service, webhook, _ = _make_service()
+    pings_flag.return_value = True
+    repo.get_parts.return_value = [_row(55)]
+
+    await service.handle_event(_edit("<!channel> " + ("a" * 1500 + "\n") * 2))
+
+    assert webhook.send.await_count == 2
+    for call in webhook.send.await_args_list:
+        assert call.kwargs["allowed_mentions"].everyone is False
+
+
+@pytest.mark.asyncio
+async def test_unreadable_pings_flag_fails_closed(repo, pings_flag):
+    service, webhook, _ = _make_service()
+    pings_flag.side_effect = RuntimeError("database is locked")
+
+    await service.handle_event(_message("<!channel> hi"))
+
+    kwargs = webhook.send.await_args.kwargs
+    assert kwargs["content"].startswith("@channel hi")
+    assert kwargs["allowed_mentions"].everyone is False
