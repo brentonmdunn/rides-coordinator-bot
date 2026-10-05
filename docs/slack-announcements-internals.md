@@ -48,19 +48,29 @@ Slack Web API ◀─HTTPS─│ AsyncWebClient ◀── SlackForwardService.han
      request listener.
 2. **Connect on `on_ready`.** It can't connect in `cog_load`: the bot hasn't logged in, so the
    target channel can't be resolved yet (and `wait_until_ready()` raises before login).
-   `on_ready` fires again after every Discord reconnect, so it checks `is_connected()` first
-   and only opens the socket once. Connect failures are logged and sent to the error channel.
-3. **Running.** `slack-sdk` keeps the websocket alive (ping every 5s) and reconnects by itself
+   `on_ready` fires again after every Discord reconnect, so only the first one starts a
+   `_connect` task (later ones see `_connect_task` is set and return).
+3. **`_connect`.** `SocketModeClient.connect()` never gives up: on any failure, a bad token
+   included, it logs a traceback and retries every 5s forever, with nothing reported. So the
+   cog does the risky part itself first:
+   - `auth.test` with the bot token. A permanent auth error (`invalid_auth`, `token_revoked`,
+     …) is reported once, because with a bad bot token posts would still go out, just without
+     names, links or files. Connecting continues. A transient error is only logged.
+   - `issue_new_wss_url()` (`apps.connections.open`) with the app token. A permanent auth error
+     is reported once and stops the attempt. Anything else retries with exponential backoff
+     (30s, doubling, capped at 15 min) and is reported on the **first** failure only.
+   - With a URL in hand, `connect()` uses it and takes over.
+4. **Running.** `slack-sdk` keeps the websocket alive (ping every 5s) and reconnects by itself
    (`auto_reconnect_enabled=True`), including when Slack rotates the connection, which it does
    every few hours.
-4. **Unload** (`cog_unload`). Closes the client, wrapped in `asyncio.wait_for(..., 10s)` so an
+5. **Unload** (`cog_unload`). Cancels a pending `_connect` task and closes the client, wrapped in `asyncio.wait_for(..., 10s)` so an
    unreachable Slack can't block shutdown.
 
 ### Bot context
 
 `current_bot_var` is set at the top of StonesBot's `run_bot` task. `on_ready` runs in a task
-spawned from that task, and `SocketModeClient.connect()` spawns its receive loop from
-`on_ready`. Each incoming message is then handled in a task created by `asyncio.ensure_future`
+spawned from that task, `on_ready` spawns `_connect`, and `SocketModeClient.connect()` spawns
+its receive loop from there. Each incoming message is then handled in a task created by `asyncio.ensure_future`
 inside that loop. Context is copied at every `create_task`, so the event handlers still see
 `STONESBOT`. That's what lets `@bot_enabled` find the right kill switch and lets
 `BotNameFilter` tag the log lines.
@@ -123,11 +133,17 @@ break the listener.
    Slack redeliveries.
 3. **Webhook:** `_get_webhook()` (see [Webhook](#webhook)). Returns early if unavailable.
 4. **Author:** `users.info` → `profile.display_name`, else `real_name`, else `name`, else
-   `"Slack"`. Avatar is `profile.image_192`. Cached in memory for 1 hour per user id. API errors
-   fall back to `"Slack"` with no avatar and don't block the post.
+   `"Slack"`. Avatar is `profile.image_192`. Cached in memory for 1 hour per user id. **Any**
+   error (API, timeout, network) falls back to `"Slack"` with no avatar and doesn't block the
+   post. The Slack web client also retries rate-limited calls twice
+   (`AsyncRateLimitErrorRetryHandler`).
 5. **Files:** each file stub with `file_access == "check_file_info"` is expanded with
-   `files.info`. Then `plan_files` sorts them (see [Files](#files)).
-6. **Text:** `_render_text` resolves every `<@U…>` id to a display name (same author cache),
+   `files.info` (on failure the stub is kept, its download then fails, and it gets a note).
+   `plan_files` sorts them (see [Files](#files)), then each attachable file is downloaded **on
+   its own**. A file that fails becomes a `📎 name (couldn't be attached here, see Slack)` line,
+   and the first error is reported once. The announcement still goes out.
+6. **Text:** `_render_text` resolves every `<@U…>` id to a display name (same author cache;
+   a failed lookup leaves the mention's own label, or `@unknown`),
    runs `slack_to_discord`, appends the file notes as extra lines, then appends
    `-# [View in Slack](<permalink>)` from `chat.getPermalink` (no scope needed). `-#` is
    Discord's subtext markdown, and the angle brackets suppress the link preview. Because it's
@@ -143,8 +159,12 @@ break the listener.
 8. **413 fallback:** if Discord rejects the request as too large (`HTTPException.status == 413`)
    and attachments were included, the post is retried with no files and a "too large" note for
    each one.
-9. **Persist:** one `SlackForwardedMessage` row per sent message (`part = 0..n-1`), committed
-   in one transaction.
+9. **Stale webhook:** if the send fails with `Unknown Webhook` (10015; someone deleted the
+   webhook in Discord), the cached webhook is dropped, a new one is found or created, and the
+   post is retried once (`_post_with_webhook`).
+10. **Persist:** one `SlackForwardedMessage` row per sent message (`part = 0..n-1`), committed
+    in one transaction. If the commit fails, the post stays up and the error report names the
+    Slack ts and Discord message ids, saying that later edits and deletes won't be mirrored.
 
 ### Edit (`_forward_edit`)
 
@@ -158,22 +178,41 @@ The event carries `message` (new state) and `previous_message` (old state); the 
 3. No mapping rows → skip (the post predates the bridge, or was a thread reply).
 4. Text unchanged **and** file ids unchanged → skip. Slack sends `message_changed` for reply
    counts, link unfurls, reactions to threads, etc.
-5. Re-plan files and re-render text. `plan_files` depends only on metadata, so the same notes
+5. **Removed by a moderator?** `_any_part_exists` fetches each part (through the webhook,
+   falling back to reading the channel as StonesBot if the webhook is gone). If **every** part
+   is gone, a moderator deleted the Discord copy: the mapping is dropped and the edit ignored, so
+   a Slack edit never brings a moderated post back. An error other than "not found" counts as
+   "still there", so a Discord hiccup never makes the bridge forget a message.
+6. Re-plan files and re-render text. `plan_files` depends only on metadata, so the same notes
    come out without downloading anything.
-6. Split the new text, then:
+7. Split the new text, then:
    - **Same number of parts and same files** → `webhook.edit_message(id, content=chunk)` on each
-     part. Attachments aren't passed, so Discord keeps the existing ones.
-   - **Different number of parts or different files** → `_repost`: post the new version (full
-     new-post path, files downloaded again), then delete the old Discord messages, then replace
-     the mapping rows (delete + insert, one commit). New-before-old means a failed send never
-     leaves the channel without the announcement. Reposting is simpler than in-place surgery:
-     Discord can't insert a message mid-channel, and moving attachments between parts is
-     fiddly.
+     part. Attachments aren't passed, so Discord keeps the existing ones. A part that's gone
+     (`Unknown Message`) is skipped. If the webhook is gone (`Unknown Webhook`), a new webhook
+     can't edit the old one's messages, so it falls through to a repost.
+   - **Different number of parts or different files** → `_repost`, ordered so that a failure at
+     any step leaves exactly one version visible and mapped:
+     1. post the new version (full new-post path, files downloaded again);
+     2. switch the mapping rows to it (delete + insert, one commit). If that fails, the new
+        version is deleted again and the error re-raised, leaving the old version mapped;
+     3. delete the old Discord messages. Any that can't be deleted are reported by id for
+        manual cleanup.
+
+     Reposting is simpler than in-place surgery: Discord can't insert a message mid-channel,
+     and moving attachments between parts is fiddly.
 
 ### Delete (`_forward_delete`)
 
-Look up the rows → `webhook.delete_message` each part (`NotFound` is logged and skipped) →
-delete the rows and commit.
+Look up the rows → delete each part → delete the rows and commit.
+
+Deleting goes through `_delete_discord_messages`:
+- it tries `webhook.delete_message` first;
+- on `NotFound` (message already gone, or the webhook that posted it was deleted), it falls back
+  to deleting **as StonesBot** (`channel.get_partial_message(id).delete()`). That needs
+  **Manage Messages**, and a `NotFound` there means the message really is gone, which counts as
+  success;
+- any part that still can't be deleted is reported by id, and the rows are **kept**, so the
+  leftovers can still be found.
 
 ---
 
@@ -190,8 +229,10 @@ delete the rows and commit.
 4. `discord.Forbidden` (missing **Manage Webhooks**) → `logger.exception` plus an error-channel
    report naming the missing permission, and return `None`. The event is dropped.
 
-Edits and deletes have to go through the **same** webhook that posted the message, which is
-why it's found by name and owner, not recreated each run. The cache lives in memory only; after
+Edits have to go through the **same** webhook that posted the message, which is why it's
+found by name and owner, not recreated each run. If the webhook is deleted anyway, new posts
+recover automatically (see [New post](#new-post-_forward_new--_post--_send) step 9), edits to
+older posts become reposts, and deletes fall back to StonesBot's own Manage Messages. The cache lives in memory only; after
 a restart it's found again by the same scan.
 
 `webhook_username`: `"<name> (via Slack)"`, trimmed to Discord's 80-character limit. Discord
@@ -297,8 +338,37 @@ their session, and `_save_parts` does delete + insert + commit in one session.
 
 ## Failure modes
 
+Rule of thumb: cosmetic failures (names, avatars, the Slack link, single files) degrade the post
+and never cost it, while anything that loses or orphans an announcement is reported to the
+error channel with the ids needed to fix it by hand.
+
 | Failure | What happens |
 |---|---|
+| Slack env var missing | One startup warning; cog idles; rest of the app unaffected |
+| `SLACK_APP_TOKEN` wrong/revoked | Reported once at startup; no retries, no log flood. Fix the token and restart |
+| `SLACK_BOT_TOKEN` wrong/revoked | Reported once at startup; still connects, but posts lack names, the Slack link and files |
+| Slack unreachable at startup | Retries with backoff (30s → 15 min); first failure reported |
+| Websocket drops later | `slack-sdk` reconnects by itself; events sent during the gap are lost |
+| Slack rate limit | Web API calls retried twice; then treated like any other failure of that call |
+| Flag or kill switch off | Requests still acked; events dropped silently |
+| StonesBot lacks Manage Webhooks | Error-channel report naming the permission; event dropped |
+| `users.info` fails (any error) | Posted as `Slack (via Slack)`, no avatar; mentions keep their label or show `@unknown` |
+| `chat.getPermalink` fails | Posted without the View in Slack line |
+| `files.info` / file download fails, or missing `files:read` | Posted without that file, with a "couldn't be attached" note; first error reported |
+| Discord 413 on attachments | Reposted without files, with notes |
+| Discord error mid-split | Already-sent parts deleted; error reported |
+| DB write fails after posting | Post stays up; report names the ts + message ids; edits/deletes won't sync for it |
+| DB write fails during an edit repost | New version withdrawn, old version stays mapped; error reported |
+| Moderator deletes the Discord copy, then it's edited in Slack | Edit ignored, mapping dropped; the post stays deleted |
+| Moderator deletes one part of a split post, then it's edited | Remaining parts edited; missing part skipped (a repost-triggering edit restores all parts) |
+| Moderator deletes the Discord copy, then it's deleted in Slack | No-op; mapping dropped |
+| Webhook deleted in Discord | Next post creates a new one and retries; edits to older posts repost; deletes fall back to StonesBot |
+| Old message can't be deleted (no Manage Messages after webhook loss) | Reported with message ids; mapping kept |
+| Two environments share the Slack app token | Slack splits events between them; each sees only some. Not detectable, so avoid it (see setup doc) |
+| Process down / restarting | Events sent meanwhile are lost (Socket Mode doesn't replay); no backfill |
+| Webhook username rejected by Discord (rare names) | Send fails; error reported |
+
+---|---|
 | Slack env var missing | One startup warning; cog idles; rest of the app unaffected |
 | Bad Slack token / Slack unreachable at startup | `connect()` raises → logged + error-channel report; no retry until the next process start |
 | Websocket drops later | `slack-sdk` reconnects automatically; events sent during the gap are lost |

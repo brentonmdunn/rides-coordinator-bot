@@ -81,7 +81,8 @@ Order matters: Slack app → Discord permission → server env → deploy → fl
 ### 2. Discord permission
 
 Give StonesBot **Manage Webhooks** in the church announcements channel (and in `#bots` for
-local testing). Without it, the first forwarded message fails and reports
+local testing). **Manage Messages** there is recommended too: it lets StonesBot clean up
+forwarded posts itself if the webhook is ever deleted. Without it, the first forwarded message fails and reports
 "StonesBot needs the Manage Webhooks permission" to the error channel.
 
 ### 3. Server env and deploy
@@ -113,6 +114,7 @@ it's off are dropped, not queued.
 | Reply in a thread | Ignored, unless sent with "Also send to #announcements" |
 | Edit | Edited in place. If the edit changes the number of 2000-char parts or the attached files, the new version is posted and the old one deleted. |
 | Delete | Deleted (a message that's already gone in Discord is skipped) |
+| Discord moderator deletes the forwarded copy | Stays deleted; later Slack edits to it are ignored |
 | Joins, topic changes, bot/workflow posts | Ignored |
 | `*bold*`, `~strike~`, `<url\|text>` | `**bold**`, `~~strike~~`, `[text](url)` |
 | `<@U123>`, `<#C123\|general>`, `@channel` | `@Name`, `#general`, `@channel` as plain text (no ping) |
@@ -124,6 +126,7 @@ it's off are dropped, not queued.
 - Posts made before the app was set up aren't backfilled, and edits/deletes of them are ignored.
 - Events sent while the app is down (or while the flag is off) are lost. Slack only retries
   briefly, and Socket Mode doesn't replay missed events.
-- If the `Slack Announcements` webhook is deleted, StonesBot creates a new one on the next post,
-  but messages posted by the old webhook can no longer be edited or deleted.
+- If the `Slack Announcements` webhook is deleted, StonesBot creates a new one on the next post.
+  Edits to older posts then repost them (a webhook can't edit another webhook's messages), and
+  deleting them needs StonesBot's Manage Messages.
 - The webhook's name and avatar are a display label only; they don't link to a Discord account.

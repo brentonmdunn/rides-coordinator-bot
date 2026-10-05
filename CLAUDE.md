@@ -247,6 +247,11 @@ StonesBot mirrors the church Slack's #announcements into
 - Files are downloaded with the bot token and re-uploaded (≤10 per message, guild size limit);
   anything skipped becomes a `📎 name` note line. Slack load-balances Socket Mode events across
   connections, so **only one environment may hold the Slack tokens**.
+- Failure handling: cosmetic failures (names, the Slack link, single files) degrade a post but
+  never drop it; anything that loses or orphans one is reported with the ids. The cog requests the
+  websocket URL itself, because `SocketModeClient.connect()` retries a bad token forever. A deleted
+  webhook is replaced automatically. If a moderator deletes the Discord copy, Slack edits never
+  bring it back. Full table in the internals doc.
 
 ### Centralizing Shared Logic (No Duplication Between Cogs and API)
 
