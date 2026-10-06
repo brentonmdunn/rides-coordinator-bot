@@ -152,7 +152,7 @@ break the listener.
    permalink call fails, the line is just left off. Edits re-render the same way, so the link
    survives them.
 7. **Send:** `_send` splits the text with `split_message` and sends each chunk with
-   `webhook.send(username="<name> (via Slack)", avatar_url=..., allowed_mentions=..., wait=True)`.
+   `webhook.send(username="<name> (via LSCC Slack)", avatar_url=..., allowed_mentions=..., wait=True)`.
    `allowed_mentions` is `none()`, or `everyone=True` with users/roles off when the post may
    ping (see [Mass-mention pings](#mass-mention-pings)).
    Attachments go on the **last** chunk. With files but no text, one message holding just the link is
@@ -237,7 +237,7 @@ recover automatically (see [New post](#new-post-_forward_new--_post--_send) step
 older posts become reposts, and deletes fall back to StonesBot's own Manage Messages. The cache lives in memory only; after
 a restart it's found again by the same scan.
 
-`webhook_username`: `"<name> (via Slack)"`, trimmed to Discord's 80-character limit. Discord
+`webhook_username`: `"<name> (via LSCC Slack)"`, trimmed to Discord's 80-character limit. Discord
 rejects webhook usernames containing "discord" or "clyde", so those names fall back to
 `"Slack announcement"`.
 
@@ -386,7 +386,7 @@ error channel with the ids needed to fix it by hand.
 | Pings flag can't be read | Fails closed: posts forward without pinging |
 | Webhook not allowed to mention everyone | Post goes out; `@everyone` shows but doesn't ping |
 | StonesBot lacks Manage Webhooks | Error-channel report naming the permission; event dropped |
-| `users.info` fails (any error) | Posted as `Slack (via Slack)`, no avatar; mentions keep their label or show `@unknown` |
+| `users.info` fails (any error) | Posted as `Slack (via LSCC Slack)`, no avatar; mentions keep their label or show `@unknown` |
 | `chat.getPermalink` fails | Posted without the View in Slack line |
 | `files.info` / file download fails, or missing `files:read` | Posted without that file, with a "couldn't be attached" note; first error reported |
 | Discord 413 on attachments | Reposted without files, with notes |
