@@ -5,6 +5,8 @@ import logging
 import os
 from typing import Any
 
+import discord
+from discord import app_commands
 from discord.ext import commands
 from slack_sdk.errors import SlackApiError
 from slack_sdk.http_retry.builtin_async_handlers import AsyncRateLimitErrorRetryHandler
@@ -16,10 +18,14 @@ from slack_sdk.web.async_client import AsyncWebClient
 
 from shared.core.enums import ChannelIds, FeatureFlagNames
 from shared.core.error_reporter import send_error_to_discord
-from shared.core.logger import log_job_quiet
+from shared.core.logger import log_cmd, log_job_quiet
 from shared.utils.channels import resolve_channel_id
-from shared.utils.checks import bot_enabled, feature_flag_enabled
-from stonesbot.services.slack_forward_service import SlackForwardService
+from shared.utils.checks import bot_enabled, feature_flag_enabled, is_admin
+from stonesbot.services.slack_forward_service import (
+    LinkForwardResult,
+    LinkForwardStatus,
+    SlackForwardService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +48,48 @@ PERMANENT_AUTH_ERRORS = frozenset(
         "missing_scope",
     }
 )
+
+
+# Replies to /forward-slack-message, by outcome. FORWARDED and ALREADY_FORWARDED
+# get the Discord link appended; SLACK_ERROR gets Slack's error code.
+LINK_FORWARD_REPLIES: dict[LinkForwardStatus, str] = {
+    LinkForwardStatus.FORWARDED: "✅ Forwarded.",
+    LinkForwardStatus.ALREADY_FORWARDED: "That message was already forwarded.",
+    LinkForwardStatus.INVALID_LINK: (
+        "❌ That isn't a Slack message link. In Slack, hover the message, click ⋯ → "
+        "**Copy link**, and paste that."
+    ),
+    LinkForwardStatus.WRONG_CHANNEL: (
+        "❌ That message isn't in the Slack announcements channel; only those can be forwarded."
+    ),
+    LinkForwardStatus.THREAD_REPLY: "❌ That's a reply in a thread; only top-level posts are forwarded.",
+    LinkForwardStatus.NOT_FOUND: (
+        "❌ Slack couldn't find that message. It may have been deleted, or be older than "
+        "the workspace's message history allows."
+    ),
+    LinkForwardStatus.NOT_FORWARDABLE: (
+        "❌ That's not a regular post (e.g. a join or bot message), so it isn't forwarded."
+    ),
+    LinkForwardStatus.NOTHING_TO_FORWARD: "That message has no text or files to forward.",
+    LinkForwardStatus.NO_WEBHOOK: (
+        "❌ StonesBot couldn't get its webhook in the announcements channel; it needs the "
+        "Manage Webhooks permission there."
+    ),
+    LinkForwardStatus.SLACK_ERROR: "❌ Slack refused the request",
+}
+
+
+def link_forward_reply(result: LinkForwardResult) -> str:
+    """The ephemeral reply for a /forward-slack-message outcome."""
+    reply = LINK_FORWARD_REPLIES[result.status]
+    if result.status == LinkForwardStatus.SLACK_ERROR:
+        hint = (
+            " (is the Slack app in the channel?)" if result.slack_error == "not_in_channel" else ""
+        )
+        return f"{reply}: `{result.slack_error}`{hint}"
+    if result.jump_url:
+        return f"{reply} {result.jump_url}"
+    return reply
 
 
 def _slack_error_code(error: Exception) -> str | None:
@@ -202,6 +250,51 @@ class SlackAnnouncements(commands.Cog):
             return
         event = request.payload.get("event") or {}
         await self._forward(event)
+
+    @app_commands.command(
+        name="forward-slack-message",
+        description="Forward a Slack #announcements post that the bridge missed.",
+    )
+    @app_commands.describe(url="Link to the Slack message (⋯ → Copy link in Slack)")
+    @log_cmd
+    @bot_enabled
+    @feature_flag_enabled(FeatureFlagNames.SLACK_ANNOUNCEMENTS_FORWARDING)
+    @is_admin()
+    async def forward_slack_message(self, interaction: discord.Interaction, url: str) -> None:
+        """
+        Forward one Slack announcement by link, for posts made before the bridge ran.
+
+        Admins only. Never pings. Later edits and deletes in Slack are mirrored to
+        it like any live post.
+
+        Args:
+            interaction: The Discord interaction.
+            url: A Slack message link.
+        """
+        if self.service is None:
+            await interaction.response.send_message(
+                "❌ Slack forwarding isn't configured (the `SLACK_*` env vars aren't set).",
+                ephemeral=True,
+            )
+            return
+
+        # Downloading attachments can take longer than Discord's 3s reply window.
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            result = await self.service.forward_from_link(url)
+        except Exception as e:
+            logger.exception("Failed to forward Slack message by link")
+            await send_error_to_discord(
+                f"**Error** in `/forward-slack-message` for `{url}`", error=e
+            )
+            await interaction.followup.send(
+                "❌ Something went wrong forwarding that message; it's been reported.",
+                ephemeral=True,
+            )
+            return
+
+        logger.info("/forward-slack-message %s: %s", url, result.status)
+        await interaction.followup.send(link_forward_reply(result), ephemeral=True)
 
     @log_job_quiet
     @bot_enabled
