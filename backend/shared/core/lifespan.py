@@ -54,9 +54,10 @@ async def bot_lifespan():
         logger.exception("Startup failed")
         sys.exit(1)
 
+    running = frozenset(enabled.spec.name for enabled in enabled_bots)
     tasks = {
         enabled.spec.name: asyncio.create_task(
-            run_bot(enabled.spec, enabled.token), name=f"bot:{enabled.spec.name}"
+            run_bot(enabled.spec, enabled.token, running), name=f"bot:{enabled.spec.name}"
         )
         for enabled in enabled_bots
     }
