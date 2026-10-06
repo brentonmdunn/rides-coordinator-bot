@@ -16,7 +16,7 @@ Slack #announcements ──(Socket Mode websocket, outbound)──▶ StonesBot
 - **Two identities.** The Slack app only *reads* Slack. Everything on the Discord side is
   StonesBot: it finds or creates a webhook named `Slack Announcements` in the target channel and
   posts through it, so each message shows the Slack author's name and avatar
-  (`Jane Doe (via Slack)`).
+  (`Jane Doe (via LSCC Slack)`).
 - **No public endpoint.** Socket Mode is an outbound websocket from our server, so nothing has
   to get past Cloudflare Access or the session middleware.
 - **Link back.** Every forwarded post ends with a subtext `View in Slack` link to the original
@@ -118,7 +118,7 @@ it the post still goes out but doesn't ping. Test it in `#bots` first.
 
 | Slack | Discord |
 |---|---|
-| New top-level post | Posted via the webhook as `<name> (via Slack)`, ending with a small grey **View in Slack** link to the original (no link preview) |
+| New top-level post | Posted via the webhook as `<name> (via LSCC Slack)`, ending with a small grey **View in Slack** link to the original (no link preview) |
 | Reply in a thread | Ignored, unless sent with "Also send to #announcements" |
 | Edit | Edited in place. If the edit changes the number of 2000-char parts or the attached files, the new version is posted and the old one deleted. |
 | Delete | Deleted (a message that's already gone in Discord is skipped) |

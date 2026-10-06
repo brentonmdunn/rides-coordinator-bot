@@ -38,7 +38,8 @@ WEBHOOK_NAME = "Slack Announcements"
 # Discord caps webhook usernames at 80 characters and rejects any containing these.
 WEBHOOK_USERNAME_LIMIT = 80
 FORBIDDEN_USERNAME_SUBSTRINGS = ("discord", "clyde")
-FALLBACK_AUTHOR_NAME = "Slack"
+# Shown after the author's name, and alone when there's no usable name.
+SLACK_LABEL = "LSCC Slack"
 DISCORD_MAX_FILES_PER_MESSAGE = 10
 FILE_DOWNLOAD_TIMEOUT_SECONDS = 30.0
 AUTHOR_CACHE_TTL_SECONDS = 3600
@@ -131,12 +132,15 @@ def webhook_username(author: SlackAuthor) -> str:
         author: The Slack author.
 
     Returns:
-        ``"<name> (via Slack)"``, trimmed to Discord's limit, or a generic name
-        if the author's name contains a word Discord rejects in webhook names.
+        ``"<name> (via LSCC Slack)"``, trimmed to Discord's limit, or just
+        ``"LSCC Slack"`` if the author is unknown or their name contains a word
+        Discord rejects in webhook names.
     """
-    if any(word in author.name.casefold() for word in FORBIDDEN_USERNAME_SUBSTRINGS):
-        return "Slack announcement"
-    suffix = " (via Slack)"
+    if not author.name or any(
+        word in author.name.casefold() for word in FORBIDDEN_USERNAME_SUBSTRINGS
+    ):
+        return SLACK_LABEL
+    suffix = f" (via {SLACK_LABEL})"
     return author.name[: WEBHOOK_USERNAME_LIMIT - len(suffix)] + suffix
 
 
@@ -748,12 +752,12 @@ class SlackForwardService:
     # ------------------------------------------------------------------
 
     async def _get_author(self, user_id: str | None) -> SlackAuthor:
-        """A Slack user's display name and avatar, or a generic author if unknown."""
+        """A Slack user's display name and avatar, or a nameless author if unknown."""
         if user_id:
             author = await self._lookup_user(user_id)
             if author is not None:
                 return author
-        return SlackAuthor(FALLBACK_AUTHOR_NAME, None)
+        return SlackAuthor("", None)
 
     async def _lookup_user(self, user_id: str) -> SlackAuthor | None:
         """
