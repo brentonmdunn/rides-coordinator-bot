@@ -23,7 +23,10 @@ async def main() -> None:
         logger.exception("Startup failed")
         sys.exit(1)
 
-    await asyncio.gather(*(run_bot(enabled.spec, enabled.token) for enabled in enabled_bots))
+    running = frozenset(enabled.spec.name for enabled in enabled_bots)
+    await asyncio.gather(
+        *(run_bot(enabled.spec, enabled.token, running) for enabled in enabled_bots)
+    )
 
 
 if __name__ == "__main__":

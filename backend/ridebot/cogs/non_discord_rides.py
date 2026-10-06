@@ -8,9 +8,9 @@ from discord.ext import commands
 
 from ridebot.services.non_discord_rides_service import DuplicateRideError, NonDiscordRidesService
 from ridebot.utils.autocomplete import location_autocomplete, lscc_day_autocomplete
-from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from shared.core.error_reporter import send_error_to_discord
 from shared.core.logger import log_cmd
+from shared.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from shared.utils.checks import bot_enabled
 
 logger = logging.getLogger(__name__)

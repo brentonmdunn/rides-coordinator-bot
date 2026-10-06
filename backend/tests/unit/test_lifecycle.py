@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, Mock
 import discord
 import pytest
 
+import shared.core.bots as bots_module
 import shared.core.lifecycle as lifecycle
 import shared.core.lifespan as lifespan
 from shared.core.bot_instance import get_registered_bots, set_bot_instance
@@ -96,6 +97,12 @@ def _clear_failed_extensions():
 class TestLoadExtensions:
     """Tests for load_extensions: discovery, ordering, priority, and failure recording."""
 
+    @pytest.fixture(autouse=True)
+    def _no_single_bot_extensions(self, monkeypatch):
+        """Keep these tests about package loading; single-bot routing is tested below."""
+        monkeypatch.setattr(bots_module, "SINGLE_BOT_EXTENSIONS", {})
+        monkeypatch.setattr(lifecycle, "SINGLE_BOT_EXTENSIONS", {})
+
     @pytest.mark.asyncio
     async def test_priority_stems_load_first_then_alphabetical(self, tmp_path):
         with synthetic_package(tmp_path, "pkg_priority", ["c", "a", "b", "_hidden"]) as pkg:
@@ -157,6 +164,122 @@ class TestLoadExtensions:
             await lifecycle.load_extensions(bot, spec)
 
             assert bot.loaded == [f"{pkg}.visible"]
+
+
+class TestSingleBotExtensions:
+    """Tests for routing SINGLE_BOT_EXTENSIONS to exactly one running bot."""
+
+    EXTENSION = "shared.single_bot_cogs.example"
+
+    @pytest.fixture(autouse=True)
+    def _example_extension(self, monkeypatch):
+        registry = {self.EXTENSION: (BotName.RIDEBOT, BotName.STONESBOT)}
+        monkeypatch.setattr(bots_module, "SINGLE_BOT_EXTENSIONS", registry)
+        monkeypatch.setattr(lifecycle, "SINGLE_BOT_EXTENSIONS", registry)
+
+    @pytest.mark.parametrize(
+        ("running", "owner"),
+        [
+            ({BotName.RIDEBOT, BotName.STONESBOT}, BotName.RIDEBOT),
+            ({BotName.RIDEBOT}, BotName.RIDEBOT),
+            ({BotName.STONESBOT}, BotName.STONESBOT),
+        ],
+    )
+    def test_first_running_bot_in_preference_owns_it(self, running, owner):
+        for name in running:
+            expected = [self.EXTENSION] if name == owner else []
+            assert bots_module.single_bot_extensions_for(name, running) == expected
+
+    @pytest.mark.parametrize(
+        "running",
+        [
+            {BotName.RIDEBOT, BotName.STONESBOT},
+            {BotName.RIDEBOT},
+            {BotName.STONESBOT},
+        ],
+    )
+    def test_exactly_one_running_bot_owns_it(self, running):
+        owners = [
+            name
+            for name in running
+            if self.EXTENSION in bots_module.single_bot_extensions_for(name, running)
+        ]
+        assert len(owners) == 1
+
+    def test_not_loaded_when_no_listed_bot_runs(self):
+        assert bots_module.single_bot_extensions_for(BotName.STONESBOT, set()) == []
+
+    @pytest.mark.asyncio
+    async def test_loaded_after_packages_before_testing(self, tmp_path, monkeypatch):
+        with (
+            synthetic_package(tmp_path, "pkg_single_main", ["a"]) as pkg,
+            synthetic_package(tmp_path, "pkg_single_testing", ["t"]) as testing_pkg,
+        ):
+            spec = _spec(
+                name=BotName.STONESBOT, cog_packages=(pkg,), testing_cog_package=testing_pkg
+            )
+            monkeypatch.setattr(lifecycle, "APP_ENV", "local")
+            bot = FakeBot()
+
+            await lifecycle.load_extensions(bot, spec, running={BotName.STONESBOT})
+
+            assert bot.loaded == [f"{pkg}.a", self.EXTENSION, f"{testing_pkg}.t"]
+
+    @pytest.mark.asyncio
+    async def test_fallback_bot_skips_it_when_usual_bot_runs(self, tmp_path):
+        with synthetic_package(tmp_path, "pkg_single_skip", ["a"]) as pkg:
+            spec = _spec(name=BotName.STONESBOT, cog_packages=(pkg,))
+            bot = FakeBot()
+
+            await lifecycle.load_extensions(bot, spec, running={BotName.RIDEBOT, BotName.STONESBOT})
+
+            assert bot.loaded == [f"{pkg}.a"]
+
+    @pytest.mark.asyncio
+    async def test_defaults_to_all_registered_bots_running(self, tmp_path):
+        with synthetic_package(tmp_path, "pkg_single_default", ["a"]) as pkg:
+            ridebot = FakeBot()
+            stonesbot = FakeBot()
+
+            await lifecycle.load_extensions(ridebot, _spec(cog_packages=(pkg,)))
+            await lifecycle.load_extensions(
+                stonesbot, _spec(name=BotName.STONESBOT, cog_packages=(pkg,))
+            )
+
+            assert self.EXTENSION in ridebot.loaded
+            assert self.EXTENSION not in stonesbot.loaded
+
+    @pytest.mark.asyncio
+    async def test_failure_is_recorded_for_the_loading_bot(self, tmp_path):
+        with synthetic_package(tmp_path, "pkg_single_fail", ["a"]) as pkg:
+            spec = _spec(name=BotName.STONESBOT, cog_packages=(pkg,))
+            bot = FakeBot(fail_extensions={self.EXTENSION})
+
+            await lifecycle.load_extensions(bot, spec, running={BotName.STONESBOT})
+
+            assert lifecycle.get_failed_extensions() == {BotName.STONESBOT: {self.EXTENSION}}
+
+
+class TestRealSingleBotRegistry:
+    """The real registry: /feature-flag lives on RideBot, falling back to StonesBot."""
+
+    def test_feature_flags_cog_preference(self):
+        assert bots_module.SINGLE_BOT_EXTENSIONS["shared.single_bot_cogs.feature_flags"] == (
+            BotName.RIDEBOT,
+            BotName.STONESBOT,
+        )
+
+    def test_every_listed_bot_is_registered(self):
+        registered = {spec.name for spec in bots_module.BOT_REGISTRY}
+        for preference in bots_module.SINGLE_BOT_EXTENSIONS.values():
+            assert set(preference) <= registered
+
+    def test_extensions_are_importable_and_not_auto_loaded(self):
+        auto_loaded = {pkg for spec in bots_module.BOT_REGISTRY for pkg in spec.cog_packages}
+        for extension in bots_module.SINGLE_BOT_EXTENSIONS:
+            module = importlib.import_module(extension)
+            assert hasattr(module, "setup")
+            assert extension.rsplit(".", 1)[0] not in auto_loaded
 
 
 class TestCloseBot:
@@ -321,7 +444,7 @@ class TestBotLifespanReadiness:
         monkeypatch.setattr(lifespan, "close_bot", AsyncMock())
         monkeypatch.setattr(lifespan, "get_bot", lambda name: None)
 
-        async def crashing_run_bot(spec, token):
+        async def crashing_run_bot(spec, token, running=None):
             # Finishes immediately, simulating a bad token / crash before readiness.
             return
 

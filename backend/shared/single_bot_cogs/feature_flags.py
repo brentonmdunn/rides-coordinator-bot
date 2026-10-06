@@ -4,10 +4,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from shared.core.enums import FeatureFlagNames
 from shared.core.logger import log_cmd
 from shared.services.feature_flags_service import FeatureFlagsService
+from shared.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 
 
 async def feature_name_autocomplete(

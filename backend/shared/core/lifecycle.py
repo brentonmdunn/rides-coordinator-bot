@@ -7,7 +7,7 @@ import os
 import pkgutil
 import sys
 import traceback
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 
 import discord
 from discord import Interaction
@@ -18,7 +18,12 @@ from sqlalchemy import or_, update
 
 from shared.core.bot_context import current_bot_var
 from shared.core.bot_instance import get_registered_bots, set_bot_instance
-from shared.core.bots import BotSpec
+from shared.core.bots import (
+    BOT_REGISTRY,
+    SINGLE_BOT_EXTENSIONS,
+    BotSpec,
+    single_bot_extensions_for,
+)
 from shared.core.database import (
     AsyncSessionLocal,
     init_db,
@@ -181,23 +186,47 @@ def _sorted_module_stems(package: str, priority_stems: tuple[str, ...] = ()) -> 
     return sorted(stems, key=lambda name: (name not in priority_stems, name))
 
 
+async def _load_extension(bot: Bot, spec: BotSpec, extension: str) -> None:
+    try:
+        await bot.load_extension(extension)
+        logger.info(f"✅ Loaded extension: {extension}")
+    except Exception:
+        logger.exception(f"❌ Failed to load extension {extension}")
+        _failed_extensions.setdefault(spec.name, set()).add(extension)
+
+
 async def _load_package_extensions(
     bot: Bot, spec: BotSpec, package: str, priority_stems: tuple[str, ...] = ()
 ) -> None:
     for stem in _sorted_module_stems(package, priority_stems):
-        extension = f"{package}.{stem}"
-        try:
-            await bot.load_extension(extension)
-            logger.info(f"✅ Loaded extension: {extension}")
-        except Exception:
-            logger.exception(f"❌ Failed to load extension {extension}")
-            _failed_extensions.setdefault(spec.name, set()).add(extension)
+        await _load_extension(bot, spec, f"{package}.{stem}")
 
 
-async def load_extensions(bot: Bot, spec: BotSpec) -> None:
-    """Load every cog package in spec.cog_packages, then the testing package when local."""
+async def load_extensions(
+    bot: Bot, spec: BotSpec, running: Collection[BotName] | None = None
+) -> None:
+    """
+    Load a bot's cogs.
+
+    Order: every package in spec.cog_packages, then the SINGLE_BOT_EXTENSIONS this
+    bot owns given *running*, then the testing package when local.
+
+    Args:
+        bot: The bot to load cogs into.
+        spec: The bot's spec.
+        running: Every bot running in this process. Defaults to every registered
+            bot, so each single-bot extension goes to its usual (first) bot.
+    """
     for package in spec.cog_packages:
         await _load_package_extensions(bot, spec, package, spec.priority_extensions)
+
+    if running is None:
+        running = {registered.name for registered in BOT_REGISTRY}
+    for extension in single_bot_extensions_for(spec.name, running):
+        usual_bot = SINGLE_BOT_EXTENSIONS[extension][0]
+        if usual_bot != spec.name:
+            logger.info(f"{usual_bot} isn't running — {spec.name} is loading {extension} instead")
+        await _load_extension(bot, spec, extension)
 
     if APP_ENV == "local" and spec.testing_cog_package:
         await _load_package_extensions(bot, spec, spec.testing_cog_package)
@@ -296,8 +325,16 @@ def attach_event_handlers(bot: Bot, spec: BotSpec, send_error_fn: _SendErrorFn) 
         await send_error_fn(error_msg, error=error)
 
 
-async def run_bot(spec: BotSpec, token: str) -> None:
-    """Set up and start one bot inside its own task. Exceptions propagate to the caller."""
+async def run_bot(spec: BotSpec, token: str, running: Collection[BotName] | None = None) -> None:
+    """
+    Set up and start one bot inside its own task. Exceptions propagate to the caller.
+
+    Args:
+        spec: The bot's spec.
+        token: The bot's Discord token.
+        running: Every bot this process is starting; decides which bot loads each
+            SINGLE_BOT_EXTENSIONS cog (see `load_extensions`).
+    """
     current_bot_var.set(spec.name)
 
     mark_bot_enabled(spec.name)
@@ -306,7 +343,7 @@ async def run_bot(spec: BotSpec, token: str) -> None:
     attach_event_handlers(bot, spec, send_error_to_discord)
     set_bot_instance(spec.name, bot)
 
-    await load_extensions(bot, spec)
+    await load_extensions(bot, spec, running)
     await bot.start(token)
 
 

@@ -181,6 +181,8 @@ Admins only. Forward one Slack #announcements post that the bridge missed, such 
 
 ## Feature Flags
 
+These belong to **RideBot**. If RideBot isn't running (locally, without `RIDEBOT_TOKEN`), **StonesBot** provides them instead, so flags can always be changed from Discord. They never exist on both bots at once (`SINGLE_BOT_EXTENSIONS` in `shared/core/bots.py`).
+
 ### `/feature-flag`
 
 Enable or disable a feature flag.

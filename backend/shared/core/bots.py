@@ -3,7 +3,7 @@
 import logging
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 
 import discord
@@ -70,6 +70,33 @@ BOT_REGISTRY: tuple[BotSpec, ...] = (
         kill_switch_flag=FeatureFlagNames.STONESBOT,
     ),
 )
+
+
+# Cogs loaded by exactly one bot, so their slash commands never show up twice in
+# Discord. Each goes to the first bot in its list that's running in this process:
+# normally the first, and a later one only when the earlier ones aren't running
+# (e.g. locally, when only some <BOT>_TOKENs are set).
+SINGLE_BOT_EXTENSIONS: dict[str, tuple[BotName, ...]] = {
+    "shared.single_bot_cogs.feature_flags": (BotName.RIDEBOT, BotName.STONESBOT),
+}
+
+
+def single_bot_extensions_for(name: BotName, running: Collection[BotName]) -> list[str]:
+    """
+    Return the single-bot extensions *name* should load, given which bots are running.
+
+    Args:
+        name: The bot loading its extensions.
+        running: Every bot running in this process.
+
+    Returns:
+        The SINGLE_BOT_EXTENSIONS entries whose first running bot is *name*.
+    """
+    return [
+        extension
+        for extension, preference in SINGLE_BOT_EXTENSIONS.items()
+        if next((bot for bot in preference if bot in running), None) == name
+    ]
 
 
 def get_spec(name: BotName) -> BotSpec:

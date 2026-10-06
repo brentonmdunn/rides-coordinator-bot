@@ -6,9 +6,9 @@ from discord.ext import commands
 from ridebot.services.locations_service import LocationsService
 from ridebot.services.pickup_locations_service import PickupLocationsService
 from ridebot.services.pickup_summary_service import PickupSummaryService
-from ridebot.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from shared.core.enums import ChannelIds, JobName, PickupSummarySlot, RideOption
 from shared.core.logger import log_cmd
+from shared.utils.channel_whitelist import LOCATIONS_CHANNELS_WHITELIST, cmd_is_allowed
 from shared.utils.checks import bot_enabled
 
 

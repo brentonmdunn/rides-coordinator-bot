@@ -1,4 +1,4 @@
-"""utils/channel_whitelist.py"""
+"""shared/utils/channel_whitelist.py — restrict slash commands to specific channels."""
 
 import logging
 
