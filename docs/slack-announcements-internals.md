@@ -185,6 +185,14 @@ with a dot inserted six from the end. Then:
    `_post_with_webhook` as a live post with `notify=False` (it never pings), and is recorded with
    the same `_record_parts`, so later edits and deletes apply to it.
 
+**Dry run** (`dry_run=True`): same validation and fetch, but the already-forwarded check is
+skipped and the post goes to `DRY_RUN_CHANNEL_ID` (`ChannelIds.BOT_STUFF__BOTS`, the channel
+`resolve_channel_id` uses locally) through StonesBot's webhook *there*. Nothing is recorded,
+and the result is `DRY_RUN` with a jump link. The service keeps one webhook per channel
+(`_webhooks: dict[int, Webhook]`; `_get_webhook(channel_id)` defaults to the announcements
+channel). If a split post fails partway, the parts already sent are withdrawn through the
+same webhook that sent them, so a failed preview never touches the announcements channel.
+
 The cog defers the interaction (file downloads can exceed Discord's 3s window), maps each
 `LinkForwardStatus` to an ephemeral reply (`LINK_FORWARD_REPLIES`; a test checks every status
 has one), and reports unexpected exceptions. It's gated by `is_admin()`, `@bot_enabled` and the

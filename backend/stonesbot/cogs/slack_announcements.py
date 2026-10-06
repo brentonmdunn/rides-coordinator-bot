@@ -50,8 +50,8 @@ PERMANENT_AUTH_ERRORS = frozenset(
 )
 
 
-# Replies to /forward-slack-message, by outcome. FORWARDED and ALREADY_FORWARDED
-# get the Discord link appended; SLACK_ERROR gets Slack's error code.
+# Replies to /forward-slack-message, by outcome. FORWARDED, ALREADY_FORWARDED and
+# DRY_RUN get the Discord link appended; SLACK_ERROR gets Slack's error code.
 LINK_FORWARD_REPLIES: dict[LinkForwardStatus, str] = {
     LinkForwardStatus.FORWARDED: "✅ Forwarded.",
     LinkForwardStatus.ALREADY_FORWARDED: "That message was already forwarded.",
@@ -76,6 +76,10 @@ LINK_FORWARD_REPLIES: dict[LinkForwardStatus, str] = {
         "Manage Webhooks permission there."
     ),
     LinkForwardStatus.SLACK_ERROR: "❌ Slack refused the request",
+    LinkForwardStatus.DRY_RUN: (
+        "🧪 Dry run posted to the bot-testing channel. Nothing was recorded; run again "
+        "without `dry_run` to forward it for real."
+    ),
 }
 
 
@@ -255,12 +259,17 @@ class SlackAnnouncements(commands.Cog):
         name="forward-slack-message",
         description="Forward a Slack #announcements post that the bridge missed.",
     )
-    @app_commands.describe(url="Link to the Slack message (⋯ → Copy link in Slack)")
+    @app_commands.describe(
+        url="Link to the Slack message (⋯ → Copy link in Slack)",
+        dry_run="Preview it in the bot-testing channel instead; nothing is recorded",
+    )
     @log_cmd
     @bot_enabled
     @feature_flag_enabled(FeatureFlagNames.SLACK_ANNOUNCEMENTS_FORWARDING)
     @is_admin()
-    async def forward_slack_message(self, interaction: discord.Interaction, url: str) -> None:
+    async def forward_slack_message(
+        self, interaction: discord.Interaction, url: str, dry_run: bool = False
+    ) -> None:
         """
         Forward one Slack announcement by link, for posts made before the bridge ran.
 
@@ -270,6 +279,8 @@ class SlackAnnouncements(commands.Cog):
         Args:
             interaction: The Discord interaction.
             url: A Slack message link.
+            dry_run: Post a preview to the bot-testing channel instead, without
+                recording it.
         """
         if self.service is None:
             await interaction.response.send_message(
@@ -281,7 +292,7 @@ class SlackAnnouncements(commands.Cog):
         # Downloading attachments can take longer than Discord's 3s reply window.
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            result = await self.service.forward_from_link(url)
+            result = await self.service.forward_from_link(url, dry_run=dry_run)
         except Exception as e:
             logger.exception("Failed to forward Slack message by link")
             await send_error_to_discord(
