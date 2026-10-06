@@ -168,6 +168,8 @@ Manually add all current reactors on the parent message to the thread. Useful if
 
 ## Feature Flags
 
+These belong to **RideBot**. If RideBot isn't running (locally, without `RIDEBOT_TOKEN`), **StonesBot** provides them instead, so flags can always be changed from Discord. They never exist on both bots at once (`SINGLE_BOT_EXTENSIONS` in `shared/core/bots.py`).
+
 ### `/feature-flag`
 
 Enable or disable a feature flag.
