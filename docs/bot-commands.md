@@ -166,6 +166,18 @@ Manually add all current reactors on the parent message to the thread. Useful if
 
 ---
 
+## Slack announcements (StonesBot)
+
+### `/forward-slack-message`
+
+Admins only. Forward one Slack #announcements post that the bridge missed, such as a post made before it was set up. It's posted the same way as a live post, never pings, and is mirrored afterwards: later edits and deletes in Slack apply to it. Running it again on the same link (or on a post that was already forwarded live) replies with the existing Discord message instead of posting a duplicate. Requires the `slack_announcements_forwarding` flag. See [slack-announcements.md](slack-announcements.md).
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `url` | Yes | Link to the Slack message (hover it in Slack, ⋯ → **Copy link**) |
+
+---
+
 ## Feature Flags
 
 ### `/feature-flag`
