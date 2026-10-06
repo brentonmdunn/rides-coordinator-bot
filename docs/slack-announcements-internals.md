@@ -132,9 +132,8 @@ break the listener.
 2. **Dedupe:** if `slack_forwarded_messages` already has rows for this ts, skip. This catches
    Slack redeliveries.
 3. **Webhook:** `_get_webhook()` (see [Webhook](#webhook)). Returns early if unavailable.
-4. **Author:** `users.info` → `profile.display_name`, else `real_name`, else `name`, else
-   `"Slack"`. Avatar is `profile.image_192`. Cached in memory for 1 hour per user id. **Any**
-   error (API, timeout, network) falls back to `"Slack"` with no avatar and doesn't block the
+4. **Author:** `users.info` → `profile.display_name`, else `real_name`, else `name`. Avatar is `profile.image_192`. Cached in memory for 1 hour per user id. **Any**
+   error (API, timeout, network) falls back to an unknown author, posted as just `LSCC Slack` with no avatar, and doesn't block the
    post. The Slack web client also retries rate-limited calls twice
    (`AsyncRateLimitErrorRetryHandler`).
 5. **Files:** each file stub with `file_access == "check_file_info"` is expanded with
@@ -237,9 +236,9 @@ recover automatically (see [New post](#new-post-_forward_new--_post--_send) step
 older posts become reposts, and deletes fall back to StonesBot's own Manage Messages. The cache lives in memory only; after
 a restart it's found again by the same scan.
 
-`webhook_username`: `"<name> (via LSCC Slack)"`, trimmed to Discord's 80-character limit. Discord
-rejects webhook usernames containing "discord" or "clyde", so those names fall back to
-`"Slack announcement"`.
+`webhook_username`: `"<name> (via LSCC Slack)"`, trimmed to Discord's 80-character limit. When
+the author is unknown, or their name contains "discord" or "clyde" (Discord rejects those in
+webhook usernames), it's just `"LSCC Slack"`.
 
 ---
 
@@ -386,7 +385,7 @@ error channel with the ids needed to fix it by hand.
 | Pings flag can't be read | Fails closed: posts forward without pinging |
 | Webhook not allowed to mention everyone | Post goes out; `@everyone` shows but doesn't ping |
 | StonesBot lacks Manage Webhooks | Error-channel report naming the permission; event dropped |
-| `users.info` fails (any error) | Posted as `Slack (via LSCC Slack)`, no avatar; mentions keep their label or show `@unknown` |
+| `users.info` fails (any error) | Posted as `LSCC Slack`, no avatar; mentions keep their label or show `@unknown` |
 | `chat.getPermalink` fails | Posted without the View in Slack line |
 | `files.info` / file download fails, or missing `files:read` | Posted without that file, with a "couldn't be attached" note; first error reported |
 | Discord 413 on attachments | Reposted without files, with notes |
