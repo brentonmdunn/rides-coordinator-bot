@@ -23,7 +23,7 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from shared.core.database import AsyncSessionLocal
-from shared.core.enums import FeatureFlagNames
+from shared.core.enums import ChannelIds, FeatureFlagNames
 from shared.core.error_reporter import send_error_to_discord
 from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 from stonesbot.repositories.slack_forwarded_message_repository import (
@@ -50,6 +50,10 @@ UNKNOWN_WEBHOOK = 10015
 # Message subtypes that are a new post worth forwarding. Everything else that
 # isn't an edit or delete (joins, topic changes, bot_message, ...) is ignored.
 NEW_POST_SUBTYPES = frozenset({None, "file_share", "thread_broadcast"})
+
+# Where dry runs of /forward-slack-message post: the bot-testing channel, the
+# same place resolve_channel_id sends everything locally.
+DRY_RUN_CHANNEL_ID = int(ChannelIds.BOT_STUFF__BOTS)
 
 # What a forwarded post may ping. Only @everyone/@here, and only on the first
 # forward of a new post: never users or roles, and never on edits or reposts.
@@ -79,6 +83,7 @@ class LinkForwardStatus(StrEnum):
     NOT_FORWARDABLE = "not_forwardable"
     NOTHING_TO_FORWARD = "nothing_to_forward"
     NO_WEBHOOK = "no_webhook"
+    DRY_RUN = "dry_run"
     SLACK_ERROR = "slack_error"
 
 
@@ -87,7 +92,7 @@ class LinkForwardResult:
     """What happened when forwarding a Slack message by link."""
 
     status: LinkForwardStatus
-    # Link to the first Discord message, for FORWARDED and ALREADY_FORWARDED.
+    # Link to the first Discord message, for FORWARDED, ALREADY_FORWARDED and DRY_RUN.
     jump_url: str | None = None
     # Slack's error code, for SLACK_ERROR.
     slack_error: str | None = None
@@ -224,7 +229,9 @@ class SlackForwardService:
         self.slack_bot_token = slack_bot_token
         self.slack_channel_id = slack_channel_id
         self.discord_channel_id = discord_channel_id
-        self._webhook: discord.Webhook | None = None
+        # StonesBot's forwarding webhook per Discord channel: the announcements
+        # channel, plus the dry-run channel once a dry run has used it.
+        self._webhooks: dict[int, discord.Webhook] = {}
         self._authors: dict[str, tuple[float, SlackAuthor]] = {}
         # Slack delivers events concurrently; an edit must not race the post it edits.
         self._lock = asyncio.Lock()
@@ -286,7 +293,7 @@ class SlackForwardService:
         if await self._record_parts(ts, message_ids):
             logger.info("Forwarded Slack message %s as %d Discord message(s)", ts, len(message_ids))
 
-    async def forward_from_link(self, url: str) -> LinkForwardResult:
+    async def forward_from_link(self, url: str, dry_run: bool = False) -> LinkForwardResult:
         """
         Forward one Slack message, given its link, as if it had just been posted.
 
@@ -295,8 +302,13 @@ class SlackForwardService:
         later edits and deletes in Slack are mirrored to it. It never pings,
         whatever the pings flag says, since the announcement is already old.
 
+        A dry run posts the same thing to the bot-testing channel instead, as a
+        preview: nothing is recorded, so it doesn't count as forwarded (the real
+        forward still works afterwards) and Slack edits never reach it.
+
         Args:
             url: A Slack message link ("Copy link" in Slack).
+            dry_run: Post a preview to the bot-testing channel instead.
 
         Returns:
             What happened. Only unexpected errors raise; the caller reports them.
@@ -310,7 +322,7 @@ class SlackForwardService:
             return LinkForwardResult(LinkForwardStatus.THREAD_REPLY)
 
         async with self._lock:
-            parts = await self._get_parts(link.ts)
+            parts = [] if dry_run else await self._get_parts(link.ts)
             if parts:
                 return LinkForwardResult(
                     LinkForwardStatus.ALREADY_FORWARDED,
@@ -331,11 +343,20 @@ class SlackForwardService:
                 return LinkForwardResult(LinkForwardStatus.NOT_FORWARDABLE)
 
             pings = await self._pings_enabled()
-            message_ids = await self._post_with_webhook(message, pings=pings, notify=False)
+            channel_id = DRY_RUN_CHANNEL_ID if dry_run else self.discord_channel_id
+            message_ids = await self._post_with_webhook(
+                message, pings=pings, notify=False, channel_id=channel_id
+            )
             if message_ids is None:
                 return LinkForwardResult(LinkForwardStatus.NO_WEBHOOK)
             if not message_ids:
                 return LinkForwardResult(LinkForwardStatus.NOTHING_TO_FORWARD)
+            if dry_run:
+                logger.info("Dry run of Slack message %s posted to %s", link.ts, channel_id)
+                return LinkForwardResult(
+                    LinkForwardStatus.DRY_RUN,
+                    jump_url=self._jump_url(message_ids[0], channel_id),
+                )
             await self._record_parts(link.ts, message_ids)
 
         logger.info("Forwarded Slack message %s by link", link.ts)
@@ -437,7 +458,7 @@ class SlackForwardService:
                 # The webhook was deleted, and a new one can't edit the old one's
                 # messages, so post the edited version fresh instead.
                 logger.warning("Slack forwarding webhook is gone; reposting %s", ts)
-                self._webhook = None
+                self._webhooks.pop(self.discord_channel_id, None)
                 await self._repost(message, parts, pings)
                 return
         logger.info("Applied edit to forwarded Slack message %s", ts)
@@ -496,20 +517,24 @@ class SlackForwardService:
     # Discord side
     # ------------------------------------------------------------------
 
-    async def _get_webhook(self) -> discord.Webhook | None:
+    async def _get_webhook(self, channel_id: int | None = None) -> discord.Webhook | None:
         """
-        Find StonesBot's forwarding webhook in the target channel, creating it if missing.
+        Find StonesBot's forwarding webhook in a channel, creating it if missing.
+
+        Args:
+            channel_id: The channel; defaults to the announcements channel.
 
         Returns:
             The webhook, or None if the channel is unavailable or the bot lacks
             Manage Webhooks (both are logged and reported).
         """
-        if self._webhook is not None:
-            return self._webhook
+        channel_id = channel_id or self.discord_channel_id
+        if channel_id in self._webhooks:
+            return self._webhooks[channel_id]
 
-        channel = self.bot.get_channel(self.discord_channel_id)
+        channel = self.bot.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
-            logger.warning("Slack forwarding channel %s not found", self.discord_channel_id)
+            logger.warning("Slack forwarding channel %s not found", channel_id)
             return None
 
         bot_user_id = self.bot.user.id if self.bot.user else None
@@ -521,13 +546,14 @@ class SlackForwardService:
                     and hook.user is not None
                     and hook.user.id == bot_user_id
                 ):
-                    self._webhook = hook
+                    self._webhooks[channel_id] = hook
                     return hook
-            self._webhook = await channel.create_webhook(
+            webhook = await channel.create_webhook(
                 name=WEBHOOK_NAME, reason="Forward Slack #announcements"
             )
             logger.info("Created Slack forwarding webhook in channel %s", channel.id)
-            return self._webhook
+            self._webhooks[channel_id] = webhook
+            return webhook
         except discord.Forbidden as e:
             logger.exception("StonesBot needs Manage Webhooks in channel %s", channel.id)
             await send_error_to_discord(
@@ -538,7 +564,11 @@ class SlackForwardService:
             return None
 
     async def _post_with_webhook(
-        self, message: dict[str, Any], pings: bool, notify: bool
+        self,
+        message: dict[str, Any],
+        pings: bool,
+        notify: bool,
+        channel_id: int | None = None,
     ) -> list[int] | None:
         """
         Post a Slack message through the forwarding webhook.
@@ -550,13 +580,15 @@ class SlackForwardService:
             message: The Slack message.
             pings: Write mass mentions as Discord's @everyone/@here.
             notify: Let those mentions actually ping.
+            channel_id: Where to post; defaults to the announcements channel.
 
         Returns:
             The posted Discord message ids (empty if there was nothing to
             forward), or None if no webhook is available.
         """
+        channel_id = channel_id or self.discord_channel_id
         for attempt in range(2):
-            webhook = await self._get_webhook()
+            webhook = await self._get_webhook(channel_id)
             if webhook is None:
                 return None
             try:
@@ -565,16 +597,16 @@ class SlackForwardService:
                 if e.code != UNKNOWN_WEBHOOK or attempt:
                     raise
                 logger.warning("Slack forwarding webhook was deleted; getting a new one")
-                self._webhook = None
+                self._webhooks.pop(channel_id, None)
                 continue
             if not message_ids:
                 logger.info("Slack message %s has nothing to forward", message["ts"])
             return message_ids
         return None
 
-    def _jump_url(self, message_id: int) -> str | None:
+    def _jump_url(self, message_id: int, channel_id: int | None = None) -> str | None:
         """Discord link to a forwarded message, or None if the channel isn't available."""
-        channel = self.bot.get_channel(self.discord_channel_id)
+        channel = self.bot.get_channel(channel_id or self.discord_channel_id)
         if not isinstance(channel, discord.TextChannel):
             return None
         return channel.get_partial_message(message_id).jump_url
@@ -653,7 +685,13 @@ class SlackForwardService:
                 )
                 sent.append(sent_message.id)
         except discord.HTTPException:
-            await self._delete_discord_messages(sent)
+            # Withdraw the parts already sent, through the webhook that sent them
+            # (it may be the dry-run channel's, not the announcements channel's).
+            for message_id in sent:
+                try:
+                    await webhook.delete_message(message_id)
+                except discord.HTTPException:
+                    logger.exception("Failed to withdraw partial post %s", message_id)
             raise
         return sent
 
@@ -682,7 +720,7 @@ class SlackForwardService:
                 await webhook.delete_message(message_id)
             except discord.NotFound as e:
                 if e.code == UNKNOWN_WEBHOOK:
-                    self._webhook = None
+                    self._webhooks.pop(self.discord_channel_id, None)
                 if not await self._delete_as_bot(message_id):
                     failed.append(message_id)
             except discord.HTTPException:
@@ -711,7 +749,7 @@ class SlackForwardService:
                     except discord.NotFound as e:
                         if e.code != UNKNOWN_WEBHOOK:
                             continue
-                        self._webhook = None
+                        self._webhooks.pop(self.discord_channel_id, None)
                 if isinstance(channel, discord.TextChannel):
                     await channel.fetch_message(message_id)
                 return True
