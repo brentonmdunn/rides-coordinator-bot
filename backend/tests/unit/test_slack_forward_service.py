@@ -153,7 +153,7 @@ def test_is_thread_reply():
 
 
 def test_webhook_username():
-    assert webhook_username(SlackAuthor("Jane", None)) == "Jane (via Slack)"
+    assert webhook_username(SlackAuthor("Jane", None)) == "Jane (via LSCC Slack)"
     assert webhook_username(SlackAuthor("My Discord Guy", None)) == "Slack announcement"
     assert len(webhook_username(SlackAuthor("x" * 200, None))) == 80
 
@@ -194,7 +194,7 @@ async def test_new_post_is_sent_as_author_and_recorded(repo):
     webhook.send.assert_awaited_once()
     kwargs = webhook.send.await_args.kwargs
     assert kwargs["content"] == f"**Service** moved @channel\n{FOOTER}"
-    assert kwargs["username"] == "Jane (via Slack)"
+    assert kwargs["username"] == "Jane (via LSCC Slack)"
     assert kwargs["avatar_url"] == "https://img/jane.png"
     assert kwargs["allowed_mentions"].everyone is False
     assert kwargs["allowed_mentions"].users is False
@@ -316,7 +316,7 @@ async def test_author_lookup_failure_falls_back(repo):
 
     await service.handle_event(_message())
 
-    assert webhook.send.await_args.kwargs["username"] == "Slack (via Slack)"
+    assert webhook.send.await_args.kwargs["username"] == "Slack (via LSCC Slack)"
 
 
 @pytest.mark.asyncio
@@ -650,7 +650,7 @@ async def test_network_errors_on_lookups_do_not_block_the_post(repo, send_error)
 
     kwargs = webhook.send.await_args.kwargs
     assert kwargs["content"] == "hello @unknown"
-    assert kwargs["username"] == "Slack (via Slack)"
+    assert kwargs["username"] == "Slack (via LSCC Slack)"
     send_error.assert_not_awaited()
 
 

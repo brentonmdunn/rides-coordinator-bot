@@ -102,12 +102,12 @@ def webhook_username(author: SlackAuthor) -> str:
         author: The Slack author.
 
     Returns:
-        ``"<name> (via Slack)"``, trimmed to Discord's limit, or a generic name
+        ``"<name> (via LSCC Slack)"``, trimmed to Discord's limit, or a generic name
         if the author's name contains a word Discord rejects in webhook names.
     """
     if any(word in author.name.casefold() for word in FORBIDDEN_USERNAME_SUBSTRINGS):
         return "Slack announcement"
-    suffix = " (via Slack)"
+    suffix = " (via LSCC Slack)"
     return author.name[: WEBHOOK_USERNAME_LIMIT - len(suffix)] + suffix
 
 
