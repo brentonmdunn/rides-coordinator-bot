@@ -7,10 +7,6 @@ from discord.ext import commands
 from ridebot.services.driver_service import DriverService
 from ridebot.utils.autocomplete import lscc_day_autocomplete
 from ridebot.utils.cache import warm_ask_drivers_message_cache
-from ridebot.utils.channel_whitelist import (
-    BOT_TESTING_CHANNELS,
-    cmd_is_allowed,
-)
 from shared.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
     ChannelIds,
@@ -18,6 +14,10 @@ from shared.core.enums import (
     JobName,
 )
 from shared.core.logger import log_cmd
+from shared.utils.channel_whitelist import (
+    BOT_TESTING_CHANNELS,
+    cmd_is_allowed,
+)
 from shared.utils.checks import bot_enabled
 
 
