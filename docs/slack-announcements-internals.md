@@ -168,6 +168,29 @@ break the listener.
     in one transaction. If the commit fails, the post stays up and the error report names the
     Slack ts and Discord message ids, saying that later edits and deletes won't be mirrored.
 
+### Forward by link (`forward_from_link`, `/forward-slack-message`)
+
+For posts the bridge never saw. `parse_message_link` (`stonesbot/utils/slack_links.py`) turns
+`…/archives/<channel>/p<digits>[?thread_ts=…]` into a channel id and ts. The ts is the digits
+with a dot inserted six from the end. Then:
+
+1. Refuse without calling Slack if: the link doesn't parse; the channel isn't
+   `SLACK_ANNOUNCEMENTS_CHANNEL_ID`; or `thread_ts` is present and differs from `ts` (a reply).
+2. Under the service lock: if mapping rows already exist, return `ALREADY_FORWARDED` with a
+   jump link to part 0.
+3. `conversations.history(channel, oldest=ts, latest=ts, inclusive=True, limit=1)` fetches the
+   message (`channels:history`; the app must be in the channel). A `SlackApiError` becomes
+   `SLACK_ERROR` with Slack's code, e.g. `not_in_channel`. No message with that exact ts gives
+   `NOT_FOUND` (deleted, a reply, or past the free plan's 90-day history).
+4. Thread replies and non-post subtypes are refused. Everything else goes through the same
+   `_post_with_webhook` as a live post with `notify=False` (it never pings), and is recorded with
+   the same `_record_parts`, so later edits and deletes apply to it.
+
+The cog defers the interaction (file downloads can exceed Discord's 3s window), maps each
+`LinkForwardStatus` to an ephemeral reply (`LINK_FORWARD_REPLIES`; a test checks every status
+has one), and reports unexpected exceptions. It's gated by `is_admin()`, `@bot_enabled` and the
+`slack_announcements_forwarding` flag.
+
 ### Edit (`_forward_edit`)
 
 The event carries `message` (new state) and `previous_message` (old state); the ts is
@@ -399,7 +422,7 @@ error channel with the ids needed to fix it by hand.
 | Webhook deleted in Discord | Next post creates a new one and retries; edits to older posts repost; deletes fall back to StonesBot |
 | Old message can't be deleted (no Manage Messages after webhook loss) | Reported with message ids; mapping kept |
 | Two environments share the Slack app token | Slack splits events between them; each sees only some. Not detectable, so avoid it (see setup doc) |
-| Process down / restarting | Events sent meanwhile are lost (Socket Mode doesn't replay); no backfill |
+| Process down / restarting | Events sent meanwhile are lost (Socket Mode doesn't replay); forward missed posts with `/forward-slack-message` |
 | Webhook username rejected by Discord (rare names) | Send fails; error reported |
 
 ---
@@ -410,5 +433,6 @@ error channel with the ids needed to fix it by hand.
 |---|---|
 | `tests/unit/test_slack_format.py` | Every conversion, protection of code/URLs, mention fallbacks, mass-mention rendering and defusing, splitting bounds |
 | `tests/unit/test_slack_forward_service.py` | Dispatch, thread/subtype filtering, dedupe, splitting, mentions, file plan + notes, 413 retry, partial-send cleanup, webhook reuse/creation/Forbidden, in-place edit vs repost, tombstones, deletes, sign-in-page detection |
+| `tests/unit/test_slack_links.py` | Message link parsing: ts reconstruction, thread replies, wrapped/variant links, rejection of non-Slack and look-alike hosts |
 | `tests/unit/test_slack_forwarded_message_repository.py` | Real in-memory SQLite: ordering, channel scoping, delete scope, unique constraint |
 | `tests/unit/test_slack_announcements_cog.py` | Env handling, local channel routing, connect-once, connect-failure reporting, ack-then-forward, flag gating |

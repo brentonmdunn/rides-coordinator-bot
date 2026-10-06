@@ -16,11 +16,11 @@ from stonesbot.services.slack_forward_service import (
 )
 
 MODULE = "stonesbot.services.slack_forward_service"
-SLACK_CHANNEL = "C_ANNOUNCE"
+SLACK_CHANNEL = "C0ANNOUNCE"
 DISCORD_CHANNEL = 999
 BOT_USER_ID = 42
 SIZE_LIMIT = 10 * 1024 * 1024
-PERMALINK = "https://church.slack.com/archives/C_ANNOUNCE/p1000000"
+PERMALINK = "https://church.slack.com/archives/C0ANNOUNCE/p1000000"
 FOOTER = f"-# [View in Slack](<{PERMALINK}>)"
 
 
@@ -840,3 +840,165 @@ async def test_unreadable_pings_flag_fails_closed(repo, pings_flag):
     kwargs = webhook.send.await_args.kwargs
     assert kwargs["content"].startswith("@channel hi")
     assert kwargs["allowed_mentions"].everyone is False
+
+
+# ---------------------------------------------------------------------------
+# Forwarding by link
+# ---------------------------------------------------------------------------
+
+
+LINK = f"https://church.slack.com/archives/{SLACK_CHANNEL}/p1791253088119709"
+LINK_TS = "1791253088.119709"
+
+
+def _history(*messages):
+    return AsyncMock(return_value={"ok": True, "messages": list(messages)})
+
+
+@pytest.mark.asyncio
+async def test_link_forwards_and_records_without_pinging(repo, pings_flag):
+    from stonesbot.services.slack_forward_service import LinkForwardStatus
+
+    service, webhook, channel = _make_service()
+    pings_flag.return_value = True
+    channel.get_partial_message.return_value.jump_url = "https://discord.com/channels/1/2/1000"
+    service.slack.conversations_history = _history(
+        {"type": "message", "user": "U1", "text": "<!channel> retreat sign-ups", "ts": LINK_TS}
+    )
+
+    result = await service.forward_from_link(LINK)
+
+    assert result.status == LinkForwardStatus.FORWARDED
+    assert result.jump_url == "https://discord.com/channels/1/2/1000"
+    service.slack.conversations_history.assert_awaited_once_with(
+        channel=SLACK_CHANNEL, oldest=LINK_TS, latest=LINK_TS, inclusive=True, limit=1
+    )
+    kwargs = webhook.send.await_args.kwargs
+    assert kwargs["content"].startswith("@everyone retreat sign-ups")
+    assert kwargs["allowed_mentions"].everyone is False
+    assert [(c.kwargs["slack_ts"], c.kwargs["part"]) for c in repo.add.await_args_list] == [
+        (LINK_TS, 0)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_link_already_forwarded_returns_existing_message(repo):
+    from stonesbot.services.slack_forward_service import LinkForwardStatus
+
+    service, webhook, channel = _make_service()
+    repo.get_parts.return_value = [_row(55)]
+    channel.get_partial_message.return_value.jump_url = "https://discord.com/channels/1/2/55"
+    service.slack.conversations_history = _history()
+
+    result = await service.forward_from_link(LINK)
+
+    assert result.status == LinkForwardStatus.ALREADY_FORWARDED
+    assert result.jump_url == "https://discord.com/channels/1/2/55"
+    channel.get_partial_message.assert_called_with(55)
+    service.slack.conversations_history.assert_not_awaited()
+    webhook.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("url", "status"),
+    [
+        ("nonsense", "invalid_link"),
+        ("https://church.slack.com/archives/C0OTHER/p1791253088119709", "wrong_channel"),
+        (f"{LINK}?thread_ts=1791253000.000100", "thread_reply"),
+    ],
+)
+async def test_link_rejected_before_calling_slack(repo, url, status):
+    service, webhook, _ = _make_service()
+    service.slack.conversations_history = _history()
+
+    result = await service.forward_from_link(url)
+
+    assert result.status == status
+    service.slack.conversations_history.assert_not_awaited()
+    webhook.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("messages", "status"),
+    [
+        ([], "not_found"),
+        ([{"type": "message", "ts": "1791253000.000001", "text": "other"}], "not_found"),
+        (
+            [{"type": "message", "ts": LINK_TS, "thread_ts": "1791253000.000001", "text": "r"}],
+            "thread_reply",
+        ),
+        ([{"type": "message", "subtype": "channel_join", "ts": LINK_TS}], "not_forwardable"),
+        ([{"type": "message", "user": "U1", "ts": LINK_TS, "text": ""}], "nothing_to_forward"),
+    ],
+)
+async def test_link_message_outcomes(repo, messages, status):
+    service, webhook, _ = _make_service()
+    service.slack.conversations_history = _history(*messages)
+
+    result = await service.forward_from_link(LINK)
+
+    assert result.status == status
+    webhook.send.assert_not_awaited()
+    repo.add.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_slack_refusal_returns_error_code(repo):
+    from slack_sdk.errors import SlackApiError
+
+    service, webhook, _ = _make_service()
+    service.slack.conversations_history = AsyncMock(
+        side_effect=SlackApiError("nope", {"ok": False, "error": "not_in_channel"})
+    )
+
+    result = await service.forward_from_link(LINK)
+
+    assert result.status == "slack_error"
+    assert result.slack_error == "not_in_channel"
+    webhook.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_without_webhook_reports_it(repo, send_error):
+    service, webhook, channel = _make_service()
+    channel.webhooks.side_effect = _http_error(discord.Forbidden, 403)
+    service.slack.conversations_history = _history(
+        {"type": "message", "user": "U1", "text": "hi", "ts": LINK_TS}
+    )
+
+    result = await service.forward_from_link(LINK)
+
+    assert result.status == "no_webhook"
+    webhook.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_discord_failure_raises_for_caller(repo):
+    service, webhook, _ = _make_service()
+    webhook.send.side_effect = _http_error(status=500)
+    service.slack.conversations_history = _history(
+        {"type": "message", "user": "U1", "text": "hi", "ts": LINK_TS}
+    )
+
+    with pytest.raises(discord.HTTPException):
+        await service.forward_from_link(LINK)
+
+    repo.add.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_forwarded_link_then_mirrors_slack_edits(repo):
+    service, webhook, channel = _make_service()
+    channel.get_partial_message.return_value.jump_url = "j"
+    service.slack.conversations_history = _history(
+        {"type": "message", "user": "U1", "text": "old", "ts": LINK_TS}
+    )
+    await service.forward_from_link(LINK)
+    repo.get_parts.return_value = [_row(1000)]
+
+    await service.handle_event(_edit("new", ts=LINK_TS))
+
+    assert webhook.edit_message.await_args.args == (1000,)
+    assert webhook.edit_message.await_args.kwargs["content"].startswith("new")

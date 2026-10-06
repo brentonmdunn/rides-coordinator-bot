@@ -13,11 +13,13 @@ import io
 import logging
 import time
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any
 
 import discord
 import httpx
 from discord.ext.commands import Bot
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from shared.core.database import AsyncSessionLocal
@@ -28,6 +30,7 @@ from stonesbot.repositories.slack_forwarded_message_repository import (
     SlackForwardedMessageRepository,
 )
 from stonesbot.utils.slack_format import extract_user_ids, slack_to_discord, split_message
+from stonesbot.utils.slack_links import parse_message_link
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +64,32 @@ class SlackAuthor:
 
     name: str
     avatar_url: str | None
+
+
+class LinkForwardStatus(StrEnum):
+    """Outcome of forwarding one Slack message by link."""
+
+    FORWARDED = "forwarded"
+    ALREADY_FORWARDED = "already_forwarded"
+    INVALID_LINK = "invalid_link"
+    WRONG_CHANNEL = "wrong_channel"
+    THREAD_REPLY = "thread_reply"
+    NOT_FOUND = "not_found"
+    NOT_FORWARDABLE = "not_forwardable"
+    NOTHING_TO_FORWARD = "nothing_to_forward"
+    NO_WEBHOOK = "no_webhook"
+    SLACK_ERROR = "slack_error"
+
+
+@dataclass(frozen=True)
+class LinkForwardResult:
+    """What happened when forwarding a Slack message by link."""
+
+    status: LinkForwardStatus
+    # Link to the first Discord message, for FORWARDED and ALREADY_FORWARDED.
+    jump_url: str | None = None
+    # Slack's error code, for SLACK_ERROR.
+    slack_error: str | None = None
 
 
 @dataclass
@@ -250,11 +279,79 @@ class SlackForwardService:
         message_ids = await self._post_with_webhook(message, pings=pings, notify=pings)
         if not message_ids:
             return
+        if await self._record_parts(ts, message_ids):
+            logger.info("Forwarded Slack message %s as %d Discord message(s)", ts, len(message_ids))
 
+    async def forward_from_link(self, url: str) -> LinkForwardResult:
+        """
+        Forward one Slack message, given its link, as if it had just been posted.
+
+        For announcements made before the bridge was running. The message goes
+        through the same path as a live post and is recorded the same way, so
+        later edits and deletes in Slack are mirrored to it. It never pings,
+        whatever the pings flag says, since the announcement is already old.
+
+        Args:
+            url: A Slack message link ("Copy link" in Slack).
+
+        Returns:
+            What happened. Only unexpected errors raise; the caller reports them.
+        """
+        link = parse_message_link(url)
+        if link is None:
+            return LinkForwardResult(LinkForwardStatus.INVALID_LINK)
+        if link.channel_id != self.slack_channel_id:
+            return LinkForwardResult(LinkForwardStatus.WRONG_CHANNEL)
+        if link.is_thread_reply:
+            return LinkForwardResult(LinkForwardStatus.THREAD_REPLY)
+
+        async with self._lock:
+            parts = await self._get_parts(link.ts)
+            if parts:
+                return LinkForwardResult(
+                    LinkForwardStatus.ALREADY_FORWARDED,
+                    jump_url=self._jump_url(int(parts[0].discord_message_id)),
+                )
+
+            try:
+                message = await self._fetch_message(link.ts)
+            except SlackApiError as e:
+                code = e.response.get("error")
+                logger.warning("Slack refused to fetch message %s: %s", link.ts, code)
+                return LinkForwardResult(LinkForwardStatus.SLACK_ERROR, slack_error=code)
+            if message is None:
+                return LinkForwardResult(LinkForwardStatus.NOT_FOUND)
+            if is_thread_reply(message):
+                return LinkForwardResult(LinkForwardStatus.THREAD_REPLY)
+            if message.get("subtype") not in NEW_POST_SUBTYPES:
+                return LinkForwardResult(LinkForwardStatus.NOT_FORWARDABLE)
+
+            pings = await self._pings_enabled()
+            message_ids = await self._post_with_webhook(message, pings=pings, notify=False)
+            if message_ids is None:
+                return LinkForwardResult(LinkForwardStatus.NO_WEBHOOK)
+            if not message_ids:
+                return LinkForwardResult(LinkForwardStatus.NOTHING_TO_FORWARD)
+            await self._record_parts(link.ts, message_ids)
+
+        logger.info("Forwarded Slack message %s by link", link.ts)
+        return LinkForwardResult(
+            LinkForwardStatus.FORWARDED, jump_url=self._jump_url(message_ids[0])
+        )
+
+    async def _record_parts(self, ts: str, message_ids: list[int]) -> bool:
+        """
+        Record a freshly posted message's Discord parts.
+
+        The post is already up, so a failure here doesn't undo it; it's
+        reported with exactly what it costs.
+
+        Returns:
+            True if recorded, False if the failure was reported instead.
+        """
         try:
             await self._save_parts(ts, message_ids)
         except Exception as e:
-            # The post is up; only the mapping is missing. Say exactly what that costs.
             logger.exception("Failed to record forwarded Slack message %s", ts)
             await send_error_to_discord(
                 f"**Error** recording forwarded Slack message `{ts}` (Discord messages "
@@ -262,8 +359,8 @@ class SlackForwardService:
                 "won't be mirrored for it",
                 error=e,
             )
-            return
-        logger.info("Forwarded Slack message %s as %d Discord message(s)", ts, len(message_ids))
+            return False
+        return True
 
     async def _forward_edit(self, event: dict[str, Any], pings: bool) -> None:
         """
@@ -470,6 +567,13 @@ class SlackForwardService:
                 logger.info("Slack message %s has nothing to forward", message["ts"])
             return message_ids
         return None
+
+    def _jump_url(self, message_id: int) -> str | None:
+        """Discord link to a forwarded message, or None if the channel isn't available."""
+        channel = self.bot.get_channel(self.discord_channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return None
+        return channel.get_partial_message(message_id).jump_url
 
     async def _size_limit(self) -> int:
         """Discord's upload limit for the target channel's guild, in bytes."""
@@ -706,6 +810,28 @@ class SlackForwardService:
         if permalink:
             lines.append(permalink_line(permalink))
         return "\n".join(lines)
+
+    async def _fetch_message(self, ts: str) -> dict[str, Any] | None:
+        """
+        Fetch one top-level message from the mirrored channel by its ts.
+
+        Needs only ``channels:history`` (``groups:history`` for a private
+        channel) and the app being a member of the channel.
+
+        Returns:
+            The message, or None if Slack has no message with that ts (deleted,
+            a thread reply, or past the workspace's history limit).
+
+        Raises:
+            SlackApiError: If Slack refuses the request (e.g. ``not_in_channel``).
+        """
+        response = await self.slack.conversations_history(
+            channel=self.slack_channel_id, oldest=ts, latest=ts, inclusive=True, limit=1
+        )
+        for message in response.get("messages") or []:
+            if message.get("ts") == ts:
+                return message
+        return None
 
     async def _pings_enabled(self) -> bool:
         """

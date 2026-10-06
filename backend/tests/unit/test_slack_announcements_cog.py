@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import discord
 import pytest
 
 from shared.core.bot_context import current_bot_var
@@ -235,3 +236,116 @@ async def test_disabled_flag_blocks_forwarding():
 
     client.send_socket_mode_response.assert_awaited_once()
     cog.service.handle_event.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# /forward-slack-message
+# ---------------------------------------------------------------------------
+
+
+def _interaction() -> MagicMock:
+    # spec'd so feature_flag_enabled recognizes it as an Interaction and replies.
+    interaction = MagicMock(spec=discord.Interaction)
+    interaction.data = {"name": "forward-slack-message", "options": []}
+    interaction.user = MagicMock()
+    interaction.response = MagicMock()
+    interaction.response.send_message = AsyncMock()
+    interaction.response.defer = AsyncMock()
+    interaction.followup = MagicMock()
+    interaction.followup.send = AsyncMock()
+    return interaction
+
+
+def _forward_cog(result=None, error=None):
+    cog = SlackAnnouncements(MagicMock())
+    cog.service = MagicMock()
+    cog.service.forward_from_link = AsyncMock(return_value=result, side_effect=error)
+    return cog
+
+
+@pytest.mark.asyncio
+async def test_forward_command_defers_then_replies_with_link(flag_enabled):
+    from stonesbot.services.slack_forward_service import LinkForwardResult, LinkForwardStatus
+
+    result = LinkForwardResult(LinkForwardStatus.FORWARDED, jump_url="https://discord/x")
+    cog = _forward_cog(result)
+    interaction = _interaction()
+
+    await cog.forward_slack_message.callback(cog, interaction, "https://s.slack.com/x")
+
+    interaction.response.defer.assert_awaited_once_with(ephemeral=True, thinking=True)
+    cog.service.forward_from_link.assert_awaited_once_with("https://s.slack.com/x")
+    interaction.followup.send.assert_awaited_once_with(
+        "✅ Forwarded. https://discord/x", ephemeral=True
+    )
+
+
+@pytest.mark.asyncio
+async def test_forward_command_without_slack_config(flag_enabled):
+    cog = SlackAnnouncements(MagicMock())
+    interaction = _interaction()
+
+    await cog.forward_slack_message.callback(cog, interaction, "https://s.slack.com/x")
+
+    message = interaction.response.send_message.await_args.args[0]
+    assert "isn't configured" in message
+    interaction.response.defer.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_forward_command_reports_unexpected_errors(flag_enabled, send_error):
+    cog = _forward_cog(error=RuntimeError("discord down"))
+    interaction = _interaction()
+
+    await cog.forward_slack_message.callback(cog, interaction, "https://s.slack.com/x")
+
+    send_error.assert_awaited_once()
+    assert "reported" in interaction.followup.send.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_forward_command_blocked_when_flag_off():
+    token = current_bot_var.set(BotName.STONESBOT)
+    cog = _forward_cog()
+    interaction = _interaction()
+    try:
+        with patch(
+            "shared.utils.checks.FeatureFlagsRepository._cache",
+            {"stonesbot": True, "slack_announcements_forwarding": False},
+        ):
+            await cog.forward_slack_message.callback(cog, interaction, "https://s.slack.com/x")
+    finally:
+        current_bot_var.reset(token)
+
+    cog.service.forward_from_link.assert_not_awaited()
+    assert "disabled" in interaction.response.send_message.await_args.args[0]
+
+
+def test_forward_command_is_admin_only():
+    cog = SlackAnnouncements(MagicMock())
+    check_names = [check.__qualname__ for check in cog.forward_slack_message.checks]
+    assert any(name.startswith("is_admin") for name in check_names)
+
+
+def test_every_outcome_has_a_reply():
+    from stonesbot.cogs.slack_announcements import LINK_FORWARD_REPLIES
+    from stonesbot.services.slack_forward_service import LinkForwardStatus
+
+    assert set(LINK_FORWARD_REPLIES) == set(LinkForwardStatus)
+
+
+@pytest.mark.parametrize(
+    ("status", "kwargs", "expected"),
+    [
+        ("already_forwarded", {"jump_url": "u"}, "That message was already forwarded. u"),
+        ("slack_error", {"slack_error": "not_in_channel"}, "`not_in_channel` (is the Slack app"),
+        ("slack_error", {"slack_error": "ratelimited"}, "`ratelimited`"),
+        ("wrong_channel", {}, "isn't in the Slack announcements channel"),
+    ],
+)
+def test_link_forward_reply(status, kwargs, expected):
+    from stonesbot.cogs.slack_announcements import link_forward_reply
+    from stonesbot.services.slack_forward_service import LinkForwardResult, LinkForwardStatus
+
+    reply = link_forward_reply(LinkForwardResult(LinkForwardStatus(status), **kwargs))
+    assert expected in reply

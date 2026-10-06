@@ -130,9 +130,27 @@ it the post still goes out but doesn't ping. Test it in `#bots` first.
 | Files | Downloaded and re-uploaded, up to 10 per message and the server's upload limit. Anything else becomes a `📎 name (too large to attach here, see Slack)` line; externally hosted files (Google Drive, etc.) become a link. |
 | Message over 2000 characters | Split at line breaks into several Discord messages; attachments go on the last |
 
+## Forwarding a missed post
+
+`/forward-slack-message <url>` (admins only, StonesBot) forwards one post by its Slack link: hover
+the message in Slack, ⋯ → **Copy link**. Use it for announcements made before the bridge went
+live, or while it was down.
+
+- The post looks exactly like a live one. It shows up at the bottom of the Discord channel with
+  today's time, since Discord can't backdate messages.
+- It never pings, whatever `slack_announcements_pings` says, since the announcement is already
+  old.
+- Afterwards it's mirrored like any other post: Slack edits and deletes apply to it.
+- Only top-level posts from the configured channel are accepted. Thread replies, other channels
+  and non-posts (joins, bot messages) are refused with a reason.
+- Already forwarded? You get a link to the existing Discord message instead of a duplicate.
+- No new Slack scopes are needed (`channels:history` covers it), but Slack's free plan only
+  serves the last 90 days of history, so older posts come back as "not found".
+
 ## Limits
 
-- Posts made before the app was set up aren't backfilled, and edits/deletes of them are ignored.
+- Posts made before the app was set up aren't backfilled automatically; forward them one at a
+  time with `/forward-slack-message`.
 - Events sent while the app is down (or while the flag is off) are lost. Slack only retries
   briefly, and Socket Mode doesn't replay missed events.
 - If the `Slack Announcements` webhook is deleted, StonesBot creates a new one on the next post.
