@@ -274,7 +274,7 @@ async def test_forward_command_defers_then_replies_with_link(flag_enabled):
     await cog.forward_slack_message.callback(cog, interaction, "https://s.slack.com/x")
 
     interaction.response.defer.assert_awaited_once_with(ephemeral=True, thinking=True)
-    cog.service.forward_from_link.assert_awaited_once_with("https://s.slack.com/x")
+    cog.service.forward_from_link.assert_awaited_once_with("https://s.slack.com/x", dry_run=False)
     interaction.followup.send.assert_awaited_once_with(
         "✅ Forwarded. https://discord/x", ephemeral=True
     )
@@ -349,3 +349,19 @@ def test_link_forward_reply(status, kwargs, expected):
 
     reply = link_forward_reply(LinkForwardResult(LinkForwardStatus(status), **kwargs))
     assert expected in reply
+
+
+@pytest.mark.asyncio
+async def test_forward_command_passes_dry_run(flag_enabled):
+    from stonesbot.services.slack_forward_service import LinkForwardResult, LinkForwardStatus
+
+    result = LinkForwardResult(LinkForwardStatus.DRY_RUN, jump_url="https://discord/bots/1")
+    cog = _forward_cog(result)
+    interaction = _interaction()
+
+    await cog.forward_slack_message.callback(cog, interaction, "https://s.slack.com/x", True)
+
+    cog.service.forward_from_link.assert_awaited_once_with("https://s.slack.com/x", dry_run=True)
+    reply = interaction.followup.send.await_args.args[0]
+    assert reply.startswith("🧪 Dry run posted")
+    assert reply.endswith("https://discord/bots/1")

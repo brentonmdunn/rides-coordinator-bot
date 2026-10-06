@@ -1003,3 +1003,81 @@ async def test_forwarded_link_then_mirrors_slack_edits(repo):
 
     assert webhook.edit_message.await_args.args == (1000,)
     assert webhook.edit_message.await_args.kwargs["content"].startswith("new")
+
+
+# ---------------------------------------------------------------------------
+# Dry runs
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_dry_run_posts_to_bots_channel_without_recording(repo, pings_flag):
+    from stonesbot.services.slack_forward_service import DRY_RUN_CHANNEL_ID, LinkForwardStatus
+
+    service, webhook, channel = _make_service()
+    pings_flag.return_value = True
+    channel.get_partial_message.return_value.jump_url = "https://discord.com/channels/1/9/1000"
+    service.slack.conversations_history = _history(
+        {"type": "message", "user": "U1", "text": "<!channel> retreat", "ts": LINK_TS}
+    )
+
+    result = await service.forward_from_link(LINK, dry_run=True)
+
+    assert result.status == LinkForwardStatus.DRY_RUN
+    assert result.jump_url == "https://discord.com/channels/1/9/1000"
+    assert DRY_RUN_CHANNEL_ID in [c.args[0] for c in service.bot.get_channel.call_args_list]
+    assert DRY_RUN_CHANNEL_ID in service._webhooks
+    kwargs = webhook.send.await_args.kwargs
+    assert kwargs["username"] == "Jane (via LSCC Slack)"
+    assert kwargs["allowed_mentions"].everyone is False
+    repo.add.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dry_run_ignores_already_forwarded(repo):
+    from stonesbot.services.slack_forward_service import LinkForwardStatus
+
+    service, webhook, _ = _make_service()
+    repo.get_parts.return_value = [_row(55)]
+    service.slack.conversations_history = _history(
+        {"type": "message", "user": "U1", "text": "hi", "ts": LINK_TS}
+    )
+
+    result = await service.forward_from_link(LINK, dry_run=True)
+
+    assert result.status == LinkForwardStatus.DRY_RUN
+    repo.get_parts.assert_not_awaited()
+    webhook.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_dry_run_still_validates_the_link(repo):
+    service, webhook, _ = _make_service()
+    service.slack.conversations_history = _history()
+
+    result = await service.forward_from_link(
+        "https://church.slack.com/archives/C0OTHER/p1791253088119709", dry_run=True
+    )
+
+    assert result.status == "wrong_channel"
+    webhook.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dry_run_partial_failure_withdraws_through_same_webhook(repo, send_error):
+    from stonesbot.services.slack_forward_service import DRY_RUN_CHANNEL_ID
+
+    service, webhook, channel = _make_service()
+    bots_webhook = _make_webhook()
+    service._webhooks[DRY_RUN_CHANNEL_ID] = bots_webhook
+    bots_webhook.send.side_effect = [MagicMock(id=1), _http_error()]
+    service.slack.conversations_history = _history(
+        {"type": "message", "user": "U1", "text": ("a" * 1500 + "\n") * 2, "ts": LINK_TS}
+    )
+
+    with pytest.raises(discord.HTTPException):
+        await service.forward_from_link(LINK, dry_run=True)
+
+    bots_webhook.delete_message.assert_awaited_once_with(1)
+    webhook.delete_message.assert_not_awaited()
+    channel.get_partial_message.return_value.delete.assert_not_called()
