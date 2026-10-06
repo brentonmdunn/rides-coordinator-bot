@@ -222,6 +222,40 @@ scheduled.
   so deletion survives restarts. The new message is sent *before* the old one is deleted, so a failed
   send never leaves the channel empty; a previous message that is already gone is logged and skipped.
 
+### Slack announcements forwarding (StonesBot)
+
+StonesBot mirrors the church Slack's #announcements into
+`ChannelIds.REFERENCES__CHURCH_ANNOUNCEMENTS` (through `resolve_channel_id`, so locally it posts in
+`#bots`). Setup, Slack app manifest and env vars: `docs/slack-announcements.md`; internals:
+`docs/slack-announcements-internals.md`.
+
+- Transport: `stonesbot/cogs/slack_announcements.py` opens a Slack **Socket Mode** websocket
+  (`slack-sdk`) on the first `on_ready` — outbound only, no public endpoint, so it never touches
+  Cloudflare Access or the session middleware. Optional: if any of `SLACK_BOT_TOKEN`,
+  `SLACK_APP_TOKEN`, `SLACK_ANNOUNCEMENTS_CHANNEL_ID` is unset the cog logs one warning and idles.
+- Gates: `@bot_enabled` + `FeatureFlagNames.SLACK_ANNOUNCEMENTS_FORWARDING`, checked per event.
+  Every Socket Mode request is acked first, whatever the gates say.
+- Logic: `stonesbot/services/slack_forward_service.py`. Posts go through a webhook named
+  `Slack Announcements` that StonesBot finds or creates (needs **Manage Webhooks**), under the
+  Slack author's name + avatar. Nothing pings unless `FeatureFlagNames.SLACK_ANNOUNCEMENTS_PINGS`
+  is on; then Slack's `@channel`/`@everyone`/`@here` ping `@everyone`/`@here` on the **first
+  forward only** (edits and reposts use `AllowedMentions.none()`). Literal `@everyone`/`@here`
+  text is always defused with a zero-width space.
+  Thread replies, joins, `bot_message` and other subtypes are ignored; `thread_broadcast` is forwarded.
+- Formatting: `stonesbot/utils/slack_format.py` (pure; Slack mrkdwn → Discord markdown, 2000-char splits).
+  Every post ends with a `-# [View in Slack](<permalink>)` subtext line (`chat.getPermalink`).
+- Edits/deletes: `slack_forwarded_messages` maps Slack `ts` → Discord message id, one row per
+  part. Edits apply in place; if the part count or the files change, the new version is posted
+  first and the old one deleted. Messages forwarded before the bot existed are never touched.
+- Files are downloaded with the bot token and re-uploaded (≤10 per message, guild size limit);
+  anything skipped becomes a `📎 name` note line. Slack load-balances Socket Mode events across
+  connections, so **only one environment may hold the Slack tokens**.
+- Failure handling: cosmetic failures (names, the Slack link, single files) degrade a post but
+  never drop it; anything that loses or orphans one is reported with the ids. The cog requests the
+  websocket URL itself, because `SocketModeClient.connect()` retries a bad token forever. A deleted
+  webhook is replaced automatically. If a moderator deletes the Discord copy, Slack edits never
+  bring it back. Full table in the internals doc.
+
 ### Centralizing Shared Logic (No Duplication Between Cogs and API)
 
 Cogs and API routes are both **thin entry points** — they handle input/output for their respective interfaces (Discord vs. HTTP) but must not contain business logic themselves.

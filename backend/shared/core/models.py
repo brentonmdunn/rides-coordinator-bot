@@ -85,6 +85,28 @@ class WeeklyEventsAnnouncement(Base):
     posted_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class SlackForwardedMessage(Base):
+    """
+    Model mapping a forwarded Slack announcement to the Discord message(s) posted for it.
+
+    StonesBot mirrors Slack #announcements into Discord through a webhook. A Slack
+    post longer than Discord's 2000-character limit is split into several Discord
+    messages, so there is one row per part. Edits and deletes in Slack look these
+    rows up to find which Discord messages to change.
+    """
+
+    __tablename__ = "slack_forwarded_messages"
+    __table_args__ = (UniqueConstraint("slack_channel_id", "slack_ts", "part"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    slack_channel_id: Mapped[str]
+    slack_ts: Mapped[str] = mapped_column(index=True)
+    part: Mapped[int]
+    discord_channel_id: Mapped[str]
+    discord_message_id: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class NonDiscordRides(Base):
     """Model representing a ride request from a non-Discord user."""
 
