@@ -254,6 +254,8 @@ StonesBot mirrors the church Slack's #announcements into
   through the same path (`SlackForwardService.forward_from_link`; link parsing in
   `stonesbot/utils/slack_links.py`). It never pings, refuses duplicates, and the post is mirrored
   afterwards. Fetching uses `conversations.history` (`channels:history`, no new scopes).
+  `dry_run: True` posts the same message to `ChannelIds.BOT_STUFF__BOTS` instead and records
+  nothing (webhooks are cached per channel in `SlackForwardService._webhooks`).
 - Failure handling: cosmetic failures (names, the Slack link, single files) degrade a post but
   never drop it; anything that loses or orphans one is reported with the ids. The cog requests the
   websocket URL itself, because `SocketModeClient.connect()` retries a bad token forever. A deleted

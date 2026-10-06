@@ -175,6 +175,7 @@ Admins only. Forward one Slack #announcements post that the bridge missed, such 
 | Param | Required | Description |
 |-------|----------|-------------|
 | `url` | Yes | Link to the Slack message (hover it in Slack, ⋯ → **Copy link**) |
+| `dry_run` | No | `True` posts a preview to the bot-testing channel instead (`ChannelIds.BOT_STUFF__BOTS`). Nothing is recorded, so the real forward still works afterwards and Slack edits never reach the preview. Default `False`. |
 
 ---
 

@@ -144,6 +144,10 @@ live, or while it was down.
 - Only top-level posts from the configured channel are accepted. Thread replies, other channels
   and non-posts (joins, bot messages) are refused with a reason.
 - Already forwarded? You get a link to the existing Discord message instead of a duplicate.
+- **Preview first with `dry_run: True`.** That posts the identical message (same name, avatar,
+  formatting and files) in the bot-testing channel instead, and replies with a link to it.
+  Nothing is recorded, so it doesn't count as forwarded, Slack edits don't reach it, and you can
+  preview as often as you like. StonesBot needs Manage Webhooks in that channel too.
 - No new Slack scopes are needed (`channels:history` covers it), but Slack's free plan only
   serves the last 90 days of history, so older posts come back as "not found".
 
