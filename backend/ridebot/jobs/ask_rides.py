@@ -21,6 +21,7 @@ from ridebot.services.ask_rides_schedule_service import (
     has_send_time_passed,
 )
 from ridebot.services.fellowship_season_service import FellowshipSeasonService
+from ridebot.services.force_sunday_class_service import ForceSundayClassService
 from ridebot.services.ride_coordinator_service import RideCoordinatorService
 from ridebot.utils.ask_rides_defaults import PING_MESSAGE_TYPES
 from ridebot.utils.cache import (
@@ -340,7 +341,13 @@ async def run_ask_rides_sun(
 
 
 async def _should_send_ask_rides_sun_class() -> bool:
-    """Helper method to determine if we should send the Sunday class rides message."""
+    """
+    Helper method to determine if we should send the Sunday class rides message.
+
+    The "always send Sunday class" setting skips the calendar check.
+    """
+    if await ForceSundayClassService.is_enabled():
+        return True
     gcal_event_summaries = await CalendarRepository.get_event_summaries(
         get_next_date_obj(DaysOfWeek.SUNDAY)
     )
