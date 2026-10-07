@@ -9,6 +9,7 @@ import { ListSkeleton } from '../LoadingSkeleton'
 
 import { CalendarDays } from 'lucide-react'
 import { Button } from '../ui/button'
+import { Switch } from '../ui/switch'
 import ConfirmDialog from '../ConfirmDialog'
 import { SectionCard } from '../shared'
 import { CollapsibleSection } from '../ui/collapsible'
@@ -59,6 +60,29 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
             return response.json()
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['askRidesStatus'] })
+        },
+    })
+
+    const { data: forceClassData } = useQuery<{ enabled: boolean }>({
+        queryKey: ['forceSundayClass'],
+        queryFn: async () => {
+            const response = await apiFetch('/api/ask-rides/force-sunday-class')
+            return response.json()
+        },
+    })
+
+    const forceClassMutation = useMutation({
+        mutationFn: async (enabled: boolean) => {
+            const response = await apiFetch('/api/ask-rides/force-sunday-class', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled }),
+            })
+            return response.json()
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['forceSundayClass'] })
             queryClient.invalidateQueries({ queryKey: ['askRidesStatus'] })
         },
     })
@@ -195,6 +219,23 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                         {/* Sunday Class */}
                         <StatusCard title="Sunday Class" jobName="sunday_class" job={askRidesStatus.sunday_class} canManage={canManage} />
                     </div>
+                )}
+
+                {canManage && (
+                    <label className="mt-6 flex items-start justify-between gap-4 rounded-md border border-border px-3 py-2 cursor-pointer">
+                        <span className="text-sm">
+                            <span className="font-medium">Always send Sunday class</span>
+                            <span className="block text-muted-foreground">
+                                The scheduled Sunday class message sends even if no class is on the calendar.
+                            </span>
+                        </span>
+                        <Switch
+                            checked={forceClassData?.enabled ?? false}
+                            disabled={forceClassData === undefined || forceClassMutation.isPending}
+                            onCheckedChange={(checked) => forceClassMutation.mutate(checked)}
+                            aria-label="Always send Sunday class"
+                        />
+                    </label>
                 )}
 
                 {canManage && (
