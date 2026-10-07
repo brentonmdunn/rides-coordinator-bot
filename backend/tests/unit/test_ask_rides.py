@@ -9,9 +9,12 @@ from ridebot.jobs.ask_rides import (
     _ask_rides_template,
     _is_wildcard_date,
     build_ask_rides_message,
+    run_ask_rides_manual,
+    run_ask_rides_sun_class,
 )
 from ridebot.services.ask_rides_messages_service import EffectiveTemplate
-from shared.core.enums import AskRidesMessageType, EmbedColorChoice
+from shared.core.enums import AskRidesMessageType, EmbedColorChoice, FeatureFlagNames
+from shared.repositories.feature_flags_repository import FeatureFlagsRepository
 
 
 class TestIsWildcardDate:
@@ -446,3 +449,87 @@ class TestAskRidesTemplateView:
         fake_channel.send.assert_awaited_once()
         _args, kwargs = fake_channel.send.call_args
         assert kwargs["view"] is view
+
+
+class TestRunAskRidesSunClassForce:
+    """`force_class` skips only the calendar check."""
+
+    @pytest.fixture(autouse=True)
+    def _deps(self):
+        session_cm = MagicMock()
+        session_cm.__aenter__ = AsyncMock(return_value=MagicMock())
+        session_cm.__aexit__ = AsyncMock(return_value=False)
+        with (
+            patch.dict(
+                FeatureFlagsRepository._cache, {FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB: True}
+            ),
+            patch(
+                "ridebot.jobs.ask_rides.AskRidesScheduleService.get_send_day_for_job",
+                new_callable=AsyncMock,
+            ),
+            patch("ridebot.jobs.ask_rides.AsyncSessionLocal", return_value=session_cm),
+            patch(
+                "ridebot.jobs.ask_rides.MessageScheduleRepository.is_job_paused",
+                new_callable=AsyncMock,
+                return_value=False,
+            ) as self.mock_paused,
+            patch(
+                "ridebot.jobs.ask_rides._should_send_ask_rides_sun_class",
+                new_callable=AsyncMock,
+                return_value=False,
+            ) as self.mock_should_send,
+            patch(
+                "ridebot.jobs.ask_rides._ask_rides_template", new_callable=AsyncMock
+            ) as self.mock_template,
+        ):
+            yield
+
+    @pytest.mark.asyncio
+    async def test_skips_when_no_class_on_calendar(self):
+        await run_ask_rides_sun_class(MagicMock())
+        self.mock_template.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_force_sends_without_class_on_calendar(self):
+        await run_ask_rides_sun_class(MagicMock(), force_class=True)
+        self.mock_should_send.assert_not_awaited()
+        self.mock_template.assert_awaited_once()
+        assert self.mock_template.call_args.args[1] == AskRidesMessageType.SUNDAY_CLASS
+
+    @pytest.mark.asyncio
+    async def test_force_still_respects_pause(self):
+        self.mock_paused.return_value = True
+        await run_ask_rides_sun_class(MagicMock(), force_class=True)
+        self.mock_template.assert_not_awaited()
+
+
+class TestRunAskRidesManualForceClass:
+    """`run_ask_rides_manual` passes `force_class` only when Sunday is in scope."""
+
+    @pytest.fixture(autouse=True)
+    def _deps(self):
+        with (
+            patch(
+                "ridebot.jobs.ask_rides.run_ask_rides_header", new_callable=AsyncMock
+            ) as self.mock_header,
+            patch("ridebot.jobs.ask_rides._run_ask_rides_fellowship_group", new_callable=AsyncMock),
+            patch(
+                "ridebot.jobs.ask_rides._run_ask_rides_sunday_group", new_callable=AsyncMock
+            ) as self.mock_sunday,
+            patch("ridebot.jobs.ask_rides.warm_ask_rides_message_cache", new_callable=AsyncMock),
+            patch("ridebot.jobs.ask_rides.warm_ask_drivers_message_cache", new_callable=AsyncMock),
+        ):
+            yield
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("scope", ["sunday", "both"])
+    async def test_forwards_force_class(self, scope):
+        await run_ask_rides_manual(MagicMock(), scope, force_class=True)
+        assert self.mock_header.call_args.kwargs["force_class"] is True
+        assert self.mock_sunday.call_args.kwargs["force_class"] is True
+
+    @pytest.mark.asyncio
+    async def test_ignores_force_class_for_fellowship_only(self):
+        await run_ask_rides_manual(MagicMock(), "fellowship", force_class=True)
+        assert self.mock_header.call_args.kwargs["force_class"] is False
+        self.mock_sunday.assert_not_awaited()
