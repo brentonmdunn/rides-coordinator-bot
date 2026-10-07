@@ -81,6 +81,13 @@ class SendNowRequest(BaseModel):
             "'sunday' (Sunday service + class), or 'both'."
         ),
     )
+    force_class: bool = Field(
+        default=False,
+        description=(
+            "Send the Sunday class message even if no class is on the calendar. "
+            "Ignored when the scope doesn't include Sunday."
+        ),
+    )
 
 
 @router.post(
@@ -98,9 +105,10 @@ async def send_now(request: SendNowRequest | None = None):
     """
     bot = require_ready_bot()
     scope = request.scope if request else "both"
+    force_class = request.force_class if request else False
 
     try:
-        await run_ask_rides_manual(bot, scope)
+        await run_ask_rides_manual(bot, scope, force_class=force_class)
         return {
             "success": True,
             "message": f"Ask rides messages sent successfully ({scope})",

@@ -24,6 +24,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const [showInfo, setShowInfo] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const [sendScope, setSendScope] = useState<SendNowScope>('both')
+    const [forceClass, setForceClass] = useState(false)
     const queryClient = useQueryClient()
 
     const {
@@ -49,11 +50,11 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
     const season = seasonData?.season ?? 'friday'
 
     const sendNowMutation = useMutation({
-        mutationFn: async (scope: SendNowScope) => {
+        mutationFn: async ({ scope, forceClass }: { scope: SendNowScope; forceClass: boolean }) => {
             const response = await apiFetch('/api/ask-rides/send-now', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scope }),
+                body: JSON.stringify({ scope, force_class: forceClass }),
             })
             return response.json()
         },
@@ -64,7 +65,13 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
 
     const handleSendNow = () => {
         setShowConfirm(false)
-        sendNowMutation.mutate(sendScope)
+        sendNowMutation.mutate({ scope: sendScope, forceClass: forceClass && sendScope !== 'fellowship' })
+    }
+
+    const openSendConfirm = () => {
+        setSendScope('both')
+        setForceClass(false)
+        setShowConfirm(true)
     }
 
     const fellowshipLabel = season === 'wednesday' ? 'Wed. Fellowship' : 'Fri. Fellowship'
@@ -79,7 +86,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                 <>
                     {canManage && (
                         <Button
-                            onClick={() => { setSendScope('both'); setShowConfirm(true) }}
+                            onClick={openSendConfirm}
                             disabled={sendNowMutation.isPending}
                             variant="warning"
                             size="sm"
@@ -105,7 +112,7 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
         >
                 {canManage && (
                     <Button
-                        onClick={() => { setSendScope('both'); setShowConfirm(true) }}
+                        onClick={openSendConfirm}
                         disabled={sendNowMutation.isPending}
                         variant="warning"
                         size="sm"
@@ -236,6 +243,19 @@ function AskRidesDashboard({ canManage }: AskRidesDashboardProps) {
                             </label>
                         ))}
                     </div>
+                )}
+                {sendScope !== 'fellowship' && (
+                    <label className="flex items-start gap-2 rounded-md border border-border px-3 py-2 mt-2 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                        <input
+                            type="checkbox"
+                            checked={forceClass}
+                            onChange={(e) => setForceClass(e.target.checked)}
+                            className="accent-primary mt-0.5"
+                        />
+                        <span className="text-sm">
+                            Send the Sunday class message even if no class is on the calendar
+                        </span>
+                    </label>
                 )}
             </ConfirmDialog>
         </SectionCard>
