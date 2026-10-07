@@ -349,9 +349,19 @@ async def _should_send_ask_rides_sun_class() -> bool:
 
 @feature_flag_enabled(FeatureFlagNames.ASK_SUNDAY_CLASS_RIDES_JOB)
 async def run_ask_rides_sun_class(
-    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    bot: Bot,
+    channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    force_class: bool = False,
 ) -> None:
-    """Runner for Sunday class rides message."""
+    """
+    Runner for Sunday class rides message.
+
+    Args:
+        bot: Discord bot instance.
+        channel_id: Channel to post the message in.
+        force_class: Send even if no class is on the calendar. The feature flag
+            and pause still apply.
+    """
     send_day_of_week = await AskRidesScheduleService.get_send_day_for_job(JobName.SUNDAY_CLASS)
     async with AsyncSessionLocal() as session:
         paused = await MessageScheduleRepository.is_job_paused(
@@ -360,16 +370,28 @@ async def run_ask_rides_sun_class(
     if paused:
         logger.info("Blocking run_ask_rides_sun_class - job is paused")
         return
-    if not await _should_send_ask_rides_sun_class():
+    if force_class:
+        logger.info("Forcing run_ask_rides_sun_class - skipping calendar check")
+    elif not await _should_send_ask_rides_sun_class():
         logger.info("Blocking run_ask_rides_sun_class due to no class detected on mastercalendar")
         return
     await _ask_rides_template(bot, AskRidesMessageType.SUNDAY_CLASS, channel_id)
 
 
 async def run_ask_rides_header(
-    bot: Bot, channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS
+    bot: Bot,
+    channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+    force_class: bool = False,
 ) -> None:
-    """Run the job to send the ask rides header."""
+    """
+    Run the job to send the ask rides header.
+
+    Args:
+        bot: Discord bot instance.
+        channel_id: Channel to post the header in.
+        force_class: Treat the Sunday class as on the calendar (see
+            `run_ask_rides_sun_class`).
+    """
     channel = bot.get_channel(resolve_channel_id(channel_id))
     if not isinstance(channel, discord.TextChannel):
         logger.info("Error channel not found")
@@ -404,7 +426,7 @@ async def run_ask_rides_header(
     season = await FellowshipSeasonService.get_season()
     sun_should_send = await _should_send_ask_rides_sun()
     sun_condition = sun_flag and not sun_paused and sun_should_send
-    sun_class_should_send = await _should_send_ask_rides_sun_class()
+    sun_class_should_send = force_class or await _should_send_ask_rides_sun_class()
     sun_class_condition = sun_class_flag and not sun_class_paused and sun_class_should_send
     fri_condition = fri_flag and not fri_paused and season == FellowshipSeason.FRIDAY
     wed_condition = wed_flag and season == FellowshipSeason.WEDNESDAY
@@ -533,9 +555,10 @@ async def _run_ask_rides_sunday_group(
     bot: Bot,
     rides_channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+    force_class: bool = False,
 ) -> None:
     """Send both Sunday service and Sunday class rides messages."""
-    await run_ask_rides_sun_class(bot, rides_channel_id)
+    await run_ask_rides_sun_class(bot, rides_channel_id, force_class=force_class)
     await run_ask_rides_sun(bot, rides_channel_id)
     await run_ask_drivers_sun(bot, drivers_channel_id)
 
@@ -546,20 +569,28 @@ async def run_ask_rides_manual(
     scope: Literal["fellowship", "sunday", "both"] = "both",
     rides_channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
     drivers_channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+    force_class: bool = False,
 ) -> None:
     """
     Manually send ask rides messages for the requested scope.
 
     Used by the dashboard's "Send now" action, which lets a coordinator choose to
     resend just the fellowship message (Wed or Fri, whichever season is active),
-    just the Sunday messages (service + class), or both.
+    just the Sunday messages (service + class), or both. `force_class` sends the
+    Sunday class message even when no class is on the calendar; it only matters
+    when the scope includes Sunday.
     """
-    await run_ask_rides_header(bot, rides_channel_id)
+    sends_sunday = scope in ("sunday", "both")
+    force_class = force_class and sends_sunday
+
+    await run_ask_rides_header(bot, rides_channel_id, force_class=force_class)
 
     if scope in ("fellowship", "both"):
         await _run_ask_rides_fellowship_group(bot, rides_channel_id, drivers_channel_id)
-    if scope in ("sunday", "both"):
-        await _run_ask_rides_sunday_group(bot, rides_channel_id, drivers_channel_id)
+    if sends_sunday:
+        await _run_ask_rides_sunday_group(
+            bot, rides_channel_id, drivers_channel_id, force_class=force_class
+        )
 
     await warm_ask_rides_message_cache(bot, rides_channel_id)
     await warm_ask_drivers_message_cache(bot)
