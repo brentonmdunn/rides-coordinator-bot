@@ -18,6 +18,7 @@ from ridebot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
 from ridebot.services.ask_rides_messages_service import AskRidesMessagesService
 from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService, EffectiveSchedule
 from ridebot.services.fellowship_season_service import FellowshipSeasonService
+from ridebot.services.force_sunday_class_service import ForceSundayClassService
 from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
 from ridebot.services.locations_service import LocationsService
 from ridebot.services.message_schedule_service import MessageScheduleService
@@ -314,6 +315,38 @@ async def set_fellowship_season(request: SetSeasonRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to set season: {e!s}") from e
 
     return {"season": request.season}
+
+
+class ForceSundayClassRequest(BaseModel):
+    """Request body for the always-send Sunday class setting."""
+
+    enabled: bool
+
+
+@router.get(
+    "/force-sunday-class",
+    summary="Get Force Sunday Class",
+    description="Whether the scheduled Sunday class message sends even with no class on the calendar.",
+)
+async def get_force_sunday_class() -> dict:
+    """Return the current always-send Sunday class setting."""
+    return {"enabled": await ForceSundayClassService.is_enabled()}
+
+
+@router.put(
+    "/force-sunday-class",
+    dependencies=[Depends(require_ride_coordinator)],
+    summary="Set Force Sunday Class",
+    description="Makes the scheduled Sunday class message skip the calendar check.",
+)
+async def set_force_sunday_class(request: ForceSundayClassRequest) -> dict:
+    """Persist the always-send Sunday class setting."""
+    try:
+        await ForceSundayClassService.set_enabled(request.enabled)
+    except Exception as e:
+        logger.exception("Error setting force Sunday class")
+        raise HTTPException(status_code=500, detail=f"Failed to update setting: {e!s}") from e
+    return {"enabled": request.enabled}
 
 
 class LateReactionWindowModel(BaseModel):
