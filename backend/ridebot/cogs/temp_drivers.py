@@ -87,11 +87,11 @@ class TempDrivers(commands.Cog):
 
     @app_commands.command(
         name="add-temp-driver",
-        description="Give someone the Driver role temporarily (default 1 week).",
+        description="Give someone the Driver role temporarily (default 1 day).",
     )
     @app_commands.describe(
         user="The member to make a temporary driver.",
-        duration="e.g. 3d, 2w, 12h, 10/5, 2026-10-05 (default 1 week, max 90 days)",
+        duration="e.g. 3d, 2w, 12h, 10/5, 2026-10-05 (default 1 day, max 90 days)",
     )
     @is_ride_coordinator()
     @bot_enabled

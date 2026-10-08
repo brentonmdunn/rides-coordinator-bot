@@ -214,7 +214,7 @@ Give a member the Driver role temporarily. Running it on someone who is already 
 | Param | Required | Description |
 |-------|----------|-------------|
 | `user` | Yes | The member to make a temporary driver |
-| `duration` | No | Relative (`12h`, `3d`, `2w`, `10 days`) or a date (`10/5`, `10/5/26`, `2026-10-05`). Default 1 week, max 90 days. A date means through 11:59 PM LA that day. |
+| `duration` | No | Relative (`12h`, `3d`, `2w`, `10 days`) or a date (`10/5`, `10/5/26`, `2026-10-05`). Default 1 day, max 90 days. A date means through 11:59 PM LA that day. |
 
 ### `/remove-temp-driver`
 

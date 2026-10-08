@@ -176,7 +176,7 @@ Drivers tab (`POST /api/drivers/temp`). Both call `TempDriverService`
 (`ridebot/services/temp_driver_service.py`), backed by the `temp_driver_grants` table.
 
 - Durations: `ridebot/utils/duration_parsing.py` — relative (`12h`, `3d`, `2w`) or a date
-  (`10/5`, `2026-10-05`, meaning 11:59 PM LA that day). Default 1 week, max 90 days
+  (`10/5`, `2026-10-05`, meaning 11:59 PM LA that day). Default 1 day, max 90 days
   (`ridebot/utils/constants.py`).
 - Expiry is **polling**: `ridebot/jobs/temp_drivers.py` runs every 5 minutes and once at startup,
   gated by `@bot_enabled` + `FeatureFlagNames.TEMP_DRIVER_EXPIRY_JOB`. A sweep with nothing to do
