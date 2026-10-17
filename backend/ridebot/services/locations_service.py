@@ -28,6 +28,7 @@ from shared.core.enums import (
     RideOption,
 )
 from shared.core.error_reporter import send_error_to_discord
+from shared.utils.discord_retry import fetch_message_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +234,7 @@ class LocationsService:
         if not day:
             tmp_channel = self.bot.get_channel(int(channel_id))
             if isinstance(tmp_channel, (discord.TextChannel, discord.Thread)):
-                tmp_message = await tmp_channel.fetch_message(int(message_id))
+                tmp_message = await fetch_message_with_retry(tmp_channel, int(message_id))
                 tmp_content = get_message_and_embed_content(tmp_message).lower()
 
         if (

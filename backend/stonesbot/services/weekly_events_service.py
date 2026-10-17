@@ -20,6 +20,7 @@ from shared.core.models import WeeklyEventsAnnouncement
 from shared.repositories.calendar_repository import CalendarRepository
 from shared.utils.channels import resolve_channel_id
 from shared.utils.constants import LA_TZ
+from shared.utils.discord_retry import fetch_message_with_retry
 from stonesbot.repositories.weekly_events_announcement_repository import (
     WeeklyEventsAnnouncementRepository,
 )
@@ -280,7 +281,7 @@ class WeeklyEventsService:
                 )
                 continue
             try:
-                message = await channel.fetch_message(int(announcement.message_id))
+                message = await fetch_message_with_retry(channel, int(announcement.message_id))
                 await message.delete()
                 logger.info(
                     "Deleted previous weekly events announcement %s", announcement.message_id

@@ -5,6 +5,8 @@ import logging
 import discord
 from discord.ext import commands
 
+from shared.utils.discord_retry import fetch_message_with_retry
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +59,7 @@ class EventsRepository:
             The Discord Message object if found, otherwise None.
         """
         try:
-            return await channel.fetch_message(message_id)
+            return await fetch_message_with_retry(channel, message_id)
         except discord.NotFound:
             return None
 
