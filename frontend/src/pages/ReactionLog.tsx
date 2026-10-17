@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useReactionStream } from '../hooks/useReactionStream'
@@ -47,6 +48,9 @@ interface Filters {
     date_from: string
     date_to: string
     emoji: string
+    search: string
+    person_id: string
+    remaining_only: boolean
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -76,13 +80,14 @@ const WEEK_PRESETS = [
     { label: '2 weeks ago', ...weekOffset(2) },
 ]
 
-const THIS_WEEK = WEEK_PRESETS[0]
-
 const EMPTY_FILTERS: Filters = {
     ride_type: '',
-    date_from: THIS_WEEK.from,
-    date_to: THIS_WEEK.to,
+    date_from: '',
+    date_to: '',
     emoji: '',
+    search: '',
+    person_id: '',
+    remaining_only: false,
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -103,7 +108,7 @@ function hasActiveFilters(filters: Filters): boolean {
         filters.ride_type !== '' ||
         filters.date_from !== '' ||
         filters.date_to !== '' ||
-        filters.emoji !== ''
+        filters.emoji !== '' || filters.search !== '' || filters.person_id !== '' || filters.remaining_only
     )
 }
 
@@ -113,6 +118,9 @@ function buildQueryString(filters: Filters): string {
     if (filters.date_from) params.set('date_from', filters.date_from)
     if (filters.date_to) params.set('date_to', filters.date_to)
     if (filters.emoji) params.set('emoji', filters.emoji)
+    if (filters.search.trim()) params.set('search', filters.search.trim())
+    if (filters.person_id) params.set('person_id', filters.person_id)
+    if (filters.remaining_only || filters.search.trim() || filters.person_id) params.set('remaining_only', 'true')
     const qs = params.toString()
     return qs ? `?${qs}` : ''
 }
@@ -167,7 +175,7 @@ function RideCard({ ride }: { ride: RideReactionLog }) {
             {/* Card header */}
             <div className="flex items-center justify-between px-5 py-3 bg-muted/50 border-b border-border">
                 <h3 className="font-semibold text-foreground">
-                    {ride.ride_type ? ride.ride_type.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Unknown'}
+                    {ride.label}
                 </h3>
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
                     {ride.events.length} {ride.events.length === 1 ? 'event' : 'events'}
@@ -218,7 +226,13 @@ function LoadingSkeleton() {
 // ── Main page ──────────────────────────────────────────────────────────────
 
 function ReactionLog() {
-    const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const [filters, setFilters] = useState<Filters>(() => ({
+        ...EMPTY_FILTERS,
+        person_id: searchParams.get('person_id') ?? '',
+    }))
+    const personName = searchParams.get('name')
+    const showingHistory = Boolean(filters.search.trim() || filters.person_id || filters.remaining_only)
 
     const { data, isLoading, isError, error } = useQuery<ReactionLogResponse>({
         queryKey: ['reaction-log', filters],
@@ -253,7 +267,10 @@ function ReactionLog() {
         setFilters((prev) => ({ ...prev, [key]: value }))
     }
 
-    const clearFilters = () => setFilters(EMPTY_FILTERS)
+    const clearFilters = () => {
+        setFilters(EMPTY_FILTERS)
+        setSearchParams({})
+    }
 
     return (
         <PageLayout
@@ -274,6 +291,28 @@ function ReactionLog() {
             )}
             {/* Filter bar */}
             <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+                <div className="space-y-2">
+                    <label htmlFor="person-search" className="text-sm font-medium">Search a person</label>
+                    <Input
+                        id="person-search"
+                        placeholder="Pickup name, Discord display name, or username"
+                        value={filters.search}
+                        onChange={(e) => {
+                            setFilters((prev) => ({ ...prev, search: e.target.value, person_id: '' }))
+                            setSearchParams({})
+                        }}
+                    />
+                    {filters.person_id && <p className="text-sm">Ride history for {personName || 'selected person'}</p>}
+                    <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={showingHistory}
+                            disabled={Boolean(filters.search.trim() || filters.person_id)}
+                            onChange={(e) => setFilter('remaining_only', e.target.checked)} />
+                        Only reactions still remaining
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                        Person searches show rides with remaining reactions across all recorded history by default.
+                    </p>
+                </div>
                 {/* Ride type buttons */}
                 <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
@@ -306,6 +345,10 @@ function ReactionLog() {
                         Quick Select
                     </p>
                     <div className="flex flex-wrap gap-2">
+                        <Button variant={!filters.date_from && !filters.date_to ? 'default' : 'outline'}
+                            size="sm" onClick={() => setFilters((prev) => ({ ...prev, date_from: '', date_to: '' }))}>
+                            All history
+                        </Button>
                         {WEEK_PRESETS.map((preset) => (
                             <Button
                                 key={preset.label}
@@ -402,6 +445,7 @@ function ReactionLog() {
 
             {!isLoading && !isError && data && (
                 <>
+                    {showingHistory && <p className="text-sm text-muted-foreground">{data.rides.length} {data.rides.length === 1 ? 'ride' : 'rides'} with remaining reactions</p>}
                     {data.rides.length === 0 ? (
                         <div className="text-center py-16 text-muted-foreground">
                             <p className="text-lg font-medium mb-1">No reactions found</p>

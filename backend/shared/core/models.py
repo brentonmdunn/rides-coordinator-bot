@@ -337,6 +337,7 @@ class RideReactionEvent(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message_id: Mapped[str] = mapped_column(index=True)
     discord_username: Mapped[str]
+    discord_user_id: Mapped[str | None] = mapped_column(index=True)
     display_name: Mapped[str | None]
     emoji: Mapped[str]
     action: Mapped[str]  # "add" or "remove"
