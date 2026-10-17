@@ -6,13 +6,14 @@ from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 import discord
+from sqlalchemy import select
 
 from ridebot.core import reaction_broadcaster
 from ridebot.repositories.ride_reaction_events_repository import RideReactionEventsRepository
-from ridebot.repositories.whois_repository import WhoisRepository
 from ridebot.utils.parsing import get_message_and_embed_content
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import ReactionAction
+from shared.core.models import Locations
 from shared.utils.datetimes import to_iso_utc
 
 logger = logging.getLogger(__name__)
@@ -100,7 +101,7 @@ class RideReactionLogService:
 
             occurred_at = datetime.datetime.now(datetime.UTC)
             async with AsyncSessionLocal() as session:
-                display_name = await WhoisRepository.get_display_name(session, discord_username)
+                display_name = user.display_name
                 logger.debug(
                     "record_ask_rides_reaction: display_name=%s, writing to DB", display_name
                 )
@@ -108,6 +109,7 @@ class RideReactionLogService:
                     session=session,
                     message_id=str(payload.message_id),
                     discord_username=discord_username,
+                    discord_user_id=str(user.id),
                     display_name=display_name,
                     emoji=str(payload.emoji),
                     action=action.value,
@@ -129,6 +131,7 @@ class RideReactionLogService:
                     "id": event_row.id,
                     "message_id": event_row.message_id,
                     "discord_username": event_row.discord_username,
+                    "discord_user_id": event_row.discord_user_id,
                     "display_name": event_row.display_name,
                     "emoji": event_row.emoji,
                     "action": event_row.action,
@@ -146,6 +149,9 @@ class RideReactionLogService:
         date_from: datetime.date | None = None,
         date_to: datetime.date | None = None,
         emoji: str | None = None,
+        search: str | None = None,
+        person_id: int | None = None,
+        remaining_only: bool = False,
     ) -> list[tuple[str, dict]]:
         """
         Fetch reaction events and return them grouped by message, newest rides first.
@@ -155,18 +161,86 @@ class RideReactionLogService:
             date_from: Include events on or after this ride_date.
             date_to: Include events on or before this ride_date.
             emoji: Filter to a specific emoji string.
+            search: Partial name or username, matched across each identity's history.
+            person_id: Exact pickup-info person, taking precedence over search.
+            remaining_only: Return only latest adds; implicit for person searches.
 
         Returns:
             Sorted list of (message_id, {"ride_type", "ride_date", "events": [row, ...]}).
         """
         async with AsyncSessionLocal() as session:
-            events = await RideReactionEventsRepository.get_events(
-                session,
-                ride_type=ride_type,
-                date_from=date_from,
-                date_to=date_to,
-                emoji=emoji,
-            )
+            events = await RideReactionEventsRepository.get_events(session)
+            people = list((await session.scalars(select(Locations))).all())
+
+        # Resolve identities before matching names or reducing the timeline. A name
+        # can match an older event while its latest event uses a newer username.
+        username_ids: dict[str, set[str]] = defaultdict(set)
+        for person in people:
+            if person.discord_username and person.discord_user_id:
+                username_ids[person.discord_username.casefold()].add(person.discord_user_id)
+        for event in events:
+            if event.discord_user_id:
+                username_ids[event.discord_username.casefold()].add(event.discord_user_id)
+
+        def identity(user_id: str | None, username: str | None) -> tuple[str, str]:
+            if user_id:
+                return ("id", user_id)
+            normalized = (username or "").casefold()
+            ids = username_ids.get(normalized, set())
+            if len(ids) == 1:
+                return ("id", next(iter(ids)))
+            return ("username", normalized)
+
+        term = (search or "").strip().casefold()
+        matched = set()
+        for person in people:
+            if (person_id is not None and person.id == person_id) or (
+                person_id is None
+                and term
+                and any(
+                    term in (value or "").casefold()
+                    for value in (person.name, person.discord_username)
+                )
+            ):
+                matched.add(identity(person.discord_user_id, person.discord_username))
+        if person_id is None and term:
+            for event in events:
+                if any(
+                    term in (value or "").casefold()
+                    for value in (
+                        event.discord_username,
+                        event.display_name,
+                    )
+                ):
+                    matched.add(identity(event.discord_user_id, event.discord_username))
+        if term or person_id is not None:
+            events = [
+                event
+                for event in events
+                if identity(event.discord_user_id, event.discord_username) in matched
+            ]
+
+        if remaining_only or term or person_id is not None:
+            latest = {}
+            # Repository ordering is timestamp descending, then ID descending.
+            for event in events:
+                key = (
+                    event.message_id,
+                    identity(event.discord_user_id, event.discord_username),
+                    event.emoji,
+                )
+                latest.setdefault(key, event)
+            events = [event for event in latest.values() if event.action == "add"]
+        # Filter after identity matching and state reduction so date filters
+        # cannot hide an alias or a later removal of the same reaction.
+        events = [
+            event
+            for event in events
+            if (not emoji or event.emoji == emoji)
+            and (not ride_type or event.ride_type == ride_type)
+            and (not date_from or (event.ride_date is not None and event.ride_date >= date_from))
+            and (not date_to or (event.ride_date is not None and event.ride_date <= date_to))
+        ]
 
         groups: dict[str, dict] = defaultdict(
             lambda: {"ride_type": None, "ride_date": None, "events": []}

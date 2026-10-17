@@ -23,6 +23,7 @@ class ReactionEventOut(BaseModel):
 
     id: int
     discord_username: str
+    discord_user_id: str | None = None
     display_name: str | None
     emoji: str
     action: str
@@ -73,6 +74,9 @@ async def get_reaction_log(
     date_from: datetime.date | None = None,
     date_to: datetime.date | None = None,
     emoji: str | None = None,
+    search: str | None = None,
+    person_id: int | None = None,
+    remaining_only: bool = False,
 ):
     """
     Return ride reaction events grouped by message, newest rides first.
@@ -82,6 +86,9 @@ async def get_reaction_log(
         date_from: ISO date — include events on or after this ride_date
         date_to: ISO date — include events on or before this ride_date
         emoji: filter to a specific emoji string
+        search: partial pickup name, Discord display name, or username
+        person_id: exact pickup-info person; takes precedence over search
+        remaining_only: show latest adds only; always enabled for person searches
     """
     try:
         sorted_groups = await RideReactionLogService.get_grouped_events(
@@ -89,6 +96,9 @@ async def get_reaction_log(
             date_from=date_from,
             date_to=date_to,
             emoji=emoji,
+            search=search,
+            person_id=person_id,
+            remaining_only=remaining_only,
         )
 
         rides = [
@@ -101,6 +111,7 @@ async def get_reaction_log(
                     ReactionEventOut(
                         id=event.id,
                         discord_username=event.discord_username,
+                        discord_user_id=event.discord_user_id,
                         display_name=event.display_name,
                         emoji=event.emoji,
                         action=event.action,

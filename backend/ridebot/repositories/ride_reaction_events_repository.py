@@ -25,12 +25,14 @@ class RideReactionEventsRepository:
         occurred_at: datetime.datetime,
         ride_date: datetime.date | None,
         ride_type: str | None,
+        discord_user_id: str | None = None,
     ) -> RideReactionEvent:
         """Insert a new ride reaction event row and return it with its generated id."""
         try:
             entry = RideReactionEvent(
                 message_id=message_id,
                 discord_username=discord_username,
+                discord_user_id=discord_user_id,
                 display_name=display_name,
                 emoji=emoji,
                 action=action,
@@ -64,7 +66,7 @@ class RideReactionEventsRepository:
                 stmt = stmt.where(RideReactionEvent.ride_date <= date_to)
             if emoji:
                 stmt = stmt.where(RideReactionEvent.emoji == emoji)
-            stmt = stmt.order_by(RideReactionEvent.occurred_at.desc())
+            stmt = stmt.order_by(RideReactionEvent.occurred_at.desc(), RideReactionEvent.id.desc())
             result = await session.execute(stmt)
             return list(result.scalars().all())
         except Exception:
