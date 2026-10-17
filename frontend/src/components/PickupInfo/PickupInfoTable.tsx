@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2, Users } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -274,7 +275,13 @@ export function PickupInfoTable({
                                     </td>
                                     <td className="px-3 py-2">
                                         <div className="flex items-center gap-1.5 font-medium text-foreground">
-                                            {person.name}
+                                            <Link
+                                                to={`/reaction-log?${new URLSearchParams({ person_id: String(person.id), name: person.name })}`}
+                                                className="hover:underline"
+                                                title={`View ride history for ${person.name}`}
+                                            >
+                                                {person.name}
+                                            </Link>
                                             {needsFix(person, options) && (
                                                 <span className="inline-flex items-center rounded-full border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning-text">
                                                     Needs fix

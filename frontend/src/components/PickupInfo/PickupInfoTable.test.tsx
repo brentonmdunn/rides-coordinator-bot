@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { PickupInfoOptions, PickupInfoPerson } from '../../types'
@@ -39,7 +40,7 @@ function renderTable(
     overrides: { onDeleteAll?: () => void } = {}
 ) {
     return render(
-        <PickupInfoTable
+        <MemoryRouter><PickupInfoTable
             people={people}
             options={opts}
             isLoading={false}
@@ -48,7 +49,7 @@ function renderTable(
             onBulkDelete={vi.fn()}
             onDeleteAll={overrides.onDeleteAll ?? vi.fn()}
             onAdd={vi.fn()}
-        />
+        /></MemoryRouter>
     )
 }
 
