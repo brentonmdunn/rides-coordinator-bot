@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 _UNAVAILABLE = "Sorry, this isn't available right now. Please DM a ride coordinator."
 _STALE = "This announcement is from a past week. Please react to or use the latest one."
 _COOLDOWN = "You just sent one. Please wait a minute before sending another."
-_SENT = "✅ Sent to the ride coordinators. Someone will reach out soon."
+_SENT = "✅ Sent to the ride coordinators."
 _FAILED = "Sorry, that didn't go through. Please DM a ride coordinator."
 
 

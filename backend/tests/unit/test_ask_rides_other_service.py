@@ -14,6 +14,9 @@ from shared.core.enums import AskRidesMessageType
 
 FIND_MEMBER = "ridebot.services.ask_rides_other_service.PickupInfoService.find_member"
 SEND_ERROR = "ridebot.services.ask_rides_other_service.send_error_to_discord"
+RIDER_CHANNEL = (
+    "ridebot.services.ask_rides_other_service.RideRequestService.get_or_create_rider_channel"
+)
 
 
 def _la(*args) -> datetime:
@@ -128,7 +131,7 @@ class TestBuildCoordinatorMessage:
 
 
 def _make_user(user_id=42, username="bob"):
-    user = MagicMock()
+    user = MagicMock(spec=discord.Member)
     user.id = user_id
     user.name = username
     return user
@@ -150,7 +153,76 @@ def _make_client(channel=None):
     return client
 
 
+@pytest.fixture(autouse=True)
+def rider_channel_lookup():
+    """Keep submission tests independent of Discord channel creation."""
+    channel = MagicMock(spec=discord.TextChannel)
+    channel.send = AsyncMock()
+    with patch(RIDER_CHANNEL, new=AsyncMock(return_value=channel)) as lookup:
+        yield lookup
+
+
 class TestSubmit:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("message_type", list(AskRidesMessageType))
+    async def test_posts_confirmation_with_request_and_announcement(
+        self, rider_channel_lookup, message_type
+    ):
+        coordinator_channel = MagicMock(spec=discord.TextChannel)
+        coordinator_channel.send = AsyncMock()
+        user = _make_user()
+        announcement = _make_announcement()
+        with patch(FIND_MEMBER, new=AsyncMock(return_value=None)):
+            result = await AskRidesOtherService.submit(
+                client=_make_client(coordinator_channel),
+                user=user,
+                message_type=message_type,
+                announcement=announcement,
+                text="First line\n\nSecond line @everyone",
+            )
+
+        assert result is True
+        rider_channel_lookup.assert_awaited_once_with(user, announcement.guild)
+        rider_channel_lookup.return_value.send.assert_awaited_once()
+        args, kwargs = rider_channel_lookup.return_value.send.call_args
+        assert args[0] == (
+            "✅ Your request was sent to the ride coordinators.\n"
+            "**Custom Title** · [Jump to message](https://discord.com/channels/1/2/3)\n"
+            "> First line\n>\n> Second line @everyone"
+        )
+        mentions = kwargs["allowed_mentions"]
+        assert mentions.everyone is False
+        assert mentions.users is False
+        assert mentions.roles is False
+        assert mentions.replied_user is False
+        assert kwargs["suppress_embeds"] is True
+        assert "view" not in kwargs
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure", ["lookup", "send", "unavailable"])
+    async def test_confirmation_failure_preserves_success(self, rider_channel_lookup, failure):
+        channel = MagicMock(spec=discord.TextChannel)
+        channel.send = AsyncMock()
+        if failure == "lookup":
+            rider_channel_lookup.side_effect = RuntimeError("Cannot create channel")
+        elif failure == "send":
+            rider_channel_lookup.return_value.send.side_effect = RuntimeError("Cannot send")
+        else:
+            rider_channel_lookup.return_value = None
+
+        with patch(FIND_MEMBER, new=AsyncMock(return_value=None)):
+            result = await AskRidesOtherService.submit(
+                client=_make_client(channel),
+                user=_make_user(),
+                message_type=AskRidesMessageType.SUNDAY_SERVICE,
+                announcement=_make_announcement(),
+                text="I need a ride",
+            )
+
+        assert result is True
+        assert AskRidesOtherService.is_on_cooldown(42) is True
+        channel.send.assert_awaited_once()
+
     @pytest.mark.asyncio
     async def test_success_uses_no_mentions_and_records_cooldown(self):
         channel = MagicMock(spec=discord.TextChannel)
@@ -179,7 +251,7 @@ class TestSubmit:
         assert AskRidesOtherService.is_on_cooldown(user.id) is True
 
     @pytest.mark.asyncio
-    async def test_missing_channel_returns_false(self):
+    async def test_missing_channel_returns_false(self, rider_channel_lookup):
         client = _make_client(None)
         user = _make_user()
         announcement = _make_announcement()
@@ -197,11 +269,12 @@ class TestSubmit:
             )
 
         assert result is False
+        rider_channel_lookup.assert_not_awaited()
         send_error.assert_awaited_once()
         assert AskRidesOtherService.is_on_cooldown(user.id) is False
 
     @pytest.mark.asyncio
-    async def test_send_exception_returns_false(self):
+    async def test_send_exception_returns_false(self, rider_channel_lookup):
         channel = MagicMock(spec=discord.TextChannel)
         channel.send = AsyncMock(side_effect=RuntimeError("boom"))
         client = _make_client(channel)
@@ -221,6 +294,7 @@ class TestSubmit:
             )
 
         assert result is False
+        rider_channel_lookup.assert_not_awaited()
         send_error.assert_awaited_once()
         assert AskRidesOtherService.is_on_cooldown(user.id) is False
 
