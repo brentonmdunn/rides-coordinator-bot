@@ -78,6 +78,7 @@ BOT_REGISTRY: tuple[BotSpec, ...] = (
 # (e.g. locally, when only some <BOT>_TOKENs are set).
 SINGLE_BOT_EXTENSIONS: dict[str, tuple[BotName, ...]] = {
     "shared.single_bot_cogs.feature_flags": (BotName.RIDEBOT, BotName.STONESBOT),
+    "shared.single_bot_cogs.invite_tracking": (BotName.STONESBOT,),
 }
 
 
