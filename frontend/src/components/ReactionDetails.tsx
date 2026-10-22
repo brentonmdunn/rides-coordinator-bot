@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Sparkles, Church, BookOpen, ClipboardList, ChevronDown } from 'lucide-react'
 import type React from 'react'
@@ -13,6 +14,7 @@ import { ListSkeleton } from './LoadingSkeleton'
 import type { AskRidesReactionsData } from '../types'
 import { CopyPill } from './CopyPill'
 import { RefreshIconButton, SectionCard } from './shared'
+import RideEventFreshness from './RideEventFreshness'
 
 
 type MessageType = 'friday' | 'sunday' | 'sunday_class'
@@ -84,6 +86,7 @@ function ReactionDetails() {
             }
         },
         staleTime: QUERY_STALE_1_MIN,
+        refetchInterval: 60_000,
     })
 
     const error = queryError ? (queryError instanceof Error ? queryError.message : 'Unknown error') : ''
@@ -137,6 +140,8 @@ function ReactionDetails() {
                 </>
             }
         >
+            <RideEventFreshness freshness={data?.freshness} />
+            {Boolean(data?.needs_review) && <p className="mb-3 text-sm text-warning-text"><Link className="underline" to={`/ride-events?event=${data?.event_id}`}>Review {data?.needs_review} ride requests</Link></p>}
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}

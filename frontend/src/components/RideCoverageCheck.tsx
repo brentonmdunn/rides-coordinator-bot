@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import RideEventFreshness from './RideEventFreshness'
 import type React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
@@ -60,6 +61,7 @@ function RideDay({ rideType, title, icon }: RideDayProps) {
 
     return (
         <div className="border border-border rounded-lg overflow-hidden">
+            <RideEventFreshness freshness={coverage.freshness} />
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full px-4 py-3 flex items-center justify-between bg-muted hover:bg-muted/70 transition-colors"
@@ -230,7 +232,7 @@ function RideCoverageCheck() {
                     <div className="mb-4 p-3 bg-success/10 text-success-text rounded-md text-sm flex items-center gap-2">
                         <Check className="h-4 w-4" />
                         <span>
-                            Sync completed: {syncMutation.data?.entries_added || 0} added, {syncMutation.data?.entries_removed || 0} removed
+                            Source reactions refreshed. Confirm assignments in Ride Events.
                         </span>
                     </div>
                 )}
@@ -246,7 +248,7 @@ function RideCoverageCheck() {
                     title="About Ride Coverage"
                 >
                     <p className="mb-2">
-                        This dashboard tracks which users who reacted to ride posts have been assigned to a driver.
+                        This dashboard shows confirmed pickup assignments saved in Ride Events. Refreshing reactions does not confirm a grouping proposal.
                     </p>
                     <ul className="space-y-1 mb-3">
                         <li className="flex items-center gap-2">
