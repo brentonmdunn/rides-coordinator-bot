@@ -48,6 +48,7 @@ def importer(monkeypatch):
         event_date=date(2026, 10, 25),
         emoji=["🍔", "🏠"],
         apply=False,
+        kind="rider",
     )
     return args, message, ensure, bind, apply
 
@@ -68,7 +69,7 @@ async def test_complete_import_uses_explicit_date_and_excludes_bots(importer):
     await reconcile_ride_event.reconcile(args)
     assert ensure.call_args.kwargs["event_date"] == date(2026, 10, 25)
     bind.assert_awaited_once_with(
-        event_id=10, channel_id="789", message_id="456", signup_emojis=["🍔", "🏠"]
+        event_id=10, channel_id="789", message_id="456", signup_emojis=["🍔", "🏠"], kind="rider"
     )
     choices = apply.call_args.kwargs["choices"]
     assert [(choice.discord_user_id, choice.emoji) for choice in choices] == [("1", "🍔")]

@@ -80,6 +80,7 @@ async def reconcile(args: argparse.Namespace) -> None:
             channel_id=str(channel.id),
             message_id=str(message.id),
             signup_emojis=args.emoji,
+            kind=args.kind,
         )
         await RideEventsService.reconcile(
             message_id=str(message.id), choices=choices, observed_at=observed_at
@@ -101,6 +102,7 @@ def main() -> None:
     )
     parser.add_argument("--event-date", type=date.fromisoformat, required=True)
     parser.add_argument("--emoji", action="append", required=True)
+    parser.add_argument("--kind", choices=["rider", "driver"], default="rider")
     parser.add_argument("--apply", action="store_true")
     asyncio.run(reconcile(parser.parse_args()))
 
