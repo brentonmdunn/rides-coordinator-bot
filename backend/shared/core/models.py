@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint, func
+from sqlalchemy import JSON, CheckConstraint, ForeignKey, UniqueConstraint, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -344,3 +344,71 @@ class RideReactionEvent(Base):
     occurred_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
     ride_date: Mapped[date | None]
     ride_type: Mapped[str | None]  # "friday", "sunday", "sunday_class", "wednesday"
+
+
+class RideEvent(Base):
+    """A dated ride event, independent of the messages announcing it."""
+
+    __tablename__ = "ride_events"
+    __table_args__ = (UniqueConstraint("guild_id", "message_type", "event_date"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    guild_id: Mapped[str]
+    message_type: Mapped[str]
+    event_date: Mapped[date]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class RideAnnouncement(Base):
+    """A Discord projection of an event and its last complete reaction snapshot."""
+
+    __tablename__ = "ride_announcements"
+
+    message_id: Mapped[str] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("ride_events.id"), index=True)
+    channel_id: Mapped[str]
+    signup_emojis: Mapped[list[str]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_reconciled_at: Mapped[datetime | None]
+    kind: Mapped[str] = mapped_column(default="rider", server_default="rider")
+    state_changed_at: Mapped[datetime | None]
+    deleted_at: Mapped[datetime | None]
+    last_checked_at: Mapped[datetime | None]
+    sync_error: Mapped[str | None]
+
+
+class RideSignup(Base):
+    """Current reaction choice; multiple emojis/messages can belong to one rider."""
+
+    __tablename__ = "ride_signups"
+
+    message_id: Mapped[str] = mapped_column(
+        ForeignKey("ride_announcements.message_id"), primary_key=True
+    )
+    discord_user_id: Mapped[str] = mapped_column(primary_key=True)
+    emoji: Mapped[str] = mapped_column(primary_key=True)
+    discord_username: Mapped[str]
+    display_name: Mapped[str]
+    active: Mapped[bool]
+    updated_at: Mapped[datetime]
+
+
+class RideRequest(Base):
+    """An event participant, shared by reactions, custom requests, and manual riders."""
+
+    __tablename__ = "ride_requests"
+    __table_args__ = (UniqueConstraint("event_id", "identity_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("ride_events.id"), index=True)
+    identity_key: Mapped[str]
+    source: Mapped[str]
+    discord_user_id: Mapped[str | None]
+    name: Mapped[str]
+    location: Mapped[str | None]
+    details: Mapped[str | None]
+    active: Mapped[bool] = mapped_column(default=True)
+    pickup: Mapped[bool] = mapped_column(default=True)
+    return_preference: Mapped[str] = mapped_column(default="unknown")
+    needs_review: Mapped[bool] = mapped_column(default=False)
+    updated_at: Mapped[datetime]
