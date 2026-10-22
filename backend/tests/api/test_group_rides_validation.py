@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.routes.group_rides import router as group_rides_router
@@ -16,26 +16,22 @@ def _build_client() -> TestClient:
     return TestClient(app)
 
 
-def test_group_rides_returns_503_when_bot_missing():
-    """Without an initialized bot the endpoint should return 503."""
+def test_group_rides_works_without_a_bot():
+    """Saved event requests can be grouped without a connected Discord client."""
     client = _build_client()
-
-    with patch("api.routes.group_rides.require_bot") as require_bot:
-        require_bot.side_effect = HTTPException(status_code=503, detail="Bot not initialized")
-        resp = client.post("/api/group-rides", json={"ride_type": "friday"})
-
-    assert resp.status_code == 503
-    assert resp.json()["detail"] == "Bot not initialized"
+    service = MagicMock()
+    service.group_rides_api = AsyncMock(return_value={"summary": "saved event", "groupings": []})
+    with patch("api.routes.group_rides.GroupRidesService", return_value=service) as constructor:
+        response = client.post("/api/group-rides", json={"ride_type": "friday"})
+    assert response.status_code == 200
+    constructor.assert_called_once_with(None)
 
 
 def test_group_rides_rejects_invalid_ride_type():
     """Invalid ride_type values should yield 400 before reaching the LLM."""
     client = _build_client()
-    fake_bot = MagicMock()
-    fake_bot.is_ready.return_value = True
 
-    with patch("api.routes.group_rides.require_bot", return_value=fake_bot):
-        resp = client.post("/api/group-rides", json={"ride_type": "bogus"})
+    resp = client.post("/api/group-rides", json={"ride_type": "bogus"})
 
     assert resp.status_code == 400
     assert "ride_type" in resp.json()["detail"]
@@ -44,11 +40,8 @@ def test_group_rides_rejects_invalid_ride_type():
 def test_group_rides_requires_message_id_when_ride_type_message_id():
     """ride_type=message_id without a message_id payload should 400."""
     client = _build_client()
-    fake_bot = MagicMock()
-    fake_bot.is_ready.return_value = True
 
-    with patch("api.routes.group_rides.require_bot", return_value=fake_bot):
-        resp = client.post("/api/group-rides", json={"ride_type": "message_id"})
+    resp = client.post("/api/group-rides", json={"ride_type": "message_id"})
 
     assert resp.status_code == 400
     assert "message_id" in resp.json()["detail"]
@@ -62,7 +55,6 @@ def test_group_rides_requires_message_id_when_ride_type_message_id():
 def test_group_rides_success_returns_groupings():
     """A fully mocked happy path should return 200 with success=True."""
     client = _build_client()
-    fake_bot = MagicMock()
 
     fake_service = MagicMock()
     fake_service.group_rides_api = AsyncMock(
@@ -70,7 +62,6 @@ def test_group_rides_success_returns_groupings():
     )
 
     with (
-        patch("api.routes.group_rides.require_bot", return_value=fake_bot),
         patch("api.routes.group_rides.GroupRidesService", return_value=fake_service),
     ):
         resp = client.post(
@@ -88,13 +79,11 @@ def test_group_rides_success_returns_groupings():
 def test_group_rides_success_with_explicit_message_id():
     """ride_type=message_id with a valid message_id should call the service correctly."""
     client = _build_client()
-    fake_bot = MagicMock()
 
     fake_service = MagicMock()
     fake_service.group_rides_api = AsyncMock(return_value={"summary": "summary", "groupings": []})
 
     with (
-        patch("api.routes.group_rides.require_bot", return_value=fake_bot),
         patch("api.routes.group_rides.GroupRidesService", return_value=fake_service),
     ):
         resp = client.post(
@@ -113,13 +102,11 @@ def test_group_rides_success_with_explicit_message_id():
 def test_group_rides_service_value_error_returns_400():
     """When the service raises ValueError the endpoint should return 400."""
     client = _build_client()
-    fake_bot = MagicMock()
 
     fake_service = MagicMock()
     fake_service.group_rides_api = AsyncMock(side_effect=ValueError("Insufficient capacity"))
 
     with (
-        patch("api.routes.group_rides.require_bot", return_value=fake_bot),
         patch("api.routes.group_rides.GroupRidesService", return_value=fake_service),
     ):
         resp = client.post(
@@ -134,13 +121,11 @@ def test_group_rides_service_value_error_returns_400():
 def test_group_rides_unexpected_exception_returns_500():
     """When the service raises an unexpected exception the endpoint should return 500."""
     client = _build_client()
-    fake_bot = MagicMock()
 
     fake_service = MagicMock()
     fake_service.group_rides_api = AsyncMock(side_effect=RuntimeError("db exploded"))
 
     with (
-        patch("api.routes.group_rides.require_bot", return_value=fake_bot),
         patch("api.routes.group_rides.GroupRidesService", return_value=fake_service),
     ):
         resp = client.post(
@@ -155,13 +140,11 @@ def test_group_rides_unexpected_exception_returns_500():
 def test_group_rides_sunday_ride_type_accepted():
     """sunday ride_type should be passed through to service as day='sunday'."""
     client = _build_client()
-    fake_bot = MagicMock()
 
     fake_service = MagicMock()
     fake_service.group_rides_api = AsyncMock(return_value={"summary": "ok", "groupings": []})
 
     with (
-        patch("api.routes.group_rides.require_bot", return_value=fake_bot),
         patch("api.routes.group_rides.GroupRidesService", return_value=fake_service),
     ):
         resp = client.post("/api/group-rides", json={"ride_type": "sunday"})

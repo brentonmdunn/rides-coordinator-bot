@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -42,15 +41,11 @@ def test_group_rides_rate_limit_returns_429():
     """The endpoint is capped at 10 requests per minute per client IP."""
     app = _build_app()
     client = TestClient(app)
-    fake_bot = MagicMock()
-    fake_bot.is_ready.return_value = True
 
-    with patch("api.routes.group_rides.require_bot", return_value=fake_bot):
-        # 10 invalid-but-fast calls inside the limit, all return 400.
-        for _ in range(10):
-            resp = client.post("/api/group-rides", json={"ride_type": "bogus"})
-            assert resp.status_code == 400
-        # The 11th call within the same minute trips the limiter.
+    # 10 invalid-but-fast calls inside the limit, all return 400.
+    for _ in range(10):
         resp = client.post("/api/group-rides", json={"ride_type": "bogus"})
-
+        assert resp.status_code == 400
+    # The 11th call within the same minute trips the limiter.
+    resp = client.post("/api/group-rides", json={"ride_type": "bogus"})
     assert resp.status_code == 429
