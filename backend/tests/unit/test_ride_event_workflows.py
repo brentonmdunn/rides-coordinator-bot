@@ -2,16 +2,18 @@
 
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import discord
+import httpx
 import pytest
 
 from ridebot.services import ride_events_service as module
+from ridebot.services.ride_event_sync_service import RideEventSyncService, legacy_event_date
 from ridebot.services.ride_events_service import RideEventsService
 from shared.core.enums import AskRidesMessageType
 from shared.core.models import Locations
-from tests.unit.test_ride_events import OBSERVED, choice, record, register
+from tests.unit.test_ride_events import OBSERVED, api_app, choice, record, register
 
 
 @pytest.fixture(name="store")
@@ -114,6 +116,75 @@ async def test_pickups_join_ids_and_exclude_class_only_on_outbound_leg(store):
 
 
 @pytest.mark.asyncio
+async def test_failed_snapshot_retains_choices_and_exposes_error(store):
+    ride = await register()
+    await record()
+    channel = Mock(spec=discord.TextChannel)
+    channel.fetch_message = AsyncMock(side_effect=OSError("offline"))
+    bot = Mock()
+    bot.get_channel.return_value = channel
+    announcement = (await RideEventsService.get_event(ride.id))[1][0]
+    assert not await RideEventSyncService(bot).reconcile_announcement(announcement)
+    workflow = await RideEventsService.workflow(ride.id)
+    assert len(workflow[1]) == 1
+    assert workflow[-1]["is_stale"]
+    assert workflow[-1]["errors"]
+
+
+@pytest.mark.asyncio
+async def test_snapshot_filters_bots_and_incomplete_iterator_never_clears(store):
+    ride = await register()
+    await record()
+
+    async def users():
+        yield SimpleNamespace(id=2, name="human", display_name="Human", bot=False)
+        yield SimpleNamespace(id=3, name="bot", display_name="Bot", bot=True)
+
+    channel = Mock(spec=discord.TextChannel)
+    reaction = SimpleNamespace(emoji="🍔", users=users)
+    channel.fetch_message = AsyncMock(return_value=SimpleNamespace(reactions=[reaction]))
+    bot = Mock()
+    bot.get_channel.return_value = channel
+    announcement = (await RideEventsService.get_event(ride.id))[1][0]
+    adapter = RideEventSyncService(bot)
+    assert await adapter.reconcile_announcement(announcement)
+    assert [r.discord_user_id for r in (await RideEventsService.workflow(ride.id))[1]] == ["2"]
+
+    async def broken():
+        yield SimpleNamespace(id=4, name="partial", display_name="Partial", bot=False)
+        raise OSError("Incomplete response")
+
+    reaction.users = broken
+    assert not await adapter.reconcile_announcement(announcement)
+    assert [r.discord_user_id for r in (await RideEventsService.workflow(ride.id))[1]] == ["2"]
+
+
+def test_legacy_dates_are_explicit_unambiguous_and_year_safe():
+    created = datetime(2026, 12, 30, 19, tzinfo=UTC)
+    assert legacy_event_date("Sunday 1/3", created, 6) == date(2027, 1, 3)
+    assert legacy_event_date("Sunday rides", created, 6) is None
+    assert legacy_event_date("1/3 or 1/10", created, 6) is None
+    assert legacy_event_date("2/30", created, 6) is None
+
+
+@pytest.mark.asyncio
+async def test_event_api_does_not_expose_deferred_coordination_features(store):
+    ride = await register()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=api_app()), base_url="http://test"
+    ) as client:
+        for path, method in [
+            ("requests", client.post),
+            ("driver-offers/99", client.put),
+            ("assignments", client.put),
+        ]:
+            assert (await method(f"/api/ride-events/{ride.id}/{path}", json={})).status_code == 404
+        detail = (await client.get(f"/api/ride-events/{ride.id}")).json()
+        assert "assignments" not in detail
+        assert "driver_offers" not in detail
+
+
+@pytest.mark.asyncio
 async def test_missing_member_cache_still_persists_add_and_remove(store):
     from ridebot.cogs.reactions import Reactions
 
@@ -129,6 +200,51 @@ async def test_missing_member_cache_still_persists_add_and_remove(store):
     assert (await RideEventsService.workflow(ride.id))[1][0].discord_user_id == "1"
     await cog._handle_reaction_remove(payload)
     assert (await RideEventsService.workflow(ride.id))[1] == []
+
+
+@pytest.mark.asyncio
+async def test_reconnect_failure_is_retried_and_overlapping_triggers_are_coalesced():
+    import asyncio
+
+    from ridebot.cogs.ride_event_sync import RideEventSync
+
+    bot = Mock()
+    bot.is_ready.return_value = True
+    cog = RideEventSync(bot)
+    cog.reconcile.is_running = Mock(return_value=True)
+    cog.service = Mock()
+    cog.service.run = AsyncMock(return_value=False)
+    await cog.run_sync()
+    assert cog.needs_discovery
+    started, release = asyncio.Event(), asyncio.Event()
+
+    async def run(**kwargs):
+        started.set()
+        await release.wait()
+        return True
+
+    cog.service.run = AsyncMock(side_effect=run)
+    first = asyncio.create_task(cog.on_ready())
+    await started.wait()
+    await cog.on_resumed()
+    release.set()
+    await first
+    assert cog.service.run.await_count == 1
+    assert not cog.needs_discovery
+
+
+@pytest.mark.asyncio
+async def test_sync_cog_does_not_start_tasks_before_discord_client_initialization():
+    from discord.ext import commands
+
+    from ridebot.cogs.ride_event_sync import RideEventSync
+
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
+    cog = RideEventSync(bot)
+    await cog.cog_load()
+    assert not cog.reconcile.is_running()
+    cog.cog_unload()
+    await bot.close()
 
 
 @pytest.mark.asyncio
