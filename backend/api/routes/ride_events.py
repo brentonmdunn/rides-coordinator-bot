@@ -3,7 +3,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.auth import require_ride_coordinator
 from ridebot.services.ride_events_service import RideEventsService
@@ -33,6 +33,9 @@ class AnnouncementOut(BaseModel):
     channel_id: str
     signup_emojis: list[str]
     last_reconciled_at: str | None
+    kind: str = "rider"
+    deleted_at: str | None = None
+    sync_error: str | None = None
 
 
 class ChoiceOut(BaseModel):
@@ -60,6 +63,7 @@ class RideEventDetailOut(RideEventOut):
 
     announcements: list[AnnouncementOut]
     signups: list[SignupOut]
+    freshness: dict = Field(default_factory=dict)
 
 
 @router.get("", response_model=list[RideEventOut])
@@ -92,6 +96,9 @@ async def get_event(event_id: int = Path(gt=0)):
     if result is None:
         raise HTTPException(status_code=404, detail="Ride event not found")
     event, announcements, rows = result
+    workflow = await RideEventsService.workflow(event.id)
+    assert workflow is not None
+    _, _, _, state = workflow
     riders: dict[str, SignupOut] = {}
     latest_observation = {}
     for choice, person in rows:
@@ -131,8 +138,40 @@ async def get_event(event_id: int = Path(gt=0)):
                 channel_id=item.channel_id,
                 signup_emojis=item.signup_emojis,
                 last_reconciled_at=to_iso_utc(item.last_reconciled_at),
+                kind=item.kind,
+                deleted_at=to_iso_utc(item.deleted_at),
+                sync_error=item.sync_error,
             )
             for item in announcements
         ],
         signups=list(riders.values()),
+        freshness=state,
     )
+
+
+@router.get("/current/{day}", response_model=RideEventDetailOut)
+async def current_event(day: str):
+    """Resolve legacy day tabs to an explicit event ID."""
+    try:
+        event = await RideEventsService.resolve_event(day=day)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if event is None:
+        raise HTTPException(status_code=404, detail="Ride event not found")
+    return await get_event(event.id)
+
+
+@router.post("/{event_id}/reconcile", response_model=RideEventDetailOut)
+async def reconcile_event(event_id: int):
+    """Refresh only this event's saved sources without sending Discord messages."""
+    from api.dependencies import require_ready_bot
+    from ridebot.services.ride_event_sync_service import RideEventSyncService
+
+    detail = await RideEventsService.get_event(event_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Ride event not found")
+    adapter = RideEventSyncService(require_ready_bot())
+    for announcement in detail[1]:
+        if announcement.deleted_at is None:
+            await adapter.reconcile_announcement(announcement)
+    return await get_event(event_id)
