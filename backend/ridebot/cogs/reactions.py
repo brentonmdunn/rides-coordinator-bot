@@ -1,6 +1,7 @@
 """Cog for handling reactions."""
 
 import logging
+from datetime import UTC, datetime
 
 import discord
 from discord.ext import commands
@@ -9,6 +10,7 @@ from ridebot.cogs.locations import Locations
 from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
 from ridebot.services.pickup_info_service import PickupInfoService
 from ridebot.services.reaction_logging_service import ReactionLoggingService
+from ridebot.services.ride_events_service import ReactionChoice, RideEventsService
 from ridebot.services.ride_reaction_log_service import RideReactionLogService
 from ridebot.services.ride_request_service import RideRequestService
 from ridebot.utils.parsing import get_message_and_embed_content
@@ -96,6 +98,7 @@ class Reactions(commands.Cog):
 
     async def _handle_reaction_add(self, payload: discord.RawReactionActionEvent):
         """Inner handler for reaction add, runs under a transaction ID."""
+        observed_at = datetime.now(UTC)
         logger.debug(
             "_handle_reaction_add: guild_id=%s channel_id=%s message_id=%s user_id=%s emoji=%s",
             payload.guild_id,
@@ -125,9 +128,6 @@ class Reactions(commands.Cog):
             )
             return  # Ensure it's a text channel
 
-        message = await self._resolve_message(payload, channel)
-        if message is None:
-            return
         user = guild.get_member(payload.user_id)
         logger.debug(
             "_handle_reaction_add: user=%s bot=%s",
@@ -141,6 +141,12 @@ class Reactions(commands.Cog):
 
         if not user:
             logger.debug("_handle_reaction_add: user not found in guild cache, skipping")
+            return
+
+        await self._record_signup(user, payload, active=True, observed_at=observed_at)
+
+        message = await self._resolve_message(payload, channel)
+        if message is None:
             return
 
         try:
@@ -191,6 +197,7 @@ class Reactions(commands.Cog):
 
     async def _handle_reaction_remove(self, payload: discord.RawReactionActionEvent):
         """Inner handler for reaction remove, runs under a transaction ID."""
+        observed_at = datetime.now(UTC)
         logger.debug(
             "_handle_reaction_remove: guild_id=%s channel_id=%s message_id=%s user_id=%s emoji=%s",
             payload.guild_id,
@@ -220,9 +227,6 @@ class Reactions(commands.Cog):
             )
             return
 
-        message = await self._resolve_message(payload, channel)
-        if message is None:
-            return
         user = guild.get_member(payload.user_id)
         logger.debug(
             "_handle_reaction_remove: user=%s bot=%s",
@@ -236,6 +240,12 @@ class Reactions(commands.Cog):
 
         if not user:
             logger.debug("_handle_reaction_remove: user not found in guild cache, skipping")
+            return
+
+        await self._record_signup(user, payload, active=False, observed_at=observed_at)
+
+        message = await self._resolve_message(payload, channel)
+        if message is None:
             return
 
         try:
@@ -257,6 +267,34 @@ class Reactions(commands.Cog):
             await self._record_ask_rides_reaction(user, payload, message, ReactionAction.REMOVE)
         except Exception:
             logger.exception("_handle_reaction_remove: error in _record_ask_rides_reaction")
+
+    async def _record_signup(
+        self,
+        user: discord.Member,
+        payload: discord.RawReactionActionEvent,
+        *,
+        active: bool,
+        observed_at: datetime,
+    ) -> None:
+        """Persist mapped signups before attempting any Discord message fetch."""
+        try:
+            await RideEventsService.record_reaction(
+                message_id=str(payload.message_id),
+                choice=ReactionChoice(
+                    discord_user_id=str(payload.user_id),
+                    discord_username=user.name,
+                    display_name=user.display_name,
+                    emoji=str(payload.emoji),
+                ),
+                active=active,
+                observed_at=observed_at,
+            )
+        except Exception:
+            logger.exception("Failed to persist signup for message %s", payload.message_id)
+            await send_error_to_discord(
+                f"Could not persist signup for message `{payload.message_id}`; "
+                "reconcile the announcement to restore its current reaction state."
+            )
 
     async def _resolve_message(
         self,
