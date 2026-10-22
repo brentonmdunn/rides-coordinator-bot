@@ -1,5 +1,4 @@
-"""
-Add database-owned ride events, announcement mappings, and current signups.
+"""Add database-owned ride events, announcement mappings, and current signups.
 
 Revision ID: d1e2f3a4b506
 Revises: c8d2e4f6a901

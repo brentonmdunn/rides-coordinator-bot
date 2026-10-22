@@ -9,10 +9,11 @@ import discord
 from sqlalchemy import select
 
 from ridebot.core import reaction_broadcaster
+from ridebot.repositories.ride_events_repository import RideEventsRepository
 from ridebot.repositories.ride_reaction_events_repository import RideReactionEventsRepository
 from ridebot.utils.parsing import get_message_and_embed_content
 from shared.core.database import AsyncSessionLocal
-from shared.core.enums import ReactionAction
+from shared.core.enums import AskRidesMessageType, ReactionAction
 from shared.core.models import Locations
 from shared.utils.datetimes import to_iso_utc
 
@@ -101,6 +102,17 @@ class RideReactionLogService:
 
             occurred_at = datetime.datetime.now(datetime.UTC)
             async with AsyncSessionLocal() as session:
+                registered_event = await RideEventsRepository.event_for_message(
+                    session, str(payload.message_id)
+                )
+                if registered_event is not None:
+                    ride_date = registered_event.event_date
+                    ride_type = {
+                        AskRidesMessageType.FRIDAY_FELLOWSHIP: "friday",
+                        AskRidesMessageType.WEDNESDAY_FELLOWSHIP: "wednesday",
+                        AskRidesMessageType.SUNDAY_SERVICE: "sunday",
+                        AskRidesMessageType.SUNDAY_CLASS: "sunday_class",
+                    }[AskRidesMessageType(registered_event.message_type)]
                 display_name = user.display_name
                 logger.debug(
                     "record_ask_rides_reaction: display_name=%s, writing to DB", display_name

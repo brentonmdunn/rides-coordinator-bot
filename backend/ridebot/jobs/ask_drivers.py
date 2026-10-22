@@ -7,8 +7,11 @@ from ridebot.repositories.message_schedule_repository import MessageScheduleRepo
 from ridebot.services.ask_rides_schedule_service import AskRidesScheduleService
 from ridebot.services.driver_service import DriverService
 from ridebot.services.fellowship_season_service import FellowshipSeasonService
+from ridebot.services.ride_events_service import RideEventsService
+from ridebot.utils.time_helpers import get_next_date_obj
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import (
+    AskRidesMessageType,
     ChannelIds,
     DaysOfWeek,
     FeatureFlagNames,
@@ -24,7 +27,12 @@ logger = logging.getLogger(__name__)
 
 
 async def _ask_drivers_template(
-    bot: Bot, message: str, emojis: list[str], channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO
+    bot: Bot,
+    message: str,
+    emojis: list[str],
+    channel_id=ChannelIds.SERVING__DRIVER_CHAT_WOOOOO,
+    *,
+    message_type: AskRidesMessageType | None = None,
 ) -> discord.Message | None:
     channel_id = resolve_channel_id(channel_id)
     raw_channel = bot.get_channel(channel_id)
@@ -33,10 +41,35 @@ async def _ask_drivers_template(
         return None
     channel: discord.TextChannel = raw_channel
 
+    event = None
+    if message_type is not None:
+        day = (
+            DaysOfWeek.SUNDAY
+            if message_type == AskRidesMessageType.SUNDAY_SERVICE
+            else (
+                DaysOfWeek.WEDNESDAY
+                if message_type == AskRidesMessageType.WEDNESDAY_FELLOWSHIP
+                else DaysOfWeek.FRIDAY
+            )
+        )
+        event = await RideEventsService.ensure_event(
+            guild_id=str(channel.guild.id),
+            message_type=message_type,
+            event_date=get_next_date_obj(day),
+        )
+
     try:
         sent_message = await channel.send(
             message, allowed_mentions=discord.AllowedMentions(roles=True)
         )
+        if event is not None:
+            await RideEventsService.bind_announcement(
+                event_id=event.id,
+                channel_id=str(channel_id),
+                message_id=str(sent_message.id),
+                signup_emojis=emojis,
+                kind="driver",
+            )
         for emoji in emojis:
             await sent_message.add_reaction(emoji)
         return sent_message
@@ -74,7 +107,9 @@ async def run_ask_drivers_fri(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     driver_service = DriverService()
     emojis = driver_service.get_emojis(DaysOfWeek.FRIDAY)
     message = driver_service.format_message("Friday felly")
-    await _ask_drivers_template(bot, message, emojis, channel_id)
+    await _ask_drivers_template(
+        bot, message, emojis, channel_id, message_type=AskRidesMessageType.FRIDAY_FELLOWSHIP
+    )
 
 
 @log_job
@@ -96,14 +131,16 @@ async def run_ask_drivers_sun(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
 
     from ridebot.jobs.ask_rides import _should_send_ask_rides_sun
 
-    if not _should_send_ask_rides_sun():
+    if not await _should_send_ask_rides_sun():
         logger.info("Blocking run_ask_drivers_sun - blocked by _should_send_ask_rides_sun()")
         return
 
     driver_service = DriverService()
     emojis = driver_service.get_emojis(DaysOfWeek.SUNDAY)
     message = driver_service.format_message("Sunday service")
-    await _ask_drivers_template(bot, message, emojis, channel_id)
+    await _ask_drivers_template(
+        bot, message, emojis, channel_id, message_type=AskRidesMessageType.SUNDAY_SERVICE
+    )
 
 
 @log_job
@@ -132,4 +169,6 @@ async def run_ask_drivers_wed(bot: Bot, channel_id=ChannelIds.SERVING__DRIVER_CH
     driver_service = DriverService()
     emojis = driver_service.get_emojis(DaysOfWeek.FRIDAY)
     message = driver_service.format_message("Wednesday felly")
-    await _ask_drivers_template(bot, message, emojis, channel_id)
+    await _ask_drivers_template(
+        bot, message, emojis, channel_id, message_type=AskRidesMessageType.WEDNESDAY_FELLOWSHIP
+    )
