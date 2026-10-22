@@ -1,6 +1,6 @@
 # Database-backed ride events
 
-Ride events own the ride date, requests, driver offers, and confirmed assignments.
+Ride events store the ride date, signup reactions, and existing custom/non-Discord requests.
 Discord announcements are source projections. Dashboard, pickup, grouping, and
 coverage reads use saved event state and do not require a live Discord bot.
 
@@ -14,9 +14,6 @@ coverage reads use saved event state and do not require a live Discord bot.
   emoji. Inactive choices retain removals for ordering and recovery.
 - `ride_requests`: stable participants shared by Discord reactions, Something else
   submissions, manual riders, and the existing non-Discord pickup interface.
-- `ride_driver_offers`: event-specific availability, offered legs, and explicitly
-  confirmed passenger capacity. A reaction never invents a seat count.
-- `ride_assignments`: confirmed request/driver pairs for pickup or return legs.
 
 The existing pickup-info roster remains authoritative for registered names and
 locations. Joins use immutable Discord IDs. Unregistered riders remain visible;
@@ -25,8 +22,8 @@ are retained for compatibility and written into canonical requests in the same
 transaction. Current dated legacy entries are also imported during reconciliation.
 
 Standard reaction choices yield pickup/return preferences. Unknown configured
-emojis and conflicting preferences require coordinator review. Something else
-text is saved before notification, so a failed coordinator notification does not
+emojis and conflicting preferences are retained as unknown/custom instead of guessed. Something else
+text from the existing modal is saved before notification, so a failed coordinator notification does not
 lose the request. A custom request can remain active after its reaction is removed.
 
 Sunday class attendees are excluded from the service's outbound pickups by stable
@@ -51,8 +48,7 @@ snapshots or delayed gateway events from restoring cleared/deleted choices.
 SQLite write serialization protects those checks against concurrent changes.
 
 Deleting a source retires its reaction choices without deleting the event. Other
-sources, manual requests, and durable custom requests remain independent. A driver
-withdrawing availability retires affected confirmed assignments.
+sources, existing non-Discord requests, and durable custom requests remain independent.
 
 Startup discovery imports recognizable current-week announcements authored by
 RideBot. Rider import requires an explicit displayed date and an unambiguous
@@ -61,24 +57,21 @@ as the ride date. Legacy driver prompts are matched exactly and bound only when
 there is one compatible, already-dated event. Ambiguous or older announcements
 can be imported with explicit metadata using the single-message tool below.
 
-## Coordinator interface
+## Existing user behavior
 
-The dashboard links to `/ride-events`. Coordinators can:
+The existing Discord reactions, custom-request modal, non-Discord rider interface,
+and grouping tools remain the user-facing entry points. There is no new event
+coordination page, capacity-confirmation step, or assignment editor.
 
-1. Select a dated event and inspect requests, custom details, and sync freshness.
-2. Add a manual rider without a Discord account.
-3. Confirm a driver's passenger seats and offered legs.
-4. Assign riders to pickup/return legs and save the whole plan atomically.
-5. Refresh source reactions on demand when the bot is connected.
+Coverage retains the existing interpretation of posted grouping messages and its
+existing sync action. The rider list comes from saved reactions, and coverage
+comes from the existing `ride_coverage` table. Explicit coverage sync still scans
+Discord grouping messages; ordinary reads do not.
 
-Plans reject cross-event IDs, inactive requests, unavailable drivers, unconfirmed
-capacity, duplicate per-leg assignments, self-assignment, and capacity overflow.
-Invalid updates preserve the previous plan. Seat/direction edits cannot invalidate
-existing assignments. Coverage reflects confirmed assignments saved in this
-interface; pasted grouping text and generated grouping suggestions are not a
-confirmation. The LLM grouping engine itself remains a separate architecture item.
+The deferred coordination features are described in
+[ride-coordination-future-work.md](ride-coordination-future-work.md).
 
-Reaction, pickup, grouping, coverage, and event views expose snapshot freshness.
+Reaction, pickup, grouping, and event responses expose snapshot freshness.
 The oldest active source snapshot controls freshness; an individual gateway event
 cannot make incomplete history appear fully synced. Sources become stale after
 15 minutes, on an incomplete initial snapshot, or on a source error. The UI also
@@ -86,33 +79,27 @@ ages freshness while a page stays open and polls current event data every minute
 
 ## API
 
-Event management endpoints require a ride coordinator or admin:
+Event inspection and reconciliation endpoints require a ride coordinator or admin:
 
 ```text
 GET  /api/ride-events?date_from=2026-10-19&date_to=2026-10-25
 GET  /api/ride-events/{event_id}
 GET  /api/ride-events/current/{friday|sunday|sunday_class|wednesday}
-POST /api/ride-events/{event_id}/requests
-PUT  /api/ride-events/{event_id}/driver-offers/{discord_user_id}
-PUT  /api/ride-events/{event_id}/assignments
 POST /api/ride-events/{event_id}/reconcile
 ```
 
 List ranges are limited to 93 days and optionally accept `guild_id`. Details include
-source state, reaction choices, canonical requests, offers, assignments, and
-freshness. Reconciliation needs a live bot; reads and plan management do not.
-The existing pickup/grouping endpoints also accept an explicit `event_id`.
-
-Example replacement plan (IDs come from event detail):
-
-```json
-{"assignments": [{"request_id": 4, "driver_offer_id": 7, "direction": "pickup"}]}
-```
+source state, reaction choices, and freshness. Reconciliation needs a live bot;
+reads do not. The existing pickup/grouping endpoints also accept an explicit
+`event_id`.
 
 ## Rollout
 
-The latest additive migration is `f2a3b4c5d607`, following `d1e2f3a4b506`.
-The migration preserves earlier signup state before the first live snapshot.
+The rollout target is `a3b4c5d6e708`, following `f2a3b4c5d607` and
+`d1e2f3a4b506`. Earlier signup state is preserved before the first live snapshot.
+The final migration removes unused driver-offer and assignment tables introduced
+during development. It refuses to remove them if they contain data. The earlier
+migration is retained unchanged because it has already been applied locally.
 From `backend/`, with the intended `DATABASE_URL` and `RIDEBOT_TOKEN` configured:
 
 ```sh

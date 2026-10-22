@@ -18,8 +18,9 @@ unregistered riders without inventing roster entries or matching people by name.
 
 ### Implementation stages
 
-Implemented in the database-backed ride workflow; see [ride-events.md](ride-events.md)
-for the synchronization, coordinator interface, and rollout contract.
+The persistence and recovery work is implemented; see [ride-events.md](ride-events.md)
+for the synchronization and rollout contract. Major coordinator features are
+[deferred](ride-coordination-future-work.md), preserving existing user behavior.
 
 1. Persist dated events and announcement mappings; ingest reaction state by stable
    user ID; expose database-only event/signup reads; provide an explicit import
@@ -27,9 +28,9 @@ for the synchronization, coordinator interface, and rollout contract.
 2. Reconcile automatically after gateway interruptions, handle message/reaction
    clearing, and move existing dashboard/pickup reads to the new model. Surface
    snapshot freshness so stored state is not mistaken for guaranteed live state.
-3. Unify non-Discord requests and custom requests with signups, then model driver
-   offers and assignments. Define pickup/return choices explicitly, including
-   customized reaction semantics, before switching grouping consumers.
+3. Existing non-Discord and custom requests are persisted alongside signups.
+   New driver-offer confirmation and assignment-management features are deferred;
+   they require a separately approved product change.
 
 ## 2. Use deterministic grouping
 
