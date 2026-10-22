@@ -6,6 +6,7 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import PickupGroup from './PickupGroup'
 import ErrorMessage from "./ErrorMessage"
+import RideEventFreshness from './RideEventFreshness'
 import { usePickups } from '../hooks/usePickups'
 import {
     ChannelIdField,
@@ -102,6 +103,7 @@ function PickupLocations() {
             {/* Pickup Locations Display */}
             {pickupData && (
                 <div className="mt-8 space-y-6">
+                    <RideEventFreshness freshness={pickupData.freshness} />
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-semibold text-foreground">
                             Pickup Locations
