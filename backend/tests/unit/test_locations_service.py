@@ -300,9 +300,10 @@ async def test_build_pickups_embeds_dropoff_with_non_discord_pickups():
     ):
         embeds = await svc.build_pickups_embeds(JobName.SUNDAY, "dropoff")
 
-    assert embeds == [main_embed, extra_embed]
-    _, kwargs = svc._housing.build_embed.call_args_list[1]
-    assert kwargs["custom_title"] == "Non-Discord Dropoffs (unknown lunch)"
+    assert embeds == [main_embed]
+    assert (
+        svc._housing.build_embed.call_count == 1
+    )  # Canonical requests already include manual riders.
 
 
 @pytest.mark.asyncio
@@ -387,40 +388,13 @@ async def test_list_locations_wrapper_propagated_no_matching_message_still_repli
 
 
 @pytest.mark.asyncio
-async def test_list_locations_no_day_uses_message_id():
-    """list_locations with only message_id (no day) fetches channel and message."""
+async def test_list_locations_no_day_reads_registered_message():
     svc = LocationsService(bot=None)
-
-    fake_message = MagicMock()
-    fake_message.content = "some ride message"
-    fake_message.embeds = []
-
-    fake_channel = AsyncMock()
-    fake_channel.fetch_message = AsyncMock(return_value=fake_message)
-    svc.bot = MagicMock()
-    svc.bot.get_channel.return_value = fake_channel
-
-    svc.get_usernames_who_reacted = AsyncMock(return_value={"alice"})
-    svc._find_correct_message = AsyncMock(return_value=None)  # not called in message_id path
-
-    fake_person = MagicMock()
-    fake_person.location = "Revelle"
-    fake_person.name = "Alice"
-    svc.get_name_location_no_sync = AsyncMock(return_value=fake_person)
-
-    mock_session = AsyncMock()
-    mock_session_cm = MagicMock()
-    mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session_cm.__aexit__ = AsyncMock(return_value=False)
-
-    with (
-        patch("ridebot.services.locations_service.AsyncSessionLocal", return_value=mock_session_cm),
-        patch(
-            "ridebot.services.locations_service.LocationsRepository.get_non_discord_pickups",
-            new_callable=AsyncMock,
-            return_value=[],
+    with patch(
+        "ridebot.services.ride_events_service.RideEventsService.pickup_data",
+        new=AsyncMock(
+            return_value=({"Revelle": [("Alice", "alice")]}, {"alice"}, {"alice"}, None, {})
         ),
     ):
         _, reacted, _ = await svc.list_locations(message_id=999)
-
-    assert "alice" in reacted
+    assert reacted == {"alice"}

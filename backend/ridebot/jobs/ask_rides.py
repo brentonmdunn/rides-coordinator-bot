@@ -33,14 +33,12 @@ from ridebot.utils.cache import (
 from ridebot.utils.constants import (
     ASK_RIDES_ACTIVE_CACHE_TTL,
     ASK_RIDES_HOURLY_CACHE_TTL,
-    ASK_RIDES_MESSAGE_HISTORY_LIMIT,
     ASK_RIDES_OFF_HOURS_CACHE_TTL,
     EMBED_COLOR_MAP,
 )
 from ridebot.utils.format_message import ping_role_with_message
 from ridebot.utils.time_helpers import (
     LA_TZ,
-    get_current_cycle_start,
     get_next_date_obj,
     get_next_date_str,
     get_send_day_before,
@@ -734,7 +732,7 @@ async def find_message_in_history(
     return None
 
 
-@alru_cache(ttl=_get_dynamic_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_STATUS)
+@alru_cache(ttl=0, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_STATUS)
 async def get_ask_rides_status(bot: Bot) -> dict:
     """
     Get status for all ask rides jobs.
@@ -792,43 +790,10 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         await _should_send_ask_rides_sun_class() if sunday_class_enabled else False
     )
 
-    # Fetch last messages - OPTIMIZED: Fetch history once
-    try:
-        channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        if isinstance(channel, discord.TextChannel):
-            # Calendar week (Monday 00:00 -> Sunday 23:59) — one week definition
-            # shared by every job, since every legal schedule sends within it.
-            current_week_start = get_current_cycle_start()
-
-            # Fetch recent messages once
-            messages = [msg async for msg in channel.history(limit=ASK_RIDES_MESSAGE_HISTORY_LIMIT)]
-
-            wednesday_last_msg = await find_message_in_history(
-                messages, JobName.WEDNESDAY, current_week_start
-            )
-            friday_last_msg = await find_message_in_history(
-                messages, JobName.FRIDAY, current_week_start
-            )
-            sunday_last_msg = await find_message_in_history(
-                messages, JobName.SUNDAY, current_week_start
-            )
-            sunday_class_last_msg = await find_message_in_history(
-                messages, JobName.SUNDAY_CLASS, current_week_start
-            )
-        else:
-            wednesday_last_msg = None
-            friday_last_msg = None
-            sunday_last_msg = None
-            sunday_class_last_msg = None
-    except Exception:
-        logger.exception("Error fetching messages history in get_ask_rides_status")
-        await send_error_to_discord(
-            "**Unexpected Error** fetching message history in `get_ask_rides_status`"
-        )
-        wednesday_last_msg = None
-        friday_last_msg = None
-        sunday_last_msg = None
-        sunday_class_last_msg = None
+    wednesday_last_msg = await RideEventsService.status_message(JobName.WEDNESDAY)
+    friday_last_msg = await RideEventsService.status_message(JobName.FRIDAY)
+    sunday_last_msg = await RideEventsService.status_message(JobName.SUNDAY)
+    sunday_class_last_msg = await RideEventsService.status_message(JobName.SUNDAY_CLASS)
 
     # Wednesday fellowship "sent this week" uses the Mon-Sun window, not the Wed-Sun ride cycle
     wednesday_sent = wednesday_last_msg is not None
