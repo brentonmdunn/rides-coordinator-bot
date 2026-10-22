@@ -136,12 +136,17 @@ class RideEventsRepository:
             update(RideAnnouncement)
             .where(
                 RideAnnouncement.message_id == message_id,
+                RideAnnouncement.deleted_at.is_(None),
+                or_(
+                    RideAnnouncement.state_changed_at.is_(None),
+                    RideAnnouncement.state_changed_at <= observed_at,
+                ),
                 or_(
                     RideAnnouncement.last_reconciled_at.is_(None),
                     RideAnnouncement.last_reconciled_at <= observed_at,
                 ),
             )
-            .values(last_reconciled_at=observed_at)
+            .values(last_reconciled_at=observed_at, last_checked_at=observed_at, sync_error=None)
             .returning(RideAnnouncement.message_id)
         )
         return result is not None
@@ -249,6 +254,9 @@ class RideEventsRepository:
     async def clear_reactions(session, message_id, observed_at, *, emoji=None, deleted=False):
         """Fence old snapshots and retire cleared choices without deleting the event."""
         row = await session.get(RideAnnouncement, message_id)
+        if row is not None:
+            await RideEventsRepository.lock_event(session, row.event_id)
+            await session.refresh(row)
         if row is None or (row.state_changed_at and row.state_changed_at > observed_at):
             return None
         row.state_changed_at = observed_at

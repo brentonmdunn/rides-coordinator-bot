@@ -20,6 +20,37 @@ def _store(ride_event_store):
 
 
 @pytest.mark.asyncio
+async def test_clear_fences_snapshot_and_deleted_source_cannot_resurrect(store):
+    ride = await register()
+    await record()
+    cleared_at = OBSERVED + timedelta(seconds=5)
+    await RideEventsService.clear_reactions(message_id="456", observed_at=cleared_at)
+    await RideEventsService.reconcile(message_id="456", choices=[choice("2")], observed_at=OBSERVED)
+    assert (await RideEventsService.workflow(ride.id))[1] == []
+    await record(observed_at=cleared_at + timedelta(seconds=1))
+    await RideEventsService.clear_reactions(
+        message_id="456", observed_at=cleared_at + timedelta(seconds=2), deleted=True
+    )
+    await RideEventsService.reconcile(
+        message_id="456", choices=[choice()], observed_at=cleared_at + timedelta(seconds=3)
+    )
+    assert (await RideEventsService.workflow(ride.id))[1] == []
+    detail = await RideEventsService.get_event(ride.id)
+    assert detail[0].id == ride.id
+    assert detail[1][0].deleted_at is not None
+    assert (await RideEventsService.workflow(ride.id))[-1]["is_stale"]
+
+
+@pytest.mark.asyncio
+async def test_complete_empty_snapshot_rejects_delayed_unknown_add(store):
+    await register()
+    await RideEventsService.reconcile(
+        message_id="456", choices=[], observed_at=OBSERVED + timedelta(seconds=5)
+    )
+    assert not await record(selection=choice("new"), observed_at=OBSERVED)
+
+
+@pytest.mark.asyncio
 async def test_cleared_emoji_preserves_other_choice(store):
     ride = await register()
     await record()
