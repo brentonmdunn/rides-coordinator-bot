@@ -30,6 +30,8 @@ class PickupCoverageResponse(BaseModel):
     assigned: int = Field(description="Number of users who have been grouped into rides")
     message_found: bool = Field(description="Whether the original ask-rides message was found")
     has_coverage_entries: bool = Field(description="Whether coverage data exists for this week")
+    event_id: int | None = None
+    freshness: dict | None = None
     is_in_visibility_window: bool = Field(
         description="Whether the coverage widget should be visible right now"
     )
@@ -53,6 +55,8 @@ class DriverReactionResponse(BaseModel):
         description="Mapping of discord usernames to real names"
     )
     message_found: bool = Field(description="Whether the driver chat message was found")
+    event_id: int | None = None
+    freshness: dict | None = None
 
 
 @router.get(
@@ -74,7 +78,7 @@ async def get_pickup_coverage(ride_type: str):
         - total: Total number of users who reacted
         - assigned: Number of users with ride assignments
     """
-    bot = require_bot()
+    bot = None
     validate_ride_type(ride_type.lower(), allow_message_id=False)
 
     try:
@@ -148,6 +152,8 @@ async def get_driver_reactions(day: str):
             "reactions": result["reactions"],
             "username_to_name": result["username_to_name"],
             "message_found": True,
+            "event_id": result.get("event_id"),
+            "freshness": result.get("freshness"),
         }
     except HTTPException:
         raise

@@ -108,6 +108,9 @@ def alru_cache(
 
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
+            # Zero TTL explicitly bypasses storage (Redis SETEX rejects zero).
+            if ttl is not None and not callable(ttl) and ttl <= 0:
+                return await func(*args, **kwargs)
             if not _is_cache_enabled():
                 return await func(*args, **kwargs)
 

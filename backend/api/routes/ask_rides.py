@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from api.auth import require_admin, require_ride_coordinator
 from api.constants import ASK_RIDES_DEFAULT_COUNT, ASK_RIDES_DEFAULT_OFFSET, SSE_HEARTBEAT_INTERVAL
-from api.dependencies import require_bot, require_ready_bot
+from api.dependencies import require_ready_bot
 from ridebot.core import messages_broadcaster
 from ridebot.jobs.ask_rides import get_ask_rides_status, run_ask_rides_manual
 from ridebot.services.ask_rides_messages_service import AskRidesMessagesService
@@ -22,7 +22,6 @@ from ridebot.services.force_sunday_class_service import ForceSundayClassService
 from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
 from ridebot.services.locations_service import LocationsService
 from ridebot.services.message_schedule_service import MessageScheduleService
-from ridebot.services.non_discord_rides_service import NonDiscordRidesService
 from ridebot.services.pickup_summary_service import (
     EffectivePickupSummarySetting,
     PickupSummaryService,
@@ -131,9 +130,7 @@ async def get_status():
     Returns:
         Dictionary with status for friday, sunday, and sunday_class jobs
     """
-    bot = require_bot()
-
-    status = await get_ask_rides_status(bot)
+    status = await get_ask_rides_status(None)
     return status
 
 
@@ -455,7 +452,7 @@ async def get_ask_rides_reactions(message_type: str):
         Dictionary with reactions mapping emojis to lists of usernames,
         username_to_name mapping, and message_found flag
     """
-    bot = require_bot()
+    bot = None
 
     # Map message_type to AskRidesMessage enum
     type_to_event: dict[str, AskRidesMessage] = {
@@ -472,25 +469,22 @@ async def get_ask_rides_reactions(message_type: str):
             detail=f"message_type must be one of: {', '.join(valid_types)}",
         )
 
-    # Non-Discord riders are tracked per ride day; map the message type to a day.
-    type_to_day: dict[str, str] = {
-        JobName.FRIDAY: DaysOfWeek.FRIDAY,
-        JobName.SUNDAY: DaysOfWeek.SUNDAY,
-        JobName.SUNDAY_CLASS: DaysOfWeek.SUNDAY,
-    }
-
     try:
-        # Collect non-Discord riders for the day, grouped by their emoji tag.
-        non_discord: dict[str, list[str]] = {}
-        day = type_to_day.get(message_type.lower())
-        if day is not None:
-            rides = await NonDiscordRidesService().list_pickups(day)
-            for ride in rides:
-                if ride.emoji:
-                    non_discord.setdefault(ride.emoji, []).append(ride.name)
+        from ridebot.services.ride_events_service import RideEventsService
 
         locations_svc = LocationsService(bot)
         result = await locations_svc.get_ask_rides_reactions(event)
+        non_discord = {}
+        if result:
+            workflow = await RideEventsService.workflow(result["event_id"])
+            if workflow:
+                for request in workflow[1]:
+                    if request.discord_user_id is None:
+                        emoji = {"home": "🏠", "lunch": "🍔", "custom": "✳️"}.get(
+                            request.return_preference, "➕"
+                        )
+                        non_discord.setdefault(emoji, []).append(request.name)
+                result["needs_review"] = sum(request.needs_review for request in workflow[1])
 
         if not result:
             return {

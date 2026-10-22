@@ -11,6 +11,7 @@ from ridebot.repositories.group_rides_repository import GroupRidesRepository
 from ridebot.services.llm_service import LLMService
 from ridebot.services.locations_service import LocationsService
 from ridebot.services.pickup_locations_service import PickupLocationsService, RoutingContext
+from ridebot.services.ride_events_service import RideEventsService
 from ridebot.services.ride_grouping import (
     LocationsPeopleType,
     PassengersByLocation,
@@ -22,7 +23,6 @@ from ridebot.services.ride_grouping import (
     parse_numbers,
 )
 from ridebot.services.route_service import RouteService
-from ridebot.utils.parsing import get_message_and_embed_content
 from shared.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
     AskRidesMessage,
@@ -169,11 +169,12 @@ class GroupRidesService:
 
     async def _process_ride_grouping(
         self,
-        message_id: int,
+        message_id: int | None,
         driver_capacity: str,
         channel_id: int,
         legacy_prompt: bool = False,
         custom_prompt: str | None = None,
+        event_id: int | None = None,
     ) -> list[str]:
         """
         Core ride grouping logic shared by both Discord and API methods.
@@ -186,21 +187,37 @@ class GroupRidesService:
             f"driver_capacity={driver_capacity}, channel_id={channel_id}"
         )
 
-        (
-            locations_people,
-            usernames_reacted,
-            location_found,
-        ) = await self.locations_service.list_locations(message_id=message_id)
+        if event_id is None:
+            (
+                locations_people,
+                usernames_reacted,
+                location_found,
+            ) = await self.locations_service.list_locations(
+                message_id=message_id, channel_id=channel_id
+            )
+        else:
+            (
+                locations_people,
+                usernames_reacted,
+                location_found,
+            ) = await self.locations_service.list_locations(
+                event_id=event_id, channel_id=channel_id
+            )
 
-        message = await self.repo.fetch_message(channel_id, message_id)
-        if not message:
-            raise ValueError("Could not fetch the message content")
-
-        combined_text = get_message_and_embed_content(message)
-        event_type, end_leave_time = await self._determine_event_type(combined_text)
-
-        if event_type == JobName.SUNDAY:
-            usernames_reacted = await self._filter_class_attendees(usernames_reacted, channel_id)
+        event = await RideEventsService.resolve_event(
+            message_id=message_id, channel_id=channel_id, event_id=event_id
+        )
+        if event is None:
+            raise ValueError("Ride event not found; import/reconcile the announcement first")
+        end_leave_time = {
+            "friday_fellowship": time(19, 10),
+            "wednesday_fellowship": time(19, 10),
+            "sunday_service": time(10, 10),
+            "sunday_class": time(8, 40),
+        }[event.message_type]
+        workflow = await RideEventsService.workflow(event.id)
+        self._event_id = event.id
+        self._event_freshness = workflow[-1] if workflow else None
 
         unknown_location = usernames_reacted - location_found
         if unknown_location:
@@ -323,7 +340,8 @@ class GroupRidesService:
         channel_id: int | None = None,
         legacy_prompt: bool = False,
         custom_prompt: str | None = None,
-    ) -> dict[str, str | list[str]]:
+        event_id: int | None = None,
+    ) -> dict:
         """
         Group rides and return structured data (for API use).
 
@@ -352,24 +370,37 @@ class GroupRidesService:
             f"driver_capacity={driver_capacity}, channel_id={channel_id}"
         )
 
-        if day:
-            ask_message = DAY_TO_ASK_RIDES_MESSAGE.get(JobName(day))
-            if ask_message is None:
-                raise ValueError("day must be 'friday' or 'sunday'")
+        if day and event_id is None:
+            if day not in {"friday", "sunday", "wednesday", "sunday_class"}:
+                raise ValueError("Invalid ride day")
+            event = await RideEventsService.resolve_event(day=day, channel_id=channel_id)
+            if event is None:
+                raise ValueError(f"Could not find the {day} ride event. Import/reconcile it first.")
+            event_id = event.id
 
-            message_id = await self.locations_service.find_correct_message(ask_message, channel_id)
+        if message_id is None and event_id is None:
+            raise ValueError("Either event_id, message_id or day must be provided")
 
-            if message_id is None:
-                raise ValueError(f"Could not find the {day} rides message. It may not exist yet.")
-
-        if message_id is None:
-            raise ValueError("Either message_id or day must be provided")
-
-        output = await self._process_ride_grouping(
-            message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
-        )
+        if event_id is None:
+            output = await self._process_ride_grouping(
+                message_id, driver_capacity, channel_id, legacy_prompt, custom_prompt
+            )
+        else:
+            output = await self._process_ride_grouping(
+                message_id,
+                driver_capacity,
+                channel_id,
+                legacy_prompt,
+                custom_prompt,
+                event_id=event_id,
+            )
 
         summary = output[0] if output else ""
         groupings = [item for item in output[1:] if not item.startswith("```")]
 
-        return {"summary": summary, "groupings": groupings}
+        return {
+            "summary": summary,
+            "groupings": groupings,
+            "event_id": getattr(self, "_event_id", None),
+            "freshness": getattr(self, "_event_freshness", None),
+        }

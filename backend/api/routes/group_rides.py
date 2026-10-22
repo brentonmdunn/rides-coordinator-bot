@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from api.constants import GROUP_RIDES_DEFAULT_CAPACITY, GROUP_RIDES_RATE_LIMIT
-from api.dependencies import parse_int_param, require_bot, validate_ride_type
+from api.dependencies import parse_int_param, validate_ride_type
 from api.rate_limit import limiter
 from ridebot.services.group_rides_service import GroupRidesService
 from shared.core.enums import ChannelIds, JobName
@@ -21,6 +21,7 @@ class GroupRidesRequest(BaseModel):
     """Request model for grouping rides."""
 
     ride_type: str = Field(description="Type of ride (e.g. 'friday', 'sunday', or 'message_id')")
+    event_id: int | None = Field(default=None, gt=0)
     message_id: str | None = Field(
         default=None, description="Required only when ride_type is 'message_id'"
     )
@@ -45,6 +46,8 @@ class GroupRidesResponse(BaseModel):
         default=None, description="List of formatted strings representing each car grouping"
     )
     error: str | None = Field(default=None, description="Error message if the request failed")
+    event_id: int | None = None
+    freshness: dict | None = None
 
 
 @router.post(
@@ -66,16 +69,18 @@ async def group_rides(request: Request, body: GroupRidesRequest):
     Returns:
         GroupRidesResponse with success status and either groupings or error message
     """
-    bot = require_bot()
+    bot = None
     validate_ride_type(body.ride_type)
     channel_id_int = parse_int_param(body.channel_id, "Channel ID")
 
     if body.ride_type == "message_id":
-        if not body.message_id:
+        if not body.message_id and body.event_id is None:
             raise HTTPException(
                 status_code=400, detail="message_id is required when ride_type is 'message_id'"
             )
-        message_id_int: int | None = parse_int_param(body.message_id, "Message ID")
+        message_id_int: int | None = (
+            parse_int_param(body.message_id, "Message ID") if body.message_id else None
+        )
     else:
         message_id_int = None
 
@@ -87,12 +92,15 @@ async def group_rides(request: Request, body: GroupRidesRequest):
             day=body.ride_type if body.ride_type in [JobName.FRIDAY, JobName.SUNDAY] else None,
             driver_capacity=body.driver_capacity,
             channel_id=channel_id_int,
+            event_id=body.event_id,
         )
 
         return GroupRidesResponse(
             success=True,
             summary=cast(str | None, result.get("summary")),
             groupings=cast(list[str] | None, result.get("groupings")),
+            event_id=result.get("event_id"),
+            freshness=result.get("freshness"),
         )
 
     except ValueError as e:
