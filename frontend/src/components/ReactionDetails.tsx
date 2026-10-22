@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Sparkles, Church, BookOpen, ClipboardList, ChevronDown } from 'lucide-react'
 import type React from 'react'
@@ -141,7 +140,6 @@ function ReactionDetails() {
             }
         >
             <RideEventFreshness freshness={data?.freshness} />
-            {Boolean(data?.needs_review) && <p className="mb-3 text-sm text-warning-text"><Link className="underline" to={`/ride-events?event=${data?.event_id}`}>Review {data?.needs_review} ride requests</Link></p>}
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}

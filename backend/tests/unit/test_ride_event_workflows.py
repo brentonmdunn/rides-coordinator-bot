@@ -1,8 +1,8 @@
-"""Exercise recovery, canonical requests, and confirmed capacity/assignment invariants."""
+"""Exercise recovery and persistence of existing ride signup behavior."""
 
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import discord
 import httpx
@@ -116,92 +116,6 @@ async def test_pickups_join_ids_and_exclude_class_only_on_outbound_leg(store):
 
 
 @pytest.mark.asyncio
-async def test_assignment_replacement_is_atomic_and_per_leg_capacity_is_enforced(store):
-    ride = await register()
-    first = await RideEventsService.save_request(
-        event_id=ride.id, name="One", return_preference="home"
-    )
-    second = await RideEventsService.save_request(
-        event_id=ride.id, name="Two", return_preference="home"
-    )
-    offer = await RideEventsService.save_offer(
-        event_id=ride.id,
-        discord_user_id="99",
-        discord_username="driver",
-        capacity=1,
-        directions=["pickup", "return"],
-    )
-    pickup = {"request_id": first.id, "driver_offer_id": offer.id, "direction": "pickup"}
-    returning = {"request_id": second.id, "driver_offer_id": offer.id, "direction": "return"}
-    await RideEventsService.save_assignments(ride.id, [pickup, returning])
-    with pytest.raises(ValueError, match="capacity"):
-        await RideEventsService.save_assignments(
-            ride.id, [pickup, {**pickup, "request_id": second.id}]
-        )
-    assert len((await RideEventsService.workflow(ride.id))[4]) == 2
-    with pytest.raises(ValueError, match="once per leg"):
-        await RideEventsService.save_assignments(ride.id, [pickup, pickup])
-    with pytest.raises(ValueError, match="this event"):
-        await RideEventsService.save_assignments(ride.id, [{**pickup, "request_id": 9999}])
-    with pytest.raises(ValueError, match="capacity"):
-        await RideEventsService.save_offer(
-            event_id=ride.id,
-            discord_user_id="99",
-            discord_username="driver",
-            capacity=None,
-            directions=["pickup", "return"],
-        )
-    assert (await RideEventsService.workflow(ride.id))[3][0].capacity == 1
-    with pytest.raises(ValueError, match="return preference"):
-        await RideEventsService.save_offer(
-            event_id=ride.id,
-            discord_user_id="99",
-            discord_username="driver",
-            capacity=1,
-            directions=["pickup", "return"],
-            return_preference="lunch",
-        )
-    assert (await RideEventsService.workflow(ride.id))[3][0].return_preference == "either"
-    await RideEventsService.save_request(
-        event_id=ride.id, identity_key=first.identity_key, name="One", active=False
-    )
-    assert len((await RideEventsService.workflow(ride.id))[4]) == 1
-
-
-@pytest.mark.asyncio
-async def test_withdrawn_driver_retires_confirmed_assignments(store):
-    ride = await register()
-    await record()
-    await RideEventsService.bind_announcement(
-        event_id=ride.id,
-        channel_id="789",
-        message_id="driver",
-        signup_emojis=["👍", "❌"],
-        kind="driver",
-    )
-    await record(message_id="driver", selection=choice("99", "driver", "👍"))
-    offer = await RideEventsService.save_offer(
-        event_id=ride.id,
-        discord_user_id="99",
-        discord_username="driver",
-        capacity=4,
-        directions=["pickup"],
-    )
-    request = (await RideEventsService.workflow(ride.id))[1][0]
-    await RideEventsService.save_assignments(
-        ride.id, [{"request_id": request.id, "driver_offer_id": offer.id, "direction": "pickup"}]
-    )
-    await record(
-        message_id="driver",
-        selection=choice("99", "driver", "❌"),
-        observed_at=OBSERVED + timedelta(seconds=1),
-    )
-    workflow = await RideEventsService.workflow(ride.id)
-    assert workflow[3][0].availability == "unavailable"
-    assert workflow[4] == []
-
-
-@pytest.mark.asyncio
 async def test_failed_snapshot_retains_choices_and_exposes_error(store):
     ride = await register()
     await record()
@@ -254,35 +168,71 @@ def test_legacy_dates_are_explicit_unambiguous_and_year_safe():
 
 
 @pytest.mark.asyncio
-async def test_coordinator_api_can_save_and_read_requests_offline(store):
+async def test_event_api_does_not_expose_deferred_coordination_features(store):
     ride = await register()
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=api_app()), base_url="http://test"
     ) as client:
-        response = await client.post(
-            f"/api/ride-events/{ride.id}/requests", json={"name": "Guest", "location": "ERC"}
-        )
-        assert response.status_code == 200
-        request_id = response.json()["id"]
-        offer = await client.put(
-            f"/api/ride-events/{ride.id}/driver-offers/99",
-            json={"discord_username": "driver", "capacity": 4, "directions": ["pickup"]},
-        )
-        assert offer.status_code == 200
-        plan = [
-            {"request_id": request_id, "driver_offer_id": offer.json()["id"], "direction": "pickup"}
-        ]
-        assert (
-            await client.put(f"/api/ride-events/{ride.id}/assignments", json={"assignments": plan})
-        ).status_code == 200
+        for path, method in [
+            ("requests", client.post),
+            ("driver-offers/99", client.put),
+            ("assignments", client.put),
+        ]:
+            assert (await method(f"/api/ride-events/{ride.id}/{path}", json={})).status_code == 404
         detail = (await client.get(f"/api/ride-events/{ride.id}")).json()
-        assert detail["assignments"] == plan
-        assert detail["requests"][0]["name"] == "Guest"
-        assert (
-            await client.put(
-                f"/api/ride-events/{ride.id}/assignments", json={"assignments": plan + plan}
-            )
-        ).status_code == 422
+        assert "assignments" not in detail
+        assert "driver_offers" not in detail
+
+
+@pytest.mark.asyncio
+async def test_existing_grouping_message_sync_still_marks_database_riders_covered(
+    store, monkeypatch
+):
+    from ridebot.services import ride_coverage_service as coverage_module
+    from ridebot.services.ride_coverage_service import RideCoverageService
+    from shared.core.enums import ChannelIds
+
+    monkeypatch.setattr(module, "get_current_cycle_start", lambda: OBSERVED - timedelta(days=2))
+    monkeypatch.setattr(coverage_module, "AsyncSessionLocal", store)
+    monkeypatch.setattr(coverage_module, "get_last_sunday", lambda: OBSERVED - timedelta(days=3))
+    monkeypatch.setattr(
+        coverage_module, "get_coverage_message_lookup_start", lambda _: OBSERVED - timedelta(days=1)
+    )
+    monkeypatch.setattr(coverage_module, "is_message_in_any_coverage_lookup_window", lambda _: True)
+    ride = await register()
+    channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+    await RideEventsService.bind_announcement(
+        event_id=ride.id, channel_id=str(channel_id), message_id="900", signup_emojis=["🍔"]
+    )
+    await record(message_id="900")
+    await record(message_id="900", selection=choice("2", "bob"))
+    passenger = MagicMock(id=1)
+    passenger.__str__.return_value = "alice"
+    message = SimpleNamespace(
+        id=901,
+        channel=SimpleNamespace(id=channel_id),
+        content="Bob drive: <@1>",
+        mentions=[passenger],
+        author=SimpleNamespace(bot=False),
+        created_at=OBSERVED,
+    )
+
+    async def history(**kwargs):
+        yield message
+
+    channel = SimpleNamespace(name="rides", history=history)
+    bot = Mock()
+    bot.get_channel.return_value = channel
+    result = await RideCoverageService(bot).sync_ride_coverage()
+    assert result["entries_added"] == 1
+    # Reading the existing coverage page needs no Discord client or new plan editor.
+    summary = await RideCoverageService(None).get_coverage_summary("sunday")
+    assert summary["total"] == 2
+    assert summary["assigned"] == 1
+    assert summary["users"] == [
+        {"discord_username": "bob", "has_ride": False},
+        {"discord_username": "alice", "has_ride": True},
+    ]
 
 
 @pytest.mark.asyncio

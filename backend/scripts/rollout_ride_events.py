@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from sqlalchemy.engine import make_url
 
 logger = logging.getLogger(__name__)
-REVISION = "f2a3b4c5d607"
+REVISION = "a3b4c5d6e708"
 
 
 def migrate_database(database_url: str, *, apply: bool) -> Path | None:

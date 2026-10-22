@@ -412,35 +412,3 @@ class RideRequest(Base):
     return_preference: Mapped[str] = mapped_column(default="unknown")
     needs_review: Mapped[bool] = mapped_column(default=False)
     updated_at: Mapped[datetime]
-
-
-class RideDriverOffer(Base):
-    """A driver's event-specific availability and explicitly confirmed passenger capacity."""
-
-    __tablename__ = "ride_driver_offers"
-    __table_args__ = (UniqueConstraint("event_id", "discord_user_id"),)
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    event_id: Mapped[int] = mapped_column(ForeignKey("ride_events.id"), index=True)
-    discord_user_id: Mapped[str]
-    discord_username: Mapped[str]
-    availability: Mapped[str]
-    capacity: Mapped[int | None]
-    directions: Mapped[list[str]] = mapped_column(JSON)
-    source: Mapped[str] = mapped_column(default="manual", server_default="manual")
-    return_preference: Mapped[str] = mapped_column(default="either", server_default="either")
-    updated_at: Mapped[datetime]
-
-
-class RideAssignment(Base):
-    """A confirmed passenger assignment for one leg of an event."""
-
-    __tablename__ = "ride_assignments"
-    __table_args__ = (UniqueConstraint("event_id", "request_id", "direction"),)
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    event_id: Mapped[int] = mapped_column(ForeignKey("ride_events.id"), index=True)
-    request_id: Mapped[int] = mapped_column(ForeignKey("ride_requests.id"))
-    driver_offer_id: Mapped[int] = mapped_column(ForeignKey("ride_driver_offers.id"))
-    direction: Mapped[str]
-    updated_at: Mapped[datetime]

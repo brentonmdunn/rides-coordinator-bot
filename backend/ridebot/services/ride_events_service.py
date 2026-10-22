@@ -11,8 +11,6 @@ from shared.core.database import AsyncSessionLocal
 from shared.core.enums import AskRidesMessage, AskRidesMessageType, ChannelIds, Emoji, RideOption
 from shared.core.models import (
     RideAnnouncement,
-    RideAssignment,
-    RideDriverOffer,
     RideEvent,
     RideRequest,
 )
@@ -116,7 +114,7 @@ class RideEventsService:
                 active=active,
                 observed_at=timestamp,
             )
-            await _refresh_workflow(session, announcement.event_id, timestamp)
+            await _refresh_requests(session, announcement.event_id, timestamp)
             return True
 
     @staticmethod
@@ -145,7 +143,7 @@ class RideEventsService:
                     active=True,
                     observed_at=timestamp,
                 )
-            await _refresh_workflow(session, announcement.event_id, timestamp)
+            await _refresh_requests(session, announcement.event_id, timestamp)
 
     @staticmethod
     async def clear_reactions(
@@ -158,7 +156,7 @@ class RideEventsService:
                 session, message_id, timestamp, emoji=emoji, deleted=deleted
             )
             if row:
-                await _refresh_workflow(session, row.event_id, timestamp)
+                await _refresh_requests(session, row.event_id, timestamp)
 
     @staticmethod
     async def mark_sync_error(message_id: str, message: str):
@@ -290,17 +288,15 @@ class RideEventsService:
 
     @staticmethod
     async def workflow(event_id):
-        """Read all participants, offers, and confirmed assignments for an event."""
+        """Read saved participants, roster information, and source freshness for an event."""
         async with AsyncSessionLocal() as session:
             event = await session.get(RideEvent, event_id)
             if event is None:
                 return None
             requests = await RideEventsRepository.requests(session, event_id)
             roster = await RideEventsRepository.roster(session)
-            offers = await RideEventsRepository.offers(session, event_id)
-            assignments = await RideEventsRepository.assignments(session, event_id)
             announcements = await RideEventsRepository.announcements(session, event_id)
-            return event, requests, roster, offers, assignments, freshness(announcements)
+            return event, requests, roster, freshness(announcements)
 
     @staticmethod
     async def save_request(
@@ -349,13 +345,6 @@ class RideEventsService:
             row.needs_review = return_preference == "custom" or bool(details)
             row.updated_at = now
             await session.flush()
-            for assignment in await RideEventsRepository.assignments(session, event_id):
-                if assignment.request_id == row.id and (
-                    not active
-                    or (assignment.direction == "pickup" and not pickup)
-                    or (assignment.direction == "return" and return_preference == "none")
-                ):
-                    await session.delete(assignment)
             return row
 
     @staticmethod
@@ -375,82 +364,6 @@ class RideEventsService:
         )
 
     @staticmethod
-    async def save_offer(
-        *,
-        event_id,
-        discord_user_id,
-        discord_username,
-        capacity,
-        directions,
-        availability="available",
-        return_preference="either",
-    ):
-        """Confirm capacity and directions; refuse changes that invalidate saved assignments."""
-        if capacity is not None and not 1 <= capacity <= 20:
-            raise ValueError("Passenger capacity must be between 1 and 20")
-        if (
-            not directions
-            or not set(directions) <= {"pickup", "return"}
-            or availability not in {"available", "unavailable", "maybe"}
-        ):
-            raise ValueError("Invalid driver availability or directions")
-        if return_preference not in {"home", "lunch", "either", "unknown", "custom"}:
-            raise ValueError("Invalid driver return preference")
-        async with AsyncSessionLocal() as session, session.begin():
-            if await RideEventsRepository.lock_event(session, event_id) is None:
-                raise ValueError("Ride event not found")
-            row = next(
-                (
-                    o
-                    for o in await RideEventsRepository.offers(session, event_id)
-                    if o.discord_user_id == discord_user_id
-                ),
-                None,
-            )
-            if row is None:
-                row = RideDriverOffer(event_id=event_id, discord_user_id=discord_user_id)
-                session.add(row)
-            row.discord_username, row.capacity, row.directions, row.availability = (
-                discord_username,
-                capacity,
-                sorted(set(directions)),
-                availability,
-            )
-            row.return_preference = return_preference
-            row.source, row.updated_at = "manual", datetime.now(UTC).replace(tzinfo=None)
-            await session.flush()
-            _validate_assignments(
-                await RideEventsRepository.assignments(session, event_id),
-                await RideEventsRepository.requests(session, event_id),
-                await RideEventsRepository.offers(session, event_id),
-            )
-            return row
-
-    @staticmethod
-    async def save_assignments(event_id, entries):
-        """Atomically validate and replace a confirmed plan using stable request/offer IDs."""
-        async with AsyncSessionLocal() as session, session.begin():
-            if await RideEventsRepository.lock_event(session, event_id) is None:
-                raise ValueError("Ride event not found")
-            now = datetime.now(UTC).replace(tzinfo=None)
-            rows = [
-                RideAssignment(
-                    event_id=event_id,
-                    request_id=e["request_id"],
-                    driver_offer_id=e["driver_offer_id"],
-                    direction=e["direction"],
-                    updated_at=now,
-                )
-                for e in entries
-            ]
-            _validate_assignments(
-                rows,
-                await RideEventsRepository.requests(session, event_id),
-                await RideEventsRepository.offers(session, event_id),
-            )
-            await RideEventsRepository.replace_assignments(session, event_id, rows)
-
-    @staticmethod
     async def pickup_data(
         *,
         day=None,
@@ -467,7 +380,7 @@ class RideEventsService:
             raise ValueError("Ride event not found; import/reconcile the announcement first")
         workflow = await RideEventsService.workflow(event.id)
         assert workflow is not None
-        _, requests, roster, _, _, state = workflow
+        _, requests, roster, state = workflow
         async with AsyncSessionLocal() as session:
             latest_choices = {
                 r.discord_user_id: r
@@ -562,8 +475,8 @@ def freshness(announcements):
     }
 
 
-async def _refresh_workflow(session, event_id, timestamp):
-    """Project raw selections into stable participant/driver records in the same transaction."""
+async def _refresh_requests(session, event_id, timestamp):
+    """Project raw rider selections into stable participant records in the same transaction."""
     rider_choices = await RideEventsRepository.source_choices(session, event_id)
     grouped = defaultdict(list)
     for row in rider_choices:
@@ -616,96 +529,4 @@ async def _refresh_workflow(session, event_id, timestamp):
         if row.source == "discord" and row.discord_user_id and row.discord_user_id not in grouped:
             row.active = bool(row.details)
             row.updated_at = timestamp
-    drivers = defaultdict(list)
-    for row in await RideEventsRepository.source_choices(session, event_id, "driver"):
-        drivers[row.discord_user_id].append(row)
-    offers = {o.discord_user_id: o for o in await RideEventsRepository.offers(session, event_id)}
-    for user_id, rows in drivers.items():
-        row = offers.get(user_id)
-        if row is None:
-            row = RideDriverOffer(event_id=event_id, discord_user_id=user_id)
-            session.add(row)
-        emojis = {r.emoji for r in rows}
-        row.discord_username, row.source = rows[-1].discord_username, "discord"
-        row.availability = (
-            "unavailable"
-            if str(Emoji.CANNOT_DRIVE) in emojis
-            else ("maybe" if str(Emoji.SOMETHING_ELSE) in emojis else "available")
-        )
-        directions = []
-        if str(Emoji.DRIVE_THERE) in emojis:
-            directions.append("pickup")
-        if str(Emoji.DRIVE_BACK) in emojis:
-            directions.append("return")
-        row.directions = directions or ["pickup", "return"]
-        preferences = emojis & {str(Emoji.LUNCH), str(Emoji.NO_LUNCH)}
-        row.return_preference = (
-            "either"
-            if len(preferences) == 2 or str(Emoji.EITHER_NO_PREFERENCE) in emojis
-            else (
-                "lunch"
-                if str(Emoji.LUNCH) in emojis
-                else ("home" if str(Emoji.NO_LUNCH) in emojis else "unknown")
-            )
-        )
-        row.updated_at = timestamp
-    for user_id, row in offers.items():
-        if row.source == "discord" and user_id not in drivers:
-            row.availability, row.updated_at = "unavailable", timestamp
     await session.flush()
-    # A withdrawn signup/offer cannot leave a confirmed, unsafe assignment behind.
-    requests = {r.id: r for r in await RideEventsRepository.requests(session, event_id)}
-    driver_map = {o.id: o for o in await RideEventsRepository.offers(session, event_id)}
-    for assignment in await RideEventsRepository.assignments(session, event_id):
-        offer = driver_map.get(assignment.driver_offer_id)
-        request = requests.get(assignment.request_id)
-        incompatible_return = bool(
-            request
-            and offer
-            and assignment.direction == "return"
-            and request.return_preference in {"home", "lunch"}
-            and offer.return_preference not in {request.return_preference, "either"}
-        )
-        if (
-            request is None
-            or offer is None
-            or offer.availability != "available"
-            or assignment.direction not in offer.directions
-            or incompatible_return
-        ):
-            await session.delete(assignment)
-
-
-def _validate_assignments(rows, requests, offers):
-    """Enforce event membership, per-leg uniqueness, request needs, and passenger capacity."""
-    participants, drivers = {r.id: r for r in requests}, {o.id: o for o in offers}
-    seen, counts = set(), defaultdict(int)
-    for row in rows:
-        request, offer = participants.get(row.request_id), drivers.get(row.driver_offer_id)
-        if request is None or offer is None or row.direction not in {"pickup", "return"}:
-            raise ValueError("Assignment must reference an active request and driver in this event")
-        if (
-            offer.availability != "available"
-            or row.direction not in offer.directions
-            or offer.capacity is None
-        ):
-            raise ValueError("Driver must be available with confirmed capacity for this leg")
-        if request.discord_user_id == offer.discord_user_id:
-            raise ValueError("A driver cannot be assigned as their own passenger")
-        if (row.direction == "pickup" and not request.pickup) or (
-            row.direction == "return" and request.return_preference == "none"
-        ):
-            raise ValueError("Passenger did not request this leg")
-        if (
-            row.direction == "return"
-            and request.return_preference in {"home", "lunch"}
-            and offer.return_preference not in {request.return_preference, "either"}
-        ):
-            raise ValueError("Driver return preference does not cover this request")
-        key = (row.request_id, row.direction)
-        if key in seen:
-            raise ValueError("A rider can be assigned only once per leg")
-        seen.add(key)
-        counts[row.driver_offer_id, row.direction] += 1
-        if counts[row.driver_offer_id, row.direction] > offer.capacity:
-            raise ValueError("Assignment exceeds driver passenger capacity")

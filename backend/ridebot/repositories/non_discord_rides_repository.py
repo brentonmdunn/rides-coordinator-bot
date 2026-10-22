@@ -94,10 +94,6 @@ class NonDiscordRidesRepository:
         )
         row.needs_review = ride.emoji == Emoji.SOMETHING_ELSE
         row.updated_at = datetime.now(UTC).replace(tzinfo=None)
-        if not active:
-            for assignment in await RideEventsRepository.assignments(session, event.id):
-                if assignment.request_id == row.id:
-                    await session.delete(assignment)
 
     @staticmethod
     async def import_requests(session, since):

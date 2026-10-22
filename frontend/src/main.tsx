@@ -14,7 +14,6 @@ const Learn = lazy(() => import('./pages/Learn.tsx'))
 const ReactionLog = lazy(() => import('./pages/ReactionLog.tsx'))
 const Locations = lazy(() => import('./pages/Locations.tsx'))
 const PickupInfo = lazy(() => import('./pages/PickupInfo.tsx'))
-const RideEvents = lazy(() => import('./pages/RideEvents.tsx'))
 
 const queryClient = new QueryClient()
 
@@ -33,7 +32,6 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="/reaction-log" element={<ReactionLog />} />
                   <Route path="/locations" element={<Locations />} />
                   <Route path="/pickup-info" element={<PickupInfo />} />
-                <Route path="/ride-events" element={<RideEvents />} />
                 </Route>
               </Routes>
             </Suspense>

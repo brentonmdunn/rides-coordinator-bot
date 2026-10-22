@@ -196,7 +196,6 @@ function Home() {
                                 <div className="flex flex-wrap items-center justify-center md:justify-end gap-2">
                                     {/* Page links wrap among themselves on narrow screens. */}
                                     <div className="flex flex-wrap items-center justify-center gap-2">
-                                        {canManage && <Button variant="outline" size="sm" asChild><Link to="/ride-events"><CalendarDays className="w-4 h-4" />Ride Events</Link></Button>}
                                         {canManage && (
                                             <Button variant="outline" size="sm" asChild>
                                                 <Link to="/locations">

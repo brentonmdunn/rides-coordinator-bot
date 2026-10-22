@@ -7,15 +7,13 @@ idempotent and prevent older snapshots from replacing newer observed changes.
 
 from datetime import date, datetime
 
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.core.models import (
     Locations,
     RideAnnouncement,
-    RideAssignment,
-    RideDriverOffer,
     RideEvent,
     RideRequest,
     RideSignup,
@@ -302,40 +300,8 @@ class RideEventsRepository:
         return list((await session.scalars(stmt.order_by(RideRequest.id))).all())
 
     @staticmethod
-    async def offers(session, event_id):
-        """Read confirmed driver capacity and observed availability."""
-        return list(
-            (
-                await session.scalars(
-                    select(RideDriverOffer)
-                    .where(RideDriverOffer.event_id == event_id)
-                    .order_by(RideDriverOffer.id)
-                )
-            ).all()
-        )
-
-    @staticmethod
-    async def assignments(session, event_id):
-        """Read confirmed assignments for both legs."""
-        return list(
-            (
-                await session.scalars(
-                    select(RideAssignment)
-                    .where(RideAssignment.event_id == event_id)
-                    .order_by(RideAssignment.id)
-                )
-            ).all()
-        )
-
-    @staticmethod
-    async def replace_assignments(session, event_id, entries):
-        """Replace the event plan within the caller's validated transaction."""
-        await session.execute(delete(RideAssignment).where(RideAssignment.event_id == event_id))
-        session.add_all(entries)
-
-    @staticmethod
     async def lock_event(session, event_id):
-        """Serialize plan/capacity changes before checking cross-row constraints."""
+        """Serialize event state updates before checking observation timestamps."""
         return await session.scalar(
             update(RideEvent)
             .where(RideEvent.id == event_id)
