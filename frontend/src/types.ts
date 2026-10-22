@@ -19,7 +19,16 @@ export interface HousingGroup {
 /**
  * Response structure when fetching all pickup locations for a ride event.
  */
+export interface RideFreshness {
+    last_reconciled_at: string | null
+    is_stale: boolean
+    errors: string[]
+    source_count: number
+}
+
 export interface LocationData {
+    event_id?: number
+    freshness?: RideFreshness | null
     /** Housing groups keyed by an identifier (e.g. "Scholars", "Off Campus") */
     housing_groups: {
         [groupName: string]: HousingGroup
@@ -44,6 +53,7 @@ export interface AskRidesJobStatus {
     reason: string | null
     next_run: string
     last_message?: {
+        freshness?: RideFreshness | null
         message_id: string
         reactions: { [emoji: string]: number }
     } | null
@@ -72,6 +82,8 @@ export interface AskRidesStatus {
 export type FellowshipSeason = 'friday' | 'wednesday'
 
 export interface GroupRidesResponse {
+    event_id?: number | null
+    freshness?: RideFreshness | null
     success: boolean
     summary: string | null
     groupings: string[] | null
@@ -84,6 +96,7 @@ export interface RideCoverageUser {
 }
 
 export interface RideCoverage {
+    freshness?: RideFreshness | null
     users: RideCoverageUser[]
     total: number
     assigned: number
@@ -124,6 +137,9 @@ export interface MakeRouteResponse {
 }
 
 export interface AskRidesReactionsData {
+    needs_review?: number
+    event_id?: number | null
+    freshness?: RideFreshness | null
     message_type: string
     reactions: Record<string, string[]>
     username_to_name: Record<string, string>

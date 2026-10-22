@@ -13,6 +13,7 @@ import { ListSkeleton } from './LoadingSkeleton'
 import type { AskRidesReactionsData } from '../types'
 import { CopyPill } from './CopyPill'
 import { RefreshIconButton, SectionCard } from './shared'
+import RideEventFreshness from './RideEventFreshness'
 
 
 type MessageType = 'friday' | 'sunday' | 'sunday_class'
@@ -84,6 +85,7 @@ function ReactionDetails() {
             }
         },
         staleTime: QUERY_STALE_1_MIN,
+        refetchInterval: 60_000,
     })
 
     const error = queryError ? (queryError instanceof Error ? queryError.message : 'Unknown error') : ''
@@ -137,6 +139,7 @@ function ReactionDetails() {
                 </>
             }
         >
+            <RideEventFreshness freshness={data?.freshness} />
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}
