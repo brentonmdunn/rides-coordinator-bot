@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+import pytest_asyncio
 
 from shared.core.bot_context import current_bot_var
 from shared.core.enums import BotName
@@ -77,3 +78,26 @@ def fake_bot():
         ),
     ]
     return FakeBot(commands)
+
+
+@pytest_asyncio.fixture
+async def ride_event_store(monkeypatch):
+    """Provide an isolated SQLite database for event/API recovery tests."""
+    from sqlalchemy import event
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from ridebot.services import ride_events_service as module
+    from shared.core.base import Base
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def foreign_keys(connection, _):
+        connection.execute("PRAGMA foreign_keys=ON")
+
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(module, "AsyncSessionLocal", factory)
+    yield factory
+    await engine.dispose()
