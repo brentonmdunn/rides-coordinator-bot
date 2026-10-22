@@ -50,81 +50,6 @@ class RideEventsService:
     """Own transaction boundaries for event registration and current signup state."""
 
     @staticmethod
-    async def save_custom_request(*, message_id, discord_user_id, name, text):
-        """Keep a modal request durable even if its coordinator notification fails."""
-        async with AsyncSessionLocal() as session:
-            event = await RideEventsRepository.event_for_message(session, str(message_id))
-        if event is None:
-            raise ValueError("Announcement has not been imported into ride events")
-        return await RideEventsService.save_request(
-            event_id=event.id,
-            discord_user_id=str(discord_user_id),
-            name=name,
-            details=text.strip(),
-            source="discord",
-            return_preference="custom",
-        )
-
-    @staticmethod
-    async def save_request(
-        *,
-        event_id,
-        name,
-        location=None,
-        details=None,
-        discord_user_id=None,
-        identity_key=None,
-        source="manual",
-        pickup=True,
-        return_preference="unknown",
-        active=True,
-    ):
-        """Create/update a participant without requiring a Discord account or reaction."""
-        if not name.strip() or return_preference not in {
-            "home",
-            "lunch",
-            "custom",
-            "unknown",
-            "none",
-        }:
-            raise ValueError("A name and valid return preference are required")
-        key = (
-            f"discord:{discord_user_id}"
-            if discord_user_id
-            else (identity_key or f"manual:{uuid4()}")
-        )
-        now = datetime.now(UTC).replace(tzinfo=None)
-        async with AsyncSessionLocal() as session, session.begin():
-            if await RideEventsRepository.lock_event(session, event_id) is None:
-                raise ValueError("Ride event not found")
-            rows = await RideEventsRepository.requests(session, event_id, active_only=False)
-            row = next((r for r in rows if r.identity_key == key), None)
-            if row is None:
-                row = RideRequest(
-                    event_id=event_id,
-                    identity_key=key,
-                    source=source,
-                    discord_user_id=discord_user_id,
-                )
-                session.add(row)
-            row.name, row.location, row.details = name.strip(), location, details
-            row.active, row.pickup, row.return_preference = active, pickup, return_preference
-            row.needs_review = return_preference == "custom" or bool(details)
-            row.updated_at = now
-            await session.flush()
-            return row
-
-    @staticmethod
-    async def import_legacy_requests():
-        """Keep previously entered non-Discord riders in the canonical workflow on rollout."""
-        from ridebot.repositories.non_discord_rides_repository import NonDiscordRidesRepository
-
-        async with AsyncSessionLocal() as session, session.begin():
-            return await NonDiscordRidesRepository.import_requests(
-                session, get_current_cycle_start().date()
-            )
-
-    @staticmethod
     async def ensure_event(
         *, guild_id: str, message_type: AskRidesMessageType, event_date: date
     ) -> RideEvent:
@@ -166,11 +91,18 @@ class RideEventsService:
         timestamp = _naive_utc(observed_at)
         async with AsyncSessionLocal() as session, session.begin():
             announcement = await session.get(RideAnnouncement, message_id)
+            if announcement is not None:
+                await RideEventsRepository.lock_event(session, announcement.event_id)
+                await session.refresh(announcement)
             if (
                 announcement is None
                 or announcement.deleted_at
                 or choice.emoji not in announcement.signup_emojis
             ):
+                return False
+            if announcement.state_changed_at and timestamp < announcement.state_changed_at:
+                return False
+            if announcement.last_reconciled_at and timestamp < announcement.last_reconciled_at:
                 return False
             await RideEventsRepository.set_reaction(
                 session,
@@ -225,6 +157,33 @@ class RideEventsService:
             )
             if row:
                 await _refresh_requests(session, row.event_id, timestamp)
+
+    @staticmethod
+    async def mark_sync_error(message_id: str, message: str):
+        """Retain saved state on transport/permission failures and expose its freshness."""
+        async with AsyncSessionLocal() as session, session.begin():
+            row = await session.get(RideAnnouncement, message_id)
+            if row:
+                row.last_checked_at = datetime.now(UTC).replace(tzinfo=None)
+                row.sync_error = message
+
+    @staticmethod
+    async def sync_targets():
+        """Reconcile current/recent events rather than every historical message."""
+        async with AsyncSessionLocal() as session:
+            return await RideEventsRepository.sync_targets(
+                session, get_current_cycle_start().date() - timedelta(days=7)
+            )
+
+    @staticmethod
+    async def import_legacy_requests():
+        """Keep previously entered non-Discord riders in the canonical workflow on rollout."""
+        from ridebot.repositories.non_discord_rides_repository import NonDiscordRidesRepository
+
+        async with AsyncSessionLocal() as session, session.begin():
+            return await NonDiscordRidesRepository.import_requests(
+                session, get_current_cycle_start().date()
+            )
 
     @staticmethod
     async def resolve_event(
@@ -338,6 +297,71 @@ class RideEventsService:
             roster = await RideEventsRepository.roster(session)
             announcements = await RideEventsRepository.announcements(session, event_id)
             return event, requests, roster, freshness(announcements)
+
+    @staticmethod
+    async def save_request(
+        *,
+        event_id,
+        name,
+        location=None,
+        details=None,
+        discord_user_id=None,
+        identity_key=None,
+        source="manual",
+        pickup=True,
+        return_preference="unknown",
+        active=True,
+    ):
+        """Create/update a participant without requiring a Discord account or reaction."""
+        if not name.strip() or return_preference not in {
+            "home",
+            "lunch",
+            "custom",
+            "unknown",
+            "none",
+        }:
+            raise ValueError("A name and valid return preference are required")
+        key = (
+            f"discord:{discord_user_id}"
+            if discord_user_id
+            else (identity_key or f"manual:{uuid4()}")
+        )
+        now = datetime.now(UTC).replace(tzinfo=None)
+        async with AsyncSessionLocal() as session, session.begin():
+            if await RideEventsRepository.lock_event(session, event_id) is None:
+                raise ValueError("Ride event not found")
+            rows = await RideEventsRepository.requests(session, event_id, active_only=False)
+            row = next((r for r in rows if r.identity_key == key), None)
+            if row is None:
+                row = RideRequest(
+                    event_id=event_id,
+                    identity_key=key,
+                    source=source,
+                    discord_user_id=discord_user_id,
+                )
+                session.add(row)
+            row.name, row.location, row.details = name.strip(), location, details
+            row.active, row.pickup, row.return_preference = active, pickup, return_preference
+            row.needs_review = return_preference == "custom" or bool(details)
+            row.updated_at = now
+            await session.flush()
+            return row
+
+    @staticmethod
+    async def save_custom_request(*, message_id, discord_user_id, name, text):
+        """Keep a modal request durable even if its coordinator notification fails."""
+        async with AsyncSessionLocal() as session:
+            event = await RideEventsRepository.event_for_message(session, str(message_id))
+        if event is None:
+            raise ValueError("Announcement has not been imported into ride events")
+        return await RideEventsService.save_request(
+            event_id=event.id,
+            discord_user_id=str(discord_user_id),
+            name=name,
+            details=text.strip(),
+            source="discord",
+            return_preference="custom",
+        )
 
     @staticmethod
     async def pickup_data(
