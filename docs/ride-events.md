@@ -1,70 +1,138 @@
-# Database-backed ride events: first increment
+# Database-backed ride events
 
-This is the first stage of [recommendation 1](greenfield-architecture-review.md).
-Existing dashboard, pickup, and grouping flows continue to use their current
-sources during this migration. The new API is available for validation and future
-consumer migration; this increment does not claim to finish that migration.
+Ride events own the ride date, requests, driver offers, and confirmed assignments.
+Discord announcements are source projections. Dashboard, pickup, grouping, and
+coverage reads use saved event state and do not require a live Discord bot.
 
-## Data ownership
+## Data model
 
-- `ride_events` stores a stable event ID, Discord guild ID, message type, and the
-  actual ride date. `(guild_id, message_type, event_date)` identifies an event.
-- `ride_announcements` maps Discord message IDs to events, channels, and the
-  configured signup emojis. Multiple announcements may reference one event.
-- `ride_signups` stores current reaction choices by message ID, immutable Discord
-  user ID, and emoji. Removals are retained as inactive choices. Multiple active
-  choices/messages are grouped into one rider in the API.
-- The existing pickup-info roster remains the source for registered people's
-  names and locations. Reads join it by Discord user ID, without matching names
-  or usernames. Unregistered riders remain visible with null roster fields.
+- `ride_events`: stable ID, guild, message type, and actual event date. The tuple
+  `(guild_id, message_type, event_date)` identifies an event.
+- `ride_announcements`: message/channel mapping, rider or driver kind, configured
+  reaction choices, reconciliation time, clear/delete fences, and source errors.
+- `ride_signups`: observed reaction choices keyed by message, Discord user ID, and
+  emoji. Inactive choices retain removals for ordering and recovery.
+- `ride_requests`: stable participants shared by Discord reactions, Something else
+  submissions, manual riders, and the existing non-Discord pickup interface.
+- `ride_driver_offers`: event-specific availability, offered legs, and explicitly
+  confirmed passenger capacity. A reaction never invents a seat count.
+- `ride_assignments`: confirmed request/driver pairs for pickup or return legs.
 
-Reaction choices are deliberately preserved rather than interpreted as validated
-pickup/return commitments: templates allow customized emojis. Driver offers,
-assignments, custom requests, and non-Discord requests are later stages.
+The existing pickup-info roster remains authoritative for registered names and
+locations. Joins use immutable Discord IDs. Unregistered riders remain visible;
+usernames are display/copy attributes, not identity keys. Legacy non-Discord rows
+are retained for compatibility and written into canonical requests in the same
+transaction. Current dated legacy entries are also imported during reconciliation.
 
-## New announcement and reaction flow
+Standard reaction choices yield pickup/return preferences. Unknown configured
+emojis and conflicting preferences require coordinator review. Something else
+text is saved before notification, so a failed coordinator notification does not
+lose the request. A custom request can remain active after its reaction is removed.
 
-The normal ask-rides sender persists an event before sending its announcement,
-using the same explicit date to render the embed. After sending, it binds the
-message before adding seed reactions. If sending fails, the event remains with
-no announcement. If binding fails, an error includes the event/channel/message
-IDs for recovery; the sender does not silently resend and create duplicates.
+Sunday class attendees are excluded from the service's outbound pickups by stable
+identity and matching event date. They remain eligible for requested return legs.
 
-Raw reaction handlers persist configured choices on mapped messages before
-fetching the message or running other Discord actions. Repeated deliveries update
-the same choice. Observation timestamps prevent older snapshots or events from
-overwriting newer recorded changes. The legacy reaction audit log uses explicit
-event metadata for registered messages, while retaining its previous fallback for
-unregistered historical announcements.
+## Synchronization and recovery
 
-## Read API
+The sender saves an explicit event before posting, uses that date to render the
+announcement, and binds the returned message ID before adding seed reactions.
+Driver prompts are bound explicitly to dated events as well.
 
-Both endpoints require the ride coordinator role and work without a live bot:
+`RideEventSync` owns one serialized reconciliation loop. It runs on ready/resume
+and every five minutes, retries failed discovery, and cancels on cog unload.
+Sources are reconciled independently: an unavailable source cannot stop the other
+snapshots. A complete snapshot is collected before replacing any saved choices.
+Transport/permission failures preserve data and expose a sync error.
+
+Raw gateway adds/removes are persisted before any message fetch, including when
+member cache data is missing. Clear-all, removed-emoji, single-message deletion,
+and bulk deletion are handled explicitly. Timestamp fences prevent older in-flight
+snapshots or delayed gateway events from restoring cleared/deleted choices.
+SQLite write serialization protects those checks against concurrent changes.
+
+Deleting a source retires its reaction choices without deleting the event. Other
+sources, manual requests, and durable custom requests remain independent. A driver
+withdrawing availability retires affected confirmed assignments.
+
+Startup discovery imports recognizable current-week announcements authored by
+RideBot. Rider import requires an explicit displayed date and an unambiguous
+current/default title; year boundaries are handled without using publication date
+as the ride date. Legacy driver prompts are matched exactly and bound only when
+there is one compatible, already-dated event. Ambiguous or older announcements
+can be imported with explicit metadata using the single-message tool below.
+
+## Coordinator interface
+
+The dashboard links to `/ride-events`. Coordinators can:
+
+1. Select a dated event and inspect requests, custom details, and sync freshness.
+2. Add a manual rider without a Discord account.
+3. Confirm a driver's passenger seats and offered legs.
+4. Assign riders to pickup/return legs and save the whole plan atomically.
+5. Refresh source reactions on demand when the bot is connected.
+
+Plans reject cross-event IDs, inactive requests, unavailable drivers, unconfirmed
+capacity, duplicate per-leg assignments, self-assignment, and capacity overflow.
+Invalid updates preserve the previous plan. Seat/direction edits cannot invalidate
+existing assignments. Coverage reflects confirmed assignments saved in this
+interface; pasted grouping text and generated grouping suggestions are not a
+confirmation. The LLM grouping engine itself remains a separate architecture item.
+
+Reaction, pickup, grouping, coverage, and event views expose snapshot freshness.
+The oldest active source snapshot controls freshness; an individual gateway event
+cannot make incomplete history appear fully synced. Sources become stale after
+15 minutes, on an incomplete initial snapshot, or on a source error. The UI also
+ages freshness while a page stays open and polls current event data every minute.
+
+## API
+
+Event management endpoints require a ride coordinator or admin:
 
 ```text
-GET /api/ride-events?date_from=2026-10-19&date_to=2026-10-25
-GET /api/ride-events/{event_id}
+GET  /api/ride-events?date_from=2026-10-19&date_to=2026-10-25
+GET  /api/ride-events/{event_id}
+GET  /api/ride-events/current/{friday|sunday|sunday_class|wednesday}
+POST /api/ride-events/{event_id}/requests
+PUT  /api/ride-events/{event_id}/driver-offers/{discord_user_id}
+PUT  /api/ride-events/{event_id}/assignments
+POST /api/ride-events/{event_id}/reconcile
 ```
 
-The list optionally accepts `guild_id` and requires a date range of at most 93
-days. Detail responses include source announcements, their configured emojis,
-`last_reconciled_at`, and each rider's active choices, observed timestamps, and
-available roster identity/location. Timestamps carry a UTC offset.
+List ranges are limited to 93 days and optionally accept `guild_id`. Details include
+source state, reaction choices, canonical requests, offers, assignments, and
+freshness. Reconciliation needs a live bot; reads and plan management do not.
+The existing pickup/grouping endpoints also accept an explicit `event_id`.
 
-Stored state can be stale. `last_reconciled_at: null` means no complete snapshot
-has been applied; receiving individual gateway updates does not establish that
-all earlier reactions were observed.
+Example replacement plan (IDs come from event detail):
 
-## Migration and importing current announcements
+```json
+{"assignments": [{"request_id": 4, "driver_offer_id": 7, "direction": "pickup"}]}
+```
 
-The additive Alembic revision is `d1e2f3a4b506`, following `c8d2e4f6a901`.
-Apply migrations through the normal deployment process before enabling this code.
-No production or local application database is migrated by the test suite.
+## Rollout
 
-Historical reaction logs do not reliably contain the actual event date. They are
-not automatically backfilled into events. Import existing announcements with
-explicit dates and reaction configuration instead. From `backend/`, with
-`DATABASE_URL` and `RIDEBOT_TOKEN` configured:
+The latest additive migration is `f2a3b4c5d607`, following `d1e2f3a4b506`.
+The migration preserves earlier signup state before the first live snapshot.
+From `backend/`, with the intended `DATABASE_URL` and `RIDEBOT_TOKEN` configured:
+
+```sh
+uv run python -m scripts.rollout_ride_events
+uv run python -m scripts.rollout_ride_events --apply
+```
+
+The first command is a dry run. Apply creates a consistent online SQLite backup,
+checks backup integrity, migrates the exact rollout revision, then imports and
+reconciles existing announcements through REST. It starts no second gateway or
+scheduler and sends no Discord messages. Failed source refreshes make the rollout
+command fail; inspect event freshness and rerun after restoring access.
+
+Use `--env-file PATH` to select a configuration. For an explicit migration without
+Discord import, use `--apply --schema-only`. No production deployment is implied
+by a local schema-only run. Backups retain the database suffix and stay ignored
+by Git. Image rollback after a migration must use a schema-compatible image;
+restore the backup only through an explicit operational recovery procedure.
+
+For an ambiguous or historical announcement, use explicit metadata:
 
 ```sh
 uv run python -m scripts.reconcile_ride_event \
@@ -73,28 +141,8 @@ uv run python -m scripts.reconcile_ride_event \
   --emoji '🍔' --emoji '🏠' --emoji '✳️'
 ```
 
-The default is a dry run: read the complete Discord reaction snapshot and report
-the intended metadata/count without writing data. Add `--apply` to register the
-announcement and replace its current choices. Reuse the same arguments to repair
-missed adds/removals. Registration is idempotent, and conflicting message bindings
-are rejected. A failed snapshot fetch does not clear saved signups. The tool logs
-in through REST only; it starts no gateway connection or scheduled jobs.
-
-Reconciliation must run against the same database as the app. Run the tool again
-after importing a busy announcement if reactions changed while it was first
-being bound. Snapshot application preserves gateway observations recorded after
-the snapshot began and rolls back all state changes if a database write fails.
-
-## Remaining work before switching existing consumers
-
-1. Reconcile automatically on startup/reconnect and periodically as needed.
-2. Handle bulk reaction removal and deleted source messages explicitly. For now,
-   clear-all/remove-emoji changes require reconciliation; deleted announcements
-   retain their last recorded choices rather than implying cancellation.
-3. Complete ingestion for members absent from the guild cache.
-4. Move pickup/dashboard reads to these event IDs and surface freshness in the UI.
-5. Unify non-Discord/custom requests and define explicit pickup/return semantics,
-   then add driver offers and assignments.
-
-The current application remains single-instance. This implementation uses SQLite
-upserts and does not introduce a queue or another service.
+This is also a dry run by default; add `--apply` to write it. Repeated imports are
+idempotent and conflicting bindings are rejected. If an announcement was sent but
+its original binding failed, import its returned message ID rather than resending.
+The app remains single-instance and uses SQLite; no worker service or queue was
+introduced.

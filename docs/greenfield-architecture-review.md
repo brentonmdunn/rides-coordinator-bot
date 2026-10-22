@@ -18,6 +18,9 @@ unregistered riders without inventing roster entries or matching people by name.
 
 ### Implementation stages
 
+Implemented in the database-backed ride workflow; see [ride-events.md](ride-events.md)
+for the synchronization, coordinator interface, and rollout contract.
+
 1. Persist dated events and announcement mappings; ingest reaction state by stable
    user ID; expose database-only event/signup reads; provide an explicit import
    and reconciliation path for existing announcements.
