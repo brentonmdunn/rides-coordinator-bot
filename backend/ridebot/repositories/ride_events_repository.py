@@ -7,11 +7,19 @@ idempotent and prevent older snapshots from replacing newer observed changes.
 
 from datetime import date, datetime
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.core.models import Locations, RideAnnouncement, RideEvent, RideSignup
+from shared.core.models import (
+    Locations,
+    RideAnnouncement,
+    RideAssignment,
+    RideDriverOffer,
+    RideEvent,
+    RideRequest,
+    RideSignup,
+)
 
 
 class RideEventsRepository:
@@ -54,6 +62,7 @@ class RideEventsRepository:
         channel_id: str,
         message_id: str,
         signup_emojis: list[str],
+        kind: str = "rider",
     ) -> RideAnnouncement:
         """Bind a message once; reject attempts to reinterpret its event or choices."""
         await session.execute(
@@ -63,6 +72,7 @@ class RideEventsRepository:
                 channel_id=channel_id,
                 message_id=message_id,
                 signup_emojis=signup_emojis,
+                kind=kind,
             )
             .on_conflict_do_nothing(index_elements=["message_id"])
         )
@@ -72,6 +82,7 @@ class RideEventsRepository:
             row.event_id != event_id
             or row.channel_id != channel_id
             or set(row.signup_emojis) != set(signup_emojis)
+            or row.kind != kind
         ):
             raise ValueError("Announcement is already bound to another event or configuration")
         return row
@@ -127,12 +138,17 @@ class RideEventsRepository:
             update(RideAnnouncement)
             .where(
                 RideAnnouncement.message_id == message_id,
+                RideAnnouncement.deleted_at.is_(None),
+                or_(
+                    RideAnnouncement.state_changed_at.is_(None),
+                    RideAnnouncement.state_changed_at <= observed_at,
+                ),
                 or_(
                     RideAnnouncement.last_reconciled_at.is_(None),
                     RideAnnouncement.last_reconciled_at <= observed_at,
                 ),
             )
-            .values(last_reconciled_at=observed_at)
+            .values(last_reconciled_at=observed_at, last_checked_at=observed_at, sync_error=None)
             .returning(RideAnnouncement.message_id)
         )
         return result is not None
@@ -171,7 +187,170 @@ class RideEventsRepository:
             select(RideSignup, Locations)
             .join(RideAnnouncement, RideSignup.message_id == RideAnnouncement.message_id)
             .outerjoin(Locations, Locations.discord_user_id == RideSignup.discord_user_id)
-            .where(RideAnnouncement.event_id == event_id, RideSignup.active.is_(True))
+            .where(
+                RideAnnouncement.event_id == event_id,
+                RideSignup.active.is_(True),
+                RideAnnouncement.kind == "rider",
+                RideAnnouncement.deleted_at.is_(None),
+            )
             .order_by(RideSignup.discord_user_id, RideSignup.message_id, RideSignup.emoji)
         )
         return result.all()
+
+    @staticmethod
+    async def current_announcement(session, message_type, channel_id, cycle_start, *, kind="rider"):
+        """Select an explicitly dated event for the current cycle, scoped to its channel."""
+        from datetime import timedelta
+
+        return await session.scalar(
+            select(RideAnnouncement)
+            .join(RideEvent)
+            .where(
+                RideEvent.message_type == message_type,
+                RideEvent.event_date >= cycle_start,
+                RideEvent.event_date < cycle_start + timedelta(days=7),
+                RideAnnouncement.channel_id == str(channel_id),
+                RideAnnouncement.kind == kind,
+                RideAnnouncement.deleted_at.is_(None),
+            )
+            .order_by(RideAnnouncement.created_at.desc(), RideAnnouncement.message_id.desc())
+            .limit(1)
+        )
+
+    @staticmethod
+    async def current_event(session, message_type, channel_id, cycle_start, guild_id):
+        """Resolve dated events even when their Discord projection was deleted or never existed."""
+        from datetime import timedelta
+
+        return await session.scalar(
+            select(RideEvent)
+            .outerjoin(RideAnnouncement)
+            .where(
+                RideEvent.message_type == message_type,
+                RideEvent.event_date >= cycle_start,
+                RideEvent.event_date < cycle_start + timedelta(days=7),
+                or_(
+                    RideAnnouncement.channel_id == str(channel_id),
+                    (RideAnnouncement.message_id.is_(None) & (RideEvent.guild_id == str(guild_id))),
+                ),
+            )
+            .order_by(RideEvent.event_date.desc(), RideEvent.id.desc())
+            .limit(1)
+        )
+
+    @staticmethod
+    async def sync_targets(session, since):
+        """Return recent source messages for independent reconciliation."""
+        return list(
+            (
+                await session.scalars(
+                    select(RideAnnouncement)
+                    .join(RideEvent)
+                    .where(RideEvent.event_date >= since, RideAnnouncement.deleted_at.is_(None))
+                    .order_by(RideEvent.event_date, RideAnnouncement.message_id)
+                )
+            ).all()
+        )
+
+    @staticmethod
+    async def clear_reactions(session, message_id, observed_at, *, emoji=None, deleted=False):
+        """Fence old snapshots and retire cleared choices without deleting the event."""
+        row = await session.get(RideAnnouncement, message_id)
+        if row is not None:
+            await RideEventsRepository.lock_event(session, row.event_id)
+            await session.refresh(row)
+        if row is None or (row.state_changed_at and row.state_changed_at > observed_at):
+            return None
+        row.state_changed_at = observed_at
+        row.last_checked_at = observed_at
+        if deleted:
+            row.deleted_at = observed_at
+            row.sync_error = "Source message deleted"
+        stmt = update(RideSignup).where(
+            RideSignup.message_id == message_id, RideSignup.updated_at <= observed_at
+        )
+        if emoji is not None:
+            stmt = stmt.where(RideSignup.emoji == emoji)
+        await session.execute(stmt.values(active=False, updated_at=observed_at))
+        return row
+
+    @staticmethod
+    async def source_choices(session, event_id, kind="rider"):
+        """Read all current selections for one event/interface role."""
+        return list(
+            (
+                await session.scalars(
+                    select(RideSignup)
+                    .join(RideAnnouncement)
+                    .where(
+                        RideAnnouncement.event_id == event_id,
+                        RideAnnouncement.kind == kind,
+                        RideAnnouncement.deleted_at.is_(None),
+                        RideSignup.active.is_(True),
+                    )
+                    .order_by(RideSignup.updated_at, RideSignup.discord_user_id)
+                )
+            ).all()
+        )
+
+    @staticmethod
+    async def requests(session, event_id, *, active_only=True):
+        """Read unified participants, including manual/custom requests."""
+        stmt = select(RideRequest).where(RideRequest.event_id == event_id)
+        if active_only:
+            stmt = stmt.where(RideRequest.active.is_(True))
+        return list((await session.scalars(stmt.order_by(RideRequest.id))).all())
+
+    @staticmethod
+    async def offers(session, event_id):
+        """Read confirmed driver capacity and observed availability."""
+        return list(
+            (
+                await session.scalars(
+                    select(RideDriverOffer)
+                    .where(RideDriverOffer.event_id == event_id)
+                    .order_by(RideDriverOffer.id)
+                )
+            ).all()
+        )
+
+    @staticmethod
+    async def assignments(session, event_id):
+        """Read confirmed assignments for both legs."""
+        return list(
+            (
+                await session.scalars(
+                    select(RideAssignment)
+                    .where(RideAssignment.event_id == event_id)
+                    .order_by(RideAssignment.id)
+                )
+            ).all()
+        )
+
+    @staticmethod
+    async def replace_assignments(session, event_id, entries):
+        """Replace the event plan within the caller's validated transaction."""
+        await session.execute(delete(RideAssignment).where(RideAssignment.event_id == event_id))
+        session.add_all(entries)
+
+    @staticmethod
+    async def lock_event(session, event_id):
+        """Serialize plan/capacity changes before checking cross-row constraints."""
+        return await session.scalar(
+            update(RideEvent)
+            .where(RideEvent.id == event_id)
+            .values(guild_id=RideEvent.guild_id)
+            .returning(RideEvent.id)
+        )
+
+    @staticmethod
+    async def roster(session):
+        """Index registered riders by stable Discord user ID."""
+        return {
+            row.discord_user_id: row
+            for row in (
+                await session.scalars(
+                    select(Locations).where(Locations.discord_user_id.is_not(None))
+                )
+            ).all()
+        }

@@ -370,6 +370,11 @@ class RideAnnouncement(Base):
     signup_emojis: Mapped[list[str]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     last_reconciled_at: Mapped[datetime | None]
+    kind: Mapped[str] = mapped_column(default="rider", server_default="rider")
+    state_changed_at: Mapped[datetime | None]
+    deleted_at: Mapped[datetime | None]
+    last_checked_at: Mapped[datetime | None]
+    sync_error: Mapped[str | None]
 
 
 class RideSignup(Base):
@@ -385,4 +390,57 @@ class RideSignup(Base):
     discord_username: Mapped[str]
     display_name: Mapped[str]
     active: Mapped[bool]
+    updated_at: Mapped[datetime]
+
+
+class RideRequest(Base):
+    """An event participant, shared by reactions, custom requests, and manual riders."""
+
+    __tablename__ = "ride_requests"
+    __table_args__ = (UniqueConstraint("event_id", "identity_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("ride_events.id"), index=True)
+    identity_key: Mapped[str]
+    source: Mapped[str]
+    discord_user_id: Mapped[str | None]
+    name: Mapped[str]
+    location: Mapped[str | None]
+    details: Mapped[str | None]
+    active: Mapped[bool] = mapped_column(default=True)
+    pickup: Mapped[bool] = mapped_column(default=True)
+    return_preference: Mapped[str] = mapped_column(default="unknown")
+    needs_review: Mapped[bool] = mapped_column(default=False)
+    updated_at: Mapped[datetime]
+
+
+class RideDriverOffer(Base):
+    """A driver's event-specific availability and explicitly confirmed passenger capacity."""
+
+    __tablename__ = "ride_driver_offers"
+    __table_args__ = (UniqueConstraint("event_id", "discord_user_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("ride_events.id"), index=True)
+    discord_user_id: Mapped[str]
+    discord_username: Mapped[str]
+    availability: Mapped[str]
+    capacity: Mapped[int | None]
+    directions: Mapped[list[str]] = mapped_column(JSON)
+    source: Mapped[str] = mapped_column(default="manual", server_default="manual")
+    return_preference: Mapped[str] = mapped_column(default="either", server_default="either")
+    updated_at: Mapped[datetime]
+
+
+class RideAssignment(Base):
+    """A confirmed passenger assignment for one leg of an event."""
+
+    __tablename__ = "ride_assignments"
+    __table_args__ = (UniqueConstraint("event_id", "request_id", "direction"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("ride_events.id"), index=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("ride_requests.id"))
+    driver_offer_id: Mapped[int] = mapped_column(ForeignKey("ride_driver_offers.id"))
+    direction: Mapped[str]
     updated_at: Mapped[datetime]

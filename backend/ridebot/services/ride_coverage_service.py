@@ -4,16 +4,10 @@ import logging
 
 import discord
 
-from ridebot.repositories.ride_coverage_repository import RideCoverageRepository
 from ridebot.utils.time_helpers import (
-    get_coverage_message_lookup_start,
-    get_last_sunday,
     is_in_coverage_widget_window,
-    is_message_in_any_coverage_lookup_window,
 )
-from shared.core.database import AsyncSessionLocal
-from shared.core.enums import AskRidesMessage, ChannelIds, JobName
-from shared.core.error_reporter import send_error_to_discord
+from shared.core.enums import ChannelIds
 
 logger = logging.getLogger(__name__)
 
@@ -33,102 +27,12 @@ class RideCoverageService:
         Returns:
             dict: Summary of the sync operation.
         """
-        logger.info("sync_ride_coverage: Starting sync of recent messages...")
+        from ridebot.services.ride_event_sync_service import RideEventSyncService
+        from ridebot.services.ride_events_service import RideEventsService
 
-        channels_to_scan = [ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS]
-
-        total_messages_scanned = 0
-        total_entries_added = 0
-        total_entries_removed = 0
-        since = get_last_sunday()
-        valid_message_ids = set()
-
-        for channel_id in channels_to_scan:
-            channel = self.bot.get_channel(channel_id)
-            if not channel:
-                logger.warning(f"sync_ride_coverage: Could not find channel {channel_id}")
-                continue
-
-            logger.info(
-                f"sync_ride_coverage: Scanning channel {channel.name} (id={channel_id}) "
-                f"since {since}"
-            )
-
-            try:
-                async for message in channel.history(after=since, limit=500):
-                    total_messages_scanned += 1
-                    valid_message_ids.add(str(message.id))
-
-                    if message.author.bot:
-                        continue
-
-                    if not self.is_grouping_message(message):
-                        continue
-
-                    if not is_message_in_any_coverage_lookup_window(message.created_at):
-                        logger.debug(
-                            f"sync_ride_coverage: Skipping message {message.id} — "
-                            f"outside all coverage lookup windows"
-                        )
-                        continue
-
-                    passenger_usernames = self.extract_passengers(message)
-
-                    if passenger_usernames:
-                        try:
-                            async with AsyncSessionLocal() as session:
-                                await RideCoverageRepository.add_coverage_entries(
-                                    session, passenger_usernames, str(message.id)
-                                )
-                            total_entries_added += len(passenger_usernames)
-                        except Exception as e:
-                            logger.debug(f"sync_ride_coverage: Entry may already exist: {e}")
-
-            except Exception:
-                logger.exception(f"sync_ride_coverage: Error scanning channel {channel_id}")
-                await send_error_to_discord(
-                    f"**Unexpected Error** in `sync_ride_coverage` scanning channel `{channel_id}`"
-                )
-
-        logger.info("sync_ride_coverage: Checking for orphaned entries...")
-        try:
-            async with AsyncSessionLocal() as session:
-                db_message_ids = await RideCoverageRepository.get_unique_message_ids(session, since)
-            orphaned_ids = db_message_ids - valid_message_ids
-
-            for orphaned_id in orphaned_ids:
-                logger.info(
-                    f"sync_ride_coverage: Removing entries for deleted message {orphaned_id}"
-                )
-                async with AsyncSessionLocal() as session:
-                    deleted = await RideCoverageRepository.delete_all_entries_by_message(
-                        session, orphaned_id
-                    )
-                total_entries_removed += deleted
-
-            if orphaned_ids:
-                logger.info(
-                    f"sync_ride_coverage: Cleaned up {total_entries_removed} orphaned entries "
-                    f"from {len(orphaned_ids)} deleted messages"
-                )
-
-        except Exception:
-            logger.exception("sync_ride_coverage: Error during orphan cleanup")
-            await send_error_to_discord(
-                "**Unexpected Error** in `sync_ride_coverage` orphan cleanup"
-            )
-
-        logger.info(
-            f"sync_ride_coverage: Completed. Scanned {total_messages_scanned} messages, "
-            f"added {total_entries_added} entries, removed {total_entries_removed} orphaned entries"
-        )
-
-        return {
-            "messages_scanned": total_messages_scanned,
-            "entries_added": total_entries_added,
-            "entries_removed": total_entries_removed,
-            "since": str(since),
-        }
+        await RideEventSyncService(self.bot).run(discover=True)
+        targets = await RideEventsService.sync_targets()
+        return {"synced": len(targets), "entries_added": 0, "entries_removed": 0}
 
     @staticmethod
     def is_grouping_message(message: discord.Message) -> bool:
@@ -176,20 +80,10 @@ class RideCoverageService:
         Returns:
             Dict with users, total, assigned, message_found, has_coverage_entries.
         """
-        from ridebot.services.locations_service import LocationsService
+        from ridebot.services.ride_events_service import RideEventsService
 
-        locations_service = LocationsService(self.bot)
-
-        if ride_type.lower() == JobName.FRIDAY:
-            ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
-        else:
-            ask_message = AskRidesMessage.SUNDAY_SERVICE
-
-        message_id = await locations_service.find_correct_message(
-            ask_message, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        )
-
-        if message_id is None:
+        event = await RideEventsService.resolve_event(day=ride_type)
+        if event is None:
             return {
                 "users": [],
                 "total": 0,
@@ -198,43 +92,46 @@ class RideCoverageService:
                 "has_coverage_entries": False,
                 "is_in_visibility_window": is_in_coverage_widget_window(ride_type),
             }
-
-        usernames_reacted = await locations_service.get_usernames_who_reacted(
-            int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS), message_id
-        )
-
-        if ride_type.lower() == JobName.SUNDAY:
-            class_message_id = await locations_service.find_correct_message(
-                AskRidesMessage.SUNDAY_CLASS, int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-            )
-            if class_message_id:
-                class_usernames = await locations_service.get_usernames_who_reacted(
-                    int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS), class_message_id
+        workflow = await RideEventsService.workflow(event.id)
+        _, requests, roster, offers, assignments, state = workflow
+        if ride_type == "sunday":
+            class_event = await RideEventsService.resolve_event(day="sunday_class")
+            if class_event and class_event.event_date == event.event_date:
+                class_workflow = await RideEventsService.workflow(class_event.id)
+                class_identities = (
+                    {r.identity_key for r in class_workflow[1]} if class_workflow else set()
                 )
-                usernames_reacted -= class_usernames
-
-        coverage_since = get_coverage_message_lookup_start(ride_type) or get_last_sunday()
-        usernames_list = [str(u) for u in usernames_reacted]
-        async with AsyncSessionLocal() as session:
-            covered_usernames = await RideCoverageRepository.get_bulk_coverage_status(
-                session, usernames_list, since=coverage_since
-            )
-
+                requests = [r for r in requests if r.identity_key not in class_identities]
+        offer_map = {o.id: o for o in offers}
+        assigned_ids = {
+            a.request_id
+            for a in assignments
+            if a.direction == "pickup"
+            and a.driver_offer_id in offer_map
+            and offer_map[a.driver_offer_id].availability == "available"
+        }
         users = []
-        assigned_count = 0
-        for username in usernames_list:
-            has_ride = username in covered_usernames
-            if has_ride:
-                assigned_count += 1
-            users.append({"discord_username": username, "has_ride": has_ride})
-
-        users.sort(key=lambda x: (x["has_ride"], x["discord_username"]))
-
+        for row in requests:
+            if not row.pickup:
+                continue
+            person = roster.get(row.discord_user_id)
+            users.append(
+                {
+                    "discord_username": person.discord_username
+                    if person and person.discord_username
+                    else row.name,
+                    "has_ride": row.id in assigned_ids,
+                }
+            )
+        users.sort(key=lambda row: (row["has_ride"], row["discord_username"]))
+        assigned = sum(u["has_ride"] for u in users)
         return {
             "users": users,
             "total": len(users),
-            "assigned": assigned_count,
+            "assigned": assigned,
             "message_found": True,
-            "has_coverage_entries": assigned_count > 0,
+            "has_coverage_entries": assigned > 0,
             "is_in_visibility_window": is_in_coverage_widget_window(ride_type),
+            "event_id": event.id,
+            "freshness": state,
         }

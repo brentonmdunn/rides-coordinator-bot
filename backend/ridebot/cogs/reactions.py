@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands
 
 from ridebot.cogs.locations import Locations
+from ridebot.core import reaction_broadcaster
 from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
 from ridebot.services.pickup_info_service import PickupInfoService
 from ridebot.services.reaction_logging_service import ReactionLoggingService
@@ -128,7 +129,8 @@ class Reactions(commands.Cog):
             )
             return  # Ensure it's a text channel
 
-        user = guild.get_member(payload.user_id)
+        member = getattr(payload, "member", None)
+        user = member if isinstance(member, discord.Member) else guild.get_member(payload.user_id)
         logger.debug(
             "_handle_reaction_add: user=%s bot=%s",
             getattr(user, "name", None),
@@ -140,7 +142,7 @@ class Reactions(commands.Cog):
             return
 
         if not user:
-            logger.debug("_handle_reaction_add: user not found in guild cache, skipping")
+            await self._record_signup(None, payload, active=True, observed_at=observed_at)
             return
 
         await self._record_signup(user, payload, active=True, observed_at=observed_at)
@@ -239,7 +241,7 @@ class Reactions(commands.Cog):
             return
 
         if not user:
-            logger.debug("_handle_reaction_remove: user not found in guild cache, skipping")
+            await self._record_signup(None, payload, active=False, observed_at=observed_at)
             return
 
         await self._record_signup(user, payload, active=False, observed_at=observed_at)
@@ -270,7 +272,7 @@ class Reactions(commands.Cog):
 
     async def _record_signup(
         self,
-        user: discord.Member,
+        user: discord.Member | None,
         payload: discord.RawReactionActionEvent,
         *,
         active: bool,
@@ -278,23 +280,63 @@ class Reactions(commands.Cog):
     ) -> None:
         """Persist mapped signups before attempting any Discord message fetch."""
         try:
-            await RideEventsService.record_reaction(
+            recorded = await RideEventsService.record_reaction(
                 message_id=str(payload.message_id),
                 choice=ReactionChoice(
                     discord_user_id=str(payload.user_id),
-                    discord_username=user.name,
-                    display_name=user.display_name,
+                    discord_username=user.name if user else str(payload.user_id),
+                    display_name=user.display_name if user else str(payload.user_id),
                     emoji=str(payload.emoji),
                 ),
                 active=active,
                 observed_at=observed_at,
             )
+            if recorded:
+                await reaction_broadcaster.publish(
+                    {"source": "ride_events", "message_id": str(payload.message_id)}
+                )
         except Exception:
             logger.exception("Failed to persist signup for message %s", payload.message_id)
             await send_error_to_discord(
                 f"Could not persist signup for message `{payload.message_id}`; "
                 "reconcile the announcement to restore its current reaction state."
             )
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_clear(self, payload: discord.RawReactionClearEvent):
+        """Retire all source choices without fetching the cleared message."""
+        await RideEventsService.clear_reactions(
+            message_id=str(payload.message_id), observed_at=datetime.now(UTC)
+        )
+        await reaction_broadcaster.publish({"source": "ride_events", "action": "cleared"})
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_clear_emoji(self, payload: discord.RawReactionClearEmojiEvent):
+        """Retire a removed emoji and fence snapshots that began before the removal."""
+        await RideEventsService.clear_reactions(
+            message_id=str(payload.message_id),
+            emoji=str(payload.emoji),
+            observed_at=datetime.now(UTC),
+        )
+        await reaction_broadcaster.publish({"source": "ride_events", "action": "cleared"})
+
+    @commands.Cog.listener()
+    async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
+        """Preserve the event while retiring the deleted announcement's reaction choices."""
+        await RideEventsService.clear_reactions(
+            message_id=str(payload.message_id), deleted=True, observed_at=datetime.now(UTC)
+        )
+        await reaction_broadcaster.publish({"source": "ride_events", "action": "deleted"})
+
+    @commands.Cog.listener()
+    async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent):
+        """Apply message deletion semantics to bulk moderation actions as well."""
+        observed_at = datetime.now(UTC)
+        for message_id in payload.message_ids:
+            await RideEventsService.clear_reactions(
+                message_id=str(message_id), deleted=True, observed_at=observed_at
+            )
+        await reaction_broadcaster.publish({"source": "ride_events", "action": "deleted"})
 
     async def _resolve_message(
         self,

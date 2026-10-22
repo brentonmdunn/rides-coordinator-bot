@@ -7,38 +7,23 @@ from unittest.mock import AsyncMock, Mock
 import discord
 import httpx
 import pytest
-import pytest_asyncio
 from fastapi import FastAPI, HTTPException
-from sqlalchemy import event, func, select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy import func, select
 
 from api.auth import require_ride_coordinator
 from api.routes.ride_events import router
 from ridebot.cogs.reactions import Reactions
 from ridebot.repositories.ride_events_repository import RideEventsRepository
-from ridebot.services import ride_events_service as module
 from ridebot.services.ride_events_service import ReactionChoice, RideEventsService
-from shared.core.base import Base
 from shared.core.enums import AskRidesMessageType
 from shared.core.models import Locations, RideAnnouncement, RideEvent, RideSignup
 
 OBSERVED = datetime(2026, 10, 21, 19, tzinfo=UTC)
 
 
-@pytest_asyncio.fixture
-async def store(monkeypatch):
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-
-    @event.listens_for(engine.sync_engine, "connect")
-    def foreign_keys(connection, _):
-        connection.execute("PRAGMA foreign_keys=ON")
-
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    factory = async_sessionmaker(engine, expire_on_commit=False)
-    monkeypatch.setattr(module, "AsyncSessionLocal", factory)
-    yield factory
-    await engine.dispose()
+@pytest.fixture(name="store")
+def _store(ride_event_store):
+    return ride_event_store
 
 
 async def register(message_id="456", *, guild="123", event_date=date(2026, 10, 25)):

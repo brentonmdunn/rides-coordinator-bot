@@ -40,6 +40,9 @@ def test_upgrade_and_downgrade_preserve_existing_roster(tmp_path):
             == "Existing Rider"
         )
     command.upgrade(config, "d1e2f3a4b506")
+    command.upgrade(config, "f2a3b4c5d607")
+    command.downgrade(config, "d1e2f3a4b506")
+    command.upgrade(config, "f2a3b4c5d607")
     with engine.connect() as connection:
         assert (
             compare_metadata(
