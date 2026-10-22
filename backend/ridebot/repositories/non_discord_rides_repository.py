@@ -1,11 +1,14 @@
 """Repository for non-Discord rides data access."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.core.models import NonDiscordRides
+from ridebot.repositories.ride_events_repository import RideEventsRepository
+from ridebot.utils.constants import GUILD_ID
+from shared.core.enums import AskRidesMessageType, Emoji
+from shared.core.models import NonDiscordRides, RideRequest
 
 
 class NonDiscordRidesRepository:
@@ -24,6 +27,7 @@ class NonDiscordRidesRepository:
             The created NonDiscordRides object.
         """
         session.add(ride)
+        await NonDiscordRidesRepository.sync_request(session, ride)
         await session.commit()
         return ride
 
@@ -56,7 +60,52 @@ class NonDiscordRidesRepository:
             ride: The NonDiscordRides object to delete.
         """
         await session.delete(ride)
+        await NonDiscordRidesRepository.sync_request(session, ride, active=False)
         await session.commit()
+
+    @staticmethod
+    async def sync_request(session, ride, *, active=True):
+        """Keep the legacy coordinator API and canonical event participant in one transaction."""
+        kind = {
+            2: AskRidesMessageType.WEDNESDAY_FELLOWSHIP,
+            4: AskRidesMessageType.FRIDAY_FELLOWSHIP,
+            6: AskRidesMessageType.SUNDAY_SERVICE,
+        }.get(ride.date.weekday())
+        if kind is None:
+            return
+        if ride.emoji == Emoji.SUNDAY_CLASS:
+            kind = AskRidesMessageType.SUNDAY_CLASS
+        event = await RideEventsRepository.ensure_event(
+            session, guild_id=str(GUILD_ID), message_type=str(kind), event_date=ride.date
+        )
+        key = f"non_discord:{ride.name}"
+        requests = await RideEventsRepository.requests(session, event.id, active_only=False)
+        row = next((r for r in requests if r.identity_key == key), None)
+        if row is None:
+            row = RideRequest(
+                event_id=event.id, identity_key=key, source="non_discord", discord_user_id=None
+            )
+            session.add(row)
+        row.name, row.location, row.active, row.pickup = ride.name, ride.location, active, True
+        row.return_preference = (
+            "lunch"
+            if ride.emoji == Emoji.LUNCH
+            else ("home" if ride.emoji in {Emoji.NO_LUNCH, Emoji.FRIDAY_FELLOWSHIP} else "unknown")
+        )
+        row.needs_review = ride.emoji == Emoji.SOMETHING_ELSE
+        row.updated_at = datetime.now(UTC).replace(tzinfo=None)
+
+    @staticmethod
+    async def import_requests(session, since):
+        """Idempotently import existing dated non-Discord rows during rollout/reconciliation."""
+        rides = list(
+            (
+                await session.scalars(select(NonDiscordRides).where(NonDiscordRides.date >= since))
+            ).all()
+        )
+        for ride in rides:
+            await NonDiscordRidesRepository.sync_request(session, ride)
+        return len(rides)
 
     @staticmethod
     async def get_rides_by_date(session: AsyncSession, ride_date: date) -> list[NonDiscordRides]:

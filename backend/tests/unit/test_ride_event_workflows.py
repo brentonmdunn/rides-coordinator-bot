@@ -1,12 +1,13 @@
 """Exercise recovery and persistence of existing ride signup behavior."""
 
-from datetime import timedelta
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import discord
 import pytest
 
+from ridebot.services import ride_events_service as module
 from ridebot.services.ride_events_service import RideEventsService
 from shared.core.enums import AskRidesMessageType
 from shared.core.models import Locations
@@ -27,6 +28,24 @@ async def test_cleared_emoji_preserves_other_choice(store):
         message_id="456", emoji="🍔", observed_at=OBSERVED + timedelta(seconds=1)
     )
     assert [row.emoji for row, _ in (await RideEventsService.get_event(ride.id))[2]] == ["🏠"]
+
+
+@pytest.mark.asyncio
+async def test_custom_request_survives_reaction_removal_and_manual_rider_needs_no_discord(store):
+    ride = await register()
+    await record()
+    await RideEventsService.save_custom_request(
+        message_id="456", discord_user_id="1", name="Alice", text="Return early"
+    )
+    await record(active=False, observed_at=OBSERVED + timedelta(seconds=1))
+    manual = await RideEventsService.save_request(
+        event_id=ride.id, name="Guest", location="ERC", return_preference="home"
+    )
+    requests = (await RideEventsService.workflow(ride.id))[1]
+    assert {r.name for r in requests} == {"Alice", "Guest"}
+    assert next(r for r in requests if r.discord_user_id).details == "Return early"
+    assert manual.discord_user_id is None
+    assert manual.identity_key.startswith("manual:")
 
 
 @pytest.mark.asyncio
@@ -79,3 +98,28 @@ async def test_missing_member_cache_still_persists_add_and_remove(store):
     assert (await RideEventsService.workflow(ride.id))[1][0].discord_user_id == "1"
     await cog._handle_reaction_remove(payload)
     assert (await RideEventsService.workflow(ride.id))[1] == []
+
+
+@pytest.mark.asyncio
+async def test_legacy_non_discord_interface_updates_canonical_requests_atomically(
+    store, monkeypatch
+):
+    from ridebot.repositories.non_discord_rides_repository import NonDiscordRidesRepository
+    from shared.core.models import NonDiscordRides
+
+    monkeypatch.setattr(
+        module, "get_current_cycle_start", lambda: datetime(2026, 10, 19, tzinfo=UTC)
+    )
+    async with store() as session:
+        legacy = await NonDiscordRidesRepository.create_ride(
+            session,
+            NonDiscordRides(name="Guest", date=date(2026, 10, 25), location="ERC", emoji="🍔"),
+        )
+    event = await RideEventsService.resolve_event(day="sunday")
+    assert event is not None  # No Discord projection is required for a manual request.
+    requests = (await RideEventsService.workflow(event.id))[1]
+    assert [(r.name, r.return_preference) for r in requests] == [("Guest", "lunch")]
+    async with store() as session:
+        row = await NonDiscordRidesRepository.get_ride(session, legacy.name, legacy.date)
+        await NonDiscordRidesRepository.delete_ride(session, row)
+    assert (await RideEventsService.workflow(event.id))[1] == []
