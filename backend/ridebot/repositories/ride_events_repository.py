@@ -11,7 +11,13 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.core.models import Locations, RideAnnouncement, RideEvent, RideSignup
+from shared.core.models import (
+    Locations,
+    RideAnnouncement,
+    RideEvent,
+    RideRequest,
+    RideSignup,
+)
 
 
 class RideEventsRepository:
@@ -174,10 +180,70 @@ class RideEventsRepository:
             select(RideSignup, Locations)
             .join(RideAnnouncement, RideSignup.message_id == RideAnnouncement.message_id)
             .outerjoin(Locations, Locations.discord_user_id == RideSignup.discord_user_id)
-            .where(RideAnnouncement.event_id == event_id, RideSignup.active.is_(True))
+            .where(
+                RideAnnouncement.event_id == event_id,
+                RideSignup.active.is_(True),
+                RideAnnouncement.kind == "rider",
+                RideAnnouncement.deleted_at.is_(None),
+            )
             .order_by(RideSignup.discord_user_id, RideSignup.message_id, RideSignup.emoji)
         )
         return result.all()
+
+    @staticmethod
+    async def current_announcement(session, message_type, channel_id, cycle_start, *, kind="rider"):
+        """Select an explicitly dated event for the current cycle, scoped to its channel."""
+        from datetime import timedelta
+
+        return await session.scalar(
+            select(RideAnnouncement)
+            .join(RideEvent)
+            .where(
+                RideEvent.message_type == message_type,
+                RideEvent.event_date >= cycle_start,
+                RideEvent.event_date < cycle_start + timedelta(days=7),
+                RideAnnouncement.channel_id == str(channel_id),
+                RideAnnouncement.kind == kind,
+                RideAnnouncement.deleted_at.is_(None),
+            )
+            .order_by(RideAnnouncement.created_at.desc(), RideAnnouncement.message_id.desc())
+            .limit(1)
+        )
+
+    @staticmethod
+    async def current_event(session, message_type, channel_id, cycle_start, guild_id):
+        """Resolve dated events even when their Discord projection was deleted or never existed."""
+        from datetime import timedelta
+
+        return await session.scalar(
+            select(RideEvent)
+            .outerjoin(RideAnnouncement)
+            .where(
+                RideEvent.message_type == message_type,
+                RideEvent.event_date >= cycle_start,
+                RideEvent.event_date < cycle_start + timedelta(days=7),
+                or_(
+                    RideAnnouncement.channel_id == str(channel_id),
+                    (RideAnnouncement.message_id.is_(None) & (RideEvent.guild_id == str(guild_id))),
+                ),
+            )
+            .order_by(RideEvent.event_date.desc(), RideEvent.id.desc())
+            .limit(1)
+        )
+
+    @staticmethod
+    async def sync_targets(session, since):
+        """Return recent source messages for independent reconciliation."""
+        return list(
+            (
+                await session.scalars(
+                    select(RideAnnouncement)
+                    .join(RideEvent)
+                    .where(RideEvent.event_date >= since, RideAnnouncement.deleted_at.is_(None))
+                    .order_by(RideEvent.event_date, RideAnnouncement.message_id)
+                )
+            ).all()
+        )
 
     @staticmethod
     async def clear_reactions(session, message_id, observed_at, *, emoji=None, deleted=False):
@@ -197,3 +263,52 @@ class RideEventsRepository:
             stmt = stmt.where(RideSignup.emoji == emoji)
         await session.execute(stmt.values(active=False, updated_at=observed_at))
         return row
+
+    @staticmethod
+    async def source_choices(session, event_id, kind="rider"):
+        """Read all current selections for one event/interface role."""
+        return list(
+            (
+                await session.scalars(
+                    select(RideSignup)
+                    .join(RideAnnouncement)
+                    .where(
+                        RideAnnouncement.event_id == event_id,
+                        RideAnnouncement.kind == kind,
+                        RideAnnouncement.deleted_at.is_(None),
+                        RideSignup.active.is_(True),
+                    )
+                    .order_by(RideSignup.updated_at, RideSignup.discord_user_id)
+                )
+            ).all()
+        )
+
+    @staticmethod
+    async def requests(session, event_id, *, active_only=True):
+        """Read unified participants, including manual/custom requests."""
+        stmt = select(RideRequest).where(RideRequest.event_id == event_id)
+        if active_only:
+            stmt = stmt.where(RideRequest.active.is_(True))
+        return list((await session.scalars(stmt.order_by(RideRequest.id))).all())
+
+    @staticmethod
+    async def lock_event(session, event_id):
+        """Serialize event state updates before checking observation timestamps."""
+        return await session.scalar(
+            update(RideEvent)
+            .where(RideEvent.id == event_id)
+            .values(guild_id=RideEvent.guild_id)
+            .returning(RideEvent.id)
+        )
+
+    @staticmethod
+    async def roster(session):
+        """Index registered riders by stable Discord user ID."""
+        return {
+            row.discord_user_id: row
+            for row in (
+                await session.scalars(
+                    select(Locations).where(Locations.discord_user_id.is_not(None))
+                )
+            ).all()
+        }
