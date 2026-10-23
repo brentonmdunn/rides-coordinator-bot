@@ -90,22 +90,53 @@ class RideRequestService:
         Returns:
             True if a registration prompt was posted, False otherwise.
         """
-        # Reuse the rider's existing channel rather than creating a second one.
+        channel, created = await self._get_or_create_rider_channel(
+            user, guild, category, channel_name
+        )
+        if channel is None:
+            return False
+        if not created and await self._latest_message_is_prompt(channel):
+            logger.info(
+                f"Registration prompt is already the latest message in {channel_name}; "
+                "skipping re-post."
+            )
+            return False
+
+        posted = await self._send_registration_prompt(channel, user)
+        # Preserve the new-rider flow's success result once a channel was created.
+        return created or posted
+
+    async def get_or_create_rider_channel(
+        self, user: discord.Member, guild: discord.Guild
+    ) -> discord.TextChannel | None:
+        """Reuse or create a private ride channel without posting a registration prompt."""
+        category = discord.utils.get(guild.categories, id=int(CategoryIds.NEW_RIDES))
+        if category is None:
+            logger.warning(f"Category with ID {CategoryIds.NEW_RIDES} not found.")
+            return None
+
+        async with _rider_locks[user.id]:
+            channel, _ = await self._get_or_create_rider_channel(
+                user, guild, category, user.name.lower()
+            )
+            return channel
+
+    async def _get_or_create_rider_channel(
+        self,
+        user: discord.Member,
+        guild: discord.Guild,
+        category: discord.CategoryChannel,
+        channel_name: str,
+    ) -> tuple[discord.TextChannel | None, bool]:
+        """Find or create a channel under the rider's lock; report whether it is new."""
         existing_channel = discord.utils.get(
             category.channels, name=channel_name
         ) or _get_recently_created_channel(user.id)
         if existing_channel is not None:
             if not isinstance(existing_channel, discord.TextChannel):
                 logger.warning(f"Channel {channel_name} exists but is not a text channel.")
-                return False
-            if await self._latest_message_is_prompt(existing_channel):
-                logger.info(
-                    f"Registration prompt is already the latest message in {channel_name}; "
-                    "skipping re-post."
-                )
-                return False
-            logger.info(f"Channel {channel_name} already exists; re-posting registration prompt.")
-            return await self._send_registration_prompt(existing_channel, user)
+                return None, False
+            return existing_channel, False
 
         # Build permissions
         overwrites = self._build_channel_permissions(guild, user)
@@ -116,24 +147,21 @@ class RideRequestService:
                 name=channel_name,
                 category=category,
                 overwrites=cast(Any, overwrites),
-                reason=f"{user.name} reacted for rides.",
+                reason=f"{user.name} requested rides.",
             )
             logger.info(f"Created ride channel: {new_channel}")
             _recently_created_channels[user.id] = (new_channel, time.monotonic())
         except discord.Forbidden:
             logger.error(f"Missing permissions to create channel for {user.name}")
-            return False
+            return None, False
         except Exception:
             logger.exception(f"Failed to create channel for {user.name}")
             await send_error_to_discord(
                 f"**Unexpected Error** creating ride channel for `{user.name}`"
             )
-            return False
+            return None, False
 
-        await self._send_registration_prompt(new_channel, user)
-
-        # The channel exists either way, so a failed prompt doesn't fail the flow.
-        return True
+        return new_channel, True
 
     async def _latest_message_is_prompt(self, channel: discord.TextChannel) -> bool:
         """

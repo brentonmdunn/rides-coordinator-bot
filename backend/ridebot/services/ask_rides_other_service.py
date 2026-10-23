@@ -3,7 +3,7 @@ Service for the "Something else" button on ask-rides announcements.
 
 Riders whose needs don't fit any reaction option tap the button, describe what
 they need in a modal, and this service forwards it to the ride coordinators
-channel with enough context to act on.
+channel with enough context to act on, then confirms in the rider's private chat.
 """
 
 import logging
@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import discord
 
 from ridebot.services.pickup_info_service import Person, PickupInfoService
+from ridebot.services.ride_request_service import RideRequestService
 from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 from ridebot.utils.constants import ASK_RIDES_OTHER_COOLDOWN_SECONDS
 from ridebot.utils.feature_flags import is_flag_enabled
@@ -158,7 +159,7 @@ class AskRidesOtherService:
         text: str,
     ) -> bool:
         """
-        Forward a rider's "Something else" request to the ride coordinators channel.
+        Forward a request to coordinators and confirm in the rider's private channel.
 
         Args:
             client: The bot client that received the interaction.
@@ -168,7 +169,7 @@ class AskRidesOtherService:
             text: What the rider typed into the modal.
 
         Returns:
-            True if the message was posted; False otherwise.
+            True if delivered to coordinators, regardless of private confirmation success.
         """
         embeds = announcement.embeds
         title = (
@@ -219,6 +220,32 @@ class AskRidesOtherService:
             return False
 
         AskRidesOtherService.record_submission(user.id)
+        # Coordinator delivery is the submission's success condition. A failure
+        # in this extra confirmation must not encourage a duplicate submission.
+        try:
+            guild = announcement.guild
+            if guild is None:
+                raise ValueError("Something else announcement has no guild")
+            member = user if isinstance(user, discord.Member) else guild.get_member(user.id)
+            if member is None:
+                member = await guild.fetch_member(user.id)
+            rider_channel = await RideRequestService(client).get_or_create_rider_channel(
+                member, guild
+            )
+            if rider_channel is not None:
+                quoted_text = "\n".join(
+                    f"> {line}" if line else ">" for line in text.strip().split("\n")
+                )
+                await rider_channel.send(
+                    "✅ Your request was sent to the ride coordinators.\n"
+                    f"**{title}** · [Jump to message]({announcement.jump_url})\n"
+                    f"{quoted_text}",
+                    allowed_mentions=discord.AllowedMentions.none(),
+                    suppress_embeds=True,
+                )
+        except Exception:
+            logger.exception("Failed to post Something else confirmation for rider %s", user.id)
+
         logger.info(
             f"Ask-rides Something else submitted by user {user.id} for "
             f"{message_type.value} on announcement {announcement.id}"
