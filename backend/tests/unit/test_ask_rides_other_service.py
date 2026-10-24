@@ -151,6 +151,14 @@ def _make_client(channel=None):
 
 
 class TestSubmit:
+    @pytest.fixture(autouse=True)
+    def _durable_request(self):
+        with patch(
+            "ridebot.services.ask_rides_other_service.RideEventsService.save_custom_request",
+            new_callable=AsyncMock,
+        ):
+            yield
+
     @pytest.mark.asyncio
     async def test_success_uses_no_mentions_and_records_cooldown(self):
         channel = MagicMock(spec=discord.TextChannel)
