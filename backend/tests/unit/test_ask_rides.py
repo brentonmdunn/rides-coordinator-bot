@@ -395,6 +395,19 @@ class TestBuildAskRidesMessageSundayClass:
 class TestAskRidesTemplateView:
     """Tests for _ask_rides_template passing the view only when present."""
 
+    @pytest.fixture(autouse=True)
+    def _event_store(self):
+        with (
+            patch(
+                "ridebot.jobs.ask_rides.RideEventsService.ensure_event", new_callable=AsyncMock
+            ) as ensure,
+            patch(
+                "ridebot.jobs.ask_rides.RideEventsService.bind_announcement", new_callable=AsyncMock
+            ),
+        ):
+            ensure.return_value = MagicMock(id=10)
+            yield
+
     @pytest.mark.asyncio
     @patch("ridebot.jobs.ask_rides.build_ask_rides_message", new_callable=AsyncMock)
     async def test_sends_without_view_kwarg_value_when_none(self, mock_build):

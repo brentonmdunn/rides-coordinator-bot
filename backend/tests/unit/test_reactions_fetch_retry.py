@@ -38,6 +38,7 @@ def _make_cog() -> Reactions:
     cog._new_rides_helper = AsyncMock()
     cog._check_if_ask_message = AsyncMock()
     cog._record_ask_rides_reaction = AsyncMock()
+    cog._record_signup = AsyncMock()
     return cog
 
 

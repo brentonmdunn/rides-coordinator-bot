@@ -5,7 +5,7 @@ Scheduled jobs for asking for rides.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 import discord
@@ -23,6 +23,7 @@ from ridebot.services.ask_rides_schedule_service import (
 from ridebot.services.fellowship_season_service import FellowshipSeasonService
 from ridebot.services.force_sunday_class_service import ForceSundayClassService
 from ridebot.services.ride_coordinator_service import RideCoordinatorService
+from ridebot.services.ride_events_service import RideEventsService
 from ridebot.utils.ask_rides_defaults import PING_MESSAGE_TYPES
 from ridebot.utils.cache import (
     alru_cache,
@@ -165,6 +166,8 @@ BuiltAskRidesMessage = tuple[discord.Embed, tuple[str, ...], AskRidesOtherView |
 
 async def build_ask_rides_message(
     message_type: AskRidesMessageType,
+    *,
+    event_date: date | None = None,
 ) -> BuiltAskRidesMessage | None:
     """
     Build the embed, reactions, and optional view for an ask-rides announcement.
@@ -172,6 +175,8 @@ async def build_ask_rides_message(
     Args:
         message_type: Which announcement type to build. The "Something else"
             view is attached only when its feature flag is enabled.
+        event_date: Explicit ride date shared with the persisted event. If omitted,
+            previews use the next occurrence of the announcement's weekday.
 
     Returns:
         (embed, reactions, view), or None for a wildcard date (nothing to send).
@@ -180,7 +185,11 @@ async def build_ask_rides_message(
     """
     enabled = await AskRidesOtherService.is_enabled()
 
-    formatted_date = get_next_date_str(_MESSAGE_TYPE_DAY[message_type])
+    formatted_date = (
+        event_date.strftime("%-m/%-d")
+        if event_date is not None
+        else get_next_date_str(_MESSAGE_TYPE_DAY[message_type])
+    )
     if message_type != AskRidesMessageType.SUNDAY_CLASS and _is_wildcard_date(formatted_date):
         return None
 
@@ -222,11 +231,16 @@ async def _ask_rides_template(
         return None
     channel: discord.TextChannel = raw_channel
 
-    built = await build_ask_rides_message(message_type)
+    event_date = get_next_date_obj(list(DaysOfWeek)[_MESSAGE_TYPE_DAY[message_type]])
+    built = await build_ask_rides_message(message_type, event_date=event_date)
     if not built:
         logger.error("build_ask_rides_message() returned None, skipping message send.")
         return None
     embed, reactions, view = built
+
+    event = await RideEventsService.ensure_event(
+        guild_id=str(channel.guild.id), message_type=message_type, event_date=event_date
+    )
 
     try:
         sent_message = await channel.send(
@@ -237,6 +251,23 @@ async def _ask_rides_template(
     except discord.HTTPException:
         logger.exception(f"Failed to send message to channel {channel_id}")
         return None
+
+    try:
+        await RideEventsService.bind_announcement(
+            event_id=event.id,
+            channel_id=str(channel_id),
+            message_id=str(sent_message.id),
+            signup_emojis=list(reactions),
+        )
+    except Exception:
+        # External sends and DB writes cannot share a transaction. The import
+        # tool can recover this message without creating a duplicate announcement.
+        logger.exception("Failed to bind announcement %s to event %s", sent_message.id, event.id)
+        await send_error_to_discord(
+            f"Ride announcement `{sent_message.id}` was sent in `{channel_id}` but could not "
+            f"be linked to event `{event.id}`. Import/reconcile this message to recover signups."
+        )
+        raise
 
     for emoji in reactions:
         try:

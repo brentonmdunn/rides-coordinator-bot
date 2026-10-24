@@ -178,3 +178,22 @@ class RideEventsRepository:
             .order_by(RideSignup.discord_user_id, RideSignup.message_id, RideSignup.emoji)
         )
         return result.all()
+
+    @staticmethod
+    async def clear_reactions(session, message_id, observed_at, *, emoji=None, deleted=False):
+        """Fence old snapshots and retire cleared choices without deleting the event."""
+        row = await session.get(RideAnnouncement, message_id)
+        if row is None or (row.state_changed_at and row.state_changed_at > observed_at):
+            return None
+        row.state_changed_at = observed_at
+        row.last_checked_at = observed_at
+        if deleted:
+            row.deleted_at = observed_at
+            row.sync_error = "Source message deleted"
+        stmt = update(RideSignup).where(
+            RideSignup.message_id == message_id, RideSignup.updated_at <= observed_at
+        )
+        if emoji is not None:
+            stmt = stmt.where(RideSignup.emoji == emoji)
+        await session.execute(stmt.values(active=False, updated_at=observed_at))
+        return row

@@ -71,7 +71,11 @@ class RideEventsService:
         timestamp = _naive_utc(observed_at)
         async with AsyncSessionLocal() as session, session.begin():
             announcement = await session.get(RideAnnouncement, message_id)
-            if announcement is None or choice.emoji not in announcement.signup_emojis:
+            if (
+                announcement is None
+                or announcement.deleted_at
+                or choice.emoji not in announcement.signup_emojis
+            ):
                 return False
             await RideEventsRepository.set_reaction(
                 session,
@@ -130,3 +134,14 @@ class RideEventsService:
             announcements = await RideEventsRepository.announcements(session, event_id)
             choices = await RideEventsRepository.active_signups(session, event_id)
             return event, announcements, choices
+
+    @staticmethod
+    async def clear_reactions(
+        *, message_id: str, observed_at: datetime, emoji: str | None = None, deleted: bool = False
+    ):
+        """Record clear/delete gateway events with a fence against in-flight snapshots."""
+        timestamp = _naive_utc(observed_at)
+        async with AsyncSessionLocal() as session, session.begin():
+            await RideEventsRepository.clear_reactions(
+                session, message_id, timestamp, emoji=emoji, deleted=deleted
+            )
