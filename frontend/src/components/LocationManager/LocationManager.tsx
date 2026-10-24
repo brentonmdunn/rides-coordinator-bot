@@ -271,8 +271,11 @@ function LocationManager() {
                 savingAdjustment={manager.savePickupAdjustment.isPending}
                 savingMapping={manager.setLivingMapping.isPending}
                 onSaveAdjustment={(value) => manager.savePickupAdjustment.mutate(value)}
+                onAnnounce={(living_location, pickup_location_id) =>
+                    manager.announceLivingMapping.mutateAsync({ living_location, pickup_location_id })
+                }
                 onSetMapping={(living_location, pickup_location_id) =>
-                    manager.setLivingMapping.mutate({ living_location, pickup_location_id })
+                    manager.setLivingMapping.mutateAsync({ living_location, pickup_location_id })
                 }
             />
 

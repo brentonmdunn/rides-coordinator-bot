@@ -16,6 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '../ui/select'
+import { ConfirmDialog } from '../ConfirmDialog'
 import { SectionCard } from '../shared'
 import type { LivingLocationMapping, ManagedPickupLocation } from '../../types'
 
@@ -26,7 +27,8 @@ interface SettingsSectionProps {
     savingAdjustment: boolean
     savingMapping: boolean
     onSaveAdjustment: (value: number) => void
-    onSetMapping: (livingLocation: string, pickupLocationId: number) => void
+    onSetMapping: (livingLocation: string, pickupLocationId: number) => Promise<unknown>
+    onAnnounce: (livingLocation: string, pickupLocationId: number) => Promise<unknown>
 }
 
 export function SettingsSection({
@@ -37,7 +39,44 @@ export function SettingsSection({
     savingMapping,
     onSaveAdjustment,
     onSetMapping,
+    onAnnounce,
 }: SettingsSectionProps) {
+    const [announcement, setAnnouncement] = useState<{
+        livingLocation: string
+        pickupLocationId: number
+        pickupName: string
+        mapsUrl: string
+    } | null>(null)
+    const [sending, setSending] = useState(false)
+    const [sendError, setSendError] = useState(false)
+    const changeMapping = async (livingLocation: string, pickupLocationId: number) => {
+        if (livingMappings.find((m) => m.living_location === livingLocation)?.pickup_location_id === pickupLocationId) return
+        try {
+            await onSetMapping(livingLocation, pickupLocationId)
+            setSendError(false)
+            const location = locations.find((loc) => loc.id === pickupLocationId)
+            setAnnouncement({
+                livingLocation, pickupLocationId,
+                pickupName: location?.name ?? '',
+                mapsUrl: `https://www.google.com/maps/search/?api=1&query=${location?.latitude},${location?.longitude}`,
+            })
+        } catch {
+            // The mutation reports the save error; only prompt after a successful save.
+        }
+    }
+    const sendAnnouncement = async () => {
+        if (!announcement || sending) return
+        setSending(true)
+        setSendError(false)
+        try {
+            await onAnnounce(announcement.livingLocation, announcement.pickupLocationId)
+            setAnnouncement(null)
+        } catch {
+            setSendError(true)
+        } finally {
+            setSending(false)
+        }
+    }
     const [adjustment, setAdjustment] = useState(String(pickupAdjustment))
 
     useEffect(() => {
@@ -118,9 +157,9 @@ export function SettingsSection({
                                     <Select
                                         value={String(mapping.pickup_location_id)}
                                         onValueChange={(value) =>
-                                            onSetMapping(mapping.living_location, Number(value))
+                                            void changeMapping(mapping.living_location, Number(value))
                                         }
-                                        disabled={savingMapping}
+                                        disabled={savingMapping || announcement != null}
                                     >
                                         <SelectTrigger className="w-52">
                                             <SelectValue placeholder="Select location" />
@@ -148,6 +187,24 @@ export function SettingsSection({
                     </div>
                 </div>
             </div>
+            <ConfirmDialog
+                isOpen={announcement != null}
+                title="Announce this pickup change?"
+                description="Your pickup spot has been saved. Do you want to send an announcement to #rides-announcements?"
+                confirmText={sending ? 'Sending…' : 'Yes, send announcement'}
+                cancelText="No, thanks"
+                confirmDisabled={sending}
+                onConfirm={() => void sendAnnouncement()}
+                onCancel={() => { if (!sending) setAnnouncement(null) }}
+            >
+                {announcement && (
+                    <p className="rounded-lg border bg-muted/40 p-3 text-sm">
+                        📍 Pickup location update: Riders living in {announcement.livingLocation} will now be picked up at {announcement.pickupName}. Please head to this spot for future rides.
+                        <a href={announcement.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block text-primary underline">View pickup spot on Google Maps</a>
+                    </p>
+                )}
+                {sendError && <p role="alert" className="text-sm text-destructive-text">Announcement could not be sent. Your pickup change is saved. Try again or close this prompt.</p>}
+            </ConfirmDialog>
         </SectionCard>
     )
 }
