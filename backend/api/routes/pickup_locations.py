@@ -224,7 +224,7 @@ async def announce_living_mapping(
     if location is None or not location["is_active"]:
         raise HTTPException(status_code=409, detail="Pickup spot is no longer active")
     channel = bot.get_channel(resolve_channel_id(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
-    if channel is None:
+    if not isinstance(channel, discord.TextChannel):
         raise HTTPException(status_code=503, detail="Announcement channel is unavailable")
     message = (
         f"📍 Pickup location update: Riders living in {discord.utils.escape_markdown(living_location)} "

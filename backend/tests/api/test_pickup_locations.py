@@ -273,7 +273,10 @@ class TestMappingAnnouncements:
         from api.dependencies import require_ready_bot
 
         client = _build_client()
+        import discord
+
         bot = Mock()
+        bot.get_channel.return_value = Mock(spec=discord.TextChannel)
         bot.get_channel.return_value.send = AsyncMock()
         client.app.dependency_overrides[require_ready_bot] = lambda: bot
         return client, bot
