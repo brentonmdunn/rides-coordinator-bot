@@ -11,8 +11,11 @@ import { QUERY_STALE_1_MIN } from '../lib/constants'
 
 import { CopyPill } from './CopyPill'
 import { RefreshIconButton, SectionCard } from './shared'
+import RideEventFreshness from './RideEventFreshness'
+import type { RideFreshness } from '../types'
 
 interface DriverReactionsData {
+    freshness?: RideFreshness | null
     day: string
     reactions: Record<string, string[]>
     username_to_name: Record<string, string>
@@ -38,6 +41,7 @@ function DriverReactions() {
             return response.json()
         },
         staleTime: QUERY_STALE_1_MIN,
+        refetchInterval: 60_000,
     })
 
     const errorMessage = error instanceof Error ? error.message : error ? 'Unknown error' : ''
@@ -70,6 +74,7 @@ function DriverReactions() {
                 </>
             }
         >
+                <RideEventFreshness freshness={data?.freshness} />
                 <InfoPanel
                     isOpen={showInfo}
                     onClose={() => setShowInfo(false)}

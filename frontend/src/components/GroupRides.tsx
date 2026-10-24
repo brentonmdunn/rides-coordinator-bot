@@ -9,7 +9,8 @@ import { InfoToggleButton, InfoPanel } from './InfoHelp'
 import RideTypeSelector, { type RideType } from './RideTypeSelector'
 import ErrorMessage from "./ErrorMessage"
 import EditableOutput from './EditableOutput'
-import type { GroupRidesResponse } from '../types'
+import type { GroupRidesResponse, RideFreshness } from '../types'
+import RideEventFreshness from './RideEventFreshness'
 import {
     ChannelIdField,
     LabeledField,
@@ -25,6 +26,7 @@ function GroupRides() {
     const [channelId, setChannelId] = useState('')
     const [showSettings, setShowSettings] = useState(false)
     const [groupRidesSummary, setGroupRidesSummary] = useState<string | null>(null)
+    const [freshness, setFreshness] = useState<RideFreshness | null>(null)
     const [groupRidesData, setGroupRidesData] = useState<string[] | null>(null)
     const [originalGroupRidesData, setOriginalGroupRidesData] = useState<string[] | null>(null)
     const [groupRidesError, setGroupRidesError] = useState<string>('')
@@ -38,6 +40,7 @@ function GroupRides() {
         setGroupRidesLoading(true)
         setGroupRidesError('')
         setGroupRidesSummary(null)
+        setFreshness(null)
         setGroupRidesData(null)
         setOriginalGroupRidesData(null)
 
@@ -61,6 +64,7 @@ function GroupRides() {
             const data: GroupRidesResponse = await response.json()
 
             if (data.success && data.groupings) {
+                setFreshness(data.freshness ?? null)
                 setGroupRidesSummary(data.summary)
                 setGroupRidesData(data.groupings)
                 setOriginalGroupRidesData(data.groupings)
@@ -186,6 +190,7 @@ function GroupRides() {
             {/* Results Display */}
             {(groupRidesSummary || groupRidesData) && (
                 <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <RideEventFreshness freshness={freshness} />
                     {/* Summary Section */}
                     {groupRidesSummary && (
                         <div>

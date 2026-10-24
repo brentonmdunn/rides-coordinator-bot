@@ -2,7 +2,7 @@
 
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import discord
 import httpx
@@ -182,6 +182,57 @@ async def test_event_api_does_not_expose_deferred_coordination_features(store):
         detail = (await client.get(f"/api/ride-events/{ride.id}")).json()
         assert "assignments" not in detail
         assert "driver_offers" not in detail
+
+
+@pytest.mark.asyncio
+async def test_existing_grouping_message_sync_still_marks_database_riders_covered(
+    store, monkeypatch
+):
+    from ridebot.services import ride_coverage_service as coverage_module
+    from ridebot.services.ride_coverage_service import RideCoverageService
+    from shared.core.enums import ChannelIds
+
+    monkeypatch.setattr(module, "get_current_cycle_start", lambda: OBSERVED - timedelta(days=2))
+    monkeypatch.setattr(coverage_module, "AsyncSessionLocal", store)
+    monkeypatch.setattr(coverage_module, "get_last_sunday", lambda: OBSERVED - timedelta(days=3))
+    monkeypatch.setattr(
+        coverage_module, "get_coverage_message_lookup_start", lambda _: OBSERVED - timedelta(days=1)
+    )
+    monkeypatch.setattr(coverage_module, "is_message_in_any_coverage_lookup_window", lambda _: True)
+    ride = await register()
+    channel_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+    await RideEventsService.bind_announcement(
+        event_id=ride.id, channel_id=str(channel_id), message_id="900", signup_emojis=["🍔"]
+    )
+    await record(message_id="900")
+    await record(message_id="900", selection=choice("2", "bob"))
+    passenger = MagicMock(id=1)
+    passenger.__str__.return_value = "alice"
+    message = SimpleNamespace(
+        id=901,
+        channel=SimpleNamespace(id=channel_id),
+        content="Bob drive: <@1>",
+        mentions=[passenger],
+        author=SimpleNamespace(bot=False),
+        created_at=OBSERVED,
+    )
+
+    async def history(**kwargs):
+        yield message
+
+    channel = SimpleNamespace(name="rides", history=history)
+    bot = Mock()
+    bot.get_channel.return_value = channel
+    result = await RideCoverageService(bot).sync_ride_coverage()
+    assert result["entries_added"] == 1
+    # Reading the existing coverage page needs no Discord client or new plan editor.
+    summary = await RideCoverageService(None).get_coverage_summary("sunday")
+    assert summary["total"] == 2
+    assert summary["assigned"] == 1
+    assert summary["users"] == [
+        {"discord_username": "bob", "has_ride": False},
+        {"discord_username": "alice", "has_ride": True},
+    ]
 
 
 @pytest.mark.asyncio
