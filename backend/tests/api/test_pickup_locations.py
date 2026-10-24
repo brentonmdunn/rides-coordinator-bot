@@ -264,3 +264,96 @@ class TestPickupAdjustment:
         client = _build_client()
         resp = client.put("/api/pickup-locations/settings/pickup-adjustment", json={"value": -1})
         assert resp.status_code == 422
+
+
+class TestMappingAnnouncements:
+    def _client_and_bot(self):
+        from unittest.mock import Mock
+
+        from api.dependencies import require_ready_bot
+
+        client = _build_client()
+        bot = Mock()
+        bot.get_channel.return_value.send = AsyncMock()
+        client.app.dependency_overrides[require_ready_bot] = lambda: bot
+        return client, bot
+
+    def test_sends_saved_spot_with_environment_routing(self, monkeypatch):
+        from shared.core.enums import ChannelIds
+
+        monkeypatch.setenv("APP_ENV", "local")
+        client, bot = self._client_and_bot()
+        with patch(f"{SERVICE}.get_all", new=AsyncMock(return_value=_payload())):
+            response = client.post(
+                "/api/pickup-locations/living-mappings/Muir/announce",
+                json={"pickup_location_id": 1},
+            )
+        assert response.status_code == 204
+        bot.get_channel.assert_called_once_with(int(ChannelIds.BOT_STUFF__BOTS))
+        send = bot.get_channel.return_value.send
+        send.assert_awaited_once()
+        assert "Muir" in send.call_args.args[0]
+        assert "Alpha" in send.call_args.args[0]
+        assert (
+            "https://www.google.com/maps/search/?api=1&query=32.88,-117.24"
+            in send.call_args.args[0]
+        )
+        assert send.call_args.kwargs["allowed_mentions"].everyone is False
+        assert send.call_args.kwargs["allowed_mentions"].users is False
+
+    def test_production_routes_to_rides_announcements(self, monkeypatch):
+        from shared.core.enums import ChannelIds
+
+        monkeypatch.setenv("APP_ENV", "production")
+        client, bot = self._client_and_bot()
+        with patch(f"{SERVICE}.get_all", new=AsyncMock(return_value=_payload())):
+            response = client.post(
+                "/api/pickup-locations/living-mappings/Muir/announce",
+                json={"pickup_location_id": 1},
+            )
+        assert response.status_code == 204
+        bot.get_channel.assert_called_once_with(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+
+    def test_stale_mapping_does_not_send(self):
+        client, bot = self._client_and_bot()
+        with patch(f"{SERVICE}.get_all", new=AsyncMock(return_value=_payload())):
+            response = client.post(
+                "/api/pickup-locations/living-mappings/Muir/announce",
+                json={"pickup_location_id": 2},
+            )
+        assert response.status_code == 409
+        bot.get_channel.assert_not_called()
+
+    def test_missing_channel_is_retryable(self):
+        client, bot = self._client_and_bot()
+        bot.get_channel.return_value = None
+        with patch(f"{SERVICE}.get_all", new=AsyncMock(return_value=_payload())):
+            response = client.post(
+                "/api/pickup-locations/living-mappings/Muir/announce",
+                json={"pickup_location_id": 1},
+            )
+        assert response.status_code == 503
+
+    def test_discord_failure_is_reported(self):
+        from unittest.mock import Mock
+
+        import discord
+
+        client, bot = self._client_and_bot()
+        bot.get_channel.return_value.send.side_effect = discord.HTTPException(
+            Mock(status=503, reason="Unavailable"), "Unavailable"
+        )
+        with patch(f"{SERVICE}.get_all", new=AsyncMock(return_value=_payload())):
+            response = client.post(
+                "/api/pickup-locations/living-mappings/Muir/announce",
+                json={"pickup_location_id": 1},
+            )
+        assert response.status_code == 502
+
+    def test_requires_coordinator(self):
+        client = _build_client(forbidden=True)
+        response = client.post(
+            "/api/pickup-locations/living-mappings/Muir/announce",
+            json={"pickup_location_id": 1},
+        )
+        assert response.status_code == 403
