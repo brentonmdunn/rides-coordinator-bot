@@ -124,6 +124,24 @@ export function useLocationManager() {
         onError: showMutationError,
     })
 
+    const announceLivingMapping = useMutation({
+        mutationFn: async ({ living_location, pickup_location_id }: {
+            living_location: string
+            pickup_location_id: number
+        }) => {
+            await apiFetch(
+                `/api/pickup-locations/living-mappings/${encodeURIComponent(living_location)}/announce`,
+                {
+                    method: 'POST',
+                    headers: JSON_HEADERS,
+                    body: JSON.stringify({ pickup_location_id }),
+                }
+            )
+        },
+        onSuccess: () => toast.success('Pickup location announcement sent'),
+        onError: showMutationError,
+    })
+
     const savePickupAdjustment = useMutation({
         mutationFn: async (value: number) => {
             await apiFetch('/api/pickup-locations/settings/pickup-adjustment', {
@@ -147,6 +165,7 @@ export function useLocationManager() {
         upsertEdge,
         deleteEdge,
         setLivingMapping,
+        announceLivingMapping,
         savePickupAdjustment,
     }
 }
