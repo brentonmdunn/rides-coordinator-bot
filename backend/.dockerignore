@@ -17,6 +17,8 @@ ENV/
 # Environment files
 .env
 .env.*
+.doppler-token
+*.encrypted.json
 !.env.example
 
 # Build artifacts
