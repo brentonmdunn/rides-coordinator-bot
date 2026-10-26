@@ -1,0 +1,47 @@
+# Run from your existing deployment directory to preserve ./db and ./logs paths.
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  ride-bot:
+    image: brentonmdunn/ride-bot:latest
+    container_name: ride-bot
+    restart: unless-stopped
+    environment:
+      DOPPLER_TOKEN_FILE: /run/secrets/doppler_token
+      DOPPLER_CONFIG_DIR: /var/lib/doppler
+      TZ: America/Los_Angeles
+    secrets:
+      - doppler_token
+    volumes:
+      - ./db:/app/db:rw
+      - ./logs:/logs:rw
+      - doppler-cache:/var/lib/doppler
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+
+secrets:
+  doppler_token:
+    file: ./.doppler-token
+
+volumes:
+  redis-data:
+  doppler-cache:

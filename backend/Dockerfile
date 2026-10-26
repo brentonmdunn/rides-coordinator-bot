@@ -22,6 +22,15 @@ FROM python:3.13-slim
 RUN apt update && apt install -y sqlite3 tzdata && \
     rm -rf /var/lib/apt/lists/*
 
+# Install Doppler from its signed Debian repository (secrets are fetched only at runtime).
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
+    curl -sLf --retry 3 --tlsv1.2 --proto "=https" https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key \
+      | gpg --dearmor -o /usr/share/keyrings/doppler-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/doppler-archive-keyring.gpg] https://packages.doppler.com/public/cli/deb/debian any-version main" \
+      > /etc/apt/sources.list.d/doppler-cli.list && \
+    apt-get update && apt-get install -y --no-install-recommends doppler && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy virtual environment from builder
@@ -34,7 +43,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+COPY doppler-entrypoint.sh /doppler-entrypoint.sh
+RUN chmod +x /doppler-entrypoint.sh
+ENTRYPOINT ["/doppler-entrypoint.sh"]
 
 # Expose port
 EXPOSE 8000
