@@ -71,7 +71,7 @@ DEFAULT_TEMPLATES: dict[AskRidesMessageType, MessageTemplate] = {
             "Make sure to also react to the message below for 🍔, 🏠, or ✳️."
         ),
         color=EmbedColorChoice.BLURPLE,
-        reactions=(Emoji.SUNDAY_CLASS,),
+        reactions=(Emoji.SUNDAY_CLASS, Emoji.SOMETHING_ELSE),
     ),
 }
 
