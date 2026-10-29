@@ -1,11 +1,11 @@
 # Invite tracking
 
-StonesBot posts new member joins to **botstuff → #bots** (channel ID
-`916823070017204274`). The invite tracking extension is owned only by StonesBot;
+StonesBot posts new member joins to **serving → #server-admin-bot-spam** (channel ID
+`1565258920342069291`). The invite tracking extension is owned only by StonesBot;
 RideBot does not load it, including when running by itself.
 
 StonesBot needs **Manage Server** to fetch invite usage, **View Channel** and
-**Send Messages** in #bots, and the **Server Members Intent** enabled in the Discord
+**Send Messages** in #server-admin-bot-spam, and the **Server Members Intent** enabled in the Discord
 developer portal (the code already requests it). **Manage Channels** on invite
 channels allows Discord's invite creation events to keep new links in the cache.
 Without creation events, a new link's first observed use is reported as unknown.
@@ -27,5 +27,7 @@ also produce unknown attribution.
 
 Usage snapshots are kept in memory. Startup and reconnects establish a fresh
 baseline; the bot does not reconstruct historical joins or replay events missed
-while offline. Published messages remain in #bots. No database migration or new
+while offline. Published messages remain in #server-admin-bot-spam. No database migration or new
 environment variables are required.
+
+Local development (`APP_ENV=local`) redirects outbound messages to #bots.

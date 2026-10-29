@@ -1,4 +1,4 @@
-"""Best-effort attribution of new members to invite creators in the bots channel."""
+"""Best-effort attribution of new members to invite creators in the server admin bot spam channel."""
 
 import asyncio
 import logging
@@ -32,7 +32,9 @@ class InviteTracking(commands.Cog):
         self._generation = 0
 
     def _channel(self) -> discord.TextChannel | None:
-        channel = self.bot.get_channel(resolve_channel_id(ChannelIds.BOT_STUFF__BOTS))
+        channel = self.bot.get_channel(
+            resolve_channel_id(ChannelIds.SERVING__SERVER_ADMIN_BOT_SPAM)
+        )
         return channel if isinstance(channel, discord.TextChannel) else None
 
     async def _fetch(self, guild: discord.Guild) -> dict[str, InviteSnapshot] | None:
@@ -59,7 +61,7 @@ class InviteTracking(commands.Cog):
             self._invites = None
             channel = self._channel()
             if channel is None:
-                logger.warning("Invite tracking destination #bots is unavailable")
+                logger.warning("Invite tracking destination #server-admin-bot-spam is unavailable")
                 return
             generation = self._generation
             snapshot = await self._fetch(channel.guild)
@@ -140,7 +142,7 @@ class InviteTracking(commands.Cog):
             except discord.HTTPException as error:
                 logger.exception("Failed to publish join for member %s", member.id)
                 await send_error_to_discord(
-                    "Failed to publish invite tracking event to #bots", error
+                    "Failed to publish invite tracking event to #server-admin-bot-spam", error
                 )
 
 
