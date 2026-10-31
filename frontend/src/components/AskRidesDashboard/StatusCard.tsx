@@ -1,5 +1,6 @@
 import type { AskRidesJobStatus } from '../../types'
 import PauseControls from './PauseControls'
+import RideEventFreshness from '../RideEventFreshness'
 
 interface StatusCardProps {
     title: string
@@ -68,6 +69,7 @@ function StatusCard({ title, jobName, job, canManage }: StatusCardProps) {
     return (
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
             <h3 className="text-lg font-semibold text-foreground mb-3">{title}</h3>
+            <RideEventFreshness freshness={job.last_message?.freshness} />
 
             <div className={`px-3 py-2 rounded-md border text-sm font-medium mb-4 whitespace-normal break-words ${getStatusColors(status.color)}`}>
                 {status.text}

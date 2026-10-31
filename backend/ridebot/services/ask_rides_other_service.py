@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import discord
 
 from ridebot.services.pickup_info_service import Person, PickupInfoService
+from ridebot.services.ride_events_service import RideEventsService
 from ridebot.services.ride_request_service import RideRequestService
 from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
 from ridebot.utils.constants import ASK_RIDES_OTHER_COOLDOWN_SECONDS
@@ -195,6 +196,17 @@ class AskRidesOtherService:
             person=person,
             lookup_failed=lookup_failed,
         )
+
+        try:
+            await RideEventsService.save_custom_request(
+                message_id=announcement.id,
+                discord_user_id=user.id,
+                name=person.name if person else user.display_name,
+                text=text,
+            )
+        except Exception:
+            logger.exception("Could not persist custom ride request on %s", announcement.id)
+            return False
 
         channel = client.get_channel(resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS))
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):

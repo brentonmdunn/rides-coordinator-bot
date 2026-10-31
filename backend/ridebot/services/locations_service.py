@@ -18,7 +18,6 @@ from ridebot.repositories.locations_repository import LocationsRepository
 from ridebot.services.housing_group_service import HousingGroupService
 from ridebot.services.reaction_service import ReactionService
 from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError, NotAllowedInChannelError
-from ridebot.utils.parsing import get_message_and_embed_content
 from shared.core.database import AsyncSessionLocal
 from shared.core.enums import (
     DAY_TO_ASK_RIDES_MESSAGE,
@@ -180,84 +179,34 @@ class LocationsService:
         args = await self.list_locations(day, None, channel_id, option)
         embed = self._housing.build_embed(*args, option=option)
         embeds = [embed]
-        if option and "dropoff" in option.lower():
-            async with AsyncSessionLocal() as session:
-                non_discord = await LocationsRepository.get_non_discord_pickups(session, day)
-            if non_discord:
-                non_discord_locations_people = defaultdict(list)
-                for pickup in non_discord:
-                    non_discord_locations_people[pickup.location].append((pickup.name, None))
-                embeds.append(
-                    self._housing.build_embed(
-                        non_discord_locations_people,
-                        set(),
-                        set(),
-                        custom_title="Non-Discord Dropoffs (unknown lunch)",
-                    )
-                )
         return embeds
 
     async def list_locations(
         self,
         day=None,
-        message_id: int | None = None,
-        channel_id: int = ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
+        message_id=None,
+        channel_id=ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS,
         option=None,
+        event_id=None,
     ):
-        """
-        Lists locations based on reactions to a message.
+        """Read canonical requests and roster locations by stable identity."""
+        from ridebot.services.ride_events_service import RideEventsService
 
-        Args:
-            day: The day to list locations for.
-            message_id: The message ID to check reactions on.
-            channel_id: The channel ID where the message is located.
-            option: Additional filtering options.
-
-        Returns:
-            A tuple containing (locations_people, usernames_reacted, location_found).
-        """
-        if day:
-            ask_rides_message = DAY_TO_ASK_RIDES_MESSAGE.get(JobName(day))
-            if ask_rides_message is None:
-                raise ValueError(f"Invalid day: {day}")
-            message_id = await self.find_correct_message(ask_rides_message, channel_id)
-            if message_id is None:
-                raise NoMatchingMessageFoundError()
-
-        if message_id is None:
-            raise ValueError("message_id must be provided when day is not specified")
-
-        usernames_reacted = await self.get_usernames_who_reacted(channel_id, message_id, option)
-
-        tmp_content = ""
-        if not day:
-            tmp_channel = self.bot.get_channel(int(channel_id))
-            if isinstance(tmp_channel, (discord.TextChannel, discord.Thread)):
-                tmp_message = await tmp_channel.fetch_message(int(message_id))
-                tmp_content = get_message_and_embed_content(tmp_message).lower()
-
-        if (
-            (day and day == JobName.SUNDAY)
-            or ("service" in tmp_content and "sunday" in tmp_content)
-        ) and (
-            class_message_id := await self.find_correct_message(
-                AskRidesMessage.SUNDAY_CLASS, channel_id
+        if day and JobName(day) not in DAY_TO_ASK_RIDES_MESSAGE:
+            raise ValueError(f"Invalid day: {day}")
+        try:
+            locations, reacted, found, _, _ = await RideEventsService.pickup_data(
+                day=day,
+                message_id=message_id,
+                channel_id=channel_id,
+                event_id=event_id,
+                option=option,
             )
-        ) is not None:
-            # Avoid ``-=`` as it mutates the set in-place, which corrupts the cache.
-            usernames_reacted = usernames_reacted - await self.get_usernames_who_reacted(
-                channel_id, class_message_id
-            )
-
-        locations_people, location_found = await self._sort_locations(usernames_reacted)
-
-        if day and (option is None or "dropoff" not in option.lower()):
-            async with AsyncSessionLocal() as session:
-                pickups = await LocationsRepository.get_non_discord_pickups(session, day)
-            for pickup in pickups:
-                locations_people[pickup.location].append((pickup.name, None))
-
-        return locations_people, usernames_reacted, location_found
+        except ValueError as exc:
+            if "not found" in str(exc):
+                raise NoMatchingMessageFoundError() from exc
+            raise
+        return locations, reacted, found
 
     # ------------------------------------------------------------------
     # Delegation helpers (maintain backward compatibility)

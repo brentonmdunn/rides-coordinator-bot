@@ -6,10 +6,10 @@ import discord
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from api.dependencies import parse_int_param, require_bot, validate_ride_type
+from api.dependencies import parse_int_param, validate_ride_type
 from ridebot.services.locations_service import LocationsService
 from ridebot.utils.custom_exceptions import NoMatchingMessageFoundError
-from shared.core.enums import AskRidesMessage, ChannelIds, JobName
+from shared.core.enums import ChannelIds
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class ListPickupsRequest(BaseModel):
     ride_type: str = Field(
         description="Type of ride to lookup. Allowed values: 'friday', 'sunday', or 'message_id'"
     )
+    event_id: int | None = Field(default=None, gt=0)
     message_id: str | None = Field(
         default=None, description="Required only when ride_type is 'message_id'"
     )
@@ -57,87 +58,38 @@ async def list_pickups(request: ListPickupsRequest):
     Returns:
         ListPickupsResponse with success status and either pickup data or error message
     """
-    try:
-        bot = require_bot()
-    except HTTPException:
-        bot = None
-
     validate_ride_type(request.ride_type)
     channel_id_int = parse_int_param(request.channel_id, "Channel ID")
-
-    # Custom message_id lookups always require a live bot (not pre-cached)
+    message_id_int = None
     if request.ride_type == "message_id":
-        if bot is None:
-            raise HTTPException(status_code=503, detail="Bot not initialized")
-        if not request.message_id:
-            raise HTTPException(
-                status_code=400, detail="message_id is required when ride_type is 'message_id'"
-            )
-        message_id_int: int | None = parse_int_param(request.message_id, "Message ID")
-    else:
-        message_id_int = None
-
+        if not request.message_id and request.event_id is None:
+            raise HTTPException(status_code=400, detail="message_id or event_id is required")
+        if request.message_id:
+            message_id_int = parse_int_param(request.message_id, "Message ID")
     try:
-        locations_service = LocationsService(bot)
+        locations_service = LocationsService(None)
+        from ridebot.services.ride_events_service import RideEventsService
 
-        if message_id_int is None:
-            # Find the message for Friday or Sunday
-            if request.ride_type == JobName.FRIDAY:
-                ask_message = AskRidesMessage.FRIDAY_FELLOWSHIP
-            else:  # sunday
-                ask_message = AskRidesMessage.SUNDAY_SERVICE
-
-            if bot is not None:
-                message_id_int = await locations_service.find_correct_message(
-                    ask_message, channel_id_int
-                )
-                if message_id_int is None:
-                    raise HTTPException(
-                        status_code=404,
-                        detail=(
-                            f"Could not find the {request.ride_type} rides message. "
-                            "It may not exist yet."
-                        ),
-                    )
-                # Pass day so non-Discord pickups are merged into the results.
-                (
-                    locations,
-                    usernames_reacted,
-                    location_found,
-                ) = await locations_service.list_locations(
-                    day=request.ride_type,
-                    channel_id=channel_id_int,
-                )
-            else:
-                # Bot unavailable: serve from cache by passing day directly, which avoids
-                # the bot.get_channel() call that the message_id path requires.
-                (
-                    locations,
-                    usernames_reacted,
-                    location_found,
-                ) = await locations_service.list_locations(
-                    day=request.ride_type, channel_id=channel_id_int
-                )
-        else:
-            # Custom message_id (bot already verified above)
-            locations, usernames_reacted, location_found = await locations_service.list_locations(
-                message_id=message_id_int, channel_id=channel_id_int
-            )
-
-        # Use shared helper to group locations
+        (
+            locations,
+            usernames_reacted,
+            location_found,
+            event,
+            state,
+        ) = await RideEventsService.pickup_data(
+            day=request.ride_type if request.ride_type != "message_id" else None,
+            message_id=message_id_int,
+            event_id=request.event_id,
+            channel_id=channel_id_int,
+        )
         grouped_data = locations_service.group_locations_by_housing(
             locations, usernames_reacted, location_found
         )
-
-        # Fetch users who reacted with ⬅️ (drive back)
-        drive_back_usernames: set[str] = set()
-        if bot is not None and message_id_int is not None:
-            try:
-                drive_back_usernames = await locations_service.get_drive_back_usernames(
-                    channel_id_int, message_id_int
-                )
-            except Exception:
-                logger.exception("Failed to fetch drive-back reactions; proceeding without them")
+        drive_back_usernames = set()
+        if message_id_int:
+            drive_back_usernames = await locations_service.get_drive_back_usernames(
+                channel_id_int, message_id_int
+            )
 
         # Format response data for frontend
         housing_groups = {}
@@ -166,26 +118,21 @@ async def list_pickups(request: ListPickupsRequest):
         response_data = {
             "housing_groups": housing_groups,
             "unknown_users": grouped_data["unknown_users"],
+            "event_id": event.id,
+            "freshness": state,
         }
 
         return ListPickupsResponse(success=True, data=response_data)
 
     except HTTPException:
         raise
-    except AttributeError as e:
-        if bot is None:
-            raise HTTPException(
-                status_code=503, detail="Bot not initialized and no cached data available"
-            ) from None
-        logger.exception("An unexpected error occurred while listing pickups")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred.") from e
     except NoMatchingMessageFoundError as e:
         raise HTTPException(
             status_code=404,
             detail=(f"Could not find the {request.ride_type} rides message. It may not exist yet."),
         ) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=404 if "not found" in str(e) else 400, detail=str(e)) from e
     except discord.NotFound as e:
         raise HTTPException(
             status_code=404, detail="Message not found. Please check the Message ID and try again."

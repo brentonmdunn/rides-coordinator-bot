@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,6 +19,22 @@ from shared.core.enums import (
 from tests.unit.routing_fixtures import SEED_LIVING_TO_PICKUP, make_seed_context
 
 SEED_CTX = make_seed_context()
+
+
+@pytest.fixture(autouse=True)
+def _registered_event():
+    with (
+        patch(
+            "ridebot.services.group_rides_service.RideEventsService.resolve_event",
+            new=AsyncMock(return_value=SimpleNamespace(id=1, message_type="friday_fellowship")),
+        ),
+        patch(
+            "ridebot.services.group_rides_service.RideEventsService.workflow",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        yield
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -343,16 +360,19 @@ async def test_group_rides_api_raises_when_no_message_id_or_day():
 async def test_group_rides_api_raises_when_invalid_day():
     svc = _make_service()
     with pytest.raises(ValueError):
-        # JobName("wednesday") raises ValueError since it's not a valid JobName
-        await svc.group_rides_api(day="wednesday")
+        await svc.group_rides_api(day="monday")
 
 
 @pytest.mark.asyncio
 async def test_group_rides_api_day_message_not_found_raises():
     svc = _make_service()
-    svc.locations_service.find_correct_message = AsyncMock(return_value=None)
-
-    with pytest.raises(ValueError, match="Could not find"):
+    with (
+        patch(
+            "ridebot.services.group_rides_service.RideEventsService.resolve_event",
+            new=AsyncMock(return_value=None),
+        ),
+        pytest.raises(ValueError, match="Could not find"),
+    ):
         await svc.group_rides_api(day="friday")
 
 
@@ -391,14 +411,20 @@ async def test_group_rides_api_uses_default_channel_id():
 
 
 @pytest.mark.asyncio
-async def test_process_ride_grouping_raises_when_message_fetch_fails():
+async def test_process_ride_grouping_rejects_unregistered_message():
     svc = _make_service()
     svc.locations_service.list_locations = AsyncMock(
         return_value=({"Seventh": [("Alice", "alice")]}, {"alice"}, {"alice"})
     )
     svc.repo.fetch_message = AsyncMock(return_value=None)
 
-    with pytest.raises(ValueError, match="Could not fetch"):
+    with (
+        patch(
+            "ridebot.services.group_rides_service.RideEventsService.resolve_event",
+            new=AsyncMock(return_value=None),
+        ),
+        pytest.raises(ValueError, match="Ride event not found"),
+    ):
         await svc._process_ride_grouping(1234, "44444", 9999)
 
 

@@ -5,7 +5,7 @@ Scheduled jobs for asking for rides.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 import discord
@@ -23,6 +23,7 @@ from ridebot.services.ask_rides_schedule_service import (
 from ridebot.services.fellowship_season_service import FellowshipSeasonService
 from ridebot.services.force_sunday_class_service import ForceSundayClassService
 from ridebot.services.ride_coordinator_service import RideCoordinatorService
+from ridebot.services.ride_events_service import RideEventsService
 from ridebot.utils.ask_rides_defaults import PING_MESSAGE_TYPES
 from ridebot.utils.cache import (
     alru_cache,
@@ -32,14 +33,12 @@ from ridebot.utils.cache import (
 from ridebot.utils.constants import (
     ASK_RIDES_ACTIVE_CACHE_TTL,
     ASK_RIDES_HOURLY_CACHE_TTL,
-    ASK_RIDES_MESSAGE_HISTORY_LIMIT,
     ASK_RIDES_OFF_HOURS_CACHE_TTL,
     EMBED_COLOR_MAP,
 )
 from ridebot.utils.format_message import ping_role_with_message
 from ridebot.utils.time_helpers import (
     LA_TZ,
-    get_current_cycle_start,
     get_next_date_obj,
     get_next_date_str,
     get_send_day_before,
@@ -165,6 +164,8 @@ BuiltAskRidesMessage = tuple[discord.Embed, tuple[str, ...], AskRidesOtherView |
 
 async def build_ask_rides_message(
     message_type: AskRidesMessageType,
+    *,
+    event_date: date | None = None,
 ) -> BuiltAskRidesMessage | None:
     """
     Build the embed, reactions, and optional view for an ask-rides announcement.
@@ -172,6 +173,8 @@ async def build_ask_rides_message(
     Args:
         message_type: Which announcement type to build. The "Something else"
             view is attached only when its feature flag is enabled.
+        event_date: Explicit ride date shared with the persisted event. If omitted,
+            previews use the next occurrence of the announcement's weekday.
 
     Returns:
         (embed, reactions, view), or None for a wildcard date (nothing to send).
@@ -180,7 +183,11 @@ async def build_ask_rides_message(
     """
     enabled = await AskRidesOtherService.is_enabled()
 
-    formatted_date = get_next_date_str(_MESSAGE_TYPE_DAY[message_type])
+    formatted_date = (
+        event_date.strftime("%-m/%-d")
+        if event_date is not None
+        else get_next_date_str(_MESSAGE_TYPE_DAY[message_type])
+    )
     if message_type != AskRidesMessageType.SUNDAY_CLASS and _is_wildcard_date(formatted_date):
         return None
 
@@ -222,11 +229,16 @@ async def _ask_rides_template(
         return None
     channel: discord.TextChannel = raw_channel
 
-    built = await build_ask_rides_message(message_type)
+    event_date = get_next_date_obj(list(DaysOfWeek)[_MESSAGE_TYPE_DAY[message_type]])
+    built = await build_ask_rides_message(message_type, event_date=event_date)
     if not built:
         logger.error("build_ask_rides_message() returned None, skipping message send.")
         return None
     embed, reactions, view = built
+
+    event = await RideEventsService.ensure_event(
+        guild_id=str(channel.guild.id), message_type=message_type, event_date=event_date
+    )
 
     try:
         sent_message = await channel.send(
@@ -237,6 +249,23 @@ async def _ask_rides_template(
     except discord.HTTPException:
         logger.exception(f"Failed to send message to channel {channel_id}")
         return None
+
+    try:
+        await RideEventsService.bind_announcement(
+            event_id=event.id,
+            channel_id=str(channel_id),
+            message_id=str(sent_message.id),
+            signup_emojis=list(reactions),
+        )
+    except Exception:
+        # External sends and DB writes cannot share a transaction. The import
+        # tool can recover this message without creating a duplicate announcement.
+        logger.exception("Failed to bind announcement %s to event %s", sent_message.id, event.id)
+        await send_error_to_discord(
+            f"Ride announcement `{sent_message.id}` was sent in `{channel_id}` but could not "
+            f"be linked to event `{event.id}`. Import/reconcile this message to recover signups."
+        )
+        raise
 
     for emoji in reactions:
         try:
@@ -703,7 +732,7 @@ async def find_message_in_history(
     return None
 
 
-@alru_cache(ttl=_get_dynamic_ttl, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_STATUS)
+@alru_cache(ttl=0, ignore_self=True, namespace=CacheNamespace.ASK_RIDES_STATUS)
 async def get_ask_rides_status(bot: Bot) -> dict:
     """
     Get status for all ask rides jobs.
@@ -761,43 +790,10 @@ async def get_ask_rides_status(bot: Bot) -> dict:
         await _should_send_ask_rides_sun_class() if sunday_class_enabled else False
     )
 
-    # Fetch last messages - OPTIMIZED: Fetch history once
-    try:
-        channel = bot.get_channel(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
-        if isinstance(channel, discord.TextChannel):
-            # Calendar week (Monday 00:00 -> Sunday 23:59) — one week definition
-            # shared by every job, since every legal schedule sends within it.
-            current_week_start = get_current_cycle_start()
-
-            # Fetch recent messages once
-            messages = [msg async for msg in channel.history(limit=ASK_RIDES_MESSAGE_HISTORY_LIMIT)]
-
-            wednesday_last_msg = await find_message_in_history(
-                messages, JobName.WEDNESDAY, current_week_start
-            )
-            friday_last_msg = await find_message_in_history(
-                messages, JobName.FRIDAY, current_week_start
-            )
-            sunday_last_msg = await find_message_in_history(
-                messages, JobName.SUNDAY, current_week_start
-            )
-            sunday_class_last_msg = await find_message_in_history(
-                messages, JobName.SUNDAY_CLASS, current_week_start
-            )
-        else:
-            wednesday_last_msg = None
-            friday_last_msg = None
-            sunday_last_msg = None
-            sunday_class_last_msg = None
-    except Exception:
-        logger.exception("Error fetching messages history in get_ask_rides_status")
-        await send_error_to_discord(
-            "**Unexpected Error** fetching message history in `get_ask_rides_status`"
-        )
-        wednesday_last_msg = None
-        friday_last_msg = None
-        sunday_last_msg = None
-        sunday_class_last_msg = None
+    wednesday_last_msg = await RideEventsService.status_message(JobName.WEDNESDAY)
+    friday_last_msg = await RideEventsService.status_message(JobName.FRIDAY)
+    sunday_last_msg = await RideEventsService.status_message(JobName.SUNDAY)
+    sunday_class_last_msg = await RideEventsService.status_message(JobName.SUNDAY_CLASS)
 
     # Wednesday fellowship "sent this week" uses the Mon-Sun window, not the Wed-Sun ride cycle
     wednesday_sent = wednesday_last_msg is not None

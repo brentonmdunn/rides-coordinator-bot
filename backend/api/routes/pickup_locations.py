@@ -9,11 +9,16 @@ coordinator role.
 import logging
 from typing import Annotated
 
+import discord
+from discord.ext.commands import Bot
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, StringConstraints
 
 from api.auth import require_ride_coordinator
+from api.dependencies import require_ready_bot
 from ridebot.services.pickup_locations_service import PickupLocationsService
+from shared.core.enums import ChannelIds
+from shared.utils.channels import resolve_channel_id
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +198,47 @@ async def set_living_mapping(living_location: str, request: SetLivingMappingRequ
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.post("/living-mappings/{living_location}/announce", status_code=204)
+async def announce_living_mapping(
+    living_location: str,
+    request: SetLivingMappingRequest,
+    bot: Annotated[Bot, Depends(require_ready_bot)],
+):
+    """Announce a saved mapping after the coordinator explicitly confirms."""
+    payload = await PickupLocationsService.get_all()
+    mapping = next(
+        (m for m in payload["living_mappings"] if m["living_location"] == living_location),
+        None,
+    )
+    if mapping is None:
+        raise HTTPException(status_code=404, detail="Unknown living location")
+    if mapping["pickup_location_id"] != request.pickup_location_id:
+        raise HTTPException(
+            status_code=409, detail="Pickup spot has changed. Refresh before announcing."
+        )
+    location = next(
+        (loc for loc in payload["locations"] if loc["id"] == request.pickup_location_id), None
+    )
+    if location is None or not location["is_active"]:
+        raise HTTPException(status_code=409, detail="Pickup spot is no longer active")
+    channel = bot.get_channel(resolve_channel_id(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+    if not isinstance(channel, discord.TextChannel):
+        raise HTTPException(status_code=503, detail="Announcement channel is unavailable")
+    message = (
+        f"📍 Pickup location update: Riders living in {discord.utils.escape_markdown(living_location)} "
+        f"will now be picked up at {discord.utils.escape_markdown(location['name'])}. "
+        "Please head to this spot for future rides.\n"
+        f"Google Maps: https://www.google.com/maps/search/?api=1&query={location['latitude']},{location['longitude']}"
+    )
+    try:
+        await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+    except discord.HTTPException as e:
+        logger.exception("Failed to announce pickup location change")
+        raise HTTPException(
+            status_code=502, detail="Could not send announcement. Please try again."
+        ) from e
 
 
 @router.put(

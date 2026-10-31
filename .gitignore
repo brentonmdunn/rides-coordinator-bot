@@ -1,5 +1,7 @@
 .DS_Store
 .env*
+.doppler-token
+*.encrypted.json
 *__pycache__*
 *.vite*
 *node_modules*

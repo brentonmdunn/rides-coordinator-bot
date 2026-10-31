@@ -163,6 +163,14 @@ def rider_channel_lookup():
 
 
 class TestSubmit:
+    @pytest.fixture(autouse=True)
+    def _durable_request(self):
+        with patch(
+            "ridebot.services.ask_rides_other_service.RideEventsService.save_custom_request",
+            new_callable=AsyncMock,
+        ):
+            yield
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize("message_type", list(AskRidesMessageType))
     async def test_posts_confirmation_with_request_and_announcement(

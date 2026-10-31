@@ -40,11 +40,7 @@ async def get_pickups_by_message(
     """
     logger.info(f"🔍 Pickups endpoint called with message_id={message_id}, channel_id={channel_id}")
 
-    bot = get_bot(BotName.RIDEBOT)
-
-    if bot is None or not bot.is_ready():
-        logger.warning("Bot not ready")
-        raise HTTPException(status_code=503, detail="Discord bot not ready")
+    bot = None
 
     # Validate and convert IDs
     try:
@@ -86,27 +82,10 @@ async def get_pickups_by_message(
                     "locations": {},
                 }
 
-                # Convert locations dict to include discord usernames
-                for location, people_names in group_data["locations"].items():
-                    # Get full person info (name, username) from locations_people
-                    people_with_usernames = []
-                    for name in people_names:
-                        # Find the matching person in locations_people
-                        for person_tuple in locations_people.get(location, []):
-                            if person_tuple[0] == name:
-                                people_with_usernames.append(
-                                    {
-                                        "name": person_tuple[0],
-                                        "discord_username": str(person_tuple[1])
-                                        if person_tuple[1]
-                                        else None,
-                                    }
-                                )
-                                break
-
-                    result["housing_groups"][group_name]["locations"][location] = (
-                        people_with_usernames
-                    )
+                for location, people in group_data["locations"].items():
+                    result["housing_groups"][group_name]["locations"][location] = [
+                        {"name": name, "discord_username": username} for name, username in people
+                    ]
 
         logger.info(
             f"✅ Returning grouped result with {len(result['housing_groups'])} housing groups"
