@@ -13,7 +13,7 @@ from ridebot.utils.constants import (
     PICKUP_INFO_ON_CAMPUS_CUSTOM_ID,
 )
 from ridebot.views.pickup_info import PickupInfoView
-from shared.core.enums import CategoryIds
+from shared.core.enums import CategoryIds, RoleIds
 
 
 @pytest.fixture(autouse=True)
@@ -257,3 +257,57 @@ async def test_remembered_channel_expires(monkeypatch):
     await service.handle_new_rider_reaction(user, guild)
 
     assert guild.create_text_channel.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_channel_lookup_reuses_existing_without_registration_prompt():
+    existing = _make_existing_channel()
+    guild, _ = _make_guild_and_category(existing)
+    guild.create_text_channel = AsyncMock()
+
+    channel = await RideRequestService(_make_bot()).get_or_create_rider_channel(_make_user(), guild)
+
+    assert channel is existing
+    guild.create_text_channel.assert_not_awaited()
+    existing.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_channel_creation_uses_private_permissions_without_registration_prompt():
+    guild, category = _make_guild_and_category()
+    coordinator_role = MagicMock()
+    guild.get_role.return_value = coordinator_role
+    channel = _make_new_channel()
+    guild.create_text_channel = AsyncMock(return_value=channel)
+    user = _make_user()
+
+    result = await RideRequestService(_make_bot()).get_or_create_rider_channel(user, guild)
+
+    assert result is channel
+    kwargs = guild.create_text_channel.call_args.kwargs
+    assert kwargs["category"] is category
+    assert kwargs["name"] == user.name
+    assert kwargs["overwrites"][guild.default_role].read_messages is False
+    assert kwargs["overwrites"][user].read_messages is True
+    assert kwargs["overwrites"][coordinator_role].send_messages is True
+    guild.get_role.assert_called_once_with(RoleIds.RIDE_COORDINATOR)
+    channel.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_confirmation_and_new_rider_flow_share_channel_creation_lock():
+    guild, _ = _make_guild_and_category()
+    channel = _make_new_channel()
+    guild.create_text_channel = _slow_create(channel)
+    user = _make_user()
+    service = RideRequestService(_make_bot())
+
+    found, prompted = await asyncio.gather(
+        service.get_or_create_rider_channel(user, guild),
+        service.handle_new_rider_reaction(user, guild),
+    )
+
+    assert found is channel
+    assert prompted is True
+    guild.create_text_channel.assert_awaited_once()
+    channel.send.assert_awaited_once()
