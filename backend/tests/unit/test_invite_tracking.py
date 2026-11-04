@@ -23,6 +23,7 @@ def invite(code="abc", uses=0, creator=42, guild=None):
 
 @pytest.fixture
 def tracker(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
     guild = SimpleNamespace(id=10, name="Our server", invites=AsyncMock(return_value=[]))
     channel = MagicMock(spec=discord.TextChannel)
     channel.guild = guild
@@ -53,7 +54,7 @@ async def test_posts_creator_without_pinging_and_does_not_reuse_delta(tracker):
     assert "`abc`" in message(channel)
     mentions = channel.send.await_args.kwargs["allowed_mentions"]
     assert not mentions.users and not mentions.roles and not mentions.everyone
-    cog.bot.get_channel.assert_called_with(int(ChannelIds.BOT_STUFF__BOTS))
+    cog.bot.get_channel.assert_called_with(int(ChannelIds.SERVING__SERVER_ADMIN_BOT_SPAM))
     await cog.on_member_join(member(guild, 100))
     assert "**unknown**" in message(channel)
 
