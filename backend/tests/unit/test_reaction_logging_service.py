@@ -13,6 +13,7 @@ from shared.core.enums import ReactionAction
 def _make_user(name="testuser"):
     user = MagicMock(spec=discord.Member)
     user.name = name
+    user.mention = "<@123456789012345678>"
     return user
 
 
@@ -213,14 +214,20 @@ class TestLogLateRideReaction:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_sends_to_driver_bot_spam(self):
+    @pytest.mark.parametrize("action", [ReactionAction.ADD, ReactionAction.REMOVE])
+    @pytest.mark.parametrize("content", ["Friday rides", "Something random"])
+    async def test_sends_profile_mention_without_pinging(self, action, content):
         log_channel = AsyncMock(spec=discord.TextChannel)
         bot = MagicMock()
         bot.get_channel.return_value = log_channel
         svc = ReactionLoggingService(bot=bot)
 
         result = await svc.log_late_ride_reaction(
-            _make_user(), _make_payload(), _make_message("Friday rides"), ReactionAction.ADD
+            _make_user(), _make_payload(), _make_message(content), action
         )
         assert result is True
         log_channel.send.assert_awaited_once()
+        args, kwargs = log_channel.send.await_args
+        assert args[0].startswith("<@123456789012345678> ")
+        assert "`testuser`" not in args[0]
+        assert kwargs["allowed_mentions"].to_dict() == {"parse": []}
