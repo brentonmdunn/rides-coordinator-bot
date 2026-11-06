@@ -71,7 +71,7 @@ def _make_result(event: TempDriverEvent = TempDriverEvent.GRANTED) -> TempDriver
         grant=grant,
         event=event,
         previous_expires_at=None,
-        announcement="🚗 **@Alice** is a temporary driver until **Sat, Oct 5, 11:59 PM** "
+        announcement="🚗 <@555> is a temporary driver until **Sat, Oct 5, 11:59 PM** "
         "(<t:1759708799:R>) — added by Coordinator",
     )
 
@@ -104,6 +104,7 @@ async def test_add_temp_driver_in_coordinators_channel_announces():
     kwargs = interaction.edit_original_response.call_args.kwargs
     assert kwargs["content"] == result.announcement
     assert isinstance(kwargs.get("allowed_mentions"), discord.AllowedMentions)
+    assert kwargs["allowed_mentions"].to_dict() == {"parse": []}
     interaction.followup.send.assert_not_called()
 
 
@@ -309,7 +310,8 @@ async def test_list_temp_drivers_shows_grants():
     _, kwargs = interaction.response.send_message.call_args
     assert kwargs.get("ephemeral") is True
     embed = kwargs.get("embed")
-    assert "Alice" in embed.description
+    assert "<@555>" in embed.description
+    assert kwargs["allowed_mentions"].to_dict() == {"parse": []}
     assert "Coordinator" in embed.description
     assert "<t:" in embed.description
 

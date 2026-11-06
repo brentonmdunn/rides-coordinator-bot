@@ -69,31 +69,28 @@ class TestBuildAnnouncement:
         return datetime(2026, 10, 5, 6, 59, 59, tzinfo=UTC)  # 11:59 PM PDT
 
     def test_granted(self):
-        text = build_announcement(TempDriverEvent.GRANTED, "Alice", self._expires_at(), "Bob")
-        assert text.startswith("🚗 **@Alice** is a temporary driver until **")
+        text = build_announcement(TempDriverEvent.GRANTED, "111", self._expires_at(), "Bob")
+        assert text.startswith("🚗 <@111> is a temporary driver until **")
         assert "— added by Bob" in text
         assert "<t:" in text
 
     def test_extended_includes_previous(self):
         prev = self._expires_at() - timedelta(days=3)
         text = build_announcement(
-            TempDriverEvent.EXTENDED, "Alice", self._expires_at(), "Bob", prev
+            TempDriverEvent.EXTENDED, "111", self._expires_at(), "Bob", prev
         )
         assert "now ends **" in text
         assert "was " in text
         assert "— updated by Bob" in text
+        assert "<@111>" in text
 
     def test_revoked(self):
-        text = build_announcement(TempDriverEvent.REVOKED, "Alice", self._expires_at(), "Bob")
-        assert text == "🚗 **@Alice**'s temporary Driver role was removed early by Bob"
+        text = build_announcement(TempDriverEvent.REVOKED, "111", self._expires_at(), "Bob")
+        assert text == "🚗 <@111>'s temporary Driver role was removed early by Bob"
 
     def test_expired(self):
-        text = build_announcement(TempDriverEvent.EXPIRED, "Alice", self._expires_at(), "Bob")
-        assert text == "🚗 **@Alice**'s temporary Driver role expired (granted by Bob)"
-
-    def test_never_pings_with_id_mention(self):
-        text = build_announcement(TempDriverEvent.GRANTED, "Alice", self._expires_at(), "Bob")
-        assert "<@" not in text
+        text = build_announcement(TempDriverEvent.EXPIRED, "111", self._expires_at(), "Bob")
+        assert text == "🚗 <@111>'s temporary Driver role expired (granted by Bob)"
 
 
 class TestResolveMember:
@@ -150,6 +147,7 @@ class TestGrant:
         result = await service.grant(member, "3d", "coordinator@example.com")
 
         assert result.event == TempDriverEvent.GRANTED
+        assert "<@111>" in result.announcement
         assert result.previous_expires_at is None
         member.add_roles.assert_awaited_once()
         mock_upsert.assert_awaited_once()
@@ -173,6 +171,7 @@ class TestGrant:
         result = await service.grant(member, "3d", "coordinator@example.com")
 
         assert result.event == TempDriverEvent.EXTENDED
+        assert "<@111>" in result.announcement
         assert result.previous_expires_at is not None
         member.add_roles.assert_not_called()  # already has the role
         mock_upsert.assert_awaited_once()
@@ -283,6 +282,7 @@ class TestRevoke:
         result = await service.revoke("111", "coordinator@example.com")
 
         assert result.event == TempDriverEvent.REVOKED
+        assert "<@111>" in result.announcement
         member.remove_roles.assert_awaited_once()
         mock_delete.assert_awaited_once()
         service.announce.assert_awaited_once_with(result.announcement)
@@ -433,6 +433,7 @@ class TestRemoveDriver:
 
         member.remove_roles.assert_awaited_once()
         service.announce.assert_awaited_once()
+        assert "<@111>" in service.announce.await_args.args[0]
         assert result["discord_user_id"] == "111"
 
     @pytest.mark.asyncio
@@ -682,11 +683,11 @@ class TestAnnounce:
         bot.get_channel.return_value = channel
         service = TempDriverService(bot)
 
-        await service.announce("hello")
+        await service.announce("🚗 <@111> is a temporary driver")
 
         channel.send.assert_awaited_once()
         args, kwargs = channel.send.call_args
-        assert args == ("hello",)
+        assert args == ("🚗 <@111> is a temporary driver",)
         mentions = kwargs["allowed_mentions"]
         assert (mentions.everyone, mentions.users, mentions.roles) == (False, False, False)
 
