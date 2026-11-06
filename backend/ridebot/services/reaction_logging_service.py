@@ -71,7 +71,7 @@ class ReactionLoggingService:
         action: ReactionAction,
     ) -> bool:
         """
-        Log a late ride reaction to the driver bot spam channel.
+        Log a late ride reaction to the ride coordinators channel without pinging users.
 
         Args:
             user: The user who reacted.
@@ -91,7 +91,7 @@ class ReactionLoggingService:
         log_message = self._format_reaction_log_late_rides(user, payload, message, action)
 
         try:
-            await log_channel.send(log_message)
+            await log_channel.send(log_message, allowed_mentions=discord.AllowedMentions.none())
             return True
         except discord.Forbidden:
             logger.error(f"Missing permissions to send to channel {log_channel.id}")
@@ -182,6 +182,6 @@ class ReactionLoggingService:
                 break
 
         if event_name is None:
-            return f"`{user.name}` {action_verb} {payload.emoji} to an unknown message."
+            return f"{user.mention} {action_verb} {payload.emoji} to an unknown message."
 
-        return f"`{user.name}` {action_verb} {payload.emoji} to {event_name}"
+        return f"{user.mention} {action_verb} {payload.emoji} to {event_name}"
