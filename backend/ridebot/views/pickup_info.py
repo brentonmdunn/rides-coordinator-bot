@@ -77,7 +77,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
         The message to post in the ride coordinators channel.
     """
     year = f"{person.year} year" if person.year else "year unknown"
-    who = f"**{person.name}** (`@{interaction.user.name}`)"
+    who = f"**{person.name}** ({interaction.user.mention})"
 
     # Picking the on-campus catch-all stores no location, so nobody knows where to
     # collect this rider yet. Lead with that instead of burying it mid-sentence.
@@ -129,7 +129,9 @@ async def _notify_ride_coordinators(interaction: discord.Interaction, message: s
             )
             return
         # The Pickup Info link would otherwise unfurl into a preview card.
-        await channel.send(message, suppress_embeds=True)
+        await channel.send(
+            message, suppress_embeds=True, allowed_mentions=discord.AllowedMentions.none()
+        )
     except Exception:
         logger.exception("Failed to post pickup info notice to ride coordinators")
 
