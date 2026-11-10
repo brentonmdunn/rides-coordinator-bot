@@ -159,11 +159,13 @@ class TempDrivers(commands.Cog):
             embed.description = "No temporary drivers."
         else:
             embed.description = "\n".join(
-                f"**{grant.display_name}** — {_when(grant.expires_at)} · by {grant.granted_by}"
+                f"<@{grant.discord_user_id}> — {_when(grant.expires_at)} · by {grant.granted_by}"
                 for grant in grants
             )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(
+            embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
 
 
 async def setup(bot: commands.Bot):

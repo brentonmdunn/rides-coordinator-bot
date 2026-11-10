@@ -66,6 +66,7 @@ def _make_interaction(user_id=123, username="alice", display_name="Alice"):
     interaction.user = MagicMock()
     interaction.user.id = user_id
     interaction.user.name = username
+    interaction.user.mention = f"<@{user_id}>"
     interaction.user.display_name = display_name
     interaction.response = AsyncMock()
     interaction.channel_id = 555
@@ -519,7 +520,7 @@ async def test_sdsu_notice_is_an_action_needed_alert():
         await modal.on_submit(interaction)
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
-    assert notice == "🚨 **ACTION NEEDED, SDSU**: **Alice** (`@alice`), 2nd year · <#555>"
+    assert notice == "🚨 **ACTION NEEDED, SDSU**: **Alice** (<@123>), 2nd year · <#555>"
 
 
 # ---------------------------------------------------------------------------
@@ -528,17 +529,20 @@ async def test_sdsu_notice_is_an_action_needed_alert():
 
 
 @pytest.mark.asyncio
-async def test_submit_notifies_ride_coordinators():
+@pytest.mark.parametrize("created", [True, False])
+async def test_submit_notifies_ride_coordinators(created):
     modal = _submit_campus()
     interaction = _make_interaction()
 
-    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(), True))):
+    with patch(REGISTER, new=AsyncMock(return_value=(_make_person(), created))):
         await modal.on_submit(interaction)
 
-    notice = _coordinators_channel(interaction).send.call_args.args[0]
-    assert "New hooman" in notice
+    send = _coordinators_channel(interaction).send
+    notice = send.call_args.args[0]
+    assert ("New hooman" if created else "Updated") in notice
     assert "**Alice**" in notice
-    assert "`@alice`" in notice
+    assert "(<@123>)" in notice
+    assert send.call_args.kwargs["allowed_mentions"].to_dict() == {"parse": []}
     assert "Sixth, 2nd year" in notice
     assert "<#555>" in notice
     # The coordinator copy is deliberately not the rider's confirmation.
