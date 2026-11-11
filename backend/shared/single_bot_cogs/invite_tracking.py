@@ -135,7 +135,8 @@ class InviteTracking(commands.Cog):
             logger.info("Member %s joined guild %s: %s", member.id, member.guild.id, attribution)
             try:
                 await channel.send(
-                    f"👋 <@{member.id}> joined **{discord.utils.escape_markdown(member.guild.name)}**. "
+                    f"👋 <@{member.id}> (`{member.name}`) joined "
+                    f"**{discord.utils.escape_markdown(member.guild.name)}**. "
                     f"{attribution}",
                     allowed_mentions=discord.AllowedMentions.none(),
                 )

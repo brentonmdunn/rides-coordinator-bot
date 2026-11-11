@@ -228,6 +228,6 @@ class TestLogLateRideReaction:
         assert result is True
         log_channel.send.assert_awaited_once()
         args, kwargs = log_channel.send.await_args
-        assert args[0].startswith("<@123456789012345678> ")
-        assert "`testuser`" not in args[0]
+        assert args[0].startswith("<@123456789012345678> (`testuser`) ")
+        assert "(`testuser`)" in args[0]
         assert kwargs["allowed_mentions"].to_dict() == {"parse": []}

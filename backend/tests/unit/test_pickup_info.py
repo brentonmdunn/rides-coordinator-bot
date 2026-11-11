@@ -520,7 +520,7 @@ async def test_sdsu_notice_is_an_action_needed_alert():
         await modal.on_submit(interaction)
 
     notice = _coordinators_channel(interaction).send.call_args.args[0]
-    assert notice == "🚨 **ACTION NEEDED, SDSU**: **Alice** (<@123>), 2nd year · <#555>"
+    assert notice == "🚨 **ACTION NEEDED, SDSU**: **Alice** <@123> (`alice`), 2nd year · <#555>"
 
 
 # ---------------------------------------------------------------------------
@@ -541,7 +541,7 @@ async def test_submit_notifies_ride_coordinators(created):
     notice = send.call_args.args[0]
     assert ("New hooman" if created else "Updated") in notice
     assert "**Alice**" in notice
-    assert "(<@123>)" in notice
+    assert "<@123> (`alice`)" in notice
     assert send.call_args.kwargs["allowed_mentions"].to_dict() == {"parse": []}
     assert "Sixth, 2nd year" in notice
     assert "<#555>" in notice

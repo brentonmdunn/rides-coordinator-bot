@@ -69,15 +69,17 @@ class TestBuildAnnouncement:
         return datetime(2026, 10, 5, 6, 59, 59, tzinfo=UTC)  # 11:59 PM PDT
 
     def test_granted(self):
-        text = build_announcement(TempDriverEvent.GRANTED, "111", self._expires_at(), "Bob")
-        assert text.startswith("🚗 <@111> is a temporary driver until **")
+        text = build_announcement(
+            TempDriverEvent.GRANTED, "111", "alice", self._expires_at(), "Bob"
+        )
+        assert text.startswith("🚗 <@111> (`alice`) is a temporary driver until **")
         assert "— added by Bob" in text
         assert "<t:" in text
 
     def test_extended_includes_previous(self):
         prev = self._expires_at() - timedelta(days=3)
         text = build_announcement(
-            TempDriverEvent.EXTENDED, "111", self._expires_at(), "Bob", prev
+            TempDriverEvent.EXTENDED, "111", "alice", self._expires_at(), "Bob", prev
         )
         assert "now ends **" in text
         assert "was " in text
@@ -85,12 +87,16 @@ class TestBuildAnnouncement:
         assert "<@111>" in text
 
     def test_revoked(self):
-        text = build_announcement(TempDriverEvent.REVOKED, "111", self._expires_at(), "Bob")
-        assert text == "🚗 <@111>'s temporary Driver role was removed early by Bob"
+        text = build_announcement(
+            TempDriverEvent.REVOKED, "111", "alice", self._expires_at(), "Bob"
+        )
+        assert text == "🚗 <@111> (`alice`)'s temporary Driver role was removed early by Bob"
 
     def test_expired(self):
-        text = build_announcement(TempDriverEvent.EXPIRED, "111", self._expires_at(), "Bob")
-        assert text == "🚗 <@111>'s temporary Driver role expired (granted by Bob)"
+        text = build_announcement(
+            TempDriverEvent.EXPIRED, "111", "alice", self._expires_at(), "Bob"
+        )
+        assert text == "🚗 <@111> (`alice`)'s temporary Driver role expired (granted by Bob)"
 
 
 class TestResolveMember:

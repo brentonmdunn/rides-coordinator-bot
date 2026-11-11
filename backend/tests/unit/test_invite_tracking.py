@@ -35,7 +35,7 @@ def tracker(monkeypatch):
 
 
 def member(guild, user_id=99):
-    return SimpleNamespace(id=user_id, guild=guild)
+    return SimpleNamespace(id=user_id, name="newmember", guild=guild)
 
 
 def message(channel, index=-1):
@@ -49,7 +49,7 @@ async def test_posts_creator_without_pinging_and_does_not_reuse_delta(tracker):
     await cog.on_ready()
     guild.invites.return_value = [invite(uses=4)]
     await cog.on_member_join(member(guild))
-    assert "<@99> joined" in message(channel)
+    assert "<@99> (`newmember`) joined" in message(channel)
     assert "Likely invite creator: <@42>" in message(channel)
     assert "`abc`" in message(channel)
     mentions = channel.send.await_args.kwargs["allowed_mentions"]
@@ -114,7 +114,7 @@ async def test_missing_permission_still_posts_join_and_recovers_with_baseline(tr
     )
     await cog.on_ready()
     await cog.on_member_join(member(guild))
-    assert "<@99> joined" in message(channel)
+    assert "<@99> (`newmember`) joined" in message(channel)
     assert "Manage Server" in message(channel)
     guild.invites.side_effect = None
     guild.invites.return_value = [invite(uses=3)]

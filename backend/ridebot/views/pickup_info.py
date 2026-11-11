@@ -77,7 +77,7 @@ def _coordinator_message(interaction: discord.Interaction, person: Person, creat
         The message to post in the ride coordinators channel.
     """
     year = f"{person.year} year" if person.year else "year unknown"
-    who = f"**{person.name}** ({interaction.user.mention})"
+    who = f"**{person.name}** {interaction.user.mention} (`{interaction.user.name}`)"
 
     # Picking the on-campus catch-all stores no location, so nobody knows where to
     # collect this rider yet. Lead with that instead of burying it mid-sentence.

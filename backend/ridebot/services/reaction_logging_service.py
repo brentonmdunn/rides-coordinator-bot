@@ -182,6 +182,6 @@ class ReactionLoggingService:
                 break
 
         if event_name is None:
-            return f"{user.mention} {action_verb} {payload.emoji} to an unknown message."
+            return f"{user.mention} (`{user.name}`) {action_verb} {payload.emoji} to an unknown message."
 
-        return f"{user.mention} {action_verb} {payload.emoji} to {event_name}"
+        return f"{user.mention} (`{user.name}`) {action_verb} {payload.emoji} to {event_name}"

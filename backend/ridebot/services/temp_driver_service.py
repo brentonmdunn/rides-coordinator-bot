@@ -69,12 +69,13 @@ def format_expiry(expires_at: datetime) -> tuple[str, str]:
 def build_announcement(
     event: TempDriverEvent,
     discord_user_id: str,
+    discord_username: str,
     expires_at: datetime,
     actor: str | None,
     previous_expires_at: datetime | None = None,
 ) -> str:
     """Build the coordinators-channel message for a grant event. Pure function."""
-    name = f"<@{discord_user_id}>"
+    name = f"<@{discord_user_id}> (`{discord_username}`)"
     when, rel = format_expiry(expires_at)
 
     if event == TempDriverEvent.GRANTED:
@@ -183,7 +184,7 @@ class TempDriverService:
             granted_by=granted_by,
         )
         announcement = build_announcement(
-            event, str(member.id), expires_at, granted_by, previous_expires_at
+            event, str(member.id), member.name, expires_at, granted_by, previous_expires_at
         )
 
         if announce:
@@ -237,7 +238,11 @@ class TempDriverService:
         display_name = member.display_name if member is not None else existing.discord_username
         previous_expires_at = _as_aware_utc(existing.expires_at)
         announcement = build_announcement(
-            TempDriverEvent.REVOKED, discord_user_id, previous_expires_at, actor
+            TempDriverEvent.REVOKED,
+            discord_user_id,
+            member.name if member is not None else existing.discord_username,
+            previous_expires_at,
+            actor,
         )
 
         if announce:
@@ -359,6 +364,7 @@ class TempDriverService:
                 announcement = build_announcement(
                     TempDriverEvent.EXPIRED,
                     row.discord_user_id,
+                    member.name,
                     _as_aware_utc(row.expires_at),
                     row.granted_by,
                 )
