@@ -2,17 +2,21 @@
 
 import logging
 import re
-from datetime import UTC, date, datetime, timedelta
+from collections import deque
+from datetime import UTC, date, datetime, time, timedelta
 
 import discord
 
 from ridebot.core import reaction_broadcaster
 from ridebot.services.ask_rides_messages_service import AskRidesMessagesService
 from ridebot.services.driver_service import DriverService
+from ridebot.services.late_reaction_windows_service import LateReactionWindowsService
 from ridebot.services.ride_events_service import ReactionChoice, RideEventsService
 from ridebot.utils.ask_rides_defaults import DEFAULT_TEMPLATES
-from ridebot.utils.time_helpers import LA_TZ, get_current_cycle_start
-from shared.core.enums import AskRidesMessageType, ChannelIds, DaysOfWeek
+from ridebot.utils.time_helpers import LA_TZ, days_of_week_to_number, get_current_cycle_start
+from shared.core.enums import AskRidesMessageType, ChannelIds, DaysOfWeek, FeatureFlagNames
+from shared.utils.channels import resolve_channel_id
+from shared.utils.checks import feature_flag_enabled
 
 logger = logging.getLogger(__name__)
 WEEKDAYS = {
@@ -38,14 +42,30 @@ def legacy_event_date(text: str, created_at: datetime, weekday: int) -> date | N
     return next(iter(candidates)) if len(candidates) == 1 else None
 
 
+def _overlaps_late_window(event_date, window, baseline_at, observed_at):
+    """Compare the unobserved interval with this event's configured LA window."""
+    start_weekday = int(days_of_week_to_number[window.start_day])
+    end_weekday = int(days_of_week_to_number[window.end_day])
+    start_date = event_date - timedelta(days=(event_date.weekday() - start_weekday) % 7)
+    end_date = start_date + timedelta(days=(end_weekday - start_weekday) % 7)
+    start = LA_TZ.localize(
+        datetime.combine(start_date, time(window.start_hour, window.start_minute))
+    )
+    end = LA_TZ.localize(datetime.combine(end_date, time(window.end_hour, window.end_minute)))
+    if start_date == end_date:
+        end += timedelta(minutes=1)  # Same-day windows include the configured end minute.
+    return baseline_at < min(end, observed_at) and observed_at >= start
+
+
 class RideEventSyncService:
     """Fetch complete source snapshots; failed fetches never clear recorded choices."""
 
     def __init__(self, bot):
         """Use the already-running bot rather than starting another gateway client."""
         self.bot = bot
+        self.pending_notices: deque[str] = deque()
 
-    async def reconcile_announcement(self, announcement):
+    async def reconcile_announcement(self, announcement, *, windows=None, notice_lines=None):
         """Apply one complete snapshot, preserving observations newer than its start."""
         observed_at = datetime.now(UTC)
         try:
@@ -65,9 +85,29 @@ class RideEventSyncService:
                         choices.append(
                             ReactionChoice(str(user.id), user.name, user.display_name, emoji)
                         )
-            await RideEventsService.reconcile(
-                message_id=announcement.message_id, choices=choices, observed_at=observed_at
+            changes = await RideEventsService.reconcile(
+                message_id=announcement.message_id,
+                choices=choices,
+                observed_at=observed_at,
+                track_changes=windows is not None,
             )
+            if changes and notice_lines is not None:
+                day = {4: DaysOfWeek.FRIDAY, 6: DaysOfWeek.SUNDAY}.get(changes.event_date.weekday())
+                window = windows.get(day)
+                if window and _overlaps_late_window(
+                    changes.event_date, window, changes.baseline_at, observed_at
+                ):
+                    notice_lines.append(
+                        f"[{day.value} {changes.event_date:%m/%d}]({message.jump_url})"
+                    )
+                    notice_lines.extend(
+                        f"• {label} {emoji} <@{user_id}>"
+                        for label, reactions in (
+                            ("Added", changes.added),
+                            ("Removed", changes.removed),
+                        )
+                        for user_id, emoji in sorted(reactions)
+                    )
             return True
         except discord.NotFound:
             await RideEventsService.clear_reactions(
@@ -183,9 +223,45 @@ class RideEventSyncService:
                 kind="driver",
             )
 
-    async def run(self, *, discover=False, strict=False):
+    @feature_flag_enabled(FeatureFlagNames.LATE_RIDES_REACT, enable_logs=False)
+    async def _late_windows(self):
+        return await LateReactionWindowsService.get_windows()
+
+    async def _send_catchup_notices(self, lines):
+        header = (
+            "**Ride signup changes recovered by RideBot**\n"
+            "These changes may have occurred during the late signup window.\n"
+        )
+        notice = header
+        for line in lines:
+            if len(notice) + len(line) + 1 > 2000:
+                self.pending_notices.append(notice)
+                notice = header
+            notice += f"{line}\n"
+        if notice != header:
+            self.pending_notices.append(notice)
+        if not self.pending_notices:
+            return
+        channel_id = resolve_channel_id(ChannelIds.SERVING__RIDE_COORDINATORS)
+        try:
+            channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+            while self.pending_notices:
+                await channel.send(
+                    self.pending_notices[0], allowed_mentions=discord.AllowedMentions.none()
+                )
+                self.pending_notices.popleft()
+        except discord.HTTPException:
+            logger.exception("Could not send ride signup catch-up notice; will retry")
+
+    async def run(self, *, discover=False, strict=False, notify=False):
         """Reconcile sources independently so one permission/transport failure does not stop others."""
         await RideEventsService.import_legacy_requests()
+        windows = await self._late_windows() if notify else None
+        known = (
+            {a.message_id for a in await RideEventsService.sync_targets()}
+            if windows and discover
+            else None
+        )
         discovery_ok = True
         if discover:
             try:
@@ -196,9 +272,20 @@ class RideEventSyncService:
                 if strict:
                     raise
         failures = 0
+        notice_lines = []
         for announcement in await RideEventsService.sync_targets():
-            if not await self.reconcile_announcement(announcement):
+            track = (
+                windows
+                and announcement.kind == "rider"
+                and announcement.channel_id == str(int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS))
+                and (known is None or announcement.message_id in known)
+            )
+            if not await self.reconcile_announcement(
+                announcement, windows=windows if track else None, notice_lines=notice_lines
+            ):
                 failures += 1
+        if windows:
+            await self._send_catchup_notices(notice_lines)
         await reaction_broadcaster.publish({"source": "ride_events", "action": "reconciled"})
         if strict and failures:
             raise RuntimeError(

@@ -51,7 +51,7 @@ class RideEventSync(commands.Cog):
             return
         async with self.lock:
             try:
-                discovered = await self.service.run(discover=self.needs_discovery)
+                discovered = await self.service.run(discover=self.needs_discovery, notify=True)
                 self.needs_discovery = not discovered
             except Exception:
                 logger.exception("Ride reconciliation failed; the next interval will retry")

@@ -121,6 +121,16 @@ class RideEventsRepository:
         )
 
     @staticmethod
+    async def active_reaction_keys(session, message_id):
+        """Read the active user and emoji pairs for one announcement."""
+        rows = await session.execute(
+            select(RideSignup.discord_user_id, RideSignup.emoji).where(
+                RideSignup.message_id == message_id, RideSignup.active.is_(True)
+            )
+        )
+        return {(user_id, emoji) for user_id, emoji in rows}
+
+    @staticmethod
     async def clear_snapshot(session: AsyncSession, message_id: str, observed_at: datetime) -> None:
         """Clear old choices before applying a complete snapshot in the same transaction."""
         await session.execute(

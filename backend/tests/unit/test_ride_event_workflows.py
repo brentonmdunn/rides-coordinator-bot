@@ -8,10 +8,12 @@ import discord
 import httpx
 import pytest
 
+from ridebot.services import ride_event_sync_service
 from ridebot.services import ride_events_service as module
+from ridebot.services.late_reaction_windows_service import DEFAULT_LATE_REACTION_WINDOWS
 from ridebot.services.ride_event_sync_service import RideEventSyncService, legacy_event_date
 from ridebot.services.ride_events_service import RideEventsService
-from shared.core.enums import AskRidesMessageType
+from shared.core.enums import AskRidesMessageType, ChannelIds
 from shared.core.models import Locations
 from tests.unit.test_ride_events import OBSERVED, api_app, choice, record, register
 
@@ -157,6 +159,76 @@ async def test_snapshot_filters_bots_and_incomplete_iterator_never_clears(store)
     reaction.users = broken
     assert not await adapter.reconcile_announcement(announcement)
     assert [r.discord_user_id for r in (await RideEventsService.workflow(ride.id))[1]] == ["2"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("kind", "event_date", "reconnected_at"),
+    [
+        (
+            AskRidesMessageType.FRIDAY_FELLOWSHIP,
+            date(2026, 10, 23),
+            datetime(2026, 10, 24, 3, tzinfo=UTC),
+        ),
+        (
+            AskRidesMessageType.SUNDAY_SERVICE,
+            date(2026, 10, 25),
+            datetime(2026, 10, 25, 18, tzinfo=UTC),
+        ),
+    ],
+)
+async def test_catchup_reports_missed_late_changes_once(
+    store, monkeypatch, kind, event_date, reconnected_at
+):
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return reconnected_at.astimezone(tz)
+
+    monkeypatch.setattr(ride_event_sync_service, "datetime", Clock)
+    ride = await RideEventsService.ensure_event(
+        guild_id="123", message_type=kind, event_date=event_date
+    )
+    source_id = int(ChannelIds.REFERENCES__RIDES_ANNOUNCEMENTS)
+    await RideEventsService.bind_announcement(
+        event_id=ride.id, channel_id=str(source_id), message_id="456", signup_emojis=["🍔"]
+    )
+    await RideEventsService.reconcile(message_id="456", choices=[choice()], observed_at=OBSERVED)
+    await record(selection=choice("3"), observed_at=reconnected_at - timedelta(seconds=1))
+    announcement = (await RideEventsService.get_event(ride.id))[1][0]
+    monkeypatch.setattr(RideEventsService, "sync_targets", AsyncMock(return_value=[announcement]))
+
+    async def users():
+        for user_id in (2, 3):
+            yield SimpleNamespace(id=user_id, name="user", display_name="User", bot=False)
+
+    source = Mock(spec=discord.TextChannel)
+    jump_url = f"https://discord.com/channels/123/{source_id}/456"
+    source.fetch_message = AsyncMock(
+        return_value=SimpleNamespace(
+            jump_url=jump_url, reactions=[SimpleNamespace(emoji="🍔", users=users)]
+        )
+    )
+    coordinators = Mock(spec=discord.TextChannel)
+    bot = Mock()
+    bot.get_channel.side_effect = (
+        lambda channel_id: source if channel_id == source_id else coordinators
+    )
+    adapter = RideEventSyncService(bot)
+    monkeypatch.setattr(
+        adapter, "_late_windows", AsyncMock(return_value=DEFAULT_LATE_REACTION_WINDOWS)
+    )
+    monkeypatch.setattr(adapter, "discover_current", AsyncMock())
+    await adapter.run(discover=True, notify=True)
+    await adapter.run(notify=True)
+
+    coordinators.send.assert_awaited_once()
+    notice = coordinators.send.await_args.args[0]
+    assert jump_url in notice
+    assert "Added 🍔 <@2>" in notice
+    assert "Removed 🍔 <@1>" in notice
+    assert "<@3>" not in notice
+    assert coordinators.send.await_args.kwargs["allowed_mentions"].to_dict() == {"parse": []}
 
 
 def test_legacy_dates_are_explicit_unambiguous_and_year_safe():
