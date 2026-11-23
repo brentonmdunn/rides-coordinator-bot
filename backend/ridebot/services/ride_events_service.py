@@ -39,6 +39,16 @@ class ReactionChoice:
     emoji: str
 
 
+@dataclass(frozen=True)
+class ReactionChanges:
+    """Choices changed by a snapshot relative to the saved state."""
+
+    event_date: date
+    baseline_at: datetime
+    added: set[tuple[str, str]]
+    removed: set[tuple[str, str]]
+
+
 def _naive_utc(value: datetime) -> datetime:
     """Normalize observations for SQLite, rejecting ambiguous local timestamps."""
     if value.tzinfo is None:
@@ -119,16 +129,28 @@ class RideEventsService:
 
     @staticmethod
     async def reconcile(
-        *, message_id: str, choices: list[ReactionChoice], observed_at: datetime
-    ) -> None:
+        *,
+        message_id: str,
+        choices: list[ReactionChoice],
+        observed_at: datetime,
+        track_changes: bool = False,
+    ) -> ReactionChanges | None:
         """Atomically replace a complete snapshot, retaining newer gateway observations."""
         timestamp = _naive_utc(observed_at)
         async with AsyncSessionLocal() as session, session.begin():
             announcement = await session.get(RideAnnouncement, message_id)
             if announcement is None:
                 raise ValueError("Ride announcement not found")
+            await RideEventsRepository.lock_event(session, announcement.event_id)
+            await session.refresh(announcement)
+            baseline_at = announcement.last_reconciled_at or announcement.created_at
             if not await RideEventsRepository.begin_snapshot(session, message_id, timestamp):
-                return
+                return None
+            before = (
+                await RideEventsRepository.active_reaction_keys(session, message_id)
+                if track_changes
+                else set()
+            )
             await RideEventsRepository.clear_snapshot(session, message_id, timestamp)
             for choice in choices:
                 if choice.emoji not in announcement.signup_emojis:
@@ -144,6 +166,15 @@ class RideEventsService:
                     observed_at=timestamp,
                 )
             await _refresh_requests(session, announcement.event_id, timestamp)
+            if not track_changes:
+                return None
+            after = await RideEventsRepository.active_reaction_keys(session, message_id)
+            if before == after:
+                return None
+            event = await session.get(RideEvent, announcement.event_id)
+            return ReactionChanges(
+                event.event_date, baseline_at.replace(tzinfo=UTC), after - before, before - after
+            )
 
     @staticmethod
     async def clear_reactions(
